@@ -10,7 +10,6 @@
 #include "core/window_state.h"
 #include "render/display_options.h"
 #include "render/render_options.h"
-#include "platform/clock.h"
 #include "platform/window.h"
 
 static int moved(int pos, int size, int oldExtent, int newExtent)
@@ -80,15 +79,11 @@ static void relaunch_state_icons(void)
     }
 }
 
-/* After the device did not take the window's size: that size, whether the device was lost then
-   (a lost Direct3D 9 device cannot be reset until the system gives it back), and when it was last
-   asked whether it still is. The device tries again when the window's size changes, or once it is
-   no longer lost; a size it did not take for another reason is not tried again. */
-#define LOST_POLL_MS 250
-
+/* After the device did not take the window's size (it had no memory for its targets at that
+   size): that size, which it is not asked to take again; it tries again when the window's size
+   changes. */
 static struct {
-    int pending, width, height, lost;
-    uint32_t asked;
+    int pending, width, height;
 } failed;
 
 /* custom: the device at the window's client size in pixels (render/display_options.h), and the
@@ -107,8 +102,6 @@ static int fit_device(struct C3dDevice *d)
         failed.pending = 1;
         failed.width = client.right;
         failed.height = client.bottom;
-        failed.lost = gfx_device_lost();
-        failed.asked = platform_ticks_ms();
         return 0;
     }
     failed.pending = 0;
@@ -131,18 +124,11 @@ static int fit_device(struct C3dDevice *d)
 static int should_fit(struct C3dDevice *d)
 {
     RECT client;
-    uint32_t now;
 
     if (!failed.pending)
         return 1;
     platform_client_rect(d->hwnd, &client);
-    if (client.right != failed.width || client.bottom != failed.height)
-        return 1;
-    now = platform_ticks_ms();
-    if (!failed.lost || now - failed.asked < LOST_POLL_MS)
-        return 0;
-    failed.asked = now;
-    return !gfx_device_lost();
+    return client.right != failed.width || client.bottom != failed.height;
 }
 
 /* The display options follow what the window is (render/display_options.h). */

@@ -42,6 +42,8 @@ int texture_upload_pixels(struct Texture *tex, int x, int y, int w, int h, const
 { (void)tex; (void)x; (void)y; (void)w; (void)h; (void)pixels; (void)keyed; (void)pitch; abort(); }
 void texture_draw_surface(struct Texture *tex, int x, int y, int w, int h, DWORD colour)
 { (void)tex; (void)x; (void)y; (void)w; (void)h; (void)colour; abort(); }
+void texture_draw_surface_on_top(struct Texture *tex, int x, int y, int w, int h, DWORD colour)
+{ (void)tex; (void)x; (void)y; (void)w; (void)h; (void)colour; abort(); }
 struct SprClip *motion_get_clip(const struct Motion *motion, unsigned index) { (void)motion; (void)index; abort(); }
 struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct SprImg *image, const DWORD *palette,
                                      struct SpriteRegion *region)
@@ -53,25 +55,6 @@ void dc_bitmap_draw_texels_scaled(struct DcBitmap *self, int dx0, int dy0, int d
     (void)self; (void)dx0; (void)dy0; (void)dw; (void)dh; (void)tex; (void)sw; (void)sh; (void)scaleX;
     (void)scaleY; (void)colour; (void)mirror; (void)offX; (void)offY; (void)sx; (void)sy; abort();
 }
-
-static DWORD surface_pixels[64 * 32];
-static int surface_refs, surface_locks, surface_unlocks;
-static struct gfx_surface *const test_surface = (struct gfx_surface *)(uintptr_t)8;
-
-void gfx_addref(gfx_surface *surface) { assert(surface == test_surface); ++surface_refs; }
-void gfx_release(gfx_surface *surface) { assert(surface == test_surface && surface_refs > 0); --surface_refs; }
-int gfx_lock(gfx_surface *surface, const RECT *r, int flags, struct gfx_lock *out)
-{
-    assert(surface == test_surface && !r && flags == GFX_LOCK_WAIT);
-    ++surface_locks;
-    out->bits = surface_pixels;
-    out->pitch = 64 * 4;
-    out->width = 64;
-    out->height = 32;
-    out->bpp = 32;
-    return 0;
-}
-int gfx_unlock(gfx_surface *surface) { assert(surface == test_surface); ++surface_unlocks; return 0; }
 
 #define BACKGROUND 0x77777777u
 #define INK RGB(0x12, 0x34, 0x56)
@@ -95,7 +78,7 @@ static SIZE extent(int face, int size, int bold, int italic, const char *text, i
 {
     struct TextDC dc;
     SIZE result;
-    text_dc_from_surface(&dc, NULL);
+    text_dc_construct(&dc, NULL);
     text_dc_select_font(&dc, face, size, bold, italic);
     text_dc_text_extent(&dc, text, length, &result);
     text_dc_destruct(&dc);
@@ -226,26 +209,6 @@ static void check_italic(void)
     assert(slanted.cx > 0 && slanted.cy == upright.cy);
 }
 
-static void check_surface(void)
-{
-    struct TextDC dc;
-    SIZE size;
-    int i, set = 0;
-    text_dc_from_surface(&dc, test_surface);
-    text_dc_select_font(&dc, 1, 12, 0, 0);
-    text_dc_text_extent(&dc, "Hi", 2, &size);
-    assert(surface_refs == 1 && !surface_locks);
-    text_dc_set_text_color(&dc, INK);
-    text_dc_text_out_plain(&dc, 2, 2, "Hi", 2);
-    text_dc_text_out(&dc, 2, 16, "Hi", 2);
-    assert(surface_locks == 1 && !surface_unlocks);
-    text_dc_destruct(&dc);
-    assert(!surface_refs && surface_unlocks == 1);
-    for (i = 0; i < 64 * 32; ++i)
-        set += surface_pixels[i] == INK_PIXEL;
-    assert(set > 10);
-}
-
 static long freetype_width(const char *file, int ppem, const char *text)
 {
     FT_Library library;
@@ -369,12 +332,11 @@ int main(void)
     check_opaque();
     check_runs();
     check_italic();
-    check_surface();
     check_override();
     check_monospace();
     check_triangle();
     fonts_shutdown();
     FcFini();
-    puts("FreeType text: extents, glyph placement, Korean, opaque cells, script runs, surfaces, overrides and triangles passed.");
+    puts("FreeType text: extents, glyph placement, Korean, opaque cells, script runs, overrides and triangles passed.");
     return 0;
 }

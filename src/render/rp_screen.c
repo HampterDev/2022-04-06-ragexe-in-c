@@ -28,7 +28,6 @@ void renderer_set_projection(struct Renderer *self, int width, int height)
     self->width = width;
     self->centreY = half_h;
     aspect = (float)height / (float)width;
-    self->aspect = aspect;
     t_half = (float)tan(0.13089966773986816);
     self->proj[1] = (float)half_h / t_half;
     t_far = (float)tan(1.4398963451385498);

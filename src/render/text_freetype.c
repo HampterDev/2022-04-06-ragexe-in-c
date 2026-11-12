@@ -2,11 +2,10 @@
 #ifndef TEXT_BACKEND_GDI
 #include "render/cdc.h"
 #include "render/textdc.h"
-#include "render/gfx.h"
 #include <stdlib.h>
 
 /* The FreeType text backend (render/text_backend.h): bitmaps are plain pixels, text DCs draw into
-   a bitmap's pixels or into a locked 32-bit surface, and render/fonts_ft.c draws and measures. */
+   a bitmap's pixels, and render/fonts_ft.c draws and measures. */
 
 int text_bitmap_open(struct DcBitmap *self)
 {
@@ -88,27 +87,10 @@ struct TextDC *text_dc_construct(struct TextDC *self, struct DcBitmap *bitmap)
     return self;
 }
 
-struct TextDC *text_dc_from_surface(struct TextDC *self, gfx_surface *surface)
-{
-    *self = (struct TextDC){0};
-    if (surface) {
-        gfx_addref(surface);
-        self->surface = surface;
-    }
-    text_dc_prepare(self);
-    return self;
-}
-
 void text_dc_destruct(struct TextDC *self)
 {
-    if (self->state.locked > 0)
-        gfx_unlock(self->surface);
-    if (self->surface)
-        gfx_release(self->surface);
-    self->surface = NULL;
     self->state.bitmap = NULL;
     self->state.font = NULL;
-    self->state.locked = 0;
 }
 
 COLORREF text_dc_set_bk_color(struct TextDC *self, COLORREF colour)
@@ -132,36 +114,16 @@ COLORREF text_dc_set_text_color(struct TextDC *self, COLORREF colour)
     return previous;
 }
 
-/* The pixels text goes to: the bitmap's, or the surface's, locked on the first run and until the
-   DC goes. */
+/* The pixels text goes to: the bitmap's. */
 static int text_dc_target(struct TextDC *self, struct FontTarget *target)
 {
-    struct gfx_lock lock;
-    if (self->state.bitmap) {
-        target->bits = (BYTE *)self->state.bitmap->bits;
-        target->width = self->state.bitmap->width;
-        target->height = self->state.bitmap->height;
-        target->pitch = self->state.bitmap->width * 4;
-        return target->bits != NULL;
-    }
-    if (!self->surface || self->state.locked < 0)
+    if (!self->state.bitmap)
         return 0;
-    if (!self->state.locked) {
-        self->state.locked = -1;
-        if (gfx_lock(self->surface, NULL, GFX_LOCK_WAIT, &lock) < 0)
-            return 0;
-        if (lock.bpp != 32) {
-            gfx_unlock(self->surface);
-            return 0;
-        }
-        self->state.target.bits = lock.bits;
-        self->state.target.width = (int)lock.width;
-        self->state.target.height = (int)lock.height;
-        self->state.target.pitch = (int)lock.pitch;
-        self->state.locked = 1;
-    }
-    *target = self->state.target;
-    return 1;
+    target->bits = (BYTE *)self->state.bitmap->bits;
+    target->width = self->state.bitmap->width;
+    target->height = self->state.bitmap->height;
+    target->pitch = self->state.bitmap->width * 4;
+    return target->bits != NULL;
 }
 
 int text_dc_use_font(struct TextDC *self, FontHandle font)
@@ -199,5 +161,10 @@ int text_dc_font_ascent(struct TextDC *self, FontHandle font)
 void text_dc_text_out_plain(struct TextDC *self, int x, int y, const char *s, int len)
 {
     text_dc_draw_plain(self, x, y, s, len);
+}
+
+void text_dc_text_extent_plain(struct TextDC *self, const char *s, int len, SIZE *out)
+{
+    text_dc_measure_plain(self, s, len, out);
 }
 #endif

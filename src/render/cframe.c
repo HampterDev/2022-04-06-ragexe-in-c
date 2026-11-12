@@ -65,32 +65,3 @@ void renderer_draw_frame_extras(struct Renderer *self)
     }
 }
 
-SIZE *renderer_get_text_extent(struct Renderer *self, SIZE *out, const char *str, int len, int a, int b, int c)
-{
-    struct TextDC t;
-    SIZE size;
-    (void)self;
-    if (!str || (len == 0 && (len = (int)strlen(str)) == 0)) {
-        out->cx = 0;
-        out->cy = 0;
-        return out;
-    }
-    text_dc_from_surface(&t, g_3dDevice.target);
-    text_dc_select_font(&t, a, b, c, 0);
-    text_dc_text_extent(&t, str, len, &size);
-    *out = size;
-    text_dc_destruct(&t);
-    return out;
-}
-
-int renderer_text_out(struct Renderer *self, int x, int y, const char *str, COLORREF colour)
-{
-    struct TextDC t;
-    (void)self;
-    text_dc_from_surface(&t, g_3dDevice.target);
-    text_dc_select_font(&t, 0, 12, 0, 0);
-    text_dc_set_text_color(&t, colour);
-    text_dc_text_out_plain(&t, x, y, str, (int)strlen(str));
-    text_dc_destruct(&t);
-    return 0;
-}

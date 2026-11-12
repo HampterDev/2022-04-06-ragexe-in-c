@@ -54,11 +54,6 @@ char renderer_screenshot(struct Renderer *arg0, struct String arg1)
     abort();
 }
 
-int renderer_text_out(struct Renderer *arg0, int arg1, int arg2, const char *arg3, COLORREF arg4)
-{
-    abort();
-}
-
 int renderer_draw_scene(struct Renderer *arg0)
 {
     abort();

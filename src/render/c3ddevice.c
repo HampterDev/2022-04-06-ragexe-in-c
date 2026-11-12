@@ -8,6 +8,8 @@
 #include "core/drive_state.h"
 #include "render/render_options.h"
 #include "platform/window.h"
+#include "platform/clock.h"
+#include "diag/perf.h"
 
 const char g_msgBgr565NotSupported[] = "BGR 565 MODE. NOT SUPPORTED";
 const char g_msgModeNotSupported[] = "NOT SUPPORTED MODE";
@@ -72,23 +74,6 @@ void c3d_device_save_frame(struct C3dDevice *self)
         if (gfx_blit(self->save, NULL, self->target, NULL, GFX_BLT_ASYNC) < 0)
             gfx_blit(self->save, NULL, self->target, NULL, GFX_BLT_WAIT);
     }
-}
-
-int c3d_device_check_lost(struct C3dDevice *self)
-{
-    int hrPrimary, hrZ = 0;
-    if (!self->surfacesLost)
-        return 0;
-    hrPrimary = gfx_is_lost(self->primary);
-    if (self->zbuffer)
-        hrZ = gfx_is_lost(self->zbuffer);
-    if (hrPrimary == GFX_E_SURFACELOST && hrZ == GFX_E_SURFACELOST) {
-        if (self->zbuffer)
-            gfx_restore(self->zbuffer);
-        gfx_restore_all(self);
-        self->surfacesLost = 0;
-    }
-    return 1;
 }
 
 int c3d_device_clear(struct C3dDevice *self, DWORD colour)
@@ -182,11 +167,8 @@ int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, int flags)
     if (!hwnd)
         return GFX_E_INVALIDARG;
     hr = create_environment(self, flags);
-    if (hr < 0) {
+    if (hr < 0)
         gfx_close(self);
-        if (hr == GFX_E_FAIL)
-            return GFX_E_INIT;
-    }
     if (self->dev)
         gfx_default_states(self);
     return hr;
@@ -218,12 +200,6 @@ struct Renderer *c3d_device_create_renderer(struct C3dDevice *self)
         gfx_set_mipmaps(g_trilinearFilter && g_gfxCaps.trilinear);
     }
     self->bltStretch = g_gfxCaps.bltStretch;
-    /* custom: the ground and the models are meshes the device draws (render/gfx.h), with no
-       other way to draw them */
-    if (!gfx_world_supported()) {
-        error_msg("The graphics device cannot run the shaders the world is drawn with. Direct3D 9 needs shader model 3 and d3dcompiler_47.dll.", 0);
-        return NULL;
-    }
     self->tex1024 = (self->maxTexW >= 0x400 && self->maxTexH >= 0x400) ? 1 : 0;
 
     r = calloc(1, sizeof *r);
@@ -269,24 +245,19 @@ void c3d_device_restore_frame(struct C3dDevice *self)
     }
 }
 
-int c3d_device_restore_surfaces(struct C3dDevice *self)
-{
-    return gfx_restore_all(self);
-}
-
-void c3d_device_on_surfaces_lost(struct C3dDevice *self)
-{
-    self->surfacesLost = 1;
-}
-
+/* custom: the frame's presentation is timed for the counters (diag/perf.h) before the frame counts
+   as shown */
 int c3d_device_show_frame(struct C3dDevice *self, char vsync)
 {
-    drive_state_frame_shown();
+    int64_t start = platform_stopwatch_ns();
+    int hr;
     if (!self->primary)
-        return GFX_E_NO_PRIMARY;
-    if (!self->back)
-        return gfx_is_lost(self->primary);
-    return gfx_present(self, vsync != 0);
+        hr = GFX_E_NO_PRIMARY;
+    else
+        hr = gfx_present(self, vsync != 0);
+    g_perf.presentNs += platform_stopwatch_ns() - start;
+    drive_state_frame_shown();
+    return hr;
 }
 
 static const DWORD probe_pattern[16] = {

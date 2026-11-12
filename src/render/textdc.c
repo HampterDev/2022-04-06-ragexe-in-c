@@ -119,6 +119,20 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
     }
 }
 
+void text_dc_measure_plain(struct TextDC *self, const char *s, int len, SIZE *out)
+{
+    struct TextUnicode text;
+    FontHandle font;
+
+    out->cx = out->cy = 0;
+    if (!s || len <= 0 || !text_unicode_init(&text, s, len, CODE_PAGE_UTF8))
+        return;
+    font = face_font(self);
+    if (font && text_dc_use_font(self, font) && !text_dc_measure_run(self, text.data, text.length, out))
+        out->cx = out->cy = 0;
+    text_unicode_release(&text);
+}
+
 void text_dc_draw_plain(struct TextDC *self, int x, int y, const char *s, int len)
 {
     struct TextUnicode text;

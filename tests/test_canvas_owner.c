@@ -29,11 +29,6 @@ static void *checked_calloc(size_t count, size_t size)
 #undef free
 #undef calloc
 
-/* The text DCs of render/text_gdi.c are tested in test_text_render.c; no surface reaches them here. */
-void gfx_addref(gfx_surface *surface) { (void)surface; assert(!"surface text DC"); }
-void gfx_release(gfx_surface *surface) { (void)surface; assert(!"surface text DC"); }
-int gfx_get_dc(gfx_surface *surface, HDC *dc) { (void)surface; (void)dc; assert(!"surface text DC"); return -1; }
-void gfx_release_dc(gfx_surface *surface, HDC dc) { (void)surface; (void)dc; assert(!"surface text DC"); }
 /* The script fallback of render/text_gdi.c asks the font cache; no text is drawn here. */
 struct FontCache g_fontCache;
 int font_cache_covers(struct FontCache *cache, HDC dc, HFONT font, int script)
@@ -67,6 +62,9 @@ void texture_draw_surface(struct Texture *tex, int x, int y, int w, int h, DWORD
     drawn[draws] = tex;
     draw_width[draws] = w; draw_height[draws++] = h;
 }
+/* render/cdc.c's dc_bitmap_draw_on_top; no canvas here is drawn over the frame */
+void texture_draw_surface_on_top(struct Texture *tex, int x, int y, int w, int h, DWORD color)
+{ (void)tex; (void)x; (void)y; (void)w; (void)h; (void)color; abort(); }
 struct Texture *texture_create(int w, int h, int format)
 {
     struct Texture *tex;

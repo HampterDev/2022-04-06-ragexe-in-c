@@ -62,12 +62,6 @@ char renderer_screenshot(struct Renderer *self, struct String filename)
     return (char)capture_ok;
 }
 
-int renderer_text_out(struct Renderer *self, int x, int y, const char *text, COLORREF colour)
-{
-    /* Foundation still draws its timestamp before capturing. */
-    assert(self == g_renderer && text);
-    return 1;
-}
 
 intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {

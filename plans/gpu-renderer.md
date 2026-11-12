@@ -1,8 +1,10 @@
 # One renderer on SDL's GPU API
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
-resolution; phase 2 is under way; phases 3 to 7 are to do. File references drift as the code changes. Sizes are
-judgement, not measurement.
+resolution. Phase 2 is done on Windows. On Linux its unit test and scene harness have run in WSL with
+Mesa's lavapipe, but no one has played on it; the macOS and Android clients have not been built or
+run on it, and no Metal compiler has seen its shaders. Phases 3 to 7 are to do. File references
+drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
 
@@ -35,20 +37,17 @@ judgement, not measurement.
 
 ## Where the renderer stands
 
-- **Two backends behind `render/gfx.h`:** Direct3D 9 on Windows, GL 3.3 / GLES 3.0 elsewhere,
-  chosen at build time (`gfx_gl.c` is `#ifndef _WIN32`; CMake drops `gfx_d3d9.c` through
-  `tools/posix_excluded.txt`). No code outside them calls Direct3D 9 or GL. Both draw into the SDL
-  window: Direct3D 9 into its `HWND`.
+- **One backend behind `render/gfx.h`:** `render/gfx_gpu.c` on SDL's GPU API, Vulkan or Metal, on
+  every platform (phase 2). It records a frame and submits it in one command buffer with one upload,
+  through the shaders of `src/render/shaders` that `tools/shaders` compiles offline.
 - **The API is Direct3D 9's fixed function.** `GFX_RS_*` and `GFX_TSS_*` carry Direct3D 9's own
-  numbers; GL emulates texture stages, alpha test and fog in one fragment shader. Pre-transformed
-  vertices (`GFX_VTX_TEX1/TEX2`, xyz-rhw) carry most of what is drawn. Leftovers of GDI and of
-  Direct3D 9's device model remain: `gfx_get_dc`, `gfx_is_lost`, `gfx_restore_all`, device loss and
-  reset.
+  numbers; `gfx_gpu.c` keeps them per draw in a record that one fragment shader evaluates (texture
+  stages, alpha test, fog), with a pipeline per combination of the states pipelines hold.
+  Pre-transformed vertices (`GFX_VTX_TEX1/TEX2`, xyz-rhw) carry most of what is drawn.
 - **Already static on the GPU:** the ground (one mesh per 32 by 32 cells, `world/ground_draw.c`) and
   the RSM models (one mesh per node, `world/model_node_render.c`). Per frame each visible block or
-  node still queues one draw per (texture, lightmap) or (texture, two-sided) run, and on Direct3D 9
-  each mesh draw uploads about 13 vertex and 7 pixel shader constants and gets, sets and restores 20
-  sampler states.
+  node still queues one draw per (texture, lightmap) or (texture, two-sided) run, each a draw of
+  its own with its own record.
 - **Built on the CPU every frame:** actor sprites (projected on the CPU, `actor/sprite_quad.c`),
   Granny actors (skinned, lit and projected per vertex, `actor/granny.c`), water (heights animated
   per tick, corners projected), particles, STR effects, effect primitives, damage numbers and every
@@ -58,28 +57,28 @@ judgement, not measurement.
 - **How it reaches the device:** 19 queues (`render/draw_queue.h`), flushed in a fixed order by
   `renderer_draw_lists` with 78 render-state and 127 stage-state calls in `render/crenderer.c`.
   Non-mesh draws go through `render/gfx_batch.c` (8,192 vertices), flushed on any texture or state
-  change: on Direct3D 9 as `DrawIndexedPrimitiveUP`, on GL as `glBufferData` per flush.
+  change into a draw of the recorded frame.
 - **GPU-to-CPU traffic:** the screen wobble locks the back buffer every frame it runs
   (`render/cframe.c`); UI windows that composite render to a target and copy it back
-  (`render/render_clients.c`); the login serial text draws with GDI on the back buffer; FreeType
-  text locks the target (`render/text_freetype.c`); a startup probe locks a target
-  (`render/c3ddevice.c`); screenshots and scene captures lock the target. The back buffer is created
-  lockable with a copy swap.
-- **Textures:** 16-bit 4444/1555 converted on the CPU, magenta keyed to alpha 0 at upload, mips
-  built on the CPU (`render/csurface.c`); sprite atlas pages decoded from palette RLE on the CPU
-  (`render/rp_atlas.c`); UI canvases re-uploaded as 256-pixel tiles when they change. Shaders are
-  source strings compiled at run time (`D3DCompile` from `d3dcompiler_47.dll`; GLSL on GL).
-- **Measured:** each scene capture writes its frame's counters (`tests/scenes/README.md`). With
-  Direct3D 9, `prontera_crowd` makes 1,174 draws (1,954 calls) and `camera_level_view` 3,345;
-  `docs/custom-review.md` has the full baseline.
+  (`render/render_clients.c`); a startup probe locks a target (`render/c3ddevice.c`); screenshots
+  and scene captures lock the target. Each lock submits the frame so far and waits for the target's
+  download.
+- **Textures:** 16-bit 4444/1555 converted on the CPU (`render/csurface.c`) and widened to
+  B8G8R8A8 when they go up, magenta keyed to alpha 0, mips made on the GPU; sprite atlas pages
+  decoded from palette RLE on the CPU (`render/rp_atlas.c`); UI canvases re-uploaded as 256-pixel
+  tiles when they change. One texture per surface; no texture arrays yet.
+- **Measured:** each scene capture writes its frame's counters (`tests/scenes/README.md`).
+  `prontera_crowd` makes 1,174 draws (1,954 calls) and `camera_level_view` 3,345, as with Direct3D
+  9; `docs/custom-review.md` has the baseline and phase 2's CPU times.
 
 ## The floor
 
 The client uses two of SDL's drivers. SDL 3.4's `SDL_gpu.h` states what they need:
 
 - **Vulkan** (Windows, Linux, Android): 1.0 with `VK_KHR_swapchain`, `VK_KHR_maintenance1` and a few
-  features (`independentBlend`, `imageCubeArray`, `depthClamp`, `shaderClipDistance`,
-  `drawIndirectFirstInstance`, `sampleRateShading`), some of which can be dropped for Android. On
+  features (`independentBlend`, `imageCubeArray`, `sampleRateShading`, `samplerAnisotropy`); the
+  client turns off `depthClamp`, `shaderClipDistance` and `drawIndirectFirstInstance`, which SDL asks
+  for unless told otherwise, since it uses none of them. On
   Windows that means NVIDIA and AMD cards of the last decade and Intel graphics from Skylake (2015);
   Intel's Haswell and Broadwell have no Vulkan driver on Windows.
 - **Metal** (macOS): macOS 10.14 or newer, Apple Silicon or an Intel "Mac2 family" GPU.
@@ -290,15 +289,13 @@ recorded.
 ### Phase 3: pipelines and a modern API (medium)
 
 - Replace the render-state and stage-state machine with pipelines per queue and shaders per stage
-  combination. `gfx.h` loses `GFX_RS_*`, `GFX_TSS_*`, `GFX_TOP_*`, `GFX_TA_*`, the transform and
-  light calls, `get_dc`, `is_lost`, `restore_all` and `evict_managed_textures`. With
-  `get_dc` goes `render/text_gdi.c` and any build variant that draws text with GDI.
+  combination. `gfx.h` loses `GFX_RS_*`, `GFX_TSS_*`, `GFX_TOP_*` and `GFX_TA_*`. FreeType draws text
+  on every platform, and `render/text_gdi.c` goes with any build variant that draws text with GDI.
 - Fog moves to the shaders; the per-vertex fog alpha on the CPU goes.
 
 ### Phase 4: no read-backs (small to medium)
 
-- The wobble pass, compositing into target textures, text into textures, captures by download
-  without a swapchain.
+- The wobble pass, compositing into target textures, captures by download without a swapchain.
 - Delete `gfx_lock` on targets, `renderer_lock_target`, `targetBits`/`targetPitch`, the startup
   texel probe and the lockable back buffer.
 

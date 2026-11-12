@@ -17,7 +17,6 @@ struct C3dDevice g_3dDevice;
 struct Language *g_language;
 struct perf_counters g_perf;
 static int live_blocks, allocations, fail_alloc, fail_convert, fail_extent, fail_abc, fail_font, fail_select;
-static int released, deny_dc;
 static int conversions, extents, abc_calls, font_calls, selections, current_charset, timer_depth;
 static const char *input_start;
 static size_t input_length;
@@ -125,28 +124,6 @@ static HGDIOBJ current_object(HDC dc, UINT kind)
 { assert(dc==(HDC)1 && kind==OBJ_FONT); return (HGDIOBJ)1; }
 static int background_mode(HDC dc, int mode)
 { assert(dc==(HDC)1 && mode==TRANSPARENT); return TRANSPARENT; }
-static int surface_refs, surface_dcs, surface_step;
-static gfx_surface *const test_surface=(gfx_surface *)(uintptr_t)2;
-void gfx_addref(gfx_surface *surface)
-{ assert(surface==test_surface && surface_step==0); ++surface_refs; surface_step=1; }
-int gfx_get_dc(gfx_surface *surface,HDC *out)
-{
-    assert(surface==test_surface && surface_refs==1 && surface_step==1);
-    surface_step=2; *out=(HDC)1;
-    if(deny_dc) return -1;
-    ++surface_dcs; return 0;
-}
-void gfx_release_dc(gfx_surface *surface,HDC dc)
-{
-    assert(surface==test_surface && dc==(HDC)1 && surface_refs==1 && surface_dcs==1);
-    assert(surface_step==2 && current_charset==0);
-    --surface_dcs; ++released; surface_step=3;
-}
-void gfx_release(gfx_surface *surface)
-{
-    assert(surface==test_surface && surface_refs==1 && !surface_dcs);
-    assert(surface_step==(deny_dc?2:3)); --surface_refs; surface_step=0;
-}
 void perf_begin(int phase) { assert(phase == PERF_TEXT && !timer_depth); ++timer_depth; }
 void perf_end(int phase) { assert(phase == PERF_TEXT && timer_depth == 1); --timer_depth; }
 #define malloc test_malloc
@@ -305,25 +282,16 @@ static void lifetime(void)
 {
     struct DcBitmap canvas={0};
     struct TextDC dc;
-    reset(); released=deny_dc=0;
+    reset();
     memset(&dc,0xa5,sizeof dc);
     canvas.text.hdc=(HDC)1;
     assert(text_dc_construct(&dc,&canvas)==&dc);
-    assert(canvas.changed && dc.state.hdc==(HDC)1 && !dc.surface && !dc.bold && !dc.italic);
-    text_dc_destruct(&dc); assert(!released && !dc.surface && !dc.state.hdc);
-    text_dc_destruct(&dc); assert(!released);
+    assert(canvas.changed && dc.state.hdc==(HDC)1 && !dc.bold && !dc.italic);
+    text_dc_destruct(&dc); assert(!dc.state.hdc);
+    text_dc_destruct(&dc);
     canvas.text.hdc=NULL; canvas.changed=0; text_dc_construct(&dc,&canvas); assert(!dc.state.hdc && !canvas.changed);
-    text_dc_destruct(&dc); assert(!released);
+    text_dc_destruct(&dc);
     text_dc_construct(&dc,NULL); assert(!dc.state.hdc); text_dc_destruct(&dc);
-    assert(text_dc_from_surface(&dc,test_surface)==&dc);
-    assert(dc.state.hdc==(HDC)1 && dc.surface==test_surface && surface_refs==1 && surface_dcs==1);
-    current_charset=129;
-    text_dc_destruct(&dc); assert(released==1 && !dc.surface && !dc.state.hdc && !surface_refs && !surface_dcs);
-    text_dc_destruct(&dc); assert(released==1);
-    deny_dc=1; text_dc_from_surface(&dc,test_surface); assert(!dc.state.hdc && surface_refs==1);
-    text_dc_destruct(&dc); assert(released==1 && !surface_refs); deny_dc=0;
-    text_dc_from_surface(&dc,NULL); assert(!dc.state.hdc && !dc.surface);
-    text_dc_destruct(&dc); assert(released==1 && !surface_refs && !surface_dcs);
 }
 static void cache_and_failures(void)
 {

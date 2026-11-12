@@ -383,6 +383,8 @@ rage_test_run(source_encoding COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURC
 # objects: cmake/Client.cmake adds it as library_links, and on Windows `build.bat check` makes it.
 rage_test_run(library_includes COMMAND Python3::Interpreter
     ${PROJECT_SOURCE_DIR}/tools/depmap/check_includes.py --strict)
+# The shaders' generated headers match their sources (tools/shaders/check.py).
+rage_test_run(shader_sources COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/shaders/check.py)
 rage_test_run(map_name_migration COMMAND Python3::Interpreter
     ${CMAKE_CURRENT_SOURCE_DIR}/test_map_name_migration.py)
 
@@ -412,6 +414,7 @@ rage_test(cstr W4 CLIENT core/cstr.c)
 rage_test(math3d CLIENT render/math3d.c)
 rage_test(display_options W4 CLIENT render/display_options.c)
 rage_test(present_fit W4)
+rage_test(texel_convert W4 CLIENT render/texel_convert.c)
 rage_test(frame_timer W1 NO_WX CLIENT contents/frame_timer.c)
 rage_test(string W4)
 rage_test(touch CLIENT core/touch.c)
@@ -751,6 +754,12 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(gauge_sources tests/gauge_sources_support.c CLIENT ui/character/bar_graph.c
         ui/character/gauge_value.c ui/character/gauges.c ui/items/homun_bar.c)
     rage_test(gfx_batch CLIENT platform/thread_win32.c render/gfx_batch.c)
+    # The GPU backend (render/gfx_gpu.c) on this machine's GPU, in a hidden window of the platform's
+    # video driver (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
+    rage_test(gfx_gpu src/render/gfx_gpu.c src/render/gfx_batch.c src/render/texel_convert.c
+        CLIENT platform/thread_win32.c LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(gfx_gpu gfx_gpu_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     rage_test(gm_name_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
     rage_test(granny_models MAIN tests/test_granny_model_storage.c tests/granny_model_geometry.c CLIENT
         core/fatal.c core/memory.c render/math3d.c std/vec.c)

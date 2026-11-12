@@ -29,7 +29,6 @@ struct ShadowBox {
 
 struct Renderer {
     float proj[4];
-    float aspect;
     float scaleX, scaleY;
     int halfW, halfH;
     int width, height;
@@ -79,8 +78,7 @@ void renderer_save_frame(struct Renderer *self);
 void renderer_draw_frame_extras(struct Renderer *self);
 void renderer_enable_fog(struct Renderer *self, int enable);
 /* custom: shadowOpacity is the share of the light a shadow takes away (world_res.h), 0 to 1 */
-void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient,
-                        float shadowOpacity);
+void renderer_set_light(struct Renderer *self, const float *dir, const float *ambient, float shadowOpacity);
 void renderer_set_blend_stages(struct Renderer *self, int mode);
 /* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light fitted
    to what the view, with the view matrix `view` (which the meshes' draws reach view space with),
@@ -100,10 +98,6 @@ int renderer_world_quads(const struct Renderer *self, const float *view);
    three axes (unit vectors, NULL for the world's), world coordinates */
 int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3]);
 void renderer_draw_battle_field_icon(struct Renderer *self);
-SIZE *renderer_get_text_extent(struct Renderer *self, SIZE *out, const char *text, int length,
-                int a, int b, int c);
-int renderer_text_out(struct Renderer *self, int x, int y,
-                      const char *text, COLORREF colour);
 
 extern struct Renderer *g_renderer;
 

@@ -8,13 +8,13 @@ struct PresentCover {
     int left, top, right, bottom, lift;
 };
 
-/* core/app_sdl.c, which learns what covers the window from the system, tells the GL backend, which
-   presents the scene around it. */
-void gfx_gl_set_cover(const struct PresentCover *cover);
+/* core/app_sdl.c, which learns what covers the window from the system, tells the device, which
+   presents the scene around it (render/gfx_gpu.c). */
+void gfx_set_cover(const struct PresentCover *cover);
 
 /* Where the scene lands in a window of another size: as large as fits in the part of the window
-   nothing covers, with its aspect kept, centred there and raised by the lift, the rest black. The GL
-   backend presents into it and the SDL layer maps the pointer back through it. */
+   nothing covers, with its aspect kept, centred there and raised by the lift, the rest black. The
+   device presents into it and the SDL layer maps the pointer back through it. */
 static inline void present_fit(int window_w, int window_h, int scene_w, int scene_h,
                                const struct PresentCover *cover, int *x, int *y, int *w, int *h)
 {

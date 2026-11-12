@@ -1,4 +1,5 @@
 #include "ui/window_manager_state.h"
+#include "render/cdc.h"
 #include "core/memory.h"
 #include <string.h>
 #include "ui/wndmgr/wndmgr.h"
@@ -45,6 +46,8 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
 
     ui_window_mgr_clear_slots(self);
     self->backdrop = NULL;
+    self->serial_number = NULL;
+    self->serial_number_width = 0;
     self->screen_width = 0;
     self->screen_height = 0;
     string_clear(&self->chat_line);
@@ -111,6 +114,8 @@ void ui_window_mgr_destroy(struct UIWindowMgr *self)
         surface_destroy(self->backdrop);
         self->backdrop = NULL;
     }
+    dc_bitmap_destroy(self->serial_number);
+    self->serial_number = NULL;
 
     for (it = tree_first(&self->closed_rects); it != self->closed_rects.head; it = tree_next(it))
         mem_free(TREE_VALUE(it, struct WmClosedRect)->rect);

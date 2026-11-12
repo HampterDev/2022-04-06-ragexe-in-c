@@ -67,8 +67,9 @@ labelled with the libraries whose `.c` files it compiles, links or includes, so
 
 Every test runs headless and silent: CTest gives it `SDL_VIDEO_DRIVER=dummy` and
 `SDL_AUDIO_DRIVER=dummy` (`RAGE_TEST_ENVIRONMENT`), `audio` SDL's `disk` driver, which writes
-into files in its directory, `platform_window` the offscreen video driver, and `gfx_gl` keeps the
-platform's video driver, in a hidden window, for its OpenGL context. SDL shows no message box
+into files in its directory, `platform_window` the offscreen video driver, and `gfx_gpu` and
+`gfx_gpu_msaa` keep the platform's video driver, in a hidden window, for a GPU device (the dummy
+driver has no Vulkan); they report themselves skipped where SDL finds no GPU. SDL shows no message box
 with the dummy video driver, and on Windows the client libraries compile `platform/window_sdl.c`
 with `tests/headless.h` and `platform/net_win32.c`, whose two boxes call `MessageBoxA` itself,
 with `tests/headless_win32.h`, which write the client's message boxes to stderr even when a test
@@ -80,10 +81,10 @@ changed and runs CTest on every core, then the oracle tests (`tests/oracle`), a 
 configuration of their own (`-DRAGE_ORACLE=ON`) in `build\oracle`. Its arguments go to CTest
 (`tests\build.bat -R chat_tabs`, `-L render`).
 
-With `RAGE_CLIENT=ON`, CTest's `gfx_gl` opens a hidden SDL window. When SDL is built with
+With `RAGE_CLIENT=ON`, CTest's `gfx_gpu` opens a hidden SDL window. When SDL is built with
 `-DSDL_UNIX_CONSOLE_BUILD=ON` (no X11, Wayland or other window backend, as on a WSL without
 their development packages), SDL finds no video device unless its offscreen driver is chosen,
-and `gfx_gl` reports itself skipped ("No available video device"). Run CTest with that driver
+and `gfx_gpu` reports itself skipped ("No available video device"). Run CTest with that driver
 there:
 
 ```sh
@@ -321,10 +322,11 @@ same families followed by the free fonts that stand in for them (`render/fonts_f
 NanumGothic, Noto Sans CJK KR, ...; emoji in Segoe UI Emoji, then Noto Color Emoji), and the run sits
 on the selected face's baseline.
 
-With GDI a `DcBitmap` is a DIB section selected into a memory DC and a `TextDC` draws through
-that DC or the surface's. With FreeType a `DcBitmap` is a heap buffer with the same top-down
-BGRA layout and no device context, and a `TextDC` draws into that buffer, or into a 32-bit
-surface it locks with `gfx_lock` on its first draw (`renderer_text_out`).
+With GDI a `DcBitmap` is a DIB section selected into a memory DC and a `TextDC` draws through that
+DC. With FreeType a `DcBitmap` is a heap buffer with the same top-down BGRA layout and no device
+context, and a `TextDC` draws into that buffer. No text is drawn into the frame: the login screen's
+serial number, which the original drew there through a DC, is drawn once into a bitmap and shown as
+a quad over everything else the frame holds (`ui_window_mgr_draw_serial_number`).
 
 `build.bat freetype` (also with `dbg`) builds `ragexe_ft.exe`, whose text is
 drawn by FreeType as off Windows; `vendor\build_vendor.bat` then downloads FreeType 2.13.3, the
@@ -457,8 +459,8 @@ counts once it is pressed again, and the lock keys' toggles start off.
 
 `core/app_sdl.c` is the client's window on every platform, Windows included since 2026-11-11 (the
 Win32 window procedure and message loop of `core/wndproc.c` and `core/app_win32.c` are gone). It
-creates the SDL window, with a GL context off Windows (on Windows Direct3D 9 draws into the window's
-`HWND`, `SDL_PROP_WINDOW_WIN32_HWND_POINTER`), and turns SDL events into that input: Print Screen
+creates the SDL window, which the GPU device claims and presents into (*Renderer*), and turns SDL
+events into that input: Print Screen
 only as it goes up and Backspace also as a character, as Windows delivered them, the keypad with
 NumLock off as the navigation keys Windows names it by (Home, End, the arrows, Page Up and Down,
 Insert, Delete, Clear), the window activation, one close for SDL's close request and the quit that
@@ -492,8 +494,7 @@ that came with the left Ctrl Windows sends for AltGr, which SDL leaves out, from
 and it queues the keys the IME takes in Hangul or kana mode, which Windows reports as
 `VK_PROCESSKEY` and SDL leaves out too, so that they reach the client in order with their scan
 codes and the hotkeys still find their letters (`ui_window_mgr_classify_key`); the IME still gets
-them. Direct3D 9 is always windowed, also in fullscreen, which is SDL's own fullscreen window as on
-the other platforms (*Display modes* below). The executable's manifest (`res/app.res`, resource
+them. Fullscreen is SDL's own fullscreen window, as on the other platforms (*Display modes* below). The executable's manifest (`res/app.res`, resource
 `RT_MANIFEST` 1) declares per-monitor (v2) DPI awareness, so SDL's window coordinates are the
 display's pixels on every display, whatever its scale, and Windows never stretches the window. The
 IME's composition and candidates come from SDL's handling of `WM_IME_*`, which
@@ -522,10 +523,10 @@ the client's UTF-8 as SDL does (a message box shows text that is not UTF-8 as CP
 resource-name encoding, as Windows does), and the message box shows the error, warning or
 information icon the caller asked for and ignores the other flags, `MB_TASKMODAL` among them;
 `tests/test_platform_window.c` checks the clipboard in Korean, Japanese, Cyrillic, Western and
-emoji UTF-8, and U+FFFD for invalid bytes. The GL backend learns what covers the window (*Android client*) from `gfx_gl_set_cover`,
-which the SDL layer calls once a frame.
+emoji UTF-8, and U+FFFD for invalid bytes. The device learns what covers the window (*Android
+client*) from `gfx_set_cover`, which the SDL layer calls once a frame.
 
-**Display modes.** The client is windowed or fullscreen, on every platform and with either backend
+**Display modes.** The client is windowed or fullscreen, on every platform
 (`render/display_options.h`, the `display-options` library), and draws at its window's client size
 in pixels: the window is created with `SDL_WINDOW_HIGH_PIXEL_DENSITY`, the device takes
 `SDL_GetWindowSizeInPixels` (`platform_client_rect`), window coordinates for a size in pixels come
@@ -544,8 +545,7 @@ own mode, so the display never changes mode. Once a pump (`display_follow_window
 `render/resize.c`) the device follows the window's size through `gfx_resize`, whoever changed it
 (the player, the settings, SDL, the system), and the display options follow what the window is,
 fullscreen included; when the device does not take a size, it tries again once the window's size
-changes, or, if the device was lost (Direct3D 9), once it is no longer lost, which it asks every 250
-ms. Until then Direct3D 9 presents the picture where `present_fit` puts it, as GL does. The 3D view
+changes, and until then presents the picture where `present_fit` puts it. The 3D view
 keeps its vertical field of view, so a wider window shows more of the world sideways, and the UI
 windows keep their distance to the nearer edge of the screen, or stay centred, and are kept on it.
 `set_display` puts the window in the mode the graphics settings ask for. While fullscreen, the
@@ -557,41 +557,97 @@ primary display when no display holds it, before its window is first shown. The 
 resolution picker is disabled in fullscreen and shows the display's size; windowed, it shows the
 window's size and offers the common sizes from 1024x768 up whose window, frame included, fits the
 work area of the display the window is on, and the largest that fits; a size picked there restores a
-maximised window and is set when the player presses Apply and confirms. On Windows, Direct3D 9
-always uses the primary display's adapter; a window on a display of another graphics card is copied
-across. While the player drags the border on Windows, Windows runs its own sizing loop, in which the
+maximised window and is set when the player presses Apply and confirms. The device draws on the GPU
+SDL picks; a window on a display another graphics card drives is copied across by the system. While
+the player drags the border on Windows, Windows runs its own sizing loop, in which the
 game does not draw; it draws at the new size when the drag ends.
 
 ### Renderer
 
-`render/gfx_gl.c` implements `render/gfx.h` with OpenGL 3.3 core (macOS also offers 4.1 core, so the
-backend is usable there until a Metal backend exists). All client geometry but the ground, the
-models and the quads of the water and the granny models arrives pre-transformed (D3D `XYZRHW`), so
-one vertex shader maps D3D9 pixel centres to GL clip space with the vertex's `1/rhw` as `w`; the
-static meshes of the ground and the models (`gfx_draw_mesh`, *render/gfx.h*) and the world-space
-quads (`GFX_VTX_WORLD`) take a matrix to the same pixel space times the view depth, so they land
-on the same pixels; the meshes work out their fog from that depth, scale their colour by the
-draw's colour, rounding down as the CPU does, and its alpha by the draw's alpha, and turn the
-first texture's coordinates by the draw's transform; the vertex's first or second colour is the
-diffuse. One fragment shader evaluates the two fixed-function texture stages
-(`GFX_TOP_*`, argument modifiers, bump-env offsets), the specular-alpha vertex fog and the alpha
-test. Positions move 1/128 pixel up and left before rasterization: GL breaks ties on
-horizontal edges the other way from D3D's top-left rule, so a quad on whole-pixel
-coordinates covered the rows one lower (the menu icons lost their top border, and the
-startup texel-offset probe, which draws on whole pixels, measured against that). The fragment
-shader takes that 1/128 pixel back out of the texture coordinates (with their screen derivatives),
-so filtered textures are still read where Direct3D reads them; otherwise 1:1 UI art picks up a
-little of each neighbouring texel. Blend, depth and cull state map directly; the y flip
-keeps the on-screen winding, so `GFX_CULL_CW` culls GL back faces. Samplers carry the address, border and filter state.
-The scene is drawn into an offscreen framebuffer that the present call blits to the window, so locks,
-captures and render-target textures all work on ordinary textures. Texture creation, locking and
-unlocking never touch GL: pixels live in a CPU copy in the client's 1555/4444/565/8888/V8U8 layout
-and are uploaded on the main thread when the texture is next bound, because the model loader
-thread creates textures. `tests/test_gfx_gl.c` drives the backend through the gfx API and reads back
-pixels: clears, D3D pixel-centre edges, all texture formats, alpha test, vertex fog, blending, render
-target orientation and system-surface blits. A mesh keeps its arrays and gets its GL buffers on its
-first draw, on the main thread; the test does not draw one yet. The backend draws no shadow maps
-yet: `gfx_shadow_begin` answers 0, and the meshes are drawn without shadows.
+`render/gfx_gpu.c` implements `render/gfx.h` on SDL 3's GPU API on every platform: Vulkan with
+SPIR-V shaders on Windows, Linux and Android, Metal with MSL on macOS, the one shader format of the
+platform handed to `SDL_CreateGPUDevice`, so that SDL has one driver to choose. Without a GPU device
+the client does not start ("Cannot init d3d OR grf file has problem.", with SDL's reason in the
+log). `tests/test_gfx_gpu.c` drives it through the gfx API and reads the pixels back (the tests
+`gfx_gpu` and `gfx_gpu_msaa`): clears, Direct3D 9's pixel centres and top-left rule, every texture
+format, texel centres, culling, textures changed and released within a frame, the alpha test, the
+vertex fog, blending, mipmaps, render targets, system-surface blits, copies between targets,
+pixels written into a locked target, world vertices and meshes, without and with multisampling.
+
+A frame is recorded, not drawn. Each draw becomes a record of its state (the texture stages, the
+alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes into a list of passes, one per
+target or shadow cascade; its vertices and indices, and the texels of the textures it uses that
+changed since they last went up, widened to B8G8R8A8 (`render/texel_convert.c`, the `texel-convert`
+library), go into one staging area. When the frame is presented, or the CPU needs a target's pixels
+(`gfx_lock` on a target: the scene harness's captures, screenshots, the wobble), one command buffer
+copies all of it through one transfer buffer in one copy pass and replays the passes, then downloads
+the target (`SDL_DownloadFromGPUTexture`) or presents, fitted into the window by `present_fit`. The
+shaders read the records from storage buffers, finding a draw's through an instance-rate vertex
+attribute that holds its index (a draw's first instance), never through the instance ID. Pipelines
+are made once for each combination of the render states a draw needs (blending, depth, culling,
+topology, vertex layout, target format, sample count). Textures keep their pixels on the CPU in the
+client's own format, so the model loader's thread creates, locks and fills them without calling SDL;
+the main thread uploads them when a draw first uses them after a change, and a texture changed after
+a draw used it in the same frame takes its new texels in a copy pass of its own between the render
+passes, so that the earlier draw keeps the old ones. Mipmaps are made on the GPU
+(`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up. Render
+targets live on the GPU; a copy from one into a texture stays on the GPU until the texture is
+locked. Without a swapchain (the scene harness's hidden window) frames are drawn and captured all
+the same, and a fence on each frame keeps the CPU at most two frames ahead of the GPU with or
+without one. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
+waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits for the window:
+SDL's acquire of a picture waits for the presentation engine even when told not to block, so such a
+frame asks for one only once a refresh of the display (60 Hz where its mode does not say) has passed
+since the last picture, and otherwise is drawn but not shown, as Direct3D 9's flip without waiting
+left a frame the screen had no room for. The device asks Vulkan for none of the features it does not
+use (depth clamping, clip distances, indirect draws from a first instance), so GPUs without them run
+it. A GPU device is never lost: the client has no lost-device handling, and a window size the device
+has no memory for is tried again when the size changes.
+
+Pixels: every vertex lands where Direct3D 9 put it. Every pass's viewport is its target moved by
+half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's;
+since a viewport must lie within its texture (SDL's GPU API, Metal), a target's textures are a pixel
+wider and taller than the target, and a stage that samples a target scales its texture coordinates
+to match and, when it clamps, keeps them off the margin. Meshes, world vertices and shadow casters
+take the matrices the Direct3D 9 client drew with, computed in floats as it computed them and
+multiplied in the order Direct3D 9's shader compiler did, and the GPU divides and moves their points
+as Direct3D 9's did. Pre-transformed vertices are snapped in the vertex shader to the 1/256 of a
+pixel Direct3D 9's rasterizer snapped them to, rounding to even, and handed over a 1/1024 of a pixel
+further on, so that the GPU's own viewport transform, which lands within a few ten-thousandths of a
+pixel of that point, snaps to the same place whether it rounds or truncates
+(`src/render/shaders/records.hlsli`, `snapped_ndc`); they cover the pixels Direct3D 9 covered, with
+Direct3D's top-left rule. Their `w` stays 1 so that nothing divides the position, and the shader
+interpolates colours and texture coordinates perspective-correct itself, with the rhw. The shadow
+lookups read the maps by texel, the one point sampling picked. Like Direct3D 9's own viewport, the
+passes' viewport leaves out the left half of the first column and the top half of the first row,
+which a GPU that clips to it (Mesa's lavapipe) leaves uncovered when multisampling. Meshes keep
+32-bit indices, so that a draw may start at any index where Metal takes an index buffer's offset in
+multiples of 4 bytes. The shadow maps are four layers of one R32F array texture. Multisampling
+(`RAGEXE_MSAA`: 2, 4 or 8 samples, 4 when unset, 1 for none; a count the GPU does not take falls to
+the next lower one it does) resolves the screen at the end of each pass on it, and alpha-tested
+draws without blending use alpha to coverage. Direct3D 9 drew flat draws (every vertex the same rhw:
+the UI, sprites) without multisampling, which SDL's GPU API cannot switch off for a draw: in a
+multisampled pass a flat draw's vertices move onto the pixel boundaries that keep the pixels
+Direct3D 9 covered, with the values their triangle has there, so edges along the pixel rows and
+columns come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
+transparency anti-aliasing was the driver's (`SSAA` or `ATOC`); on NVIDIA its supersampling shaded
+every sample of each alpha-tested draw without blending, which the ground's and the models' are, so
+with multisampling on their textures were read at each sample, where alpha to coverage reads them
+once a pixel.
+
+The shaders are HLSL in `src/render/shaders` (`fixed.hlsl` for the texture stages, `mesh.hlsl`
+for the ground and the models with their shadows, `caster.hlsl` for the shadow maps, and the
+records they share in `records.hlsli`). `tools\shaders\build.bat` compiles each with the Vulkan
+SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through
+SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes `<name>.h`
+beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the
+compilers' versions, and hashes of the source with its includes, of the tool's own source (which
+holds the flags and the binding rules) and of the arrays. The tool fails when a resource is not
+where SDL's binding rules put it. The headers are committed, so builds need no shader compiler;
+`tools/shaders/check.py` (in `build.bat check`, and the test `shader_sources`) fails when a source
+or the tool changed and the headers were not made again, or when a header was edited. Run the tool after changing a shader; it needs the
+Vulkan SDK (`VULKAN_SDK`) and Visual Studio's C compiler. The MSL has not been compiled by a Metal
+compiler yet.
 
 ### What was verified
 
@@ -600,12 +656,11 @@ On Linux Mint 22.3 (a Hyper-V VM with Mesa llvmpipe) against rAthena built for p
 dialog, character creation, entering `iz_int03`, walking, chat, the inventory, equipment and skill
 windows, Hangul chat through IBus, and an active audio stream. The frame overlay (`RAGEXE_OVERLAY=1`) showed about 90 fps at
 1024×768 on llvmpipe. A `-DRAGE_SANITIZERS=ON` build reached the same points; the misaligned
-packet-key loads and the null `memmove` it reported are fixed.
-
-For rendering questions, the Windows build, then 32-bit, ran under Wine in the same VM (`wine32`
-plus 32-bit Mesa, the client DLLs next to it) against the same data and server. It drew `iz_int03` the same
-way as the GL backend, including the black outside of the cabin's south wall that hides the lower
-half of the room from the default camera.
+packet-key loads and the null `memmove` it reported are fixed. The client drew through OpenGL
+then. The GPU renderer (*Renderer*) has run on Linux in WSL (Ubuntu 24.04) with Mesa's lavapipe:
+`test_gfx_gpu` passes with and without multisampling, and the scene harness, built with SDL for the
+console (`-DSDL_UNIX_CONSOLE_BUILD=ON`, as it draws with the offscreen driver), draws the scene set
+as on Windows; the client has not been played on it.
 
 ## macOS client
 
@@ -617,22 +672,22 @@ cmake --build build/client
 ctest --test-dir build/client --output-on-failure
 ```
 
-Put `ragexe.app` in the game folder and open it. Everything in *Linux client* applies: the GL backend
-asks for a forward-compatible core context, which macOS serves as OpenGL 4.1; SDL provides CoreAudio
-and Cocoa text input; Fontconfig finds the system fonts. Arial is Apple's own copy and keeps its
+Put `ragexe.app` in the game folder and open it. Everything in *Linux client* applies: the renderer
+draws through Metal; SDL provides CoreAudio and Cocoa text input; Fontconfig finds the system fonts. Arial is Apple's own copy and keeps its
 hinting; Gulim is replaced by Apple SD Gothic Neo, whose last glyph can overhang the text box by a
 pixel. The `macos-client` CI job builds the bundle on GitHub's macOS 15 arm64 runners and runs the
-tests there, the GL backend test included, against a real macOS OpenGL context.
+tests there; the GPU backend's tests skip themselves where SDL finds no Metal device.
 
 The game was played on macOS 12.7 (x86_64, VMware, Apple's software OpenGL renderer, Apple clang 14
 from the command line tools, MacPorts for cmake, ninja, freetype and fontconfig) against rAthena
 built in the same machine: `ragexe.app` opened from the game folder, logged in, created a
-character, entered `iz_int03`, walked and chatted. The 21 tests pass there as well.
+character, entered `iz_int03`, walked and chatted. The 21 tests pass there as well. That was with
+the OpenGL renderer the client had then; its Metal path has not been run yet.
 
 ## Windows client
 
 `build.bat` builds `build\ragexe.exe` (`build.bat dbg`: `ragexe_dbg.exe`), a 64-bit program with
-SDL's window (*Window, input and IME*), GDI text and the Direct3D 9 renderer. Until 2026-11-11 `build.bat` built a 32-bit
+SDL's window (*Window, input and IME*), GDI text and the renderer on SDL's GPU API (*Renderer*). Until 2026-11-11 `build.bat` built a 32-bit
 client by default and this one with `x64`. The 32-bit client linked three DLLs of the original
 that exist only for 32-bit Windows; the 64-bit client does without them, as every other platform
 does:
@@ -660,12 +715,11 @@ CMake builds the ones they link from `vendor/`, and SDL through `cmake/SDL3.cmak
 the tests' build from `build\vendor\sdl3.tar.gz`, the same pinned and hash-checked archive, when it
 is there.
 
-SDL is built with its video and GPU subsystems as well as audio, for the renderer of
-`plans/gpu-renderer.md`, with Vulkan and without OpenGL and OpenGL ES. SDL has no switch for its
-Direct3D 12 GPU driver, which it builds whenever `dxgi1_6.h` is found, so that driver is in too. The
-client plays sound through SDL and, since 2026-11-11, runs in its window; it does not call the GPU
-API yet, but SDL's dynamic API table refers to every function SDL has, so the executable contains
-all three subsystems and imports `setupapi.dll` and `version.dll` for them. `build.bat` already
+SDL is built with its video and GPU subsystems as well as audio, with Vulkan and without OpenGL and
+OpenGL ES. SDL has no switch for its Direct3D 12 GPU driver, which it builds whenever `dxgi1_6.h` is
+found, so that driver is in too, but the client asks only for SPIR-V and so always gets Vulkan. The
+client plays sound, runs its window and draws through SDL, which imports `setupapi.dll` and
+`version.dll` for them. `build.bat` already
 linked every library they need.
 
 The crash report prints full-width addresses. `tests\scenes\build.bat` builds the scene harness,
@@ -725,12 +779,9 @@ names the servers as on any other platform; an emulator reaches servers on its h
   game. A mouse is a mouse there: hover, both buttons (the right one turns the camera), the wheel
   (zoom) and SDL's empty cursor over the client's own. A hardware keyboard types and plays as on a
   desktop and the on-screen keyboard stays away.
-- Drawing goes through OpenGL ES 3.0 (`RAGE_GLES`, which a desktop build can also turn on for
-  testing). ES has no BGRA uploads, read-backs or vertex colours, no reversed 16-bit layouts and no
-  border clamping: 8888 pixels are swizzled, 1555/4444/565 textures are widened on the CPU by bit
-  replication as desktop drivers widen them, vertex colours are swizzled in the shader and border
-  addressing clamps to the edge. Every scene drawn through ES on Mesa stays within 2 of the desktop
-  GL capture in every channel.
+- Drawing goes through Vulkan, as on Linux: the app asks for Vulkan 1.0
+  (`android.hardware.vulkan.version` in the manifest). The renderer has not been run on Android
+  yet.
 - Fonts: there is no Fontconfig, so `render/font_match_scan.c` reads the faces in `/system/fonts`
   and `/product/fonts` once and sorts them as Fontconfig does for the client's requests (the asked
   families in order, then the faces that cover the language, then slant and weight); Korean text is
@@ -789,29 +840,28 @@ client's own timeout, not a network fault.
 `ragexe_scenes` is the client with the clock, the sockets, the threads, the settings store and
 the per-frame driver hook replaced: a Lua script enters a map from the login screen, spawns
 monsters, NPCs and players, makes them talk, clicks windows open and captures PNGs, headless
-through SDL's offscreen driver on Linux and with a hidden window on Windows
+through SDL's offscreen driver on Linux (a headless Vulkan surface) and with a hidden window on
+Windows
 (`tests\scenes\build.bat`). `tests/scenes/run.py` runs every script and compares the captures
 with golden images (`tests/scenes/README.md`). On the Mint VM each of the three scenes takes 3–4 s,
 on Windows 2 s, and both repeat bit for bit (Windows with `RAGEXE_MSAA=1`).
 
-Comparing the Windows (Direct3D 9) and Linux (GL on llvmpipe) captures of the same scenes and data:
+Comparing Windows and Linux captures of the same scenes and data:
 
 - **Text** is the largest difference. GDI and FreeType draw different fonts unless the same file
   is on both machines; a Windows without the Korean supplemental fonts has no Gulim, and GDI then
   draws Korean-charset text in Ebrima, which is much narrower than Gulim, while Linux uses
   Noto Sans CJK KR or NanumGothic at Gulim's size.
-- **Edges and foliage**: Direct3D 9 renders the world with 4x MSAA and transparency
-  supersampling by default; the GL backend does not multisample, so model edges and alpha-tested
-  foliage (Prontera's flower beds) are aliased on Linux and macOS. Sprites and UI are drawn
-  without MSAA on both.
+- **Edges and foliage**: every platform multisamples alike (*Renderer*); set `RAGEXE_MSAA=1` on
+  both for captures to compare.
 - **Random effects** (level 99 auras, clouds, particles) took other paths because glibc's and
   Microsoft's `rand()` are different generators; the scene harness uses Microsoft's on POSIX,
   after which they match. Two places assumed Microsoft's 15-bit range and misbehaved on Linux
   and macOS, where `rand()` returns 31 bits: a random point in a disc divided by 32767 (particles
   landed up to 256 radii away) and the shuffle copied from Microsoft's STL rejected all but one
   draw in 65536. Both take the low 15 bits now.
-- What remains is single pixels along triangle edges, where the GPU's and llvmpipe's subpixel
-  precision decide a pixel centre differently, and blending rounded one or two steps apart.
+- What remains is single pixels along triangle edges, where two GPUs' subpixel precision decide a
+  pixel centre differently, and blending rounded one or two steps apart.
 
 Making the captures repeat showed three draw orders that depended on heap addresses, which ASLR
 and allocation timing change from run to run: the render queues sorted by texture pointer
@@ -828,14 +878,13 @@ the other entry's second one, which is not an ordering; it compares like with li
    display of another scale, and resizing, maximising and restoring the window.
 2. macOS: check Hangul composition through the macOS input method and the game on a Retina
    display, where the window asks for a high-density drawable and the game draws at the display's
-   pixels, so the interface is small until it is scaled. A Metal backend behind `render/gfx.h` can
-   replace the deprecated OpenGL later.
+   pixels, so the interface is small until it is scaled.
 3. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
 4. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
 5. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
-6. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
-   supersampling by default (*Scene captures*).
+6. Run the renderer on Linux (Vulkan), macOS (Metal, whose MSL no Metal compiler has seen yet) and
+   Android, and compare their captures with Windows'.
 7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
    Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
    play at the screen's own size, which the client draws at (*Android client*).

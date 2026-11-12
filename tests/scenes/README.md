@@ -11,7 +11,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | `src/platform/settings_*.c` | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
 | `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
-| `src/core/app_sdl.c` (Windows) | `scene_app_win.c` | the window is never shown: Direct3D 9 draws into it hidden, so a run never takes the focus or the mouse or covers the screen |
+| `src/core/app_sdl.c` (Windows, macOS) | `scene_app_hidden.c` | the window is never shown: the GPU device draws for it hidden, so a run never takes the focus or the mouse or covers the screen |
 | `src/platform/window_sdl.c` (Windows) | `scene_window_win.c` | a message box is written to stdout instead of waiting for a click |
 | `src/ui/misc/crash_dialog.c` (Windows) | `scene_crash_win.c` | a crash report goes to stderr and the run ends, instead of a dialog waiting for a click |
 
@@ -50,14 +50,14 @@ cd <game dir>
 RAGEXE_SCENE=<repo>/tests/scenes/scripts/prontera_crowd.lua RAGEXE_SCENE_OUT=/tmp/out <build>/ragexe_scenes
 ```
 
-On Linux and macOS the harness defaults to `SDL_VIDEODRIVER=offscreen` (an EGL context, no
-window) and `SDL_AUDIODRIVER=dummy`; set either to watch or hear a scene. SDL's offscreen driver
-needs EGL, which macOS does not have, so on a Mac set `SDL_VIDEODRIVER=cocoa`. On Windows the
-client's window is never shown. Captures are silent on every platform: `run.py` gives the client
+On Linux the harness defaults to `SDL_VIDEODRIVER=offscreen` (no window: SDL's Vulkan driver draws
+for a headless surface); set it to watch a scene. On Windows and macOS the client's window is never
+shown: SDL's Metal driver needs a window's view, which the offscreen driver does not give. The
+captures need no swapchain: a device that cannot present to the window draws and captures all the
+same (not yet tried on a Mac). Captures are silent on every platform: `run.py` gives the client
 `SDL_AUDIO_DRIVER=dummy` unless `SDL_AUDIO_DRIVER` or `SDL_AUDIODRIVER` is set, and the harness
 itself sets `SDL_AUDIODRIVER=dummy` when it is not. Every platform gets `RAGEXE_VSYNC=0`.
-`RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode
-changes.
+`RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode changes.
 
 The game directory's `SaveData` (resolution, options, chat windows) and data files are read as
 usual; settings and account settings start empty and are never written.
@@ -65,17 +65,17 @@ usual; settings and account settings start empty and are never written.
 ## Comparing platforms
 
 Capture on one platform with `--golden <dir> --update`, copy the directory, and run the other
-with `--golden <dir> --tolerance 3`. The Direct3D 9 backend multisamples by default (4x MSAA with
-transparency supersampling), and on the GPU that result varies a few pixels from run to run, so
-set `RAGEXE_MSAA=1` on Windows for a repeatable capture. What is left between the Windows and the
-Linux captures of these scenes:
+with `--golden <dir> --tolerance 3`. The renderer multisamples by default (4x MSAA with alpha to
+coverage), which smooths edges a GPU of another make places a little otherwise, so set
+`RAGEXE_MSAA=1` on both for captures to compare. What is left between the Windows and the Linux
+captures of these scenes:
 
 - text: GDI and FreeType draw different fonts unless the same font file is installed on both
   (a Windows without Gulim falls back to Ebrima for Korean-charset text; Linux substitutes
   Noto Sans CJK KR or NanumGothic at Gulim's size). The FreeType build with `RAGE_FONT_DIRS` set to
   a copy of the Linux machine's font folders draws the same text but for a few pixels;
-- single pixels along triangle edges, where the GPU's and llvmpipe's subpixel precision decide a
-  pixel centre differently, and colour rounding of one or two steps in blending.
+- single pixels along triangle edges, where two GPUs' subpixel precision decide a pixel centre
+  differently, and colour rounding of one or two steps in blending.
 
 ## Writing a scene
 
@@ -122,8 +122,7 @@ hotkeys off), guild emblems, and the player's own chat line, which it says back 
 
 Every capture writes `<out>/<name>.counters.json` beside the image: the renderer's counters
 (`src/diag/perf.h`, which says exactly what each counts) for the frame the capture shows, from the
-moment the frame before it was shown to the moment it was. Both devices count the same way. The
-file is one JSON object of numbers:
+moment the frame before it was shown to the moment it was. The file is one JSON object of numbers:
 
 | key | counts |
 |-----|--------|
@@ -135,12 +134,14 @@ file is one JSON object of numbers:
 | `vertex_bytes` | vertices and indices given to the device for draws, and a mesh's when it is uploaded |
 | `texture_bytes` | texels written into textures and surfaces (texture builds, surface uploads, the sprite atlas) |
 | `draw_scene_ms`, `view_render_ms` | time spent in `renderer_draw_scene` and in `view_on_render` |
+| `present_ms` | time spent presenting the frame (`c3d_device_show_frame`), where the device submits the frame's recorded draws, and waits while the GPU is two frames behind |
 
-The counts are the same in every run. The two times are real time (`platform_stopwatch_ns`, the
+The counts are the same in every run. The three times are real time (`platform_stopwatch_ns`, the
 one clock the harness leaves running), taken from that one frame and not averaged, and differ by
-about a fifth from run to run, so compare several runs. Scene runs load models on the main thread,
-so the textures a frame loads count in that frame. The harness starts the counters again with every
-frame it shows, so the overlay (`RAGEXE_OVERLAY`) shows nothing useful in a scene run.
+about a fifth from run to run, so compare several runs; `present_ms` also grows when another program
+keeps the GPU busy. Scene runs load models on the main thread, so the textures a frame loads count
+in that frame. The harness starts the counters again with every frame it shows, so the overlay
+(`RAGEXE_OVERLAY`) shows nothing useful in a scene run.
 
 ## Effect gallery
 

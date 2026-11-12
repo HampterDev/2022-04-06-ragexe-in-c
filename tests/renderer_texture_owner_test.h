@@ -57,7 +57,6 @@ int gfx_unlock(gfx_surface *surface) { assert(surface && surface->refs); return 
 int gfx_refresh_mips(gfx_surface *surface, const RECT *rect)
 { assert(surface && surface->refs && rect); return 0; }
 unsigned gfx_content_version(gfx_surface *surface) { assert(surface); return 0; }
-void gfx_evict_managed_textures(struct C3dDevice *device) { assert(device == &g_3dDevice); }
 void c3d_device_clamp_texture_size(struct C3dDevice *device, unsigned *width, unsigned *height)
 { assert(device == &g_3dDevice); assert(*width <= 16 && *height <= 16); }
 

@@ -31,6 +31,11 @@ list(REMOVE_ITEM RAGE_CLIENT_SOURCES ${RAGE_CLIENT_EXCLUDED})
 set(RAGE_SCENE_HARNESS tests/scenes/scene_clock.c tests/scenes/scene_net.c tests/scenes/scene_thread.c
     tests/scenes/scene_settings.c tests/scenes/scene_rand.c tests/scenes/scene_driver.c)
 set(RAGE_SCENE_REPLACED "/src/(platform/(net|clock|thread|settings)_posix|core/drive_state)[.]c$")
+if(APPLE)
+    # SDL's Metal driver draws for a window's view: the harness keeps the client's window, hidden.
+    set(RAGE_SCENE_REPLACED "/src/(platform/(net|clock|thread|settings)_posix|core/(drive_state|app_sdl))[.]c$")
+    list(APPEND RAGE_SCENE_HARNESS tests/scenes/scene_app_hidden.c)
+endif()
 if(ANDROID)
     # The client is libmain.so, which SDL's activity loads and calls; the scene harness stays on desktops.
     set(RAGE_CLIENT_TARGETS ragexe)
@@ -110,12 +115,6 @@ endforeach()
 if(TARGET ragexe_scenes)
     target_include_directories(ragexe_scenes PRIVATE ${PROJECT_SOURCE_DIR}/tests/scenes ${PROJECT_SOURCE_DIR}/vendor/stb)
 endif()
-option(RAGE_GLES "Draw through OpenGL ES 3.0 instead of desktop OpenGL (always on for Android)" OFF)
-if(RAGE_GLES)
-    foreach(target IN LISTS RAGE_CLIENT_TARGETS)
-        target_compile_definitions(${target} PRIVATE RAGE_GLES)
-    endforeach()
-endif()
 if(APPLE)
     # ragexe.app; put it in the game folder, next to DATA.INI and the GRF files.
     set_target_properties(ragexe PROPERTIES MACOSX_BUNDLE TRUE MACOSX_BUNDLE_GUI_IDENTIFIER local.ragexe.client
@@ -123,18 +122,22 @@ if(APPLE)
 endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
-    add_executable(test_gfx_gl tests/test_gfx_gl.c src/render/gfx_gl.c src/render/gfx_batch.c
-        src/platform/thread_posix.c)
-    target_include_directories(test_gfx_gl PRIVATE ${PROJECT_SOURCE_DIR}/src)
-    target_compile_definitions(test_gfx_gl PRIVATE _DEFAULT_SOURCE)
-    target_link_libraries(test_gfx_gl PRIVATE SDL3::SDL3 m)
-    rage_enable_assertions(test_gfx_gl)
-    add_test(NAME gfx_gl COMMAND test_gfx_gl)
+    # The GPU backend on this machine's GPU (tests/CMakeLists.txt declares it for Windows).
+    add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/gfx_batch.c
+        src/render/texel_convert.c src/platform/thread_posix.c)
+    target_include_directories(test_gfx_gpu PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    target_compile_definitions(test_gfx_gpu PRIVATE _DEFAULT_SOURCE)
+    target_link_libraries(test_gfx_gpu PRIVATE SDL3::SDL3 Threads::Threads m)
+    rage_enable_assertions(test_gfx_gpu)
+    add_test(NAME gfx_gpu COMMAND test_gfx_gpu 1)
+    add_test(NAME gfx_gpu_msaa COMMAND test_gfx_gpu 4)
     # The link check of the library table (tools/libraries.txt) on the client's objects, through nm.
     add_test(NAME library_links COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/depmap/check_links.py
         --nm ${CMAKE_BINARY_DIR}/CMakeFiles/ragexe.dir --strict)
-    # gfx_gl needs an OpenGL context, so it keeps the platform's video driver, in a hidden window.
-    set_tests_properties(gfx_gl PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60 ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
+    # gfx_gpu needs a GPU device, so it keeps the platform's video driver, in a hidden window, and
+    # is skipped without one.
+    set_tests_properties(gfx_gpu gfx_gpu_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60
+        ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
     set_tests_properties(library_links PROPERTIES ENVIRONMENT "${RAGE_TEST_ENVIRONMENT}")
 
     # The scene captures need game data; with RAGE_SCENE_GOLDEN they are compared with golden images.

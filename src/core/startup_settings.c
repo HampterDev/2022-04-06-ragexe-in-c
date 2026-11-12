@@ -7,7 +7,7 @@
 uint32_t g_soundMode;
 
 /* custom: the display device's name and GUIDs (DEVICENAME, GUIDDEVICE, GUIDDRIVER) are no longer
-   read: the device is always the primary display's (render/gfx_d3d9.c, gfx_open). */
+   read: SDL picks the GPU (render/gfx_gpu.c). */
 static void read_startup_dword(struct PlatformSettingsKey *key, const char *name, void *value)
 {
     BYTE bytes[4];

@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
 #include "render/math3d.h"
 
@@ -465,36 +466,3 @@ void mat_set_rotate_z(float *m, float rad)
     m[1] = s;
 }
 
-int32_t mat4_perspective_lh(float *m, float fov, float aspect, float zNear, float zFar)
-{
-    float depth = zFar - zNear, cosHalf, w, q;
-    double h;
-
-    if (0.01f > (float)fabs((double)depth))
-        return -INT32_C(2147024809);
-    fov = fov * 0.5f;
-    if (0.01f > (float)fabs((double)float_sin(fov)))
-        return -INT32_C(2147024809);
-    cosHalf = float_cos(fov);
-    w = (float)((double)cosHalf / (double)float_sin(fov) * (double)aspect);
-    cosHalf = float_cos(fov);
-    h = (double)cosHalf / (double)float_sin(fov);
-    m[1] = 0.0f;
-    m[2] = 0.0f;
-    m[3] = 0.0f;
-    m[4] = 0.0f;
-    m[6] = 0.0f;
-    m[7] = 0.0f;
-    m[8] = 0.0f;
-    m[9] = 0.0f;
-    m[12] = 0.0f;
-    m[13] = 0.0f;
-    m[15] = 0.0f;
-    m[11] = 1.0f;
-    q = zFar / depth;
-    m[10] = q;
-    m[0] = w;
-    m[5] = (float)h;
-    m[14] = -(q * zNear);
-    return 0;
-}

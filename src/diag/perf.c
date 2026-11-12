@@ -9,10 +9,11 @@
 #include "platform/clock.h"
 #include "render/fonts.h"
 
-#ifdef _WIN32
-#define PERF_RENDERER "Direct3D 9"
+/* the one GPU driver the device asks SDL for (render/gfx_gpu.c) */
+#ifdef __APPLE__
+#define PERF_RENDERER "Metal"
 #else
-#define PERF_RENDERER "OpenGL"
+#define PERF_RENDERER "Vulkan"
 #endif
 
 struct perf_counters g_perf;

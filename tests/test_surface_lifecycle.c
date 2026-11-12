@@ -82,7 +82,6 @@ int gfx_blit(gfx_surface *dest, const RECT *dr, gfx_surface *source, const RECT 
 int gfx_refresh_mips(gfx_surface *surface, const RECT *rect)
 { assert(surface && rect); ++mip_refreshes; return fail_mips ? -1 : 0; }
 unsigned gfx_content_version(gfx_surface *surface) { return surface->version; }
-void gfx_evict_managed_textures(struct C3dDevice *device) { (void)device; abort(); }
 void c3d_device_clamp_texture_size(struct C3dDevice *device, unsigned *w, unsigned *h)
 { assert(device == &g_3dDevice); if (*w > 16) *w = 16; if (*h > 16) *h = 16; }
 void error_msg(const char *message, int flags) { (void)message; (void)flags; assert(0); }
@@ -140,9 +139,7 @@ static void test_failures(void)
     fail_at = 0; fail_create = 1;
     assert(!texture_create(4, 4, GFX_FMT_8888));
     assert(!c3d_device_new_wallpaper_surface(&g_3dDevice, 32, 32));
-    fail_create = 0; fail_lock = 1;
-    assert(!texture_create(4, 4, GFX_FMT_BUMP));
-    fail_lock = 0; assert(!outstanding && !handles);
+    fail_create = 0; assert(!outstanding && !handles);
     surface_destroy(NULL); texture_destroy(NULL);
 }
 static void test_replacement(void)
@@ -176,12 +173,6 @@ static void test_replacement(void)
     assert(!texture_recreate(&texture, 8, 8, GFX_FMT_1555));
     fail_create = 0;
     assert(!texture_recreate(&texture, 0, 8, GFX_FMT_1555));
-    fail_lock = 1;
-    assert(!texture_recreate(&texture, 8, 8, GFX_FMT_BUMP));
-    fail_lock = 0;
-    fail_unlock = 1;
-    assert(!texture_recreate(&texture, 8, 8, GFX_FMT_BUMP));
-    fail_unlock = 0;
     assert(!memcmp(&texture, &saved_texture, sizeof texture));
     assert(texture.base.surface->pixels[0] == 0xffabcdef && handles == 1);
     resetting = &texture.base;
@@ -189,8 +180,8 @@ static void test_replacement(void)
     resetting = NULL;
     assert(texture.base.width == 16 && texture.reqWidth == 15 && texture.reqHeight == 8);
     assert(texture.format == GFX_FMT_1555 && texture.lockCount == 2 && texture.fullSize == 1);
-    assert(texture_recreate(&texture, 4, 4, GFX_FMT_BUMP));
-    assert(texture.format == GFX_FMT_BUMP && !strcmp(texture.name, "WATERBUMPMAP"));
+    assert(texture_recreate(&texture, 4, 4, GFX_FMT_8888));
+    assert(texture.format == GFX_FMT_8888);
     assert(texture.reqWidth == 4 && texture.reqHeight == 4 && handles == 1);
     surface_reset(&texture.base);
     fail_create = 1;
@@ -324,7 +315,6 @@ int main(void)
     g_3dDevice.maxTexW = g_3dDevice.maxTexH = 16;
     g_3dDevice.rBits = g_3dDevice.gBits = g_3dDevice.bBits = 3;
     g_3dDevice.rShift = 10; g_3dDevice.gShift = 5;
-    g_gfxCaps.bumpEnv = g_gfxCaps.bumpEnvLuminance = 1;
     test_texture(); test_surface(); test_failures(); test_replacement(); test_pixels();
     test_upload_failure(); test_sprite_upload(); test_cache_upload();
     assert(releases && !handles && !outstanding);

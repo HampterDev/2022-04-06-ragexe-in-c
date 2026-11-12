@@ -349,7 +349,6 @@ float g_fogFar;
 
 static void renderer_do_fog_(struct Renderer *self)
 {
-    struct GfxMatrix identity, proj;
     DWORD caps;
     float fogStart, fogEnd;
     if (!self->fogDirty)
@@ -360,12 +359,6 @@ static void renderer_do_fog_(struct Renderer *self)
     }
     fogStart = g_fogNear * 1490.0f + 10.0f;
     fogEnd = g_fogFar * 1490.0f + 10.0f;
-    memset(&identity, 0, sizeof(identity));
-    identity.m[0][0] = identity.m[1][1] = identity.m[2][2] = identity.m[3][3] = 1.0f;
-    mat4_perspective_lh(proj.m[0], 0.26179939f, self->aspect, 10.0f, 1500.0f);
-    gfx_set_transform(GFX_TS_WORLD, &identity);
-    gfx_set_transform(GFX_TS_PROJECTION, &proj);
-    gfx_set_transform(GFX_TS_VIEW, &identity);
     HRS(self, GFX_RS_FOGCOLOR, g_fogColor);
     caps = g_gfxCaps.vertexFog;
     if (g_fogVertexMode == 3) {
@@ -403,8 +396,7 @@ void renderer_enable_fog(struct Renderer *self, int enable)
     g_fogVertexMode = 3;
 }
 
-void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient,
-                        float shadowOpacity)
+void renderer_set_light(struct Renderer *self, const float *dir, const float *ambient, float shadowOpacity)
 {
     float darkness = 1.0f - (shadowOpacity == shadowOpacity ? shadowOpacity : 0.5f);
 
@@ -412,7 +404,6 @@ void renderer_set_light(struct Renderer *self, const float *dir, const float *di
     memcpy(self->lightAmbient, ambient, sizeof self->lightAmbient);
     self->shadowDarkness = darkness < 0.0f ? 0.0f : darkness > 1.0f ? 1.0f : darkness;
     self->lightSet = 1;
-    gfx_set_light(dir, diffuse, ambient);
 }
 
 void renderer_set_blend_stages(struct Renderer *self, int mode)
@@ -588,14 +579,11 @@ static void renderer_draw_lists(struct Renderer *self)
     perf_begin(PERF_L_WATER);
     /* custom: the ground (world/ground_draw.c); without lightmaps stage 1 stays off, and the
        ground is its texture times its colour, as the original's ground quads without them */
-    HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
     if (g_lightmap)
         HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
     flush_ground_meshes(self);
-    HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
     HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
     perf_end(PERF_L_WATER);
-    HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
     HRS(self, GFX_RS_AMBIENT, 0);
     HRS(self, GFX_RS_CULLMODE, GFX_CULL_NONE);
     HRS(self, GFX_RS_ALPHAREF, 1);
@@ -702,7 +690,6 @@ int renderer_draw_scene(struct Renderer *self)
 
 void renderer_flip(struct Renderer *self, char vsync)
 {
-    int hr;
     self->frame++;
     if ((float)(unsigned)(platform_coarse_ticks_ms() - self->fpsTick) >= 1000.0f) {
         self->fpsTick = platform_coarse_ticks_ms();
@@ -711,13 +698,9 @@ void renderer_flip(struct Renderer *self, char vsync)
     } else {
         self->fpsCount++;
     }
-    if (c3d_device_check_lost(&g_3dDevice) == 1)
-        return;
     perf_begin(PERF_TARGETLOCK);
     self->bpp = g_3dDevice.bpp;
     perf_end(PERF_TARGETLOCK);
-    TIMED(PERF_PRESENT, hr = c3d_device_show_frame(&g_3dDevice, vsync));
-    if (hr == GFX_E_SURFACELOST)
-        c3d_device_on_surfaces_lost(&g_3dDevice);
+    TIMED(PERF_PRESENT, c3d_device_show_frame(&g_3dDevice, vsync));
     perf_frame_end(self);
 }

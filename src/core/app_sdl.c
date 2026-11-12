@@ -623,7 +623,7 @@ void check_system_message(void)
 #ifdef __ANDROID__
     sync_window_cover();
     sync_text_input();
-    gfx_gl_set_cover(&g_cover);
+    gfx_set_cover(&g_cover);
 #else
     sync_candidate_area();
 #endif
@@ -689,26 +689,6 @@ int app_create_window(void)
     }
 #ifdef _WIN32
     g_processKeyEvent = SDL_RegisterEvents(1);
-#endif
-#ifndef _WIN32
-    /* Direct3D 9 draws into the window's HWND on Windows; elsewhere the GL backend draws through
-       an OpenGL context of the window. */
-    flags |= SDL_WINDOW_OPENGL;
-#if defined(__ANDROID__) || defined(RAGE_GLES)
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-#else
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-#endif
-#ifdef __APPLE__
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-#endif
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 #endif
 #ifdef __ANDROID__
     /* An Android window always covers the screen, so the client runs in its fullscreen mode, at the

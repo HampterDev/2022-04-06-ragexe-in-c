@@ -14713,3 +14713,198 @@ harness never shows its window, and SDL makes a hidden window fullscreen or maxi
 is shown), dragging the border, a second display, a display of another scale, a lost Direct3D 9
 device, and Linux, macOS, Wayland and Android, which were not built or run; they are to be tried by
 hand.
+
+## One renderer on SDL's GPU API (2026-11-12)
+
+Phase 2 of `plans/gpu-renderer.md`: `render/gfx_gpu.c` implements `render/gfx.h` on SDL 3's GPU API
+on every platform, Vulkan with SPIR-V on Windows, Linux and Android, Metal with MSL on macOS, and
+replaces the Direct3D 9 backend (`render/gfx_d3d9.c`) and the OpenGL one (`render/gfx_gl.c`), which
+are deleted with `tests/test_gfx_gl.c`, `d3d9.lib` on the link lines, the loading of
+`d3dcompiler_47.dll` (inside the Direct3D 9 backend), the window's OpenGL flag and context
+attributes, the `RAGE_GLES` option and the bump-map texture nothing made (`texture_create_bump`,
+`bump_caps_check`, `GFX_FMT_BUMP`, the caps' `bumpEnv` and `bumpEnvLuminance`, and the backends'
+bump stage operations). `gfx_world_supported` goes too: a device that exists draws the world, and
+one that cannot be made stops the client at `app_init_3d` with the original's message and SDL's
+reason in the log. `gfx_gl_set_cover`, through which Android's window tells the device what covers
+it, is `gfx_set_cover`. The Android app asks for Vulkan 1.0 instead of OpenGL ES 3.0. The overlay
+names the driver, Vulkan or Metal.
+
+What was left of Direct3D's device model goes with the backends, since a GPU device has no use for
+it: the lost device (`gfx_is_lost`, `gfx_restore`, `gfx_restore_all`, `gfx_device_lost`,
+`GFX_E_SURFACELOST`, the device's `surfacesLost` with `c3d_device_check_lost`,
+`c3d_device_on_surfaces_lost` and `c3d_device_restore_surfaces`, which `renderer_flip` and the login
+and game modes called, and `render/resize.c`'s polling of a lost device, which now tries a size the
+device had no memory for again when the window's size changes); GDI drawing into the frame
+(`gfx_get_dc`, `gfx_release_dc`, `text_dc_from_surface`, the text DCs' surface and their locking of
+it, `renderer_text_out` and `renderer_get_text_extent`); the transform and light calls
+(`gfx_set_transform`, `gfx_set_light`, `struct GfxMatrix`, `GFX_TS_*` and `mat4_perspective_lh`,
+which only fed them, and `renderer_set_light`'s diffuse colour); the managed pool's eviction
+(`gfx_evict_managed_textures`); and the colour-key and texture-perspective states
+(`GFX_RS_COLORKEYENABLE`, `GFX_RS_TEXTUREPERSPECTIVE`), which no device had. The fixed shader does
+the stage operations and arguments `render/gfx.h` names and no others (the texture factor, the
+specular argument and nine operations nothing used are gone). The alpha test takes the comparisons
+`render/gfx.h` names, and `GFX_LOCK_RETRY` and `GFX_E_VIEWPORT`, which nothing used, go too.
+
+- **Shaders.** HLSL in `src/render/shaders` (`fixed.hlsl`, `mesh.hlsl`, `caster.hlsl`, sharing
+  `records.hlsli`), compiled offline by `tools/shaders` (C: the Vulkan SDK's `dxc` to SPIR-V for
+  Vulkan 1.0, `spirv-val`, then SPIRV-Cross's C API to MSL 2.1 with the resource indices SDL's Metal
+  driver binds, failing when a resource is not where SDL's binding rules put it) into committed
+  headers with the resource counts, the compilers' versions and three hashes: of the source with
+  its includes, of the tool's own source (its flags and binding rules) and of the arrays.
+  `tools/shaders/check.py` fails when any of them differs, in `build.bat check` and as the test
+  `shader_sources`, so a changed source or tool whose headers were not made again, and a header
+  edited by hand, fail the check. No build needs a shader compiler.
+- **A recorded frame.** Each draw becomes a record (`struct GpuDraw`: the two texture stages, the
+  alpha test, the fog, the target's size, a mesh's colour and texture transform) in a list of render
+  passes, one per target or shadow cascade, with a pipeline from a cache keyed by blending, depth,
+  culling, topology, vertex layout, target format, sample count and alpha to coverage. The shaders
+  read the records from storage buffers through an instance-rate attribute that holds the draw's
+  index, its first instance. Vertices, indices, records and the texels of textures that changed go
+  into one staging area; presenting (or a lock on a target) copies it through one transfer buffer in
+  one copy pass and replays the passes in one command buffer, then presents fitted to the window
+  (`present_fit`) or downloads the target and waits. Fans become triangle lists. Surfaces and meshes
+  a recorded draw uses stay alive until it is drawn. A fence on each frame keeps the CPU at most two
+  frames ahead of the GPU, also in the scene harness's hidden window, where no swapchain image paces
+  it. A flush that fails before its command buffer reaches the GPU stages its textures, mipmaps and
+  meshes again for the next, and forgets the copies into textures it recorded, whose CPU pixels stay
+  the textures'; a mesh is pinned with its upload, so that one destroyed in the frame stays until it
+  is made. A frame shown without vsync (`renderer_flip(..., 0)`, the map loading screen's up to 100
+  a load) never waits for the window: SDL's acquire of a picture waits for the presentation engine
+  even when told not to block, so such a frame asks for one only once a refresh of the window's
+  display (60 Hz where its mode does not say) has passed since the last, and otherwise is drawn but
+  not shown, as Direct3D 9's `D3DPRESENT_DONOTWAIT` left a frame the screen had no room for. The
+  device turns off the Vulkan features SDL asks for by default that it does not use (depth clamping,
+  clip distances, indirect draws from a first instance), so GPUs without them, older Android ones
+  among them, run it.
+- **Textures.** A texture keeps its pixels on the CPU in the client's format, so the model loader's
+  thread creates, locks and fills it without calling SDL; the main thread widens them to B8G8R8A8
+  when a draw first uses them after a change, through the library `texel-convert`
+  (`render/texel_convert.c`, with the formats in `render/gfx_format.h`: bit replication, the system
+  surfaces' magenta key as alpha). One changed after a draw used it in the same frame goes up in a
+  copy pass between the render passes, so the earlier draw keeps its old texels. Mipmaps are made on
+  the GPU whenever a texture that has them goes up. A copy from a target into a texture stays on the
+  GPU until the texture is locked; a stretched one, which SDL draws, makes the texture a colour
+  target first. Rectangles that are empty or reach outside their surfaces copy nothing on every
+  path, as the copies between surfaces in memory did. Locking a target downloads the locked
+  rectangle alone; pixels the lock changed go back where the frame has got to, and into the
+  multisampled screen as well. Meshes keep 32-bit indices, since a draw may start at any index and
+  Metal takes an index buffer's offset in multiples of 4 bytes.
+- **Direct3D 9's pixels.** Every vertex lands where Direct3D 9 put it. Every pass's viewport is its
+  target moved by half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall
+  on the target's. A viewport must lie within its texture (SDL's GPU API checks it in its debug
+  mode, Metal requires it), so a target's textures (the screen, its multisampled picture and depth,
+  its copy, render targets, the shadow maps and their depth) are a pixel wider and taller than the
+  target (`MARGIN`): a stage that samples a target scales its texture coordinates to match and, when
+  it clamps, keeps them off the margin (no further than the centre of the target's last texel), the
+  shadow lookups read the maps by texel, the one point sampling picked, with the maps' size in the
+  shadow record, and the picture is presented filtered only where it shrinks. The meshes, world
+  vertices and shadow casters take Direct3D 9's own matrices, computed in floats as the Direct3D 9
+  client computed them and multiplied in the order `fxc` compiled its shaders to (`mad` is a fused
+  multiply-add in both), and the GPU divides and moves their points as Direct3D 9's did.
+  Pre-transformed vertices are snapped in the vertex shader to the 1/256 of a pixel Direct3D 9's
+  rasterizer snapped them to, rounding to even, and handed over a 1/1024 of a pixel further on: the
+  GPU's own viewport transform lands within a few ten-thousandths of a pixel of that point and snaps
+  it to the same place whether it rounds or truncates (`records.hlsli`, `snapped_ndc`). Their `w`
+  stays 1, and the shader interpolates perspective-correct itself with the rhw. The mesh and shadow
+  shaders are the Direct3D 9 ones ported, with the alpha test and fog of Direct3D 9's fixed function
+  applied to their output; the four cascades are layers of one R32F array texture. The viewport,
+  like Direct3D 9's own, leaves out the left half of the first column and the top half of the first
+  row: a GPU that clips to it (Mesa's lavapipe does, NVIDIA's does not) covers only those pixels'
+  other samples when multisampling, as it would have under Direct3D 9.
+- **Multisampling** (`RAGEXE_MSAA`: 2, 4 or 8 samples, the most SDL's GPU API offers, 4 when
+  unset, 1 for none; a count the GPU does not take for the target and depth formats falls to the
+  next lower one it does) resolves the screen at the end of each pass on it. Direct3D 9 drew flat
+  draws (one rhw for every vertex: the UI, sprites) without multisampling, which SDL's GPU API
+  cannot switch off per draw; in a multisampled pass a flat draw's vertices move onto the pixel
+  boundaries that keep the pixels Direct3D 9 covered (`ceil` of the coordinate snapped to 1/256,
+  less half a pixel, on either side under the top-left rule) and take the values their triangle's
+  plane has there, so text boxes and bars whose edges run through pixel centres keep their edges,
+  and texels stay where the centres read them. Alpha-tested draws without blending use alpha to
+  coverage, as the plan chose instead of the drivers' transparency anti-aliasing (`SSAA`, `ATOC`).
+- **The login screen's serial number** was measured and drawn five times into the frame through a
+  DC, each a lock of the frame: a submit, a wait, a download of the whole target and an upload of
+  it. It is drawn once, as plain text in the font the DC draws plain text with (GDI's default font,
+  FreeType's face 0, as before), into a bitmap one pixel larger all round than it, outlined in
+  black, kept with the window manager (`UIWindowMgr.serial_number`; a bitmap that cannot be made is
+  not tried again), and shown each frame as a quad at the end of the frame's last list, over the
+  mouse cursor as the original drew it, at the pixels the original drew it at (its left edge 0x64
+  pixels plus its width measured in face 0 at size 12 from the right edge).
+- **Counters.** `present_ms` (`diag/perf.h`: `presentNs`, timed in `c3d_device_show_frame`, before
+  the harness counts the frame as shown) joins the scene captures' counters, since the GPU backend
+  submits a frame's work when it presents.
+- **The scene harness on macOS** keeps the client's window, hidden, as on Windows
+  (`tests/scenes/scene_app_hidden.c`, which `scene_app_win.c` was), since SDL's Metal driver draws
+  for a window's view and the offscreen video driver has none; Linux keeps the offscreen driver.
+
+Verification, on Windows (NVIDIA, Vulkan). `tests/test_gfx_gpu.c` (the tests `gfx_gpu` and
+`gfx_gpu_msaa`) draws through `render/gfx.h` without and with multisampling and reads the pixels
+back: clears, Direct3D 9's pixel centres and top-left rule, flat quads between pixel centres,
+every texture format, texel centres, culling, textures changed and released within a frame, the
+alpha test, the vertex fog, blending, mipmaps, render targets, system-surface blits, copies between
+targets and into textures (stretched into a texture drawn from earlier in the frame, and
+rectangles outside their surfaces), pixels written into a locked target and into a locked
+rectangle of it, world vertices, meshes (drawn from an odd index too) and a resize. It passes under
+the Vulkan validation layer with synchronization validation and with SDL's own debug checks
+(`RAGEXE_GPU_DEBUG=1`), which refuse a viewport that reaches past its target.
+`tests/test_texel_convert.c` widens and packs back every 16-bit texel of each format.
+`tools/shaders/check.py` fails on a byte of a header changed by hand and on a changed tool.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio against `build/ref` (the
+Direct3D 9 client of `02fc9e5e`), at tolerance 3: all 12 of the scene set pass, `iz_int03_enter`,
+`keyboard` and `windows_open` identical and the other nine within one step per channel. Of the 16
+shadow views (`build/ref/extra`), 11 pass, three of them identical. `manuk` at 1,500 and 2,500,
+`hu_fild01` at 1,500, `ve_fild05` at 2,500 and `man_fild03` at 2,500 differ in 16, 5, 1, 2 and 1
+pixels by 4 to 20, in their shading only: in `manuk` at 1,500 the 16 lie on a straight line across
+the ground, one a row, two pixels apart, along a shadow's edge. That is the pattern of a shadow
+lookup reading the texel beside the one Direct3D 9's read: the line is where the lookups' point in a
+shadow map crosses from one texel to the next, so lookup coordinates a last bit apart, as Direct3D
+9's and Vulkan's interpolation across a triangle can leave them on the same GPU, fall into
+neighbouring texels there, and one of a pixel's 16 lookups changing moves its lit share by a
+sixteenth. The rest of those views is within tolerance. `window_resize` captures at 1280x720, at
+1024x664 when 800x600 is asked for, and at 1920x900, with the 3D view and the UI windows drawn at
+each size.
+
+With multisampling on (`RAGEXE_MSAA=4`), against the reference captured with it, the captures
+differ inside the 3D view: about 290,000 of the 1,440,000 pixels outdoors and 4,000 to 6,300
+indoors, by up to 233, along model edges and across the textures of the ground and the models.
+Direct3D 9 had NVIDIA's transparency supersampling there (`SSAA`), which shades every sample of an
+alpha-tested draw without blending, and the ground and the models are alpha-tested (0xcf), so their
+textures were read at each sample; alpha to coverage, which the plan chose, reads them once a pixel.
+Direct3D 9 used alpha to coverage too where the driver offered no `SSAA` (`ATOC`, or `A2M1` on
+AMD): against the reference with `RAGEXE_MSAA_ALPHA=atoc`, 17,800 to 35,800 pixels differ outdoors
+and 3,700 to 5,700 indoors, along the edges of alpha-tested texels (leaves, railings, the
+colour-keyed borders of model textures), where each driver dithers coverage in its own pattern.
+The UI matches: flat draws move onto Direct3D 9's pixel boundaries, so the edges of bars and text
+boxes that run through pixel centres keep their pixels.
+
+Counters, against the Direct3D 9 client of this tree just before the switch (one run) and the GPU
+client (the median of three runs): every count is the same (draws, calls, primitives, states, binds,
+vertex and texel bytes), and recording the scene (`draw_scene_ms`) costs about a tenth of what
+handing it to Direct3D 9 did. `present_ms` copies the frame's data, records its passes and submits
+them, and then waits for the frame two before it to finish on the GPU: in the scene harness,
+whose frames follow each other as fast as the CPU makes them, that wait is most of it. Timed in
+`flush`, recording and submitting take 0.1 to 0.5 ms of a frame and the wait the rest, 0.2 to
+1.7 ms, on a GTX 970 at full clock and 2 % load.
+
+| capture | Direct3D 9 scene + present ms | GPU scene + present ms |
+|---|---|---|
+| `camera_level_view` | 3.89 + 0.08 | 0.45 + 2.10 |
+| `camera_level_view_moving` | 4.57 + 0.07 | 0.46 + 1.43 |
+| `granny_models` | 1.28 + 0.04 | 0.16 + 1.66 |
+| `prontera_crowd` | 1.24 + 0.06 | 0.18 + 1.77 |
+| `keyboard` | 0.41 + 0.07 | 0.04 + 0.95 |
+| `windows_open` | 0.30 + 0.04 | 0.06 + 0.38 |
+
+Linux, in WSL (Ubuntu 24.04, GCC 13) with Mesa's lavapipe as the Vulkan driver: the CMake client
+(`RAGE_CLIENT=ON`, SDL built for the console, `SDL_UNIX_CONSOLE_BUILD`, since the harness draws with
+the offscreen video driver) builds, `test_gfx_gpu` passes with and without multisampling, and the
+scene harness draws the whole scene set and `window_resize`: the ground, the models, the Granny
+actors, the shadows, the sprites and the UI as on Windows, at the offscreen display's 1024x768
+instead of 1600x900 and with FreeType's text, so the captures were looked at, not compared by
+tolerance.
+
+`build.bat check` passes (the include and link checks, and the shaders' check), and so does the
+whole suite (`tests\build.bat`: 317 tests, and the 6 oracle tests). Not run: Android (Vulkan)
+and macOS (Metal), which were not built, so the macOS harness change has not been compiled either;
+the MSL, which no Metal compiler has seen; fullscreen; the login screen's serial number, which no
+scene shows; a flush that fails; and a game played by hand.

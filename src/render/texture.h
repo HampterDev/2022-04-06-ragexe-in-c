@@ -26,7 +26,6 @@ static inline int texture_upload(struct Texture *texture, int x, int y, int widt
 
 struct Texture *texture_init(struct Texture *texture, int width, int height, int format);
 int texture_recreate(struct Texture *texture, int width, int height, int format);
-int texture_create_bump(struct Texture *texture, int width, int height);
 int texture_update_mip_chain(struct Texture *texture, const RECT *rect);
 int texture_copy_rect_from(struct Texture *texture, gfx_surface *source, RECT *rect);
 int texture_blit_rect(struct Texture *texture, struct Surface *source, int sx, int sy, int sw, int sh,

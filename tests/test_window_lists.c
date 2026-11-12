@@ -366,6 +366,7 @@ struct Field {
     WL_RAW(mouse_y_last) \
     WL_RAW(modal_result) \
     WL_RAW(backdrop) \
+    WL_RAW(serial_number)     WL_RAW(serial_number_width) \
     WL_RAW(screen_width) \
     WL_RAW(screen_height) \
     WL_STRING(wallpaper_name) \

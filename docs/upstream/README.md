@@ -392,3 +392,10 @@ rule for data from outside, with a check in `main`'s packet-handler oracle, and 
 | Foundation commit | Custom | Change |
 | --- | --- | --- |
 | [82531e269b](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/82531e269bc99a2864870be60f39092b511dc665) | [38a9093e27](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/38a9093e274dd606f98de2ce97bc6d6143b6dbff) | Read ZC_SOUND's sound name within its 24 bytes |
+
+## Renderer fixes after the switch to SDL's GPU API, 2026-11-12
+
+`custom` draws through `render/gfx_gpu.c` on every platform and no longer has the Direct3D 9
+backend (`render/gfx_d3d9.c`) `main` draws with. A fix `main` makes inside it has nowhere to land
+here; it goes below as not needed, with what `custom` does in its place. None has come yet. Fixes
+above `render/gfx.h` pick as before.

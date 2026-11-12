@@ -32,7 +32,6 @@ struct C3dDevice {
     DWORD texAspect;
     BYTE bltStretch;
     BYTE tex1024;
-    BYTE surfacesLost;
     DWORD colorKeyPixel;
     const wchar_t *faceNamesB[12];
     const wchar_t *faceNamesA[12];
@@ -47,7 +46,6 @@ struct Renderer;
 
 void c3d_device_clamp_texture_size(struct C3dDevice *self, unsigned *pw, unsigned *ph);
 void c3d_device_save_frame(struct C3dDevice *self);
-int c3d_device_check_lost(struct C3dDevice *self);
 int c3d_device_clear(struct C3dDevice *self, DWORD colour);
 int c3d_device_clear_z(struct C3dDevice *self);
 int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, int flags);
@@ -56,8 +54,6 @@ struct Renderer *c3d_device_create_renderer(struct C3dDevice *self);
 void c3d_device_delete_renderer(struct C3dDevice *self, struct Renderer *r);
 int c3d_device_release_all(struct C3dDevice *self);
 void c3d_device_restore_frame(struct C3dDevice *self);
-int c3d_device_restore_surfaces(struct C3dDevice *self);
-void c3d_device_on_surfaces_lost(struct C3dDevice *self);
 int c3d_device_show_frame(struct C3dDevice *self, char vsync);
 int c3d_device_probe_texel_offset(struct C3dDevice *self);
 

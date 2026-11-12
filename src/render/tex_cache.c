@@ -283,7 +283,6 @@ void texcache_evict(struct TexCache *cache)
             ++i;
     }
     platform_heap_compact();
-    gfx_evict_managed_textures(&g_3dDevice);
     cache_leave(section);
 }
 

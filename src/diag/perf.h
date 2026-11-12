@@ -36,7 +36,7 @@ enum perf_phase {
 
 /* Counted whether the overlay is on or not; with RAGEXE_OVERLAY on the overlay starts them again
    every half second, the scene harness with every frame it draws and shows
-   (tests/scenes/README.md). Both devices count the same way for the states the client sets:
+   (tests/scenes/README.md). They count, for the states the client sets:
    - draws and prims: the draws the device makes of gfx_draw's vertices (after batching) and of
      meshes, the shadow maps' included; drawCalls: the gfx_draw and gfx_draw_mesh calls. Blits
      drawn as quads count as blitQuads alone.
@@ -47,7 +47,9 @@ enum perf_phase {
      of a mesh when the device fills its buffers.
    - textureBytes: the texels written by texture_upload_pixels, surface_fill_pixels and
      texture_draw_sprite_frame (the sprite atlas), at the texture's or surface's own depth.
-   - drawSceneNs and viewRenderNs: the time spent in renderer_draw_scene and view_on_render.
+   - drawSceneNs, viewRenderNs and presentNs: the time spent in renderer_draw_scene, in
+     view_on_render and in presenting the frame (c3d_device_show_frame), where the device submits
+     the frame's recorded draws and waits while the GPU is two frames behind.
    The model loader's thread (world/models.c) creates textures and builds them as well, so
    texCreated, locks, builds, buildsSkipped and textureBytes go up through perf_count_shared, and a
    texture counts in whichever frame the loader built it during; resGets and resHits go up under
@@ -62,6 +64,7 @@ struct perf_counters {
     unsigned textureBytes;
     int64_t drawSceneNs;
     int64_t viewRenderNs;
+    int64_t presentNs;
     unsigned locks;
     unsigned targetLocks;
     unsigned texCreated;

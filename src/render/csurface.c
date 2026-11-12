@@ -9,11 +9,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
-#include <math.h>
 #include "platform/clock.h"
-#include "platform/window.h"
-
-static const char unsupported_caption[] = "notsuppot";
 
 #ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
@@ -209,10 +205,7 @@ struct Texture *texture_init(struct Texture *self, int width, int height, int fo
     memset(self, 0, sizeof *self);
     self->serial = ++serial;
     self->base.ops = &texture_surface_ops;
-    if (format == GFX_FMT_BUMP)
-        texture_create_bump(self, width, height);
-    else
-        texture_recreate(self, width, height, format);
+    texture_recreate(self, width, height, format);
     return self;
 }
 
@@ -249,8 +242,6 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
     gfx_surface *handle;
     if (width <= 0 || height <= 0)
         return 0;
-    if (format == GFX_FMT_BUMP)
-        return texture_create_bump(self, width, height);
     actual_width = width;
     actual_height = height;
     c3d_device_clamp_texture_size(&g_3dDevice, &actual_width, &actual_height);
@@ -267,69 +258,6 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
     self->format = format;
     fit(width, self->base.width, &self->reqWidth);
     fit(height, self->base.height, &self->reqHeight);
-    return 1;
-}
-
-static void bump_caps_check(void)
-{
-    if (!g_gfxCaps.bumpEnv)
-        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
-    if (!g_gfxCaps.bumpEnvLuminance)
-        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
-}
-
-int texture_create_bump(struct Texture *self, int width, int height)
-{
-    struct gfx_lock lk;
-    gfx_surface *s;
-    unsigned x, y, actual_width, actual_height;
-    if (width <= 0 || height <= 0)
-        return 0;
-    actual_width = width;
-    actual_height = height;
-    c3d_device_clamp_texture_size(&g_3dDevice, &actual_width, &actual_height);
-    if (!actual_width || !actual_height || actual_width > INT_MAX || actual_height > INT_MAX)
-        return 0;
-    bump_caps_check();
-    s = gfx_create_texture(actual_width, actual_height, GFX_FMT_BUMP);
-    if (!s)
-        return 0;
-    if (gfx_lock(s, NULL, GFX_LOCK_RETRY, &lk) < 0) {
-        gfx_release(s);
-        return 0;
-    }
-    for (y = 0; y < lk.height; y++) {
-        BYTE *row = (BYTE *)lk.bits + y * lk.pitch;
-        for (x = 0; x < lk.width; x++) {
-            float fy = (float)y / (float)lk.height - 0.5f;
-            float r = (float)sqrt((double)(fy * fy + 0.0f));
-            float e = (float)exp((double)(r * -5.0f));
-            float a = r * 300.0f;
-            float c1 = (float)cos((double)a) * 32.0f * e;
-            float s1 = (float)sin((double)a) * 32.0f * e;
-            float b = (fy + 0.0f) * 300.0f * 0.5f;
-            float c = (0.0f - fy) * 280.0f * 0.5f;
-            BYTE du = (BYTE)(int)c1, dv = (BYTE)(int)s1;
-            du = (BYTE)(du + (BYTE)(int)((float)cos((double)b) * 16.0f));
-            dv = (BYTE)(dv + (BYTE)(int)((float)sin((double)b) * 16.0f));
-            du = (BYTE)(du + (BYTE)(int)((float)cos((double)c) * 7.0f));
-            dv = (BYTE)(dv + (BYTE)(int)((float)sin((double)c) * 7.0f));
-            row[x * 2] = du;
-            row[x * 2 + 1] = dv;
-        }
-    }
-    if (gfx_unlock(s) < 0) {
-        gfx_release(s);
-        return 0;
-    }
-    surface_reset(&self->base);
-    self->base.surface = s;
-    self->base.width = actual_width;
-    self->base.height = actual_height;
-    self->format = GFX_FMT_BUMP;
-    fit(width, self->base.width, &self->reqWidth);
-    fit(height, self->base.height, &self->reqHeight);
-    memcpy(self->name, "WATERBUMPMAP", sizeof "WATERBUMPMAP");
     return 1;
 }
 

@@ -87,12 +87,8 @@ void effect_mgr_destroy_removed(void *mgr) { assert(mgr == g_effectMgr); ++effec
 void effect_mgr_destroy_removed(struct EffectMgr *mgr) { assert(mgr == g_effectMgr); ++effect_ends; }
 #endif
 void error_msg(const char *text, int flags) { (void)text; (void)flags; abort(); }
-int32_t mat4_perspective_lh(float *m, float fov, float aspect, float near_z, float far_z)
-{ (void)m; (void)fov; (void)aspect; (void)near_z; (void)far_z; abort(); return -1; }
 void perf_begin(int phase) { (void)phase; }
 void perf_end(int phase) { (void)phase; }
-int c3d_device_check_lost(struct C3dDevice *device) { (void)device; abort(); return 0; }
-void c3d_device_on_surfaces_lost(struct C3dDevice *device) { (void)device; abort(); }
 int c3d_device_show_frame(struct C3dDevice *device, char vsync) { (void)device; (void)vsync; abort(); return 0; }
 void c3d_device_save_frame(struct C3dDevice *device) { (void)device; abort(); }
 void perf_frame_end(struct Renderer *renderer) { (void)renderer; abort(); }
@@ -161,8 +157,6 @@ void gfx_set_texture(int stage, gfx_surface *surface)
     bound_surfaces[stage] = surface;
     word(3); word(stage); word(surface ? surface->id : 0);
 }
-void gfx_set_transform(int which, const struct GfxMatrix *matrix)
-{ word(4); word(which); bytes(matrix, sizeof *matrix); }
 void gfx_draw(int primitive, int kind, const void *vertices, int count, const WORD *indices, int index_count)
 {
     assert(count > 0 && (count <= 4 || capture_projection) && (!index_count || indices));
@@ -198,8 +192,6 @@ void renderer_world_view(const struct Renderer *renderer, const float *view, str
 }
 int gfx_begin_scene(void) { abort(); }
 void gfx_end_scene(void) { abort(); }
-void gfx_set_light(const float *dir, const float *diffuse, const float *ambient)
-{ (void)dir; (void)diffuse; (void)ambient; abort(); }
 gfx_surface *gfx_create_surface(int w, int h) { (void)w; (void)h; abort(); }
 int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT *srcRect, int flags)
 { (void)dst; (void)dstRect; (void)src; (void)srcRect; (void)flags; abort(); }

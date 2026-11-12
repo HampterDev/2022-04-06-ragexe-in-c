@@ -2,11 +2,10 @@
 #ifdef TEXT_BACKEND_GDI
 #include "render/cdc.h"
 #include "render/textdc.h"
-#include "render/gfx.h"
 #include "core/layout.h"
 
 /* The GDI text backend (render/text_backend.h): bitmaps are DIB sections in a memory DC, text DCs
-   are a bitmap's DC or a surface's, and GDI draws and measures. */
+   are a bitmap's DC, and GDI draws and measures. */
 
 STATIC_ASSERT(text_dc_background_modes, TEXT_DC_TRANSPARENT == TRANSPARENT && TEXT_DC_OPAQUE == OPAQUE);
 
@@ -100,31 +99,11 @@ struct TextDC *text_dc_construct(struct TextDC *self, struct DcBitmap *bitmap)
     return self;
 }
 
-struct TextDC *text_dc_from_surface(struct TextDC *self, gfx_surface *surface)
-{
-    *self = (struct TextDC){0};
-    if (surface) {
-        gfx_addref(surface);
-        self->surface = surface;
-        if (gfx_get_dc(surface, &self->state.hdc) < 0)
-            self->state.hdc = NULL;
-        text_dc_prepare(self);
-    }
-    return self;
-}
-
 void text_dc_destruct(struct TextDC *self)
 {
-    if (self->state.hdc) {
-        if (self->state.oldFont)
-            SelectObject(self->state.hdc, self->state.oldFont);
-        if (self->surface)
-            gfx_release_dc(self->surface, self->state.hdc);
-    }
-    if (self->surface)
-        gfx_release(self->surface);
+    if (self->state.hdc && self->state.oldFont)
+        SelectObject(self->state.hdc, self->state.oldFont);
     self->state.hdc = NULL;
-    self->surface = NULL;
     self->state.oldFont = NULL;
 }
 
@@ -199,5 +178,11 @@ int text_dc_font_ascent(struct TextDC *self, FontHandle font)
 void text_dc_text_out_plain(struct TextDC *self, int x, int y, const char *s, int len)
 {
     TextOutA(self->state.hdc, x, y, s, len);
+}
+
+void text_dc_text_extent_plain(struct TextDC *self, const char *s, int len, SIZE *out)
+{
+    if (!self->state.hdc || !s || len <= 0 || !GetTextExtentPoint32A(self->state.hdc, s, len, out))
+        out->cx = out->cy = 0;
 }
 #endif

@@ -84,7 +84,10 @@ __declspec(allocate(".CRT$XCU")) void (*scene_defaults_entry)(void) = scene_defa
 #else
 __attribute__((constructor)) static void scene_defaults(void)
 {
+#ifndef __APPLE__
+    /* no window; macOS keeps the client's window, hidden (scene_app_hidden.c) */
     setenv("SDL_VIDEODRIVER", "offscreen", 0);
+#endif
     setenv("SDL_AUDIODRIVER", "dummy", 0);
     setenv("RAGEXE_VSYNC", "0", 0);
 }
@@ -495,9 +498,10 @@ static int write_counters(const char *name)
                  "{\n  \"frame\": %u,\n  \"draws\": %u,\n  \"draw_calls\": %u,\n  \"primitives\": %u,\n"
                  "  \"states_sent\": %u,\n  \"states_skipped\": %u,\n  \"texture_binds\": %u,\n"
                  "  \"vertex_bytes\": %u,\n  \"texture_bytes\": %u,\n"
-                 "  \"draw_scene_ms\": %.3f,\n  \"view_render_ms\": %.3f\n}\n",
+                 "  \"draw_scene_ms\": %.3f,\n  \"view_render_ms\": %.3f,\n  \"present_ms\": %.3f\n}\n",
                  S.frame, c->draws, c->drawCalls, c->prims, c->statesSent, c->statesSkipped, c->texSets,
-                 c->vertexBytes, c->textureBytes, (double)c->drawSceneNs / 1e6, (double)c->viewRenderNs / 1e6) > 0;
+                 c->vertexBytes, c->textureBytes, (double)c->drawSceneNs / 1e6, (double)c->viewRenderNs / 1e6,
+                 (double)c->presentNs / 1e6) > 0;
     if (fclose(file))
         ok = 0;
     return ok;

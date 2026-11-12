@@ -4,7 +4,8 @@ REM build.bat dbg      -> build\ragexe_dbg.exe  (optimized, with build\ragexe_db
 REM build.bat freetype -> build\ragexe_ft.exe   (text through FreeType instead of GDI, as off
 REM                       Windows; with dbg -> ragexe_dbg_ft.exe)
 REM build.bat check    -> also checks the library table on the objects it built
-REM                       (tools\check_libraries.bat; combines with the other words)
+REM                       (tools\check_libraries.bat) and that the shaders' headers match their
+REM                       sources (tools\shaders\check.py); combines with the other words
 REM build.bat libs     -> build\ragexe_libs.exe: the same objects, archived per library of
 REM                       tools\libraries.txt (build\obj_libs\*.lib, next to the variant's object
 REM                       folder) and linked as app's objects plus those libraries; combines with
@@ -97,7 +98,7 @@ if defined LIBS (
 >> "%BUILD%\%OUT%.objs.rsp" echo "%ROOT%res\app.res"
 
 echo [3/3] Linking...
-set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib ws2_32.lib winmm.lib d3d9.lib gdiplus.lib imm32.lib ole32.lib uuid.lib"
+set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib ws2_32.lib winmm.lib gdiplus.lib imm32.lib ole32.lib uuid.lib"
 link /nologo libcmt.lib @"%BUILD%\%OUT%.objs.rsp" ^
  "%VDIR%\imglibs.lib" "%VDIR%\lua514.lib" "%VDIR%\yyjson.lib" "%VDIR%\crijndael.lib" "%VDIR%\font_backend.lib" "%VDIR%\jpeg.lib" ^
  "%VDIR%\dr_mp3.lib" "%VDIR%\SDL3-static.lib" setupapi.lib version.lib shlwapi.lib ^
@@ -109,4 +110,6 @@ echo Done -^> "%BUILD%\%OUT%.exe"
 if defined CHECK (
   call "%ROOT%tools\check_libraries.bat" "%OBJ%"
   if errorlevel 1 ( echo *** LIBRARY CHECK FAILED *** & exit /b 1 )
+  python "%ROOT%tools\shaders\check.py"
+  if errorlevel 1 ( echo *** SHADER CHECK FAILED *** & exit /b 1 )
 )

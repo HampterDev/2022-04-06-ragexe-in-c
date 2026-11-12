@@ -258,7 +258,6 @@ void game_mode_on_update(struct Mode *mode)
     }
     if (g_activatedNow != 0) {
         g_activatedNow = 0;
-        c3d_device_restore_surfaces(&g_3dDevice);
         ui_window_mgr_invalidate_all(&g_windowMgr);
     }
     weather_process(&g_weather);
