@@ -57,6 +57,28 @@ note    Texels as pure logic (render/texel_convert.c): the client's texel format
 uses    base
 paths   render/texel_convert.* render/gfx_format.h
 
+library draw-modes
+note    The ways the client draws, as data (render/draw_modes.c): each mode's texture-stage
+        combination, blending, depth test and write, alpha test, fog and sampling, the effect
+        presets' combinations, and Direct3D 9's blend factors as a GPU's. Uses nothing else of the
+        client.
+uses
+paths   render/draw_modes.*
+
+library vertex-fog
+note    The original's vertex fog as pure logic (render/vertex_fog.c): the step of fog a vertex keeps
+        for its rhw, and the table of the rhw at which the steps begin that the quad shader searches
+        to find the same step to the bit. Uses nothing else of the client.
+uses
+paths   render/vertex_fog.*
+
+library font-faces
+note    The font finder's rules as pure functions (render/font_faces.c): which family names a face
+        answers to, how a request ranks the installed faces, a face's family names from its name
+        table, and where a font the Windows registry lists is. Uses nothing else of the client.
+uses    base
+paths   render/font_faces.*
+
 library platform
 note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
         (platform/audio_sdl.c), crash dumps, the text-input editor and IME
@@ -66,6 +88,13 @@ uses    base display-options
 paths   platform/
         core/client_path.* core/file_util.* core/text_encoding.* core/text_tokens.c core/text_util.*
         core/window_state.*
+
+library font-finder
+note    The installed fonts, sorted for a request by font-faces' rules: read by the client from the
+        Windows registry's fonts or the font folders (render/font_match_scan.c), or found by
+        Fontconfig (render/font_match_fc.c).
+uses    platform font-faces
+paths   render/font_match*
 
 library fileio
 note    Game files and GRF archives, resource paths and names, the table and message-string readers
@@ -79,7 +108,7 @@ library render
 note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
-uses    fileio display-options texel-convert
+uses    fileio display-options texel-convert draw-modes vertex-fog font-finder
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 

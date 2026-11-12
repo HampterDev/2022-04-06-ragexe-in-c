@@ -401,7 +401,6 @@ void rag_project_master(struct RagEffect *self)
         return;
     at = self->master->pos;
     memset(&screen, 0, sizeof(screen));
-    screen.specular = 0xff000000;
     renderer_project_vertex(g_renderer, &at, view, &screen);
     self->screen_pos.x = screen.x;
     self->screen_pos.y = screen.y;

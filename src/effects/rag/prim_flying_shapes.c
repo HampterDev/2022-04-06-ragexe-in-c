@@ -90,8 +90,8 @@ void prim_pyramid_render(struct EffectPrim *self, const float *view)
         prim_set_vertex(&tri->v[2], view, p[2], self->argb, u, 1.0f);
         tri->texture = self->textures[0];
         if (self->records.pyramid.style == PYRAMID_STYLE_FLICKER) {
-            tri->src_blend = GFX_BLEND_SRCALPHA;
-            tri->dest_blend = GFX_BLEND_ONE;
+            tri->src_blend = DRAW_BLEND_SRCALPHA;
+            tri->dest_blend = DRAW_BLEND_ONE;
             renderer_add_triangle(g_renderer, tri, 5);
         } else {
             renderer_add_triangle(g_renderer, tri, 1);

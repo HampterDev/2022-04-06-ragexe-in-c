@@ -14908,3 +14908,277 @@ whole suite (`tests\build.bat`: 317 tests, and the 6 oracle tests). Not run: And
 and macOS (Metal), which were not built, so the macOS harness change has not been compiled either;
 the MSL, which no Metal compiler has seen; fullscreen; the login screen's serial number, which no
 scene shows; a flush that fails; and a game played by hand.
+
+## Pipelines instead of render states (2026-11-12)
+
+Phase 3 of `plans/gpu-renderer.md`: the client draws in a fixed set of draw modes instead of setting
+Direct3D 9's render and texture stage states, the fog is computed on the GPU, and all text is
+FreeType's.
+
+- **Draw modes.** `render/draw_modes.c` (the library `draw-modes`, data and two pure functions)
+  names the 28 ways the client draws: 21 for the lists of `renderer_draw_lists` (the ground with and
+  without its lightmap, both halves of two-pass alpha, three effect lists), and one each for the
+  interface's composited windows, the frame-time overlay, the texel probe, blits and three kinds of
+  clear. A mode is one combination of the stages' combination (`enum DrawCombine`: what the two
+  texture stages make of the textures and the vertex colour), blending (D3DBLEND factors),
+  depth test and write, alpha test and reference, fog, each stage's addressing and stage 0's
+  filtering, and the targets it draws into (the screen, its copy, a render target's texture, and
+  meshes). The values are the states the Direct3D 9 client set before each list, which
+  `test_draw_modes` checks by replaying its `renderer_draw_lists` (02fc9e5e) as a list of state
+  changes, with and without two-pass alpha; the probe's against the states the device started
+  with, and the blits' and clears', which were no draws under Direct3D 9, for what they copy and
+  write. The effect presets that the client never names are numbers, which the quad shader's
+  cases evaluate (`draw_modes.h` lists what each makes). `render/gfx.h` lost `GFX_RS_*`, `GFX_TSS_*`,
+  `GFX_TOP_*`, `GFX_TA_*`, `GFX_CMP_*`, `GFX_ADDRESS_*`, `GFX_FILTER_*`, `GFX_MIPFILTER_*`,
+  `GFX_FOG_NONE`, `gfx_set_render_state`, `gfx_get_render_state`, `gfx_set_stage_state` and
+  `gfx_default_states`, and gained `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog`; the blend
+  factors' names are `DRAW_BLEND_*`, which `effects/rag/effect_prim_draw.c`'s own copies of four of
+  them gave way to. `render/crenderer.c` sets a mode before each list in place of its 78
+  render-state and 127 stage-state calls, its `HRS`, `HTSS` and `get_rs`, and
+  `renderer_set_blend_stages`. The other callers set theirs: the composited windows
+  (`render/render_clients.c`) the mode the frame's last list left, without depth and fog; the
+  frame-time overlay (`diag/perf.c`) its texture as it is, blended; the texel probe
+  (`render/c3ddevice.c`) its pattern times the vertex colour, which finds the half-texel offset the
+  client had (the states the device started with left stage 1 adding white, so the probe found
+  nothing and kept its default of the same offset). Quads are never culled, as every quad list drew
+  them; a mesh's draw says its cull mode (`GfxMeshDraw.cull`, which `RPMeshDraw.cull` was).
+- **The effect lists.** The three lists of blended effect quads take each quad's D3DBLEND factors
+  and texture-stage preset from its effect file, as the Direct3D 9 client set them per quad
+  (`gfx_set_effect`); a preset that is none keeps the one before it, and 2 is drawn as 1, whose
+  states it set alike (`draw_effect_combine`); `gfx_set_effect` given a number that is no
+  combination keeps the one before and still takes the factors, as the Direct3D 9 client's stage
+  states stayed while its blend states changed. The factors are taken whole: a number whose low
+  byte is a factor, such as 0x105, is no factor and blends as ONE, as the device drew a number it
+  did not know, and ends a batch as any other change of number did (the device had kept only the
+  low byte). The 16 presets are combinations in the quad shader,
+  chosen by the draw's record; `test_gfx_gpu` draws each and compares its colour and alpha with
+  Direct3D 9's fixed function evaluating the states `renderer_set_blend_stages` set for it, within a
+  step. A blend's factors are taken as Direct3D 9 took them (`draw_blend_factors`): a source factor
+  of BOTHSRCALPHA or BOTHINVSRCALPHA sets the destination's too, BLENDFACTOR is ONE and
+  INVBLENDFACTOR ZERO (the blend factor being white), and on the screen, whose alpha is 1 as an
+  X8R8G8B8 target's was, DESTALPHA is ONE, INVDESTALPHA and SRCALPHASAT ZERO. The GPU backend had
+  left the destination factor of BOTHSRCALPHA as given and blended BLENDFACTOR and INVBLENDFACTOR as
+  ONE; effect files that use them now blend as under Direct3D 9. Presets 5 to 15 read the second
+  texture at the first texture's coordinates, the effect quads having one set; under Direct3D 9
+  their stage 1 read coordinate set 1, which those vertices lack. Whether Direct3D 9 read (0, 0)
+  there could not be settled with a capture: no effect file of the game's data uses those
+  presets (the 2,694 STR files of `data.grf` and the 183 of `revel.grf` use presets 0 and 1 only).
+- **Pipelines made once.** The device makes every mode's pipelines when it has the screen's
+  samples and depth (`gfx_create_zbuffer`): each mode for each kind of target it draws into, flat
+  and not (alpha to coverage stays for alpha-tested draws without blending that are not flat), its
+  meshes in each cull mode, and for the effect modes one pipeline for each pair of the eight blend
+  factors the screen tells apart, tested depth or none; the clears that write depth draw into the
+  screen alone, the one target with depth. Modes that differ in nothing a pipeline holds share one:
+  147 pipelines, 148 with multisampling, made in about 3 ms on the GTX 970 (with the driver's
+  shader cache filled). Whether a draw smooths its alpha test's edges by alpha to coverage is one
+  rule (`alpha_to_coverage`), for its pipeline and its record alike. The samplers are made once as
+  well (six: wrapped or clamped, filtered with mipmaps, linearly or by the nearest texel). The
+  pipeline cache keyed by the render states is gone, and so are the points, lines and fans of
+  `gfx_draw`, which nothing drew: every quad is a triangle list in one vertex layout, and one quad
+  shader (`quad.hlsl`, which `fixed.hlsl` was) no longer evaluates Direct3D 9's stage operations
+  and arguments.
+- **The same draws.** Quads are batched until what they are drawn with changes: the mode's
+  values, the effect's factors as given and its preset, and the fog, so two lists drawn alike batch
+  together as their identical states did under Direct3D 9, and a state that changed and changed back
+  between two lists still ends the batch. Every count of the scene captures is as before. A strip
+  becomes a triangle list in one order wherever it is drawn (`batch_strip_list`): the odd triangles
+  as (t + 1, t, t + 2), the order a GPU draws a strip in and the one the batched strips had; the
+  strips the device drew itself (blits, clears, a strip too long for the batch) had (t, t + 1,
+  t + 2), whose interpolation can differ in the last bit. A mesh draw counts in `draws` and `prims`
+  once it is recorded, not before.
+- **Fog in the shaders.** The fog is the frame's (`gfx_set_fog`: on, colour, start and end as
+  shares of the view depths 10 to 1,500), computed in the vertex shaders and interpolated across
+  the triangle as Direct3D 9 interpolated the vertex fog. For the meshes it is the Direct3D 9
+  client's mesh shader's, from the view depth. For the quads it is, to the bit, the step in 1/255
+  rounded down that the client computed on the CPU for every queued vertex from its rhw
+  (`rp_vertex_fog_alpha`, gone) and put in its specular alpha. A shader cannot repeat that
+  computation exactly (Vulkan lets a division be 2.5 units in the last place off, and compilers
+  fuse), so the device makes, once a frame for each fog, the table of the rhw at which each step
+  begins (`render/vertex_fog.c`, the library `vertex-fog`, a binary search per step over the float
+  bit patterns of the CPU's own formula), and the quad shader finds a vertex's step with eight
+  comparisons, which are exact. A vertex in world coordinates (water, Granny models) takes the rhw
+  the CPU's projection gave it, as the original did, not the GPU's depth. `test_vertex_fog` checks
+  the table against the original's function, word for word, for 12 million rhw (every step's
+  first and its neighbours, every power of two, a sweep of the views' depths and a million
+  random, for seven fogs); `test_gfx_gpu` draws white quads into black fog at every step's first
+  rhw and the one before it, pre-transformed and in world coordinates, for two fogs, and reads the
+  original's step back from each. The specular colour, which only carried the fog, is gone from
+  the vertices (`TexDrawVertex`, `RPTwoTexVertex`, the cooldown pie's
+  `PieVertex`): `GFX_VTX_TEX1` is 28 bytes, `GFX_VTX_TEX2` 36. `GfxWorldView` lost its fog, the
+  device's caps `vertexFog`, the renderer `fogVertexCaps` and `fogDirty`, and `g_fogDensity`,
+  `g_fogVertexMode` and `g_fogUseRange`, which only fed Direct3D 9's fog states, went with
+  `renderer_do_fog_`; the fog table's density (`fogParameterTable.txt`), which only fed
+  `g_fogDensity` and which linear vertex fog never used, is no longer read. The unused `struct
+  SkyBox` (`resources/flare.h`), whose size asserts held `TexDrawVertex` at 32 bytes, went too.
+- **FreeType on every platform, as GDI chose and sized.** The Windows client draws its text with
+  FreeType, as the other platforms do. `render/text_gdi.c`, `render/fonts.c`, `TEXT_BACKEND_GDI`,
+  the GDI+ helper library `vendor/font_backend` that only `render/fonts.c` used (with
+  `render/font_family.h`, `gdiplus.lib` and the tests `font_cache`, `font_cache_system`,
+  `font_family` and `font_family_system`), the POSIX stand-ins for GDI's handle types and the
+  `freetype` switch of `build.bat` and `tests\scenes\build.bat` are gone; `vendor\build_vendor.bat`
+  always builds FreeType. With one backend left, its interface went too: `render/text_backend.h`
+  and `render/text_freetype.c` (the text DC is `render/textdc.c`'s, which draws with the fonts
+  directly; a bitmap's pixels are `render/cdc.c`'s), the placeholder `struct TextBitmapState`, the
+  wrappers around the font functions and around the plain-text calls, and
+  `dc_bitmap_fill_triangle` with `ui_window_fill_triangle`, which nothing called. The rule for the
+  text: on Windows, draw what the GDI client drew on the same machine with the same fonts.
+  - The fonts are GDI's: the font finder (the library `font-finder`, `render/font_match_scan.c`)
+    reads those the registry lists for the machine and for the user (`SOFTWARE\Microsoft\Windows
+    NT\CurrentVersion\Fonts` under `HKEY_LOCAL_MACHINE` and `HKEY_CURRENT_USER`). It had scanned
+    `%WINDIR%\Fonts` alone, so a font installed for the user, where Windows 10 1809 and later put a
+    font installed by double-click (a player's own `gulim.ttc`), was not found. A face answers to
+    its family name in English and in the display language (the name table's name 1, which GDI
+    matches; the library `font-faces` holds these rules as pure functions), and a face is asked
+    for by its display-language name first, then its English one, as GDI's font cache asked: the
+    finder had asked for the English name alone, so on a Japanese Windows face 2 was the
+    fixed-pitch MS Gothic where GDI drew the proportional MS PGothic. A script's fallback is the
+    first of its Windows fonts that is installed, whatever it covers, as GDI's cache took it; the
+    first that covered the script's language had been taken, so Han on a Windows without Gulim fell
+    to Malgun Gothic where GDI drew it in MS Gothic.
+  - The sizes are GDI's: a positive height is the cell, sized by the face's own metrics, through
+    its VDMX table where it has a group for the Windows ANSI subset (the first size that tall, or
+    the size before the first taller; a group made for all glyphs, as Tahoma's, GDI leaves unread)
+    and otherwise the largest em whose rounded Windows ascent and descent fit, with the cell's
+    ascent rounded and the descent the rest. The em is the cell only for a free font that stands in
+    for a family whose em is its cell (Gulim, MS Gothic, SimSun, MingLiU). Before, every face drawn
+    for a CJK charset or a CJK script that was not the family asked for got the cell as its em:
+    without Gulim, Hangul and symbols such as ★ were drawn in Malgun Gothic a third larger than GDI
+    drew them (a 12-pixel em where GDI's was 9); the VDMX table was read only for exact heights
+    (Verdana at 15 pixels had a 15-pixel cell where GDI's is 14) and in Tahoma's group for all
+    glyphs too (Tahoma at 16 and 20 pixels had a 12- and a 15-pixel em where GDI's are 13 and 16).
+  - The hinting is GDI's: a Windows family is hinted by its own instructions, a free font standing
+    in by FreeType's autohinter. Before, a face was hinted by its own only when FreeType's name for
+    its family was the one asked for, so Malgun Gothic and the overlay's Lucida Console (asked for
+    as the generic monospace) went through the autohinter. The overlay asks for Lucida Console at
+    an em of 12, fixed pitch, as it asked GDI; without it, for Courier New, which GDI gives that
+    request, then a fixed-pitch stand-in.
+  - Against GDI, on this machine (Windows 10 without Gulim and MingLiU, 340 faces, 57 installed
+    for the user), `test_font_system` makes 242 requests the client makes of FreeType and of GDI:
+    every face GDI found by name, at 10 to 24 pixels, the scripts' fallbacks, the overlay and the
+    embedded faces. Each is drawn in GDI's face at GDI's ppem, ascent and descent; the advance
+    widths are GDI's but for MS PGothic's kana at odd sizes (11 to 21 pixels, and 22), drawn from
+    its embedded bitmaps, which GDI advances some by the bitmap's width and some by the outline's,
+    by a rule not found (FreeType takes the bitmap's: a pixel off on some characters). A
+    full-width character of a fixed-pitch face advances two half-width ones, as GDI keeps it: MS
+    Gothic's Han at 11 pixels had advanced 11 where GDI's advance 12. A line drawn by both differs in 0 to 43 pixels in Arial, Tahoma, Verdana,
+    MS Gothic, SimSun, Malgun Gothic and Lucida Console (479 pixels in 85 of 211 lines), single
+    pixels FreeType's rasterizer sets or leaves where GDI did not, and in up to 274 in MS PGothic's
+    kana (1,329 pixels in 8 of 15 lines). The finder reads the 340 faces in 65 to 90
+    ms at startup. The scene `hangul_text` (Hangul, symbols and kana in the chat, the names and
+    what the actors say) differs from the GDI client's capture in 483 pixels, all in its two runs
+    of kana but one of "Base Lv." and one of a symbol, where the client built with FreeType
+    before differed in 9,563.
+  - Not as GDI drew it: a face GDI did not find by name was its font mapper's choice for the
+    charset (on this machine Ebrima for MingLiU's Chinese charset), which the client does not
+    imitate; it takes the first installed font that covers the charset's language. The embedded EOT
+    faces are drawn in the font GDI drew them in, Arial at a 13-pixel em, but 1-bit, where GDI
+    smoothed them as the system smooths text. The serial number was drawn in a new DC's default
+    font, GDI's System, a raster font that is not among the registry's fonts; it is drawn in face
+    0. Not checked: a Korean Windows with Gulim, a Japanese Windows (face 2 as MS PGothic), a
+    Chinese Windows.
+
+The tests that stubbed the states (`renderer_storage`, `perf_overlay`) stub the modes; the dead
+`RENDERER_BASELINE` branches of `test_renderer_storage.c`, which nothing defined, are gone, and so
+are the stubs nothing compiled in a test read (`g_gfxCaps` in `renderer_storage`, `g_fogNear` and
+`g_fogFar` in `projection`, `effect_trace` and `particle_pools`, the font stubs of
+`canvas_owner`). The frame-time overlay's `dcGets` counter ("dc"), which counted `gfx_get_dc`
+until phase 2 removed it and stayed 0 since, is gone.
+`effect_trace`'s digest is 027d7d81b571a862: the binary of the commit before gives 356d458afcc7debb,
+and its trace is this one line for line but for the 8,865 lines of new effects, whose effect is
+4,096 bytes smaller and its bytes' hash another. `cooldown_geometry` compares its fixture's 32-byte
+vertices without the specular word, which is 0 in every one. `test_gfx_gpu` culls meshes instead of
+quads; checks the fog (the quads' at every step, exactly, the end at the start, a mesh within a
+step, a mode without fog, the fog off), the effect modes' blending, the presets, two textures, the
+ground's meshes with the lightmap inside and outside its coordinates and without it, two-pass
+alpha's solid and fringe passes, an effect mode that tests depth and writes none, a composite into
+a render target's colour and alpha, a clear of colour and depth inside a pass, the overlay and
+effect overlay lists drawn as one batch, a factor taken whole, a mode that does not draw into a
+render target and the mode counters. It reads the texel centres from a texture drawn three pixels
+to a texel, on the diagonal the quad's triangles do not share: the mode it draws in filters
+anisotropically, as every mode that filters linearly does, and anisotropic filtering is the
+driver's own where a pixel covers one texel or, multisampled, lies on both triangles (Mesa's
+lavapipe mixes up to 8 % of the neighbours in there, NVIDIA's driver reads the texel alone). The
+presets stay within a step of Direct3D 9's stages evaluated exactly: the GPU's sampling and
+arithmetic are its own (preset 13's blue is 143 where the exact value is 143.56). `test_gfx_batch`
+checks the strips' order, `test_vertex_fog` the fog's table. The text has its tests on every
+platform where FreeType is built: `font_faces` (the finder's rules: languages, names in English
+and the display language, the sort, name records with broken UTF-16, registry paths),
+`font_finder` (the scan over fonts the test makes, `tests/font_fixture.c`: families, weights,
+slants, names in Japanese, fixed pitch, languages, a collection, folders and their depth, broken,
+truncated, empty and unnamed files, a collection that claims 2,000 fonts, odd names, every
+allocation failing in turn), `font_cache` (`render/fonts_ft.c` over made fonts: a face by its
+first and second name, cell and em sizes, own hints and the autohinter, the Hangul and fixed-pitch
+fallbacks, a font without metrics, every allocation failing in turn and 32 caches made and
+destroyed without an allocation left) and `text_freetype` (the system's fonts, now on Windows
+too); on Windows `font_system` compares with GDI as the text bullet above says, finds every font
+installed for the user (57 of 57 here) and makes and destroys 32 caches without a handle or an
+allocation left.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio; phase 2's scene harness and
+this one's run one after the other:
+
+- With the modes, and again with the fog in the shaders, the 12 captures of the scene set, the four
+  of `window_resize` and the 16 shadow views were identical to phase 2's, and the scene set within
+  one step of the goldens (`build/ref`) as before; the five shadow views that differed from the
+  reference along shadow edges differ in the same pixels.
+- No scene of the set and no shadow view has fog (the frozen savedata has it off; a build with fog
+  forced off captures the same pixels). A scene outside the set enters `manuk`, which the fog table
+  fogs, with the fog option on and six Porings at several distances, at camera distances 488, 800
+  and 1,500 (the fog changes 1.36 million of their 1.44 million pixels): its fog is phase 2's to the
+  pixel, and within one step of the Direct3D 9 reference (2, 9 and 0 pixels differ by one), the
+  fog's table giving the same pixels as the division it replaced.
+- With FreeType's text, the scene set, `window_resize`, the 16 shadow views and the fog scene differ
+  from phase 2's in their text alone (the counts below), and the client after the text's fixes
+  captures them to the pixel as before them: their text is Arial's, which was chosen and sized as
+  GDI did already. Against the Direct3D 9 client of 02fc9e5e built with
+  `build.bat freetype` (`build/ref/freetype`): the scene set within one step (2 to 37 pixels
+  differ by one, `iz_int03_enter`, `keyboard` and `windows_open` identical; the reference's harness
+  cannot resize, so it has no `window_resize`), the fog scene within one, in the same pixels as
+  before. Against the GDI goldens they differ where the reference built with FreeType does, in its
+  text: 4 pixels in most scenes (one of "Base Lv." in the basic information window and three in
+  the chat window's welcome line), 3 in `iz_int03_enter`, 8 in `keyboard`, 9 in `windows_open`
+  and 16 in `prontera_crowd` (the names over the actors), by up to 255: single pixels of glyphs that
+  FreeType's hinting of the same fonts sets or leaves where GDI's did not. The 16 shadow views
+  differ from phase 2's in their 3 or 4 text pixels alone, and from the reference built with
+  FreeType in the same five views and pixels along shadow edges as phase 2 from the GDI reference.
+- `hangul_text` (Hangul, symbols and kana, which the interface's Arial lacks): against the GDI
+  client 483 pixels, all in the two runs of kana in MS PGothic but one of "Base Lv." and one of a
+  symbol; the Direct3D 9 client built with FreeType, whose text the client drew before these
+  fixes, differs from GDI in 9,563 pixels, its Hangul and symbols in Malgun Gothic a third too
+  large. Phase 2's capture
+  is the GDI reference's to the pixel.
+- With multisampling (`RAGEXE_MSAA=4`), the scene set, `window_resize` and `hangul_text` differ
+  from phase 2's in the same text pixels as without it, and the scene set and `window_resize` are
+  the client's before the text's fixes to the pixel.
+- The frame-time overlay's text is compared with GDI's by `test_font_system` (Lucida Console at a
+  12-pixel em, a line of the overlay's numbers: GDI's ppem, ascent, descent and widths, 2 pixels
+  differ); a capture of the overlay is no comparison, its numbers being timings.
+
+Counters (one run each, phase 2 and phase 3): draws, draw calls, primitives and texture binds are
+the same in every capture (`prontera_crowd` 1,174 draws of 1,954 calls, `camera_level_view` 3,345).
+`states_sent` and `states_skipped` gave way to `modes_sent` and `modes_skipped`, the
+`gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what draws are made with and
+those that did not: 15 and 6 a frame in `camera_level_view` (706 and 287 states before), 19 and 782
+in `prontera_crowd` (154 and 1,667), whose skipped calls are its effect quads'. `vertex_bytes` is 4
+bytes less a vertex (`prontera_crowd` 100,336 instead of 113,336). The CPU times were not measured
+again.
+
+Linux, in WSL with Mesa's lavapipe: the CMake client and the scene harness build, and
+`test_draw_modes`, `test_vertex_fog`, `test_font_faces`, `test_font_finder`, `test_font_cache`,
+`test_text_freetype` and `test_gfx_gpu`, with and without multisampling, pass (the fog's steps are
+read off the first row and column, of which the viewport holds half: lavapipe covers only the
+samples inside it). Before the fixes of the text, the fog's table and the strips, the Linux scene
+set and `window_resize` captured the same pixels as phase 2's Linux captures, with the same draws,
+calls, primitives and binds (Linux had FreeType's text before); they were not captured again after
+them. `test_gfx_gpu` also passes on Windows under the Vulkan validation layer with synchronization
+validation and with SDL's debug checks (`RAGEXE_GPU_DEBUG=1`), without a message.
+
+`build.bat check` passes (the include check over 1,824 files in 28 libraries, the link check over
+1,143 objects, the shaders' check), and so does the whole suite (`tests\build.bat`: 320 tests, and
+the 6 oracle tests). Not run or not checked: Android and macOS, which were not built, and the MSL,
+which no Metal compiler has seen; multisampled captures against the reference; fullscreen; the
+text on a Korean Windows with Gulim, on a Japanese Windows (face 2 as MS PGothic, by its name in
+the display language) and on a Chinese one (SimSun, MingLiU by their names in Chinese), which
+`test_font_system` would compare with GDI there; that the quads' fog test fails on the shader that
+divided (it was not run against it); and a game played by hand, in which the effects' presets and
+blend factors other than the scenes' would show.

@@ -65,20 +65,6 @@ void ui_window_fill_round_rect(struct UIWindow *self, int x, int y, int width,
     ui_window_draw_round_frame(self, x, y, width, height, colour);
 }
 
-void ui_window_fill_triangle(struct UIWindow *self, int x1, int y1, int x2, int y2,
-                                      int x3, int y3, COLORREF colour)
-{
-    POINT pts[3];
-
-    pts[0].x = x1;
-    pts[0].y = y1;
-    pts[1].x = x2;
-    pts[1].y = y2;
-    pts[2].x = x3;
-    pts[2].y = y3;
-    dc_bitmap_fill_triangle(self->canvas, pts, colour);
-}
-
 void ui_window_draw_bitmap(struct UIWindow *self, int x, int y, struct BitmapRes *bitmap,
                                     int keep_alpha)
 {

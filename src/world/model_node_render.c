@@ -214,7 +214,7 @@ static void gpu_render(struct C3dNode *node, int version, const float *m, BYTE m
         }
         draw.draw.first = d->first;
         draw.draw.count = d->count;
-        draw.cull = d->twoSided ? GFX_CULL_NONE : cull;
+        draw.draw.cull = d->twoSided ? GFX_CULL_NONE : cull;
         uv_turn_matrix(x, draw.draw.uv);
         renderer_add_mesh_draw(g_renderer, renderer_mesh_pass(flags), &draw, t, NULL, key);
     }

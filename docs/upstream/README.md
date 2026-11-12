@@ -396,6 +396,9 @@ rule for data from outside, with a check in `main`'s packet-handler oracle, and 
 ## Renderer fixes after the switch to SDL's GPU API, 2026-11-12
 
 `custom` draws through `render/gfx_gpu.c` on every platform and no longer has the Direct3D 9
-backend (`render/gfx_d3d9.c`) `main` draws with. A fix `main` makes inside it has nowhere to land
-here; it goes below as not needed, with what `custom` does in its place. None has come yet. Fixes
-above `render/gfx.h` pick as before.
+backend (`render/gfx_d3d9.c`) `main` draws with, nor its GDI text (`render/text_gdi.c`,
+`render/fonts.c`): `custom` draws text with FreeType alone. A fix `main` makes inside them has
+nowhere to land here; it goes below as not needed, with what `custom` does in its place. None has
+come yet. Fixes above `render/gfx.h` pick as before, except that the render states `main`'s lists
+are drawn with (`render/crenderer.c`) are `custom`'s draw modes (`render/draw_modes.c`): a fix to
+them lands as a change of the modes.

@@ -169,8 +169,6 @@ int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, int flags)
     hr = create_environment(self, flags);
     if (hr < 0)
         gfx_close(self);
-    if (self->dev)
-        gfx_default_states(self);
     return hr;
 }
 
@@ -268,7 +266,7 @@ static const DWORD probe_pattern[16] = {
 static int probe_codes(struct C3dDevice *self, struct Surface *surf, float texW, float texH, unsigned *best)
 {
     const DWORD *pattern = probe_pattern;
-    struct Vertex { float x, y; DWORD z, rhw, diffuse, specular; float u, v; } v[4];
+    struct Vertex { float x, y; DWORD z, rhw, diffuse; float u, v; } v[4];
     struct gfx_lock lk;
     unsigned cols, rows, n, base, i, k;
     int bestScore = -0x400;
@@ -298,7 +296,6 @@ static int probe_codes(struct C3dDevice *self, struct Surface *surf, float texW,
                 v[k].z = 0x3727c5ac;
                 v[k].rhw = 0x3f7fff58;
                 v[k].diffuse = 0xffffffff;
-                v[k].specular = 0xffffffff;
             }
             v[0].x = x;        v[0].y = y;        v[0].u = u0; v[0].v = v0;
             v[1].x = x;        v[1].y = y + 4.0f; v[1].u = u0; v[1].v = v1;
@@ -357,19 +354,13 @@ int c3d_device_probe_texel_offset(struct C3dDevice *self)
     surface_construct_sys_mem(&surf, self->width, self->height);
     texture_init(&tex, 4, 4, 0);
     texture_upload_pixels(&tex, 0, 0, 4, 4, probe_pattern, 0, 0);
-    gfx_set_render_state(GFX_RS_ALPHATESTENABLE, FALSE);
-    gfx_set_render_state(GFX_RS_ALPHABLENDENABLE, FALSE);
-    gfx_set_render_state(GFX_RS_ZENABLE, FALSE);
-    gfx_set_stage_state(0, GFX_TSS_MINFILTER, GFX_FILTER_LINEAR);
-    gfx_set_stage_state(0, GFX_TSS_MAGFILTER, GFX_FILTER_LINEAR);
+    gfx_set_mode(DRAW_PROBE);
     gfx_set_texture(0, tex.base.surface);
 
     ok = probe_codes(self, &surf, (float)(unsigned)tex.base.width, (float)(unsigned)tex.base.height, &best);
     if (ok) {
         g_texelOffsetU = (float)(int)(best % 256) * (1.0f / 256.0f);
         g_texelOffsetV = (float)(int)(best / 256) * (1.0f / 256.0f);
-        gfx_set_stage_state(0, GFX_TSS_MINFILTER, GFX_FILTER_LINEAR);
-        gfx_set_stage_state(0, GFX_TSS_MAGFILTER, GFX_FILTER_LINEAR);
     }
     surface_reset(&tex.base);
     surface_reset(&surf);

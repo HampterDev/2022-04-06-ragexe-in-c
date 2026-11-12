@@ -36,7 +36,6 @@ void renderer_add_mesh_draw(struct Renderer *self, int pass, const struct RPMesh
                             struct Texture *texture1, float key);
 void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
 DWORD rp_fog_blend(DWORD argb);
-int rp_vertex_fog_alpha(float rhw);
 
 void renderer_destroy_all_rp_list(struct Renderer *self);
 

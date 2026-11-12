@@ -1,10 +1,10 @@
 # One renderer on SDL's GPU API
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
-resolution. Phase 2 is done on Windows. On Linux its unit test and scene harness have run in WSL with
-Mesa's lavapipe, but no one has played on it; the macOS and Android clients have not been built or
-run on it, and no Metal compiler has seen its shaders. Phases 3 to 7 are to do. File references
-drift as the code changes. Sizes are judgement, not measurement.
+resolution. Phases 2 and 3 are done on Windows. On Linux their unit tests and scene harness have run
+in WSL with Mesa's lavapipe, but no one has played on it; the macOS and Android clients have not
+been built or run on it, and no Metal compiler has seen its shaders. Phases 4 to 7 are to do. File
+references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
 
@@ -40,10 +40,14 @@ drift as the code changes. Sizes are judgement, not measurement.
 - **One backend behind `render/gfx.h`:** `render/gfx_gpu.c` on SDL's GPU API, Vulkan or Metal, on
   every platform (phase 2). It records a frame and submits it in one command buffer with one upload,
   through the shaders of `src/render/shaders` that `tools/shaders` compiles offline.
-- **The API is Direct3D 9's fixed function.** `GFX_RS_*` and `GFX_TSS_*` carry Direct3D 9's own
-  numbers; `gfx_gpu.c` keeps them per draw in a record that one fragment shader evaluates (texture
-  stages, alpha test, fog), with a pipeline per combination of the states pipelines hold.
-  Pre-transformed vertices (`GFX_VTX_TEX1/TEX2`, xyz-rhw) carry most of what is drawn.
+- **Draw modes, not render states** (phase 3). `render/draw_modes.c` names each way the client
+  draws: blending, depth test and write, alpha test, fog, the texture stages' combination and their
+  sampling, as the Direct3D 9 client set them for each list. The device makes every mode's
+  pipelines when it starts; the effect lists' quads carry their own D3DBLEND factors and
+  texture-stage preset, and their modes have a pipeline for each pair of the screen's blend
+  factors. One quad shader runs the stage combinations, chosen by the draw's record. Fog is
+  computed in the vertex shaders from view depth. Pre-transformed vertices (`GFX_VTX_TEX1/TEX2`,
+  xyz-rhw) carry most of what is drawn.
 - **Already static on the GPU:** the ground (one mesh per 32 by 32 cells, `world/ground_draw.c`) and
   the RSM models (one mesh per node, `world/model_node_render.c`). Per frame each visible block or
   node still queues one draw per (texture, lightmap) or (texture, two-sided) run, each a draw of
@@ -51,13 +55,13 @@ drift as the code changes. Sizes are judgement, not measurement.
 - **Built on the CPU every frame:** actor sprites (projected on the CPU, `actor/sprite_quad.c`),
   Granny actors (skinned, lit and projected per vertex, `actor/granny.c`), water (heights animated
   per tick, corners projected), particles, STR effects, effect primitives, damage numbers and every
-  2D quad. Fog alpha is computed per queued vertex (`render/rp_pool.c`). The shadow cascades are
-  fitted on the CPU to per-leaf boxes of the ground and models (`renderer_shadow_frame`,
-  `view_shadow_boxes`), and the CPU picks the casters (`view_cast_shadows`).
+  2D quad. The shadow cascades are fitted on the CPU to per-leaf boxes of the ground and models
+  (`renderer_shadow_frame`, `view_shadow_boxes`), and the CPU picks the casters
+  (`view_cast_shadows`).
 - **How it reaches the device:** 19 queues (`render/draw_queue.h`), flushed in a fixed order by
-  `renderer_draw_lists` with 78 render-state and 127 stage-state calls in `render/crenderer.c`.
-  Non-mesh draws go through `render/gfx_batch.c` (8,192 vertices), flushed on any texture or state
-  change into a draw of the recorded frame.
+  `renderer_draw_lists`, each in its draw mode (`render/crenderer.c`). Non-mesh draws go through
+  `render/gfx_batch.c` (8,192 vertices), flushed on any texture change or change of what they are
+  drawn with into a draw of the recorded frame.
 - **GPU-to-CPU traffic:** the screen wobble locks the back buffer every frame it runs
   (`render/cframe.c`); UI windows that composite render to a target and copy it back
   (`render/render_clients.c`); a startup probe locks a target (`render/c3ddevice.c`); screenshots
@@ -120,7 +124,8 @@ Nothing below this floor is supported by a second path.
     the tool sets them through SPIRV-Cross's C API (`spvc_compiler_msl_add_resource_binding_2`) and
     reports the resource counts `SDL_GPUShaderCreateInfo` needs. Entry points are `main` in SPIR-V
     and `main0` in MSL.
-  - None of it has run on a GPU yet, and the MSL has not met a Metal compiler.
+  - The SPIR-V runs in every Windows and Linux test and capture; the MSL has not met a Metal
+    compiler.
 - Per-draw data comes through an instance-rate vertex attribute holding the draw's index, never
   through `SV_InstanceID`: SDL warns that `first_instance` does not reach built-in IDs the same way
   on every API (`SDL_GPUIndirectDrawCommand` in `SDL_gpu.h`).
@@ -131,7 +136,9 @@ Nothing below this floor is supported by a second path.
   the 19 queues stands for one combination of blend, depth, cull and alpha test; each becomes one
   pipeline (a few queues need two, such as two-pass alpha), created once at start. Texture stage
   combinations become shader code: the ground's lightmap stage and the multitexture particles' 22
-  stage states.
+  stage states. The three effect queues take each quad's blending and texture-stage preset from
+  its effect file, as Direct3D 9's states did, so they have a pipeline for each pair of blend
+  factors and the preset is chosen in the shader.
 - Fog is computed in the shaders from view depth for everything, as the mesh shaders already do.
 
 ### Memory and uploads
@@ -286,12 +293,30 @@ recorded.
   3 per channel with `RAGEXE_MSAA=1`, apart from changes the review entry explains. Linux and macOS
   gain shadows and anti-aliasing here.
 
-### Phase 3: pipelines and a modern API (medium)
+### Phase 3: pipelines and a modern API (done)
 
-- Replace the render-state and stage-state machine with pipelines per queue and shaders per stage
-  combination. `gfx.h` loses `GFX_RS_*`, `GFX_TSS_*`, `GFX_TOP_*` and `GFX_TA_*`. FreeType draws text
-  on every platform, and `render/text_gdi.c` goes with any build variant that draws text with GDI.
-- Fog moves to the shaders; the per-vertex fog alpha on the CPU goes.
+- The render-state and stage-state machine is replaced by draw modes (`render/draw_modes.c`): 28
+  modes, 21 for the lists (the ground with and without its lightmap, both halves of two-pass alpha)
+  and one each for the interface's composites, the frame-time overlay, the texel probe, blits and
+  three kinds of clear, with their pipelines made once, when the screen's samples and depth are
+  known. `gfx.h` lost `GFX_RS_*`,
+  `GFX_TSS_*`, `GFX_TOP_*`, `GFX_TA_*`, the comparison, address and filter numbers,
+  `gfx_set_render_state`, `gfx_get_render_state`, `gfx_set_stage_state` and `gfx_default_states`;
+  `render/crenderer.c` its `HRS` and `HTSS` and `renderer_set_blend_stages`.
+  The effect presets are combinations in the quad shader, chosen per quad, and match Direct3D 9's
+  stages within a step (`test_gfx_gpu`).
+- Fog is computed in the vertex shaders, the quads' to the bit as the CPU computed it, through a
+  table of the rhw at which each step begins (`render/vertex_fog.c`); the per-vertex fog alpha on
+  the CPU and the vertices' specular colour are gone.
+- FreeType draws text on every platform: `render/text_gdi.c`, `render/fonts.c`, the GDI+ helper
+  library they needed and the `freetype` build switch are gone. On Windows the font finder reads
+  the fonts the registry lists and chooses, sizes and hints each face as GDI did, which
+  `test_font_system` compares with GDI on the machine's own fonts.
+- With the modes and the fog the scene set, `window_resize`, the hill scenes and the gate scene
+  captured the same pixels as phase 2, with the same draws. With FreeType's text the scene set is
+  within a step of the Direct3D 9 client built with FreeType, and its text differs from GDI's in
+  3 to 16 pixels a scene; the hill and gate views differ from phase 2's in their text alone, and
+  five of them from the reference along shadow edges, as phase 2's did (`docs/custom-review.md`).
 
 ### Phase 4: no read-backs (small to medium)
 

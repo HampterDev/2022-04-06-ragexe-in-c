@@ -1,8 +1,6 @@
 @echo off
 REM build.bat          -> build\ragexe.exe      (64-bit release)
 REM build.bat dbg      -> build\ragexe_dbg.exe  (optimized, with build\ragexe_dbg.pdb)
-REM build.bat freetype -> build\ragexe_ft.exe   (text through FreeType instead of GDI, as off
-REM                       Windows; with dbg -> ragexe_dbg_ft.exe)
 REM build.bat check    -> also checks the library table on the objects it built
 REM                       (tools\check_libraries.bat) and that the shaders' headers match their
 REM                       sources (tools\shaders\check.py); combines with the other words
@@ -10,10 +8,10 @@ REM build.bat libs     -> build\ragexe_libs.exe: the same objects, archived per 
 REM                       tools\libraries.txt (build\obj_libs\*.lib, next to the variant's object
 REM                       folder) and linked as app's objects plus those libraries; combines with
 REM                       the other words
-REM The client draws Granny models from converted glTF files (tools\granny_export) and plays sound
-REM through SDL3 (platform\audio_sdl.c). It links the C runtime statically (/MT), as do the vendor
-REM libraries, so it needs no Visual C++ runtime DLL: the 32-bit ones game folders ship serve only
-REM 32-bit programs.
+REM The client draws Granny models from converted glTF files (tools\granny_export), plays sound
+REM through SDL3 (platform\audio_sdl.c) and draws text with FreeType. It links the C runtime
+REM statically (/MT), as do the vendor libraries, so it needs no Visual C++ runtime DLL: the 32-bit
+REM ones game folders ship serve only 32-bit programs.
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
@@ -21,26 +19,22 @@ set "BUILD=%ROOT%build"
 if not exist "%BUILD%" mkdir "%BUILD%"
 
 set "WANTDBG="
-set "TEXT="
 set "CHECK="
 set "LIBS="
 for %%a in (%*) do (
   if /i "%%~a"=="dbg" set "WANTDBG=1"
-  if /i "%%~a"=="freetype" set "TEXT=freetype"
   if /i "%%~a"=="check" set "CHECK=1"
   if /i "%%~a"=="libs" set "LIBS=1"
 )
-set "SUFFIX="
-if defined TEXT set "SUFFIX=_ft"
 set "VDIR=%BUILD%\vendor"
 if defined WANTDBG (
-  set "OUT=ragexe_dbg%SUFFIX%"
-  set "OBJ=%BUILD%\obj_dbg%SUFFIX%"
-  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:ragexe_dbg%SUFFIX%.pdb"
+  set "OUT=ragexe_dbg"
+  set "OBJ=%BUILD%\obj_dbg"
+  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:ragexe_dbg.pdb"
   set "CDBG=/Z7"
 ) else (
-  set "OUT=ragexe%SUFFIX%"
-  set "OBJ=%BUILD%\obj%SUFFIX%"
+  set "OUT=ragexe"
+  set "OBJ=%BUILD%\obj"
   set "LINKDBG="
   set "CDBG="
 )
@@ -53,7 +47,7 @@ call "%VCVARS%" >nul
 set VSCMD_SKIP_SENDTELEMETRY=1
 
 echo [1/3] Dependencies...
-call "%ROOT%vendor\build_vendor.bat" %TEXT%
+call "%ROOT%vendor\build_vendor.bat"
 if errorlevel 1 ( echo *** VENDOR BUILD FAILED *** & exit /b 1 )
 
 echo [2/3] Compiling...
@@ -65,21 +59,16 @@ cl /nologo /O2 /MD "%ROOT%tools\bin2c.c" /Fo:"%GEN%\\" /Fe:"%GEN%\bin2c.exe"
 if errorlevel 1 ( echo *** bin2c FAILED *** & exit /b 1 )
 "%GEN%\bin2c.exe" "%GEN%\effect_data_embedded.c" g_effectData "%ROOT%data\effects\effects.json"
 if errorlevel 1 ( echo *** EMBEDDING data\effects FAILED *** & exit /b 1 )
-type nul > "%BUILD%\sources%SUFFIX%.rsp"
+type nul > "%BUILD%\sources.rsp"
 type nul > "%BUILD%\%OUT%.objs.rsp"
 for /r "%ROOT%src" %%f in (*.c) do (
-  >> "%BUILD%\sources%SUFFIX%.rsp" echo "%%f"
+  >> "%BUILD%\sources.rsp" echo "%%f"
   >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\%%~nf.obj"
 )
->> "%BUILD%\sources%SUFFIX%.rsp" echo "%GEN%\effect_data_embedded.c"
+>> "%BUILD%\sources.rsp" echo "%GEN%\effect_data_embedded.c"
 >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\effect_data_embedded.obj"
-set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\stb" /I"%ROOT%vendor\cgltf" /I"%ROOT%vendor\dr_libs" /I"%VDIR%\sdl3-src\include" /DDR_MP3_NO_STDIO"
-set "TEXTLIB="
-if defined TEXT (
-  set "INC=%INC% /DRAGE_TEXT_FREETYPE /I"%VDIR%\freetype-src\include""
-  set "TEXTLIB="%VDIR%\freetype.lib""
-)
-cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MT /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources%SUFFIX%.rsp" /Fo:"%OBJ%\\"
+set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\stb" /I"%ROOT%vendor\cgltf" /I"%ROOT%vendor\dr_libs" /I"%VDIR%\sdl3-src\include" /I"%VDIR%\freetype-src\include" /DDR_MP3_NO_STDIO"
+cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MT /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources.rsp" /Fo:"%OBJ%\\"
 if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )
 if defined LIBS (
   echo [libs] Archiving the libraries...
@@ -98,11 +87,11 @@ if defined LIBS (
 >> "%BUILD%\%OUT%.objs.rsp" echo "%ROOT%res\app.res"
 
 echo [3/3] Linking...
-set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib ws2_32.lib winmm.lib gdiplus.lib imm32.lib ole32.lib uuid.lib"
+set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib ws2_32.lib winmm.lib imm32.lib ole32.lib uuid.lib"
 link /nologo libcmt.lib @"%BUILD%\%OUT%.objs.rsp" ^
- "%VDIR%\imglibs.lib" "%VDIR%\lua514.lib" "%VDIR%\yyjson.lib" "%VDIR%\crijndael.lib" "%VDIR%\font_backend.lib" "%VDIR%\jpeg.lib" ^
+ "%VDIR%\imglibs.lib" "%VDIR%\lua514.lib" "%VDIR%\yyjson.lib" "%VDIR%\crijndael.lib" "%VDIR%\jpeg.lib" ^
  "%VDIR%\dr_mp3.lib" "%VDIR%\SDL3-static.lib" setupapi.lib version.lib shlwapi.lib ^
- %TEXTLIB% libvcruntime.lib libucrt.lib %SYSLIBS% ^
+ "%VDIR%\freetype.lib" libvcruntime.lib libucrt.lib %SYSLIBS% ^
  /OUT:"%BUILD%\%OUT%.exe" /IMPLIB:"%BUILD%\%OUT%.lib" /SUBSYSTEM:WINDOWS /MACHINE:X64 ^
  /OPT:NOICF /MAP:"%BUILD%\%OUT%.map" /Brepro %LINKDBG%
 if errorlevel 1 ( echo *** LINK FAILED *** & exit /b 1 )

@@ -9,6 +9,7 @@
 #include "platform/clock.h"
 #include "platform/window.h"
 #include "render/device.h"
+#include "render/fonts.h"
 #include "render/gfx.h"
 #include "render/renderer.h"
 #include "world/mode_dispatch.h"
@@ -69,17 +70,36 @@ int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
     return 0;
 }
 int gfx_unlock(gfx_surface *s) { (void)s; return 0; }
-int gfx_get_render_state(int state, DWORD *out) { (void)state; *out = 0; return 0; }
-void gfx_set_render_state(int state, DWORD value) { (void)state; (void)value; }
-void gfx_set_stage_state(int stage, int state, DWORD value) { (void)stage; (void)state; (void)value; }
+/* The overlay's text: Lucida Console at a 12-pixel em, whose characters are 7 by 12 pixels, drawn
+   nowhere. */
+struct FontCache g_fontCache;
+static char monospace;
+FontHandle font_cache_get_fixed(struct FontCache *cache, const char *family, int size)
+{
+    assert(cache == &g_fontCache && !strcmp(family, "Lucida Console") && size == -12);
+    return (FontHandle)&monospace;
+}
+void font_text_extent(FontHandle font, const uint16_t *text, int length, int black_box, SIZE *out)
+{
+    assert(font == (FontHandle)&monospace && text && length > 0 && !black_box);
+    out->cx = 7 * length;
+    out->cy = 12;
+}
+void font_text_out(FontHandle font, const struct FontTarget *target, int x, int y, const uint16_t *text, int length,
+                   COLORREF colour, const COLORREF *background)
+{
+    assert(font == (FontHandle)&monospace && target->bits && text && !background);
+    (void)x; (void)y; (void)length; (void)colour;
+}
+static int mode = -1;
+void gfx_set_mode(int m) { mode = m; }
 void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
 void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
 {
     (void)prim; (void)vertexKind; (void)verts; (void)indices; (void)nindices;
-    assert(nverts == 4);
+    assert(nverts == 4 && mode == DRAW_PANEL);
     ++draws;
 }
-void renderer_set_blend_stages(struct Renderer *self, int mode) { (void)self; (void)mode; }
 
 #define getenv test_environment
 #define platform_key_state test_key_state

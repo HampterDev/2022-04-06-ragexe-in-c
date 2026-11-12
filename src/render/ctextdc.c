@@ -29,17 +29,14 @@ static DWORD fnv1a(DWORD h, const void *p, size_t n)
     return h;
 }
 
-static int measure(struct TextDC *self, SIZE *out, const char *str, int len)
+static int measure(struct TextDC *self, SIZE *out, const char *str, int len, FontHandle font)
 {
     struct TextUnicode text;
-    SIZE result = {0};
-    int ok;
     if (!text_unicode_init(&text, str, len, CODE_PAGE_UTF8))
         return 0;
-    ok = text_dc_measure_run(self, text.data, text.length, &result);
+    font_text_extent(font, text.data, text.length, self->italic == 1, out);
     text_unicode_release(&text);
-    if (ok) *out = result;
-    return ok;
+    return 1;
 }
 
 static int entry_matches(const struct extent_entry *e, DWORD hash, FontHandle font, const struct TextDC *t,
@@ -59,12 +56,10 @@ SIZE *text_dc_measure_font(struct TextDC *self, SIZE *out, const char *str, int 
     out->cy = 0;
     if (!str || len <= 0 || !font)
         return out;
-    if (!text_dc_use_font(self, font))
-        return out;
     if (len > EXTENT_MAXLEN) {
         g_perf.textMeasured++;
         perf_begin(PERF_TEXT);
-        measure(self, out, str, len);
+        measure(self, out, str, len, font);
         perf_end(PERF_TEXT);
         return out;
     }
@@ -86,7 +81,7 @@ SIZE *text_dc_measure_font(struct TextDC *self, SIZE *out, const char *str, int 
     }
     g_perf.textMeasured++;
     perf_begin(PERF_TEXT);
-    measured = measure(self, out, str, len);
+    measured = measure(self, out, str, len, font);
     perf_end(PERF_TEXT);
     if (!measured) return out;
     e = a->tick <= b->tick ? a : b;

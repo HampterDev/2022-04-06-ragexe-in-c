@@ -40,7 +40,7 @@ if(RAGE_CLIENT)
     enable_language(CXX)
     include(cmake/SDL3.cmake)
 elseif(BUILD_TESTING AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    # The Windows tests of the font backend and the password encryption are C++ (tests/CMakeLists.txt).
+    # The password encryption a Windows test links (vendor/crijndael) is C++.
     enable_language(CXX)
 endif()
 

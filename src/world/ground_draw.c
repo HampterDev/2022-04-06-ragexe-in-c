@@ -34,8 +34,6 @@ static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct 
     int i;
 
     memset(v, 0, sizeof(v));
-    for (i = 0; i < 4; i++)
-        v[i].specular = 0xff000000;
     if (!(top->v[0].pos[1] > h || top->v[1].pos[1] > h || top->v[2].pos[1] > h || top->v[3].pos[1] > h))
         return NULL;
     cell->water[0][1] = hPrev;
@@ -303,6 +301,7 @@ static void gpu_render(struct C3dGround15 *self, const float *view, const int *c
     memset(&draw, 0, sizeof draw);
     memcpy(draw.view, view, sizeof draw.view);
     draw.draw.kind = GFX_MESH_GROUND;
+    draw.draw.cull = GFX_CULL_CW;
     for (i = 0; i < 3; i++)
         draw.draw.colour[i] = g_weather.color[i];
     draw.draw.colour[3] = 1.0f;

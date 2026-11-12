@@ -55,8 +55,10 @@ containers, numbers, 3D math, XML, Lua bytecode, compiled Korean literals, frame
 platform layer (clock, files, threads, sockets, code pages, SHA-256), JPEG, two extracted
 production routines and the Python checks (source encoding, the library table's include check,
 the map-name migration). 64-bit Windows adds the rest of the suite, about 290 tests that only
-build there; Linux and macOS add the settings store and FreeType text and, with SDL, the
-clipboard. Where SDL is part of the build (always on 64-bit Windows, which gets it from
+build there, and the text against GDI (`font_system`); Linux and macOS add the settings store and,
+with SDL, the clipboard. Where FreeType is part of the build, the font finder and the font cache
+are tested over fonts the tests make, and the text over the system's fonts (`text_freetype`, which
+on Linux and macOS needs Fontconfig). Where SDL is part of the build (always on 64-bit Windows, which gets it from
 `cmake/SDL3.cmake` as the Linux client does), `audio` checks the sound module.
 
 Client files are compiled once, into one static library per library of `tools/libraries.txt`
@@ -305,82 +307,103 @@ without one that part is skipped. `tests/fixtures/make_audio_fixtures.py` regene
 
 ## Text
 
-Text goes through one interface, `render/text_backend.h`, with two backends: GDI
-(`render/text_gdi.c`, fonts from `render/fonts.c`), the Windows default, and FreeType
-(`render/text_freetype.c`, fonts from `render/fonts_ft.c`) on every other platform and on
-Windows when it is built with `build.bat freetype`. `render/fonts.h` says which one a build has
-(`TEXT_BACKEND_GDI`). Everything above the backend is the same code for both: the bitmaps'
-pixels and their textures (`render/cdc.c`), the client's font choice, the UTF-8 text split into runs
-by script (`render/text_runs.c`) with each run's fallback font (`render/textdc.c`) and the extent
-cache (`render/ctextdc.c`). A backend gives a bitmap its pixels, opens a text DC on a bitmap or a
-surface, sets colours, selects a font, measures and draws one run of UTF-16 text in it, says
-whether a font has a script and how high its ascent is, and fills the client's one polygon. When the
-selected face lacks a run's script (Hangul, Han, kana, Thai, symbols, emoji), both backends draw the
-run in the script's first installed fallback font, in the same order: GDI looks for the Windows
-fonts (`render/fonts.c`: Hangul in Gulim, then Malgun Gothic, and so on), FreeType asks for the
-same families followed by the free fonts that stand in for them (`render/fonts_ft.c`: then
-NanumGothic, Noto Sans CJK KR, ...; emoji in Segoe UI Emoji, then Noto Color Emoji), and the run sits
-on the selected face's baseline.
+FreeType draws the text on every platform, into the client's 32-bit bitmaps. A `DcBitmap`
+(`render/cdc.c`) is a heap buffer of top-down BGRA pixels with the textures that show it; a text DC
+(`render/textdc.c`) draws and measures UTF-8 text into one in the selected face, split into runs by
+script (`render/text_runs.c`): a run of a script the face lacks (Hangul, Han, kana, Thai, symbols,
+emoji) is drawn in the script's fallback font, on the face's baseline, and `render/ctextdc.c`
+caches the extents. The fonts are `render/fonts_ft.c`'s; the font finder (`render/font_match.h`,
+the libraries `font-finder` and `font-faces`) lists the installed fonts and sorts them for a
+request.
 
-With GDI a `DcBitmap` is a DIB section selected into a memory DC and a `TextDC` draws through that
-DC. With FreeType a `DcBitmap` is a heap buffer with the same top-down BGRA layout and no device
-context, and a `TextDC` draws into that buffer. No text is drawn into the frame: the login screen's
-serial number, which the original drew there through a DC, is drawn once into a bitmap and shown as
-a quad over everything else the frame holds (`ui_window_mgr_draw_serial_number`).
+No text is drawn into the frame: the login screen's serial number, which the original drew there
+through a DC, is drawn once into a bitmap and shown as a quad over everything else the frame holds
+(`ui_window_mgr_draw_serial_number`).
 
-`build.bat freetype` (also with `dbg`) builds `ragexe_ft.exe`, whose text is
-drawn by FreeType as off Windows; `vendor\build_vendor.bat` then downloads FreeType 2.13.3, the
-release the Android build uses, and builds it static with CMake, and `tests\scenes\build.bat
-freetype` links the scene harness from those objects. Windows has no Fontconfig, so the font
-folder scan finds the fonts (see *Android client*): in `%WINDIR%\Fonts`, or in the folders
-`RAGE_FONT_DIRS` names, separated by `;`. Given the Linux VM's font folders that way, the text
-of the `windows_open` scene came out as in the Linux capture, apart from a few single pixels per
-window (this build has FreeType 2.13.3, the VM 2.13.2).
+`vendor\build_vendor.bat` downloads FreeType 2.13.3, the release the Android build uses, and builds
+it static with CMake for the Windows client; the Windows tests build the same archive through
+`cmake/Freetype.cmake`.
 
-**Choosing the font file** for a face index (the index into
-`g_3dDevice.faceNamesB`: 0 Gulim, 1 Arial, 2 MS Gothic, 3 SimSun, 4 MingLiU,
-5 Tahoma, 6 Arial, 7 and 8 Verdana, 9 and 10 Arial, 11 Tahoma; 20 to 28 the
-embedded EOT faces; 29 SCDream):
+**The installed fonts.** On Windows the finder reads the fonts GDI has: those the registry lists
+under `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`, the machine's (`HKEY_LOCAL_MACHINE`,
+files in `%WINDIR%\Fonts`) and then the user's (`HKEY_CURRENT_USER`, full paths: where Windows 10
+1809 and later install a font for the user alone). On Android, and with `RAGE_FONT_SCAN`, it reads
+the faces in the system's font folders; on Linux and macOS Fontconfig finds the fonts, also those in
+`~/.local/share/fonts`. `RAGE_FONT_DIRS` (folders separated by `;` on Windows, `:` elsewhere)
+replaces the registry or the system's folders, four levels deep. The finder knows each face by its
+family name (the name table's name 1, the one GDI matches) in English and in the display language
+(on Windows the user's interface language), its weight, slant and pitch, and the languages it
+covers (a few sample characters each). A file FreeType cannot open, a face without a family name or
+a character map, and the faces of a collection past its 1,024th are left out. On a Windows 10 with
+340 faces (57 installed for the user) the finder takes 65 to 90 ms at startup.
 
-1. `RAGEXE_FONT_<n>=<file>` loads face `n` from that file (the first face of a
-   collection), for example `RAGEXE_FONT_0=/home/me/fonts/gulim.ttc`.
-2. Face 29 loads `System/font/SCDream4.otf` (`SCDream6.otf` for bold) from the
-   client directory, as on Windows.
-3. `RAGEXE_FONT=<file>` loads every other face from one file.
-4. Otherwise Fontconfig matches the Windows family name followed by substitutes
-   for the run's charset (Korean: NanumGothic, Noto Sans CJK KR, UnDotum, Baekmuk;
-   Japanese and Chinese: Noto Sans CJK JP/SC/TC and others; Latin: Liberation
-   Sans, DejaVu Sans). As GDI does, the charset wins over the name: the first
-   candidate that covers the charset's language is used. A font installed in
-   `~/.local/share/fonts` (for example the player's own `gulim.ttc`) is found by
-   its family name without any variable.
+**Choosing the font** for a request, as GDI's font cache chose it:
 
-Characters missing from the chosen file come from the next Fontconfig candidate
-that has them, at the same size; otherwise the file's missing-glyph box is drawn.
+1. `RAGEXE_FONT_<n>=<file>` loads face `n` from that file (the first face of a collection), for
+   example `RAGEXE_FONT_0=/home/me/fonts/gulim.ttc`; face 29 loads `System/font/SCDream4.otf`
+   (`SCDream6.otf` for bold) from the client directory, as on Windows; `RAGEXE_FONT=<file>` loads
+   every other face from one file.
+2. A face of the device's tables (`render/c3ddevice.c`: 0 Gulim, 1 Arial, 2 MS Gothic, 3 SimSun,
+   4 MingLiU, 5 Tahoma, 6 Arial, 7 and 8 Verdana, 9 and 10 Arial, 11 Tahoma; 20 to 28 the embedded
+   EOT faces; 29 SCDream) is asked for by its name in the display language (`faceNamesA`: 굴림,
+   ＭＳ Ｐゴシック, 宋体 and 細明體 for faces 0, 2, 3 and 4), then by its English name
+   (`faceNamesB`). A face answers to its English family name and to its name in the display
+   language, as GDI matched them, so face 2 is MS PGothic on a Japanese Windows and MS Gothic
+   elsewhere. After them come the charset's Windows family (Arial for the Latin charsets, Gulim, MS
+   Gothic, SimSun, MingLiU, Tahoma), the font GDI's mapper gives text of that charset, and then the
+   free fonts that stand in for them on other platforms (Korean: NanumGothic, Noto Sans CJK KR,
+   UnDotum, Baekmuk; Japanese and Chinese: Noto Sans CJK JP, SC and TC and others; Latin:
+   Liberation Sans, DejaVu Sans). As with GDI the charset wins over the name: the first of these
+   that covers the charset's language is used.
+3. A script's fallback font is the first of the script's Windows fonts that is installed, as GDI's
+   cache took it (Hangul: Gulim, then Malgun Gothic; symbols: Gulim, Malgun Gothic, Segoe UI
+   Symbol; kana: MS PGothic, MS Gothic, Meiryo, Yu Gothic, Gulim, Malgun Gothic; Thai: Tahoma,
+   Leelawadee UI; emoji: Segoe UI Emoji, Segoe UI Symbol), then the free fonts that stand in for
+   them (NanumGothic, Noto Sans CJK KR, ...; emoji in Noto Color Emoji).
+4. The frame-time overlay asks for Lucida Console at an em of 12 pixels, of fixed pitch; without
+   it, Courier New, which GDI's mapper gives that request, then a fixed-pitch stand-in (DejaVu Sans
+   Mono, Liberation Mono, ...), then any fixed-pitch face.
 
-**Sizes and rendering** follow GDI's `CreateFont`: a positive height is the cell
-height, matched through the font's VDMX table or its OS/2 Windows ascent and
-descent; a negative height is the em size. When a CJK face is drawn with a
-substitute (NanumGothic for Gulim), the em is made equal to the cell, as it is
-for Gulim, MS Gothic, SimSun and MingLiU, so Hangul keeps Gulim's size. Glyphs
-are 1-bit like `NONANTIALIASED_QUALITY`, embedded bitmaps are used at sizes the
-font has them, missing bold is a one-pixel overstrike with one extra pixel of
-advance and missing italic is a shear. On the Windows fonts available for the
-comparison (Arial, Tahoma, Lucida Console, MS Gothic, Malgun Gothic, SimSun, at
-12 to 16 pixels, regular and bold) the extents, black-box widths and pixels match
-GDI; italic text differs by a few pixels. Those fonts are hinted by their own
-TrueType instructions. Substitutes and fallback faces are hinted by FreeType's
-autohinter instead: the instructions of Liberation Sans and NanumGothic are made for
-grayscale and give 1-bit digits such as 0 a stray pixel on each side, and text set
-in them comes out a few pixels wider than before.
+Characters missing from the chosen font come from the next candidate that has them, at the same
+size; otherwise the font's missing-glyph box is drawn.
 
-Not covered: the embedded EOT fonts (MicroType Express compressed; faces 20 to 28
-use the charset's substitute at 13 pixels), the serial-number text, which GDI
-draws in the device's default font and FreeType in face 0, and the performance
-overlay, which asks for the generic `monospace` instead of Lucida Console (the font
-folder scan takes Lucida Console, Consolas, DejaVu Sans Mono or another fixed-pitch
-family for it). Invalid UTF-8 bytes draw as U+FFFD, one per byte, as `core/utf8.c` steps over
-them; Windows draws one per invalid sequence.
+**Sizes and rendering** follow GDI's `CreateFont`. A negative height is the em. A positive height is
+the cell: from the face's VDMX table where it has a group for the Windows ANSI subset (the first
+size whose glyphs are that tall, or else the size before the first taller one; GDI leaves a group
+made for all glyphs, as Tahoma's, unread), otherwise the largest em whose Windows ascent and
+descent, each rounded, fit in the cell, with the cell's ascent rounded and its descent the rest.
+A Windows family is sized by its own metrics: Malgun Gothic's cell is 1.33 of its em, so Hangul set
+in it at a 12-pixel cell has a 9-pixel em. A free font drawn in place of a family whose em is its
+cell (Gulim, MS Gothic, SimSun, MingLiU) gets the cell as its em, as that family would. Glyphs are
+1-bit like `NONANTIALIASED_QUALITY`, embedded bitmaps are used at sizes the font has them, missing
+bold is a one-pixel overstrike with one extra pixel of advance and missing italic is a shear. In
+a fixed-pitch face a character twice as wide as the average advances twice the average's pixels,
+as GDI keeps a full-width character two half-width ones wide (MS Gothic's Han at odd sizes). A
+Windows family is hinted by its own TrueType instructions, as GDI hinted it; a free font that
+stands in for one is hinted by FreeType's autohinter, since the instructions of Liberation Sans and
+NanumGothic are made for grayscale and give 1-bit digits such as 0 a stray pixel on each side.
+
+**Against GDI.** `test_font_system` makes every request the client makes, at the sizes it uses (10
+to 24 pixels, the overlay's, the embedded faces'), of FreeType and of GDI on the same machine's
+fonts. On a Windows 10 without Gulim and MingLiU, of its 242 requests every one GDI found by name
+draws GDI's face at GDI's ppem, ascent and descent, with GDI's advance widths but for MS PGothic's
+kana at odd sizes (11 to 21 pixels and 22), drawn from its embedded bitmaps, which GDI advances
+some by the bitmap's width and some by the outline's, by a rule not found: FreeType's advance, the
+bitmap's, is a pixel off on some characters. Drawn, a line of
+text in Arial, Tahoma, Verdana, MS Gothic, SimSun, Malgun Gothic or Lucida Console differs from
+GDI's in 0 to 43 pixels (479 pixels in 85 of 211 lines), single pixels FreeType's rasterizer sets
+or leaves where GDI did not, and a line of MS PGothic's kana in up to 274. The `hangul_text` scene, with Hangul, symbols and kana
+in the chat window, the names and what the actors say, differs from the GDI client's capture in
+483 pixels, all but two in its two runs of kana.
+
+**Not as GDI drew it.** A face GDI did not find by name was its font mapper's choice for the
+charset (on that Windows Ebrima, for MingLiU's Chinese charset), which the client does not imitate:
+it takes the first installed font that covers the charset's language, as a free font standing in.
+The embedded EOT faces are drawn as GDI drew them, in Arial at an em of 13 pixels, but 1-bit, where
+GDI smoothed them as the system smooths text (they asked for proof quality). The serial number was
+drawn in a new DC's default font, GDI's System, a raster font that is not among the registry's
+fonts; FreeType draws it in face 0. Invalid UTF-8 bytes draw as U+FFFD, one per byte, as
+`core/utf8.c` steps over them; Windows draws one per invalid sequence.
 
 ## Linux client
 
@@ -571,21 +594,40 @@ the client does not start ("Cannot init d3d OR grf file has problem.", with SDL'
 log). `tests/test_gfx_gpu.c` drives it through the gfx API and reads the pixels back (the tests
 `gfx_gpu` and `gfx_gpu_msaa`): clears, Direct3D 9's pixel centres and top-left rule, every texture
 format, texel centres, culling, textures changed and released within a frame, the alpha test, the
-vertex fog, blending, mipmaps, render targets, system-surface blits, copies between targets,
-pixels written into a locked target, world vertices and meshes, without and with multisampling.
+fog (the quads' at the first rhw of every step, and the one before it, against the original's CPU
+formula), blending, the effect modes' blending and the 16 effect presets against Direct3D 9's
+texture stages, two textures, the ground's meshes with and without lightmaps, two-pass alpha,
+effects behind depth, composites into a target's texture, clears inside a pass, the overlays drawn
+as one batch, mipmaps, render targets, system-surface blits, copies between targets, pixels written
+into a locked target, world vertices and meshes, without and with multisampling.
 
-A frame is recorded, not drawn. Each draw becomes a record of its state (the texture stages, the
-alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes into a list of passes, one per
-target or shadow cascade; its vertices and indices, and the texels of the textures it uses that
-changed since they last went up, widened to B8G8R8A8 (`render/texel_convert.c`, the `texel-convert`
-library), go into one staging area. When the frame is presented, or the CPU needs a target's pixels
-(`gfx_lock` on a target: the scene harness's captures, screenshots, the wobble), one command buffer
-copies all of it through one transfer buffer in one copy pass and replays the passes, then downloads
-the target (`SDL_DownloadFromGPUTexture`) or presents, fitted into the window by `present_fit`. The
-shaders read the records from storage buffers, finding a draw's through an instance-rate vertex
-attribute that holds its index (a draw's first instance), never through the instance ID. Pipelines
-are made once for each combination of the render states a draw needs (blending, depth, culling,
-topology, vertex layout, target format, sample count). Textures keep their pixels on the CPU in the
+Draws are made in draw modes (`render/draw_modes.c`, the library `draw-modes`, tested by
+`test_draw_modes` against the render states the Direct3D 9 client set for each of its lists): each
+mode is one combination of blending, depth test and write, alpha test, fog, what the two texture
+stages make of the textures and the vertex colour, how the stages sample, and which targets it
+draws into. The device makes the pipelines of every mode, for every kind of target it draws into,
+once, when it knows the screen's samples and depth (147, 148 with multisampling, in a few
+milliseconds where the driver keeps its shader cache): the effect modes, whose quads carry their
+effect file's D3DBLEND factors (taken whole) and texture-stage preset, get one pipeline for each
+pair of the eight blend factors a target without alpha of its own distinguishes. Quads are batched
+until what they are drawn with changes, as Direct3D 9's draws were until a state changed. Fog is
+computed in the vertex shaders and interpolated across the triangle: for the meshes from the view
+depth as the Direct3D 9 client's mesh shader did; for the quads the original's vertex fog to the
+bit, the 1/255 step its CPU computed from a vertex's rhw, which the shader looks up in the fog's
+table of the rhw at which each step begins (`render/vertex_fog.c`, the library `vertex-fog`),
+since a GPU's division need not round as the CPU's does.
+
+A frame is recorded, not drawn. Each draw becomes a record of what its mode and the draw give the
+shaders (the combination, the alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes
+into a list of passes, one per target or shadow cascade; its vertices and indices, and the texels
+of the textures it uses that changed since they last went up, widened to B8G8R8A8
+(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. When the frame
+is presented, or the CPU needs a target's pixels (`gfx_lock` on a target: the scene harness's
+captures, screenshots, the wobble), one command buffer copies all of it through one transfer buffer
+in one copy pass and replays the passes, then downloads the target (`SDL_DownloadFromGPUTexture`)
+or presents, fitted into the window by `present_fit`. The shaders read the records from storage
+buffers, finding a draw's through an instance-rate vertex attribute that holds its index (a draw's
+first instance), never through the instance ID. Textures keep their pixels on the CPU in the
 client's own format, so the model loader's thread creates, locks and fills them without calling SDL;
 the main thread uploads them when a draw first uses them after a change, and a texture changed after
 a draw used it in the same frame takes its new texels in a copy pass of its own between the render
@@ -635,9 +677,9 @@ every sample of each alpha-tested draw without blending, which the ground's and 
 with multisampling on their textures were read at each sample, where alpha to coverage reads them
 once a pixel.
 
-The shaders are HLSL in `src/render/shaders` (`fixed.hlsl` for the texture stages, `mesh.hlsl`
-for the ground and the models with their shadows, `caster.hlsl` for the shadow maps, and the
-records they share in `records.hlsli`). `tools\shaders\build.bat` compiles each with the Vulkan
+The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, with the texture stages'
+combinations and the vertex fog, `mesh.hlsl` for the ground and the models with their shadows,
+`caster.hlsl` for the shadow maps, and the records they share in `records.hlsli`). `tools\shaders\build.bat` compiles each with the Vulkan
 SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through
 SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes `<name>.h`
 beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the
@@ -687,10 +729,10 @@ the OpenGL renderer the client had then; its Metal path has not been run yet.
 ## Windows client
 
 `build.bat` builds `build\ragexe.exe` (`build.bat dbg`: `ragexe_dbg.exe`), a 64-bit program with
-SDL's window (*Window, input and IME*), GDI text and the renderer on SDL's GPU API (*Renderer*). Until 2026-11-11 `build.bat` built a 32-bit
-client by default and this one with `x64`. The 32-bit client linked three DLLs of the original
-that exist only for 32-bit Windows; the 64-bit client does without them, as every other platform
-does:
+SDL's window (*Window, input and IME*), FreeType text (*Text*) and the renderer on SDL's GPU API
+(*Renderer*). Until 2026-11-11 `build.bat` built a 32-bit client by default and this one with
+`x64`. The 32-bit client linked three DLLs of the original that exist only for 32-bit Windows; the
+64-bit client does without them, as every other platform does:
 
 - sound goes through `platform/audio_sdl.c` in place of RAD's `mss32.dll` (see *Audio*), on a
   static SDL3 that `vendor\build_vendor.bat` downloads (the commit `cmake/SDL3.cmake` pins,
@@ -711,9 +753,9 @@ ships; a 64-bit program skips those and would need the x64 redistributable insta
 `vendor\build_vendor.bat` writes what it built the libraries as into `build\vendor\kind.txt`, and a
 `build\vendor` without that file, or with another kind, such as a checkout's 32-bit libraries from
 before 2026-11-11, is removed and built again. The tests do not use `build\vendor`'s libraries:
-CMake builds the ones they link from `vendor/`, and SDL through `cmake/SDL3.cmake`, unpacked into
-the tests' build from `build\vendor\sdl3.tar.gz`, the same pinned and hash-checked archive, when it
-is there.
+CMake builds the ones they link from `vendor/`, and SDL and FreeType through `cmake/SDL3.cmake` and
+`cmake/Freetype.cmake`, unpacked into the tests' build from `build\vendor\sdl3.tar.gz` and
+`build\vendor\freetype.tar.gz`, the same pinned and hash-checked archives, when they are there.
 
 SDL is built with its video and GPU subsystems as well as audio, with Vulkan and without OpenGL and
 OpenGL ES. SDL has no switch for its Direct3D 12 GPU driver, which it builds whenever `dxgi1_6.h` is
@@ -783,8 +825,9 @@ names the servers as on any other platform; an emulator reaches servers on its h
   (`android.hardware.vulkan.version` in the manifest). The renderer has not been run on Android
   yet.
 - Fonts: there is no Fontconfig, so `render/font_match_scan.c` reads the faces in `/system/fonts`
-  and `/product/fonts` once and sorts them as Fontconfig does for the client's requests (the asked
-  families in order, then the faces that cover the language, then slant and weight); Korean text is
+  and `/product/fonts` once and sorts them for the client's requests as `render/font_faces.c` says
+  (the asked families in order, then for a fixed-pitch request the fixed-pitch faces, then the
+  faces that cover the language, then slant and weight); Korean text is
   set in Noto Sans CJK KR, Latin text in Roboto. `RAGE_FONT_SCAN` turns the scanner on elsewhere
   (`RAGE_FONT_DIRS` names the folders); on the Linux VM it chose the same fonts as Fontconfig for
   every scene.
@@ -848,10 +891,10 @@ on Windows 2 s, and both repeat bit for bit (Windows with `RAGEXE_MSAA=1`).
 
 Comparing Windows and Linux captures of the same scenes and data:
 
-- **Text** is the largest difference. GDI and FreeType draw different fonts unless the same file
-  is on both machines; a Windows without the Korean supplemental fonts has no Gulim, and GDI then
-  draws Korean-charset text in Ebrima, which is much narrower than Gulim, while Linux uses
-  Noto Sans CJK KR or NanumGothic at Gulim's size.
+- **Text** is the largest difference. FreeType draws the same text on both only where the same
+  font files are on both machines; a Windows without the Korean supplemental fonts has no Gulim,
+  and draws Hangul in Malgun Gothic, as GDI did, while Linux uses Noto Sans CJK KR or NanumGothic at
+  Gulim's size.
 - **Edges and foliage**: every platform multisamples alike (*Renderer*); set `RAGEXE_MSAA=1` on
   both for captures to compare.
 - **Random effects** (level 99 auras, clouds, particles) took other paths because glibc's and

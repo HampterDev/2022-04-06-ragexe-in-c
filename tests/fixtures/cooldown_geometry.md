@@ -5,7 +5,10 @@ against every frame byte for byte.
 
 Each little-endian record contains nine 32-bit fields (segment, vertex count,
 angle, total duration, start, elapsed, last-minute flag, color, queued flag)
-followed by 24 vertices of 32 bytes each: 804 bytes per record. The angle and
+followed by 24 vertices of 32 bytes each: 804 bytes per record. A vertex is x,
+y, z, rhw, color, a specular color and u, v; the vertices have had no specular
+color since the fog moved into the renderer's shaders, and the test checks that
+the fixture's is 0 throughout, as the geometry left it. The angle and
 vertex coordinates are IEEE 754 floats. The fixture's SHA-256 is
 `de1edd1f824c3a0fd0cf26ff7ce74da2295ab30dd3022b594befc674452f7492`.
 

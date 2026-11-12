@@ -27,19 +27,13 @@ static void *checked_realloc(void *memory, size_t size)
 #define calloc checked_calloc
 #define realloc checked_realloc
 #define free checked_free
-#ifdef RENDERER_BASELINE
-#else
 #include "../src/render/rp_pool.c"
-#endif
 #undef free
 #undef realloc
 #undef calloc
-#ifdef RENDERER_BASELINE
-#else
 #include "../src/render/crenderer.c"
 #include "../src/effects/multitex_particle.c"
 #include "../src/effects/effect_render_hooks.c"
-#endif
 
 void *mem_alloc(size_t bytes) { void *p = checked_malloc(bytes); assert(p); return p; }
 
@@ -50,42 +44,23 @@ void mem_free(void *p)
 void fatal_error(const char *message) { (void)message; abort(); }
 static unsigned atlas_starts, atlas_ends, frame_ends, effect_ends;
 struct C3dDevice g_3dDevice;
-struct gfx_caps g_gfxCaps;
-#ifdef RENDERER_BASELINE
-void *g_effectMgr;
-#else
 struct EffectMgr *g_effectMgr;
-#endif
 int g_lightmap;
 void sprite_atlas_initialize(struct Renderer *r) { assert(r); ++atlas_starts; }
 void sprite_atlas_destroy(struct Renderer *r) { assert(r); ++atlas_ends; }
-#ifdef RENDERER_BASELINE
-#define TEST_PASSES 24
-#else
-#define TEST_PASSES RENDER_PASS_COUNT
-#endif
+
 static size_t queued(const struct Renderer *r, size_t pass)
 {
-#ifdef RENDERER_BASELINE
-    static const BYTE keyed[24] = {0,0,0,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,0,0,1,1,0,1};
-    if (!r->lists[pass].begin) return 0;
-    return (size_t)(r->lists[pass].end - r->lists[pass].begin) / (keyed[pass] ? 8 : 4);
-#else
     return r->queues[pass].count;
-#endif
 }
 void sprite_atlas_finish_frame(struct Renderer *r)
 {
     size_t i;
     assert(effect_ends == frame_ends + 1);
-    for (i = 0; i < TEST_PASSES; ++i) assert(!queued(r, i));
+    for (i = 0; i < RENDER_PASS_COUNT; ++i) assert(!queued(r, i));
     ++frame_ends;
 }
-#ifdef RENDERER_BASELINE
-void effect_mgr_destroy_removed(void *mgr) { assert(mgr == g_effectMgr); ++effect_ends; }
-#else
 void effect_mgr_destroy_removed(struct EffectMgr *mgr) { assert(mgr == g_effectMgr); ++effect_ends; }
-#endif
 void error_msg(const char *text, int flags) { (void)text; (void)flags; abort(); }
 void perf_begin(int phase) { (void)phase; }
 void perf_end(int phase) { (void)phase; }
@@ -137,20 +112,19 @@ static void sample_textures(void)
 }
 static uint64_t trace;
 static unsigned draws;
-static DWORD states[256];
+static int current_mode = -1;
 static void word(unsigned value) { trace = (trace ^ value) * UINT64_C(1099511628211); }
 static void bytes(const void *data, size_t count)
 { const BYTE *p = data; size_t i; for (i = 0; i < count; ++i) word(p[i]); }
-void gfx_set_render_state(int state, DWORD value)
-{ assert((unsigned)state < 256); states[state] = value; word(1); word(state); word(value); }
-int gfx_get_render_state(int state, DWORD *out)
-{ assert((unsigned)state < 256); *out = states[state]; return 0; }
-static DWORD stage_states[2][32];
-void gfx_set_stage_state(int stage, int state, DWORD value)
+void gfx_set_mode(int mode)
+{ assert(draw_mode(mode)); current_mode = mode; word(1); word((unsigned)mode); }
+void gfx_set_effect(int src, int dst, int combine)
 {
-    if (stage >= 0 && stage < 2 && state >= 0 && state < 32) stage_states[stage][state] = value;
-    word(2); word(stage); word(state); word(value);
+    assert(combine >= 0 && combine < DRAW_COMBINE_COUNT && combine != 2);
+    word(2); word((unsigned)src); word((unsigned)dst); word((unsigned)combine);
 }
+void gfx_set_fog(const struct GfxFog *fog)
+{ word(4); word((unsigned)fog->on); word(fog->colour); bytes(&fog->start, sizeof fog->start); bytes(&fog->end, sizeof fog->end); }
 void gfx_set_texture(int stage, gfx_surface *surface)
 {
     assert(stage >= 0 && stage < 2 && (!surface || !surface->allocated || surface->refs));
@@ -160,6 +134,7 @@ void gfx_set_texture(int stage, gfx_surface *surface)
 void gfx_draw(int primitive, int kind, const void *vertices, int count, const WORD *indices, int index_count)
 {
     assert(count > 0 && (count <= 4 || capture_projection) && (!index_count || indices));
+    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_INTO_SCREEN));
     if (capture_projection) {
         assert(primitive == GFX_PT_TRIANGLELIST && kind == GFX_VTX_TEX1 && count == 6);
         assert(!index_count && projection_draw_count < 2);
@@ -178,6 +153,7 @@ void gfx_set_world_view(const struct GfxWorldView *view)
 void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw)
 {
     assert(mesh == (gfx_mesh *)&mesh_token && draw->first == 0 && draw->count == 3);
+    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_MESHES));
     word(6); word((unsigned)draw->first); word((unsigned)draw->count); sample_textures(); ++draws;
 }
 int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
@@ -204,13 +180,9 @@ static void growth(void)
     struct RPQuad *quad;
     struct TexDrawVertex *vertices;
     unsigned pass, i, allocations = 0;
-#ifndef RENDERER_BASELINE
     renderer.clearColor = 0xaabbccdd;
-#endif
     assert(renderer_construct(&renderer));
-#ifndef RENDERER_BASELINE
     assert(renderer.clearColor == 0);
-#endif
     for (pass = 0; pass < 2; ++pass) {
         first = renderer_new_prim(&renderer);
         assert(first->base.verts == first->quad && first->base.nverts == 4 && first->base.prim == 5);
@@ -224,11 +196,9 @@ static void growth(void)
         assert(renderer_new_tex_draw_vertices(&renderer, 5000));
         assert(((struct TexDrawVertex *)quad->verts)[0].x == 123.0f);
         assert(((struct TexDrawVertex *)quad->verts)[10239].diffuse == 0xabc);
-#ifndef RENDERER_BASELINE
         assert(quad->verts == vertices);
         assert(!renderer_new_tex_draw_vertices(&renderer, -1));
         assert(!renderer_new_tex_draw_vertices(&renderer, 0));
-#endif
         for (i = 1; i < 1100; ++i) assert(renderer_new_quad(&renderer)->nindices == 0);
         two = renderer_new_two_tex_quad(&renderer);
         assert(two->prim.verts == two->quad && two->prim.nverts == 4);
@@ -252,27 +222,10 @@ static void routing(void)
         quad.base.alpha_mode = (BYTE)mode;
         for (flags = 0; flags < 65536; ++flags) renderer_add_prim(&renderer, &quad.base, flags);
         printf("route %u", mode);
-        for (i = 0; i < TEST_PASSES; ++i) printf(" %u", (unsigned)queued(&renderer, i));
+        for (i = 0; i < RENDER_PASS_COUNT; ++i) printf(" %u", (unsigned)queued(&renderer, i));
         putchar('\n'); renderer_destroy_all_rp_list(&renderer);
     }
     renderer_destruct(&renderer); assert(!outstanding);
-}
-
-static void blend_stage_arguments(void)
-{
-    struct Renderer renderer = {0};
-    renderer_set_blend_stages(&renderer, 6);
-    assert(stage_states[0][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_COMPLEMENT));
-    assert(stage_states[1][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_COMPLEMENT));
-    assert(stage_states[1][GFX_TSS_COLOROP] == GFX_TOP_MODULATE);
-    renderer_set_blend_stages(&renderer, 7);
-    assert(stage_states[0][GFX_TSS_COLORARG1] == GFX_TA_TEXTURE);
-    assert(stage_states[1][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_ALPHAREPLICATE));
-    assert(stage_states[1][GFX_TSS_COLOROP] == GFX_TOP_MODULATE);
-    renderer_set_blend_stages(&renderer, 12);
-    assert(stage_states[0][GFX_TSS_COLORARG1] == GFX_TA_TEXTURE);
-    assert(stage_states[1][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_COMPLEMENT));
-    assert(stage_states[1][GFX_TSS_COLOROP] == GFX_TOP_ADD);
 }
 
 static void render_trace(void)
@@ -290,7 +243,7 @@ static void render_trace(void)
     for (scenario = 0; scenario < 8; ++scenario) {
         renderer.twoPassAlpha = scenario & 1;
         g_lightmap = (scenario >> 1) & 1;
-        renderer.fogVertexCaps = (scenario >> 2) & 1;
+        renderer.fogEnable = (scenario >> 2) & 1;
         for (i = 0; i < 96; ++i) {
             struct TexDrawPrim *q = quads + i;
             rp_quad_batch_construct(q);
@@ -310,7 +263,7 @@ static void render_trace(void)
             for (j = 0; j < 4; ++j) { pairs[i].quad[j].rhw = 0.00125f; pairs[i].quad[j].diffuse = i + 1; }
             renderer_add_multi_tex_batch(&renderer, &pairs[i].prim);
         }
-        memset(states, 0, sizeof states); trace = UINT64_C(1469598103934665603); draws = 0;
+        current_mode = -1; trace = UINT64_C(1469598103934665603); draws = 0;
         renderer_draw_lists(&renderer);
         printf("render %u %u %016llx\n", scenario, draws, (unsigned long long)trace);
         renderer_destroy_all_rp_list(&renderer);
@@ -318,7 +271,6 @@ static void render_trace(void)
     renderer_destruct(&renderer); assert(!outstanding);
 }
 
-#ifndef RENDERER_BASELINE
 static int ground_available = 1, view_available = 1, cell_available = 1;
 static unsigned projected_vertices;
 static int expected_cell_x, expected_cell_y;
@@ -388,7 +340,7 @@ static void multitex_frame_vertices(void)
         const struct RPTwoTexVertex *v = first->verts + i;
         assert(v->x == 10.5f + i && v->y == 19.5f - i);
         assert(v->z == (float)i / 4 - k_multitexDepthNudge && v->rhw == 0.00125f);
-        assert(v->diffuse == 0xffffffff && v->specular == (DWORD)rp_vertex_fog_alpha(v->rhw) << 24);
+        assert(v->diffuse == 0xffffffff);
         assert(v->u0 == particle.uv0[i].u + 0.25f && v->v0 == particle.uv0[i].v + 0.5f);
         assert(v->u1 == particle.uv1[i].u && v->v1 == particle.uv1[i].v);
     }
@@ -433,17 +385,13 @@ static void failures(void)
         assert(!outstanding && !g_renderer);
     }
 }
-#endif
 
-#ifndef RENDERER_BASELINE
 #include "renderer_texture_owner_test.h"
 #include "renderer_granny_projection_test.h"
-#endif
 
 int main(int argc, char **argv)
 {
     (void)argv;
-#ifndef RENDERER_BASELINE
     g_renderBeforeClearLists = effect_mgr_destroy_removed_effects;
     if (argc > 1 && (!strcmp(argv[1], "growth_failure") || !strcmp(argv[1], "queue_failure"))) {
         struct Renderer renderer = {0}; struct TexDrawPrim *quad; unsigned i;
@@ -459,8 +407,7 @@ int main(int argc, char **argv)
         return 99;
     }
     if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); granny_projection_ownership(); }
-#endif
-    growth(); routing(); blend_stage_arguments(); render_trace();
+    growth(); routing(); render_trace();
     assert(!outstanding && atlas_starts && atlas_ends && frame_ends == effect_ends);
     if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes and real draw passes passed.");
     return 0;

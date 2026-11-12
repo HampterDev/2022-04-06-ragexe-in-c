@@ -124,7 +124,7 @@ endif()
 if(BUILD_TESTING AND NOT ANDROID)
     # The GPU backend on this machine's GPU (tests/CMakeLists.txt declares it for Windows).
     add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/gfx_batch.c
-        src/render/texel_convert.c src/platform/thread_posix.c)
+        src/render/texel_convert.c src/render/draw_modes.c src/render/vertex_fog.c src/platform/thread_posix.c)
     target_include_directories(test_gfx_gpu PRIVATE ${PROJECT_SOURCE_DIR}/src)
     target_compile_definitions(test_gfx_gpu PRIVATE _DEFAULT_SOURCE)
     target_link_libraries(test_gfx_gpu PRIVATE SDL3::SDL3 Threads::Threads m)

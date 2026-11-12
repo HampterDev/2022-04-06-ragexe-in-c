@@ -8,7 +8,7 @@ struct Texture;
 
 struct TexDrawVertex {
     float x, y, z, rhw;
-    uint32_t diffuse, specular;
+    uint32_t diffuse;
     float u, v;
 };
 
@@ -33,7 +33,7 @@ struct TexDrawPrim {
 
 struct RPTwoTexVertex {
     float x, y, z, rhw;
-    uint32_t diffuse, specular;
+    uint32_t diffuse;
     float u0, v0, u1, v1;
 };
 
@@ -52,12 +52,10 @@ struct RPTwoTexQuad {
 };
 
 /* custom: a draw of part of a static mesh (render/gfx.h), queued among the primitives above; view
-   takes the mesh's own coordinates to view space (render/rp_project.c), and cull is the cull mode
-   it is drawn with, 0 for the one its queue's flush has set */
+   takes the mesh's own coordinates to view space (render/rp_project.c) */
 struct RPMeshDraw {
     struct gfx_mesh *mesh;
     float view[12];
-    int cull;
     struct GfxMeshDraw draw;
 };
 

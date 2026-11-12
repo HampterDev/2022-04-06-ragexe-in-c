@@ -60,8 +60,8 @@ void particle_reset(struct Particle *self)
     self->age = 0;
     self->flags = 0;
     self->offset.x = self->offset.y = self->offset.z = 0;
-    self->src_blend = GFX_BLEND_SRCALPHA;
-    self->dest_blend = GFX_BLEND_ONE;
+    self->src_blend = DRAW_BLEND_SRCALPHA;
+    self->dest_blend = DRAW_BLEND_ONE;
     rp_quad_batch_copy_verts(&self->batch, rp_quad_batch_construct(&fresh));
     memcpy(self->matrix, g_identityMatrix.m, MATRIX_BYTES);
     self->depth_bias = 0;
@@ -83,10 +83,8 @@ struct Particle *particle_construct(struct Particle *self, Vec3 pos, int list_fl
     self->offset.x = self->offset.y = self->offset.z = 0;
     self->second_offset.x = self->second_offset.y = self->second_offset.z = 0;
     rp_quad_batch_construct(&self->batch);
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 4; i++)
         memset(&self->corners[i], 0, sizeof(self->corners[i]));
-        self->corners[i].specular = 0xff000000;
-    }
     particle_reset(self);
     return self;
 }

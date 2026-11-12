@@ -40,9 +40,9 @@ enum perf_phase {
    - draws and prims: the draws the device makes of gfx_draw's vertices (after batching) and of
      meshes, the shadow maps' included; drawCalls: the gfx_draw and gfx_draw_mesh calls. Blits
      drawn as quads count as blitQuads alone.
-   - statesSent and statesSkipped: gfx_set_render_state and gfx_set_stage_state calls that change a
-     state the device keeps, and that leave it as it was; texSets: gfx_set_texture calls that
-     change a stage's texture.
+   - modesSent and modesSkipped: gfx_set_mode, gfx_set_effect and gfx_set_fog calls that change what
+     the device draws with (render/gfx.h), which ends a batch, and that leave it as it was; texSets:
+     gfx_set_texture calls that change a stage's texture.
    - vertexBytes: the vertices and indices a draw of gfx_draw's vertices gives the device, and those
      of a mesh when the device fills its buffers.
    - textureBytes: the texels written by texture_upload_pixels, surface_fill_pixels and
@@ -57,8 +57,8 @@ enum perf_phase {
 struct perf_counters {
     unsigned draws;
     unsigned prims;
-    unsigned statesSent;
-    unsigned statesSkipped;
+    unsigned modesSent;
+    unsigned modesSkipped;
     unsigned texSets;
     unsigned vertexBytes;
     unsigned textureBytes;
@@ -72,7 +72,6 @@ struct perf_counters {
     unsigned blits;
     unsigned blitQuads;
     unsigned cpuBlits;
-    unsigned dcGets;
     unsigned textMeasured;
     unsigned textHits;
     unsigned drawCalls;
@@ -100,26 +99,20 @@ static __inline void perf_count_shared(unsigned *counter, unsigned amount)
     platform_atomic_add((volatile int32_t *)counter, (int32_t)amount);
 }
 
-/* a gfx_set_render_state or gfx_set_stage_state call, which sent the state or left it as it was */
-static __inline void perf_count_state(int sent)
+/* a gfx_set_mode, gfx_set_effect or gfx_set_fog call, which changed what the device draws with or
+   left it as it was */
+static __inline void perf_count_mode(int sent)
 {
     if (sent)
-        g_perf.statesSent++;
+        g_perf.modesSent++;
     else
-        g_perf.statesSkipped++;
+        g_perf.modesSkipped++;
 }
 
+/* the triangles of a list (4) or a strip (5) of n vertices */
 static __inline unsigned perf_prim_count(int prim, int n)
 {
-    switch (prim) {
-    case 1:  return (unsigned)n;
-    case 2:  return (unsigned)n / 2;
-    case 3:  return n > 1 ? n - 1 : 0;
-    case 4:  return (unsigned)n / 3;
-    case 5:
-    case 6:  return n > 2 ? n - 2 : 0;
-    }
-    return (unsigned)n;
+    return prim == 4 ? (unsigned)n / 3 : n > 2 ? (unsigned)n - 2 : 0;
 }
 
 struct UIWindow;

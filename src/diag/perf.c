@@ -45,11 +45,6 @@ static struct {
         struct perf_counters per;
         int valid;
     } snap;
-#ifdef TEXT_BACKEND_GDI
-    HDC dc;
-    HBITMAP bmp;
-    HGDIOBJ oldBmp;
-#endif
     FontHandle font;
     DWORD *bits;
     int charW, lineH;
@@ -143,11 +138,11 @@ static void build_lines(void)
     for (i = 0; i < 5 && i < nl; i++) {
         snprintf(s + strlen(s), sizeof P.lines[3] - strlen(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
     }
-    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  states %u sent / %u skipped  tex sets %u  locks %u (target %u)",
-             c->draws / f, c->drawCalls / f, c->prims / f, c->statesSent / f, c->statesSkipped / f, c->texSets / f,
+    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  modes %u sent / %u skipped  tex sets %u  locks %u (target %u)",
+             c->draws / f, c->drawCalls / f, c->prims / f, c->modesSent / f, c->modesSkipped / f, c->texSets / f,
              c->locks / f, c->targetLocks / f);
-    snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  dc %u  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
-             c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f, c->dcGets / f,
+    snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
+             c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f,
              (c->textMeasured + c->textHits) / f,
              c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
              c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
@@ -202,54 +197,11 @@ void perf_frame_end(struct Renderer *r)
         roll(t);
 }
 
-#ifdef TEXT_BACKEND_GDI
-static int make_dib(void)
-{
-    BITMAPINFO bi;
-    SIZE sz;
-    P.dc = CreateCompatibleDC(NULL);
-    if (!P.dc)
-        return 0;
-    memset(&bi, 0, sizeof(bi));
-    bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
-    bi.bmiHeader.biWidth = OV_TEX_W;
-    bi.bmiHeader.biHeight = -OV_TEX_H;
-    bi.bmiHeader.biPlanes = 1;
-    bi.bmiHeader.biBitCount = 32;
-    bi.bmiHeader.biCompression = BI_RGB;
-    P.bmp = CreateDIBSection(P.dc, &bi, DIB_RGB_COLORS, (void **)&P.bits, NULL, 0);
-    if (!P.bmp || !P.bits) {
-        DeleteDC(P.dc);
-        P.dc = NULL;
-        P.bits = NULL;
-        return 0;
-    }
-    P.oldBmp = SelectObject(P.dc, P.bmp);
-    P.font = CreateFontA(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                         NONANTIALIASED_QUALITY, FIXED_PITCH | FF_MODERN, "Lucida Console");
-    if (P.font)
-        SelectObject(P.dc, P.font);
-    SetBkMode(P.dc, TRANSPARENT);
-    SetTextColor(P.dc, RGB(255, 255, 255));
-    P.charW = 7;
-    P.lineH = 13;
-    if (GetTextExtentPoint32W(P.dc, L"W", 1, &sz)) {
-        P.charW = sz.cx;
-        P.lineH = sz.cy + 1;
-    }
-    return 1;
-}
-
-static void overlay_text_out(int x, int y, const char *line, int len)
-{
-    TextOutA(P.dc, x, y, line, len);
-}
-#else
-static int make_dib(void)
+static int make_canvas(void)
 {
     static const uint16_t widest = 'W';
     SIZE sz;
-    P.font = font_cache_get_family(&g_fontCache, "monospace", -12);
+    P.font = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
     if (!P.font)
         return 0;
     P.bits = malloc((size_t)OV_TEX_W * OV_TEX_H * sizeof *P.bits);
@@ -270,7 +222,6 @@ static void overlay_text_out(int x, int y, const char *line, int len)
         text[i] = (unsigned char)line[i];
     font_text_out(P.font, &target, x, y, text, i, RGB(255, 255, 255), NULL);
 }
-#endif
 
 static void rasterize(void)
 {
@@ -289,9 +240,6 @@ static void rasterize(void)
     }
     if (P.usedW > OV_TEX_W)
         P.usedW = OV_TEX_W;
-#ifdef TEXT_BACKEND_GDI
-    SelectObject(P.dc, P.font);
-#endif
     for (y = 0; y < P.usedH; y++) {
         DWORD *row = P.bits + y * OV_TEX_W;
         for (x = 0; x < P.usedW; x++)
@@ -333,16 +281,12 @@ static int upload(void)
 
 struct ov_vertex {
     float x, y, z, rhw;
-    DWORD diffuse, specular;
+    DWORD diffuse;
     float u, v;
 };
 
 static void draw(struct Renderer *r)
 {
-    static const int rs_ids[6] = { GFX_RS_ZENABLE, GFX_RS_ALPHABLENDENABLE, GFX_RS_ALPHATESTENABLE,
-                                   GFX_RS_FOGENABLE, GFX_RS_SRCBLEND, GFX_RS_DESTBLEND };
-    static const DWORD rs_vals[6] = { FALSE, TRUE, FALSE, FALSE, GFX_BLEND_SRCALPHA, GFX_BLEND_INVSRCALPHA };
-    DWORD saved[6];
     struct ov_vertex v[4];
     float x0 = (float)(g_3dDevice.width - P.usedW - OV_MARGIN) - 0.5f;
     float y0 = (float)(g_3dDevice.height - P.usedH - OV_MARGIN) - 0.5f;
@@ -355,21 +299,10 @@ static void draw(struct Renderer *r)
         v[i].z = 0.0f;
         v[i].rhw = 1.0f;
         v[i].diffuse = 0xffffffffu;
-        v[i].specular = 0;
         v[i].u = (i & 1) ? u1 : 0.0f;
         v[i].v = (i & 2) ? v1 : 0.0f;
     }
-    for (i = 0; i < 6; i++) {
-        saved[i] = rs_vals[i];
-        gfx_get_render_state(rs_ids[i], &saved[i]);
-        gfx_set_render_state(rs_ids[i], rs_vals[i]);
-    }
-    gfx_set_stage_state(0, GFX_TSS_COLOROP, GFX_TOP_SELECTARG1);
-    gfx_set_stage_state(0, GFX_TSS_COLORARG1, GFX_TA_TEXTURE);
-    gfx_set_stage_state(0, GFX_TSS_ALPHAOP, GFX_TOP_SELECTARG1);
-    gfx_set_stage_state(0, GFX_TSS_ALPHAARG1, GFX_TA_TEXTURE);
-    gfx_set_stage_state(1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
-    gfx_set_stage_state(1, GFX_TSS_ALPHAOP, GFX_TOP_DISABLE);
+    gfx_set_mode(DRAW_PANEL);
     gfx_set_texture(0, P.tex);
     gfx_set_texture(1, NULL);
     gfx_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1, v, 4, NULL, 0);
@@ -377,14 +310,11 @@ static void draw(struct Renderer *r)
     gfx_set_texture(1, NULL);
     r->boundTextures[0] = NULL;
     r->boundTextures[1] = NULL;
-    renderer_set_blend_stages(r, 0);
-    for (i = 0; i < 6; i++)
-        gfx_set_render_state(rs_ids[i], saved[i]);
 }
 
 static void draw_overlay(struct Renderer *r)
 {
-    if (!P.bits && !make_dib())
+    if (!P.bits && !make_canvas())
         return;
     if (P.dirty) {
         rasterize();

@@ -598,11 +598,9 @@ void prim_streak_render(struct EffectPrim *self, const float *view)
     Vec3 above = self->base.pos;
 
     memset(&foot, 0, sizeof(foot));
-    foot.specular = 0xff000000;
     renderer_project_vertex(g_renderer, &at, view, &foot);
     above.y -= 10.0f;
     memset(&head, 0, sizeof(head));
-    head.specular = 0xff000000;
     renderer_project_vertex(g_renderer, &above, view, &head);
 
     tri->v[0].x = foot.x;

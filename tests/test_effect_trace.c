@@ -59,8 +59,10 @@
    once the objects' sizes, the hashes of their bytes and the offsets and counts of the changed
    words, which follow the layout, are left out. Sounds have no position since 2026-11-11: the
    trace before (7421cc352aaed63c) is this one line for line once its wave lines lose their
-   position and distances. */
-#define EXPECTED_DIGEST 0x356d458afcc7debbull
+   position and distances. The vertices have had no specular colour since the fog moved into the
+   renderer's shaders: the trace before (356d458afcc7debb) is this one line for line but for the
+   new effects' lines, whose effect is 4,096 bytes smaller and its bytes' hash another. */
+#define EXPECTED_DIGEST 0x027d7d81b571a862ull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -702,7 +704,6 @@ struct TexCache g_textureCache;
 struct EffectMgr *g_effectMgr;
 int g_isSkipFrame;
 DWORD g_fogColor;
-float g_fogNear, g_fogFar;
 int gfx_shadows_supported(void) { return 0; }
 int g_lightmap = 1;
 static struct World g_world;
@@ -768,7 +769,6 @@ struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float
     out->z = 0.0f;
     out->rhw = 0.0f;
     out->diffuse = 0;
-    out->specular = 0xff000000;
     out->u = 0.0f;
     out->v = 0.0f;
     renderer_project_vertex(g_renderer, &pos, matrix, out);

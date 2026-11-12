@@ -1,16 +1,12 @@
 @echo off
 REM The third-party libraries, from the sources in this folder, to ..\build\vendor\*.lib, 64-bit
 REM and with the static C runtime (/MT) like the client: zlib and libpng, Lua, yyjson, stb's JPEG,
-REM the client's C++ helpers, dr_mp3 and SDL3 (platform\audio_sdl.c plays sound through them).
-REM With the word freetype FreeType too, for the FreeType text backend.
+REM the client's C++ Rijndael, dr_mp3, SDL3 (platform\audio_sdl.c plays sound through them) and
+REM FreeType, which draws the text.
 REM Run from a vcvars64 environment (tools\find_vcvars.bat).
 setlocal
 pushd "%~dp0" || exit /b 1
 set "OUT=%~dp0..\build\vendor"
-set "WANTFT="
-for %%a in (%*) do (
-  if /i "%%~a"=="freetype" set "WANTFT=1"
-)
 
 REM build\vendor\kind.txt says what the libraries there were built as; it is written once all but
 REM FreeType are built. A folder without it, or built as anything else (32-bit until 2026-11-11,
@@ -39,17 +35,13 @@ call :library jpeg "" stb\stb_impl.c
 if errorlevel 1 goto failed
 call :library crijndael "/EHsc /GR- /I..\src" crijndael\*.cpp
 if errorlevel 1 goto failed
-call :library font_backend "/EHsc /GR- /I..\src" font_backend\*.cpp
-if errorlevel 1 goto failed
 call :library dr_mp3 "/DDR_MP3_NO_STDIO" dr_libs\dr_mp3_impl.c
 if errorlevel 1 goto failed
 call :sdl3
 if errorlevel 1 goto failed
 >"%STAMP%" echo %KIND%
-if defined WANTFT (
-  call :freetype
-  if errorlevel 1 goto failed
-)
+call :freetype
+if errorlevel 1 goto failed
 popd
 exit /b 0
 

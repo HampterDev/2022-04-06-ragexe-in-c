@@ -1,4 +1,3 @@
 src/diag/crash_report.c
 src/platform/crash_dump.c
-src/render/fonts.c
 src/ui/misc/crash_dialog.c

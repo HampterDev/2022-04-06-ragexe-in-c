@@ -2,7 +2,6 @@
 struct Renderer *g_renderer;
 struct TexCache g_textureCache;
 struct EffectMgr *g_effectMgr;
-float g_fogNear, g_fogFar;
 void gfx_addref(gfx_surface *surface) { abort(); }
 void gfx_release(gfx_surface *surface) { abort(); }
 struct C3dDevice g_3dDevice;

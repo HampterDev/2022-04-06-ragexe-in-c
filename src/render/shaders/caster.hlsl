@@ -1,6 +1,6 @@
 // A shadow caster's depth from the light (render/gfx.h, gfx_shadow_begin): a mesh drawn into one
 // cascade's map, its depth negative for a model's, and texels the opaque lists' alpha test (0xcf)
-// drops cast nothing where a texture is bound.
+// drops cast nothing (without a texture the stage reads opaque white).
 #include "records.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
@@ -40,7 +40,7 @@ float4 fs_main(CasterOut i) : SV_Target0
 {
     Draw d = fragmentDraws[i.draw];
     float alpha = colourMap.Sample(colourSampler, stage_uv(i.uv, d.uvScale.xy, d.uvLimit.xy)).a;
-    if ((d.stage0b.w & DRAW_TEXTURE) != 0 && alpha < 207.0 / 255)
+    if (alpha < 207.0 / 255)
         discard;
     return float4(i.depth * (d.mesh.x != 0 ? -1 : 1), 0, 0, 1);
 }

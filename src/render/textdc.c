@@ -43,22 +43,80 @@ static FontHandle run_font(struct TextDC *self, FontHandle face, enum TextScript
 {
     FontHandle fallback;
 
-    if (script == TEXT_SCRIPT_DEFAULT || text_dc_font_covers(self, face, script))
+    if (script == TEXT_SCRIPT_DEFAULT || font_covers(face, script))
         return face;
     fallback = font_cache_get_script_font(&g_fontCache, script, self->size, self->bold, self->italic);
     return fallback ? fallback : face;
 }
 
 /* How far down to draw a fallback run so that it shares the selected face's baseline. */
-static int baseline_offset(struct TextDC *self, FontHandle face, FontHandle font)
+static int baseline_offset(FontHandle face, FontHandle font)
 {
     int want, have;
 
     if (font == face)
         return 0;
-    want = text_dc_font_ascent(self, face);
-    have = text_dc_font_ascent(self, font);
+    want = font_ascent(face);
+    have = font_ascent(font);
     return want > 0 && have > 0 ? want - have : 0;
+}
+
+/* The pixels text goes to: the bitmap's. */
+static int text_target(struct TextDC *self, struct FontTarget *target)
+{
+    if (!self->bitmap)
+        return 0;
+    target->bits = (BYTE *)self->bitmap->bits;
+    target->width = self->bitmap->width;
+    target->height = self->bitmap->height;
+    target->pitch = self->bitmap->width * 4;
+    return target->bits != NULL;
+}
+
+static void draw_run(struct TextDC *self, FontHandle font, int x, int y, const uint16_t *text, int length)
+{
+    struct FontTarget target;
+    if (text_target(self, &target))
+        font_text_out(font, &target, x, y, text, length, self->textColour,
+                      self->bkMode == TEXT_DC_OPAQUE ? &self->bkColour : NULL);
+}
+
+struct TextDC *text_dc_construct(struct TextDC *self, struct DcBitmap *bitmap)
+{
+    *self = (struct TextDC){0};
+    if (bitmap && bitmap->bits) {
+        bitmap->changed = 1;
+        self->bitmap = bitmap;
+    }
+    self->bkColour = RGB(0xff, 0xff, 0xff);
+    self->bkMode = TEXT_DC_TRANSPARENT;
+    return self;
+}
+
+void text_dc_destruct(struct TextDC *self)
+{
+    self->bitmap = NULL;
+}
+
+COLORREF text_dc_set_bk_color(struct TextDC *self, COLORREF colour)
+{
+    COLORREF previous = self->bkColour;
+    self->bkColour = colour;
+    return previous;
+}
+
+int text_dc_set_bk_mode(struct TextDC *self, int mode)
+{
+    int previous = self->bkMode;
+    self->bkMode = mode;
+    return previous;
+}
+
+COLORREF text_dc_set_text_color(struct TextDC *self, COLORREF colour)
+{
+    COLORREF previous = self->textColour;
+    self->textColour = colour;
+    return previous;
 }
 
 void text_dc_text_extent(struct TextDC *self, const char *s, int len, SIZE *out)
@@ -94,7 +152,6 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
         struct TextUnicode text;
         FontHandle font;
         SIZE extent;
-        int top = y, used = 0;
 
         run = text_script_run(s + at, length - at, &script);
         if (!text_unicode_init(&text, s + at, (int)run, CODE_PAGE_UTF8))
@@ -102,14 +159,10 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
         if (!face)
             face = face_font(self);
         font = face ? run_font(self, face, script) : NULL;
-        if (font) {
-            top += baseline_offset(self, face, font);
-            used = text_dc_use_font(self, font);
-        }
-        if (used)
-            text_dc_draw_run(self, x, top, text.data, text.length);
+        if (font)
+            draw_run(self, font, x, y + baseline_offset(face, font), text.data, text.length);
         text_unicode_release(&text);
-        if (!used)
+        if (!font)
             return;
         at += run;
         if (at < length) {
@@ -119,21 +172,16 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
     }
 }
 
-void text_dc_measure_plain(struct TextDC *self, const char *s, int len, SIZE *out)
+void text_dc_text_extent_plain(struct TextDC *self, const char *s, int len, SIZE *out)
 {
-    struct TextUnicode text;
-    FontHandle font;
+    FontHandle font = face_font(self);
 
     out->cx = out->cy = 0;
-    if (!s || len <= 0 || !text_unicode_init(&text, s, len, CODE_PAGE_UTF8))
-        return;
-    font = face_font(self);
-    if (font && text_dc_use_font(self, font) && !text_dc_measure_run(self, text.data, text.length, out))
-        out->cx = out->cy = 0;
-    text_unicode_release(&text);
+    if (font)
+        text_dc_measure_font(self, out, s, len, font);
 }
 
-void text_dc_draw_plain(struct TextDC *self, int x, int y, const char *s, int len)
+void text_dc_text_out_plain(struct TextDC *self, int x, int y, const char *s, int len)
 {
     struct TextUnicode text;
     FontHandle font;
@@ -141,7 +189,7 @@ void text_dc_draw_plain(struct TextDC *self, int x, int y, const char *s, int le
     if (!s || len <= 0 || !text_unicode_init(&text, s, len, CODE_PAGE_UTF8))
         return;
     font = face_font(self);
-    if (font && text_dc_use_font(self, font))
-        text_dc_draw_run(self, x, y, text.data, text.length);
+    if (font)
+        draw_run(self, font, x, y, text.data, text.length);
     text_unicode_release(&text);
 }

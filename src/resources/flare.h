@@ -1,4 +1,3 @@
-#include "render/rp_pool.h"
 #ifndef RESOURCES_FLARE_H
 #define RESOURCES_FLARE_H
 
@@ -28,15 +27,6 @@ struct Flare {
 OFFSET_ASSERT(Flare, colors, 0x1e0);
 OFFSET_ASSERT(Flare, sun, 0x314);
 SIZE_ASSERT(Flare, 0x320);
-
-struct SkyBox {
-    struct TexDrawVertex corners[8];
-    struct TexDrawVertex sun[2];
-    float angle;
-    struct Flare flare;
-};
-OFFSET_ASSERT(SkyBox, angle, 0x140);
-SIZE_ASSERT(SkyBox, 0x464);
 
 struct C3dActor;
 struct SkyModel {

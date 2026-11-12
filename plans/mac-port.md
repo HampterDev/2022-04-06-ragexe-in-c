@@ -186,12 +186,13 @@ Metal and AppKit need a thin Objective-C file, or `objc_msgSend` calls from C. T
 
 ### Text and fonts
 
-GDI text lives in `render/fonts.c`, `textdc.c`, `ctextdc.c`, `cdc.c`, `cframe.c`, `ui/controls/window_draw.c`
-and `diag/perf.c`, plus `vendor/font_backend/font_family.cpp` (GDI+). Everything goes through a small
-funnel, so replacing it is contained. Matching it is the hard part.
+GDI text lived in `render/fonts.c`, `textdc.c`, `ctextdc.c`, `cdc.c`, `cframe.c`, `ui/controls/window_draw.c`
+and `diag/perf.c`, plus `vendor/font_backend/font_family.cpp` (GDI+). Everything went through a small
+funnel, so replacing it was contained; FreeType now draws the text on every platform
+(`docs/portability.md`, *Text*). Matching GDI is the hard part.
 
-`render/c3ddevice.c` asks for Gulim, Arial, MS Gothic, SimSun, MingLiU, Tahoma and Verdana, and
-`render/fonts.c` only looks up fonts already installed on the system. macOS does not include Gulim.
+`render/c3ddevice.c` asks for Gulim, Arial, MS Gothic, SimSun, MingLiU, Tahoma and Verdana, and the
+client only looks up fonts already installed on the system. macOS does not include Gulim.
 
 **Licensing.** Gulim is a commercial font that comes with Windows under the Windows licence, which does
 not let you pass the file on. This is from memory of Microsoft's font redistribution guidance, not

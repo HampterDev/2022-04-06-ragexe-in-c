@@ -9,10 +9,8 @@ struct PrimTriangle *prim_triangle_construct(struct PrimTriangle *t)
 {
     int i;
 
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++)
         memset(&t->v[i], 0, sizeof(t->v[i]));
-        t->v[i].specular = 0xff000000;
-    }
     return t;
 }
 

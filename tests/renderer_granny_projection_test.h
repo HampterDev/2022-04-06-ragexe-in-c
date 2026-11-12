@@ -31,7 +31,6 @@ static void granny_projection_ownership(void)
     assert(!granny_projection_vertices(NULL, 1));
     for (i = 0; i < 6; ++i) {
         struct TexDrawVertex expected = {0};
-        expected.specular = 0xff000000;
         assert(!memcmp(&vertices[i], &expected, sizeof expected));
         vertices[i].x = (float)i + 1;
         vertices[i].y = (float)i - 20;
@@ -78,7 +77,6 @@ static void granny_projection_ownership(void)
     projection = granny_projection_create(1);
     vertices = granny_projection_vertices(projection, 1);
     texture = texture_create(1, 1, GFX_FMT_8888);
-    renderer.fogVertexCaps = 1;
     for (i = 0; i < 3; ++i) vertices[i].rhw = 0.00125f;
     for (i = 0; i < 8300; ++i) {
         vertices[0].x = (float)i;
@@ -88,7 +86,6 @@ static void granny_projection_ownership(void)
     first = renderer.queues[RENDER_OPAQUE_CLAMP].items[0].primitive;
     second = renderer.queues[RENDER_OPAQUE_CLAMP].items[8299].primitive;
     assert(first->verts[0].x == 0 && second->verts[0].x == 8299);
-    assert(first->verts[0].specular == (DWORD)rp_vertex_fog_alpha(0.00125f) << 24);
     granny_projection_destroy(projection); texture_destroy(texture);
     renderer_destroy_all_rp_list(&renderer); renderer_destroy_all_rp_list(&renderer);
     projection = granny_projection_create(1);

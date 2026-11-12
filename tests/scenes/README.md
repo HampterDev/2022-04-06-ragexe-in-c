@@ -22,9 +22,8 @@ produces the same pixels every run, and the same random effects on every platfor
 
 Linux and macOS: build with `-DRAGE_CLIENT=ON` (the target is built with `ragexe`). Windows: run
 `build.bat`, then `tests\scenes\build.bat`, which links `build\ragexe_scenes.exe` from the same
-objects (`build.bat freetype` and `tests\scenes\build.bat freetype`: `ragexe_scenes_ft.exe`, with
-FreeType text as on Linux). Then run every script in `scripts/` from the game directory. The
-Granny models of `granny_models`, `granny_dead` and `guild_flags` come from the glTF files that
+objects. Then run every script in `scripts/` from the game directory. The Granny models of
+`granny_models`, `granny_dead` and `guild_flags` come from the glTF files that
 [`tools/granny_export`](../../tools/granny_export/README.md) writes into the game directory, on
 every platform; without them those scenes show message boxes and no models.
 
@@ -70,10 +69,12 @@ coverage), which smooths edges a GPU of another make places a little otherwise, 
 `RAGEXE_MSAA=1` on both for captures to compare. What is left between the Windows and the Linux
 captures of these scenes:
 
-- text: GDI and FreeType draw different fonts unless the same font file is installed on both
-  (a Windows without Gulim falls back to Ebrima for Korean-charset text; Linux substitutes
-  Noto Sans CJK KR or NanumGothic at Gulim's size). The FreeType build with `RAGE_FONT_DIRS` set to
-  a copy of the Linux machine's font folders draws the same text but for a few pixels;
+- text: FreeType draws the same text on both when the same font files are installed on both;
+  otherwise each draws what it finds (a Windows without Gulim takes Malgun Gothic, as GDI did;
+  Linux substitutes Noto Sans CJK KR or NanumGothic at Gulim's size). With `RAGE_FONT_DIRS` set to
+  a copy of the Linux machine's font folders, the Windows client draws the same text but for a few
+  pixels. `hangul_text` draws Hangul, symbols and kana, which the interface's face lacks, in the
+  scripts' fallback fonts;
 - single pixels along triangle edges, where two GPUs' subpixel precision decide a pixel centre
   differently, and colour rounding of one or two steps in blending.
 
@@ -129,7 +130,7 @@ moment the frame before it was shown to the moment it was. The file is one JSON 
 | `frame` | the frame number the capture's log line gives |
 | `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives |
 | `draw_calls` | `gfx_draw` and `gfx_draw_mesh` calls |
-| `states_sent`, `states_skipped` | render and stage state changes sent to the device, and states set to the value they had |
+| `modes_sent`, `modes_skipped` | `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what the device draws with, and calls that left it as it was |
 | `texture_binds` | `gfx_set_texture` calls that changed a stage's texture |
 | `vertex_bytes` | vertices and indices given to the device for draws, and a mesh's when it is uploaded |
 | `texture_bytes` | texels written into textures and surfaces (texture builds, surface uploads, the sprite atlas) |

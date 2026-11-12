@@ -33,7 +33,6 @@ static void two_tex_vertex_construct(struct RPTwoTexVertex *v)
     v->z = 0.0f;
     v->rhw = 0.0f;
     v->diffuse = 0;
-    v->specular = 0xff000000u;
     v->u0 = 0.0f;
     v->v0 = 0.0f;
 }
@@ -64,7 +63,6 @@ static void tex_vertex_default(struct TexDrawVertex *v)
     v->z = 0.0f;
     v->rhw = 0.0f;
     v->diffuse = 0;
-    v->specular = 0xff000000u;
     v->u = 0.0f;
     v->v = 0.0f;
 }
@@ -243,7 +241,7 @@ struct Renderer *renderer_construct(struct Renderer *self)
     self->frame = self->fpsCount = self->fps = 0;
     self->fpsTick = platform_ticks_ms();
     self->boundTextures[0] = self->boundTextures[1] = NULL;
-    self->fogEnable = self->fogVertexCaps = 0;
+    self->fogEnable = 0;
     self->clipLeft = self->clipRight = self->clipTop = self->clipBottom = 0.0f;
     self->twoPassAlpha = 0;
     sprite_atlas_initialize(self);
@@ -324,28 +322,8 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     ++queue->count;
 }
 
-int rp_vertex_fog_alpha(float rhw)
-{
-    float range = g_fogFar - g_fogNear;
-    float t = (1.0f / rhw - 10.0f) / 1490.0f;
-
-    if (range != 0.0f)
-        t = (t - g_fogNear) / range;
-    t = 0.0f > t ? 0.0f : t;
-    t = 1.0f < t ? 1.0f : t;
-    t = (1.0f - t) * 255.0f;
-    return (int)t;
-}
-
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim)
 {
-    int i;
-
-    for (i = 0; i < prim->nverts; i++) {
-        int alpha = rp_vertex_fog_alpha(((struct RPTwoTexVertex *)prim->verts)[i].rhw);
-
-        ((struct RPTwoTexVertex *)prim->verts)[i].specular = (DWORD)alpha << 24;
-    }
     queue_append(&self->queues[RENDER_MULTITEXTURE], prim, 0.0f, prim->tex0, prim->tex1);
 }
 
@@ -357,17 +335,8 @@ static float edge_key(const struct TexDrawVertex *v)
 void renderer_add_prim(struct Renderer *r, struct RPQuad *p, int flags)
 {
     struct RPQuad *q = p;
-    const struct TexDrawVertex *v;
-    int i;
+    const struct TexDrawVertex *v = (const struct TexDrawVertex *)q->verts;
 
-    if (r->fogVertexCaps && q->nverts > 0) {
-        for (i = 0; i < q->nverts; i++) {
-            int alpha = rp_vertex_fog_alpha(((struct TexDrawVertex *)q->verts)[i].rhw);
-
-            ((struct TexDrawVertex *)q->verts)[i].specular = (DWORD)alpha << 24;
-        }
-    }
-    v = (const struct TexDrawVertex *)q->verts;
     if (!(flags & 1)) {
         if (flags & 0x20)
             queue_append(&r->queues[RENDER_OPAQUE_WRAP], q, 0.0f, q->texture, NULL);

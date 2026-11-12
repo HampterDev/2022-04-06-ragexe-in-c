@@ -39,10 +39,7 @@ extern short g_wobbleAmplitude;
 void set_display(int fullscreen, int maximized, int w, int h);
 void display_follow_window(void);
 extern float g_texelOffsetU, g_texelOffsetV;
-extern DWORD g_fogVertexMode;
 extern DWORD g_fogColor;
-extern DWORD g_fogUseRange;
-extern float g_fogDensity;
 extern float g_fogNear, g_fogFar;
 
 /* The camera-space depth range of the 3D view. The original draws to 1500; custom draws to 40000

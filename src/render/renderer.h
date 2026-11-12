@@ -39,8 +39,6 @@ struct Renderer {
     DWORD fpsTick;
     int fps;
     int fogEnable;
-    int fogDirty;
-    int fogVertexCaps;
     gfx_surface *boundTextures[2];
     float clipLeft, clipRight;
     float clipTop, clipBottom;
@@ -79,7 +77,6 @@ void renderer_draw_frame_extras(struct Renderer *self);
 void renderer_enable_fog(struct Renderer *self, int enable);
 /* custom: shadowOpacity is the share of the light a shadow takes away (world_res.h), 0 to 1 */
 void renderer_set_light(struct Renderer *self, const float *dir, const float *ambient, float shadowOpacity);
-void renderer_set_blend_stages(struct Renderer *self, int mode);
 /* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light fitted
    to what the view, with the view matrix `view` (which the meshes' draws reach view space with),
    sees of the `count` boxes the meshes that receive and cast shadows lie in, up to four times the

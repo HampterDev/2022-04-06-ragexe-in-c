@@ -5,7 +5,7 @@
 
 #define BATCH_VERTS   8192
 #define BATCH_INDICES (BATCH_VERTS * 3)
-#define MAX_STRIDE    40
+#define MAX_STRIDE    GFX_VTX_TEX2_SIZE
 
 static struct {
     batch_drawfn draw;
@@ -48,12 +48,23 @@ void batch_flush(void)
     B.nindices = 0;
 }
 
+void batch_strip_list(WORD *out, int n, const WORD *indices, int base)
+{
+    int t;
+#define IDX(i) ((WORD)(base + (indices ? indices[i] : (i))))
+    for (t = 0; t + 2 < n; t++) {
+        out[3 * t] = IDX(t & 1 ? t + 1 : t);
+        out[3 * t + 1] = IDX(t & 1 ? t : t + 1);
+        out[3 * t + 2] = IDX(t + 2);
+    }
+#undef IDX
+}
+
 static int triangles_of(int prim, int n)
 {
     switch (prim) {
     case GFX_PT_TRIANGLELIST:  return n / 3;
-    case GFX_PT_TRIANGLESTRIP:
-    case GFX_PT_TRIANGLEFAN:   return n > 2 ? n - 2 : 0;
+    case GFX_PT_TRIANGLESTRIP: return n > 2 ? n - 2 : 0;
     }
     return -1;
 }
@@ -73,7 +84,7 @@ int batch_add(int prim, int vertexKind, const void *verts, int nverts, const WOR
         batch_flush();
     if (B.nverts + nverts > BATCH_VERTS || B.nindices + tris * 3 > BATCH_INDICES)
         batch_flush();
-    stride = kind == GFX_VTX_TEX2 ? 40 : 32;
+    stride = kind == GFX_VTX_TEX2 ? GFX_VTX_TEX2_SIZE : GFX_VTX_TEX1_SIZE;
     B.kind = vertexKind;
     B.stride = stride;
     memcpy(B.verts + B.nverts * stride, verts, (size_t)nverts * stride);
@@ -88,24 +99,8 @@ int batch_add(int prim, int vertexKind, const void *verts, int nverts, const WOR
             out[3 * t + 2] = IDX(3 * t + 2);
         }
         break;
-    case GFX_PT_TRIANGLESTRIP:
-        for (t = 0; t < tris; t++) {
-            if (t & 1) {
-                out[3 * t] = IDX(t + 1);
-                out[3 * t + 1] = IDX(t);
-            } else {
-                out[3 * t] = IDX(t);
-                out[3 * t + 1] = IDX(t + 1);
-            }
-            out[3 * t + 2] = IDX(t + 2);
-        }
-        break;
     default:
-        for (t = 0; t < tris; t++) {
-            out[3 * t] = IDX(0);
-            out[3 * t + 1] = IDX(t + 1);
-            out[3 * t + 2] = IDX(t + 2);
-        }
+        batch_strip_list(out, n, indices, base);
         break;
     }
 #undef IDX

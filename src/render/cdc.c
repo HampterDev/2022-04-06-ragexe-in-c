@@ -34,14 +34,8 @@ static void opaque(struct DcBitmap *self)
 struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h)
 {
     memset(self, 0, sizeof *self);
-    if (!text_bitmap_open(self))
-        return NULL;
     dc_bitmap_alloc(self, w, h);
-    if (!self->bits) {
-        text_bitmap_close(self);
-        return NULL;
-    }
-    return self;
+    return self->bits ? self : NULL;
 }
 
 struct DcBitmap *dc_bitmap_create(int w, int h)
@@ -59,7 +53,7 @@ struct DcBitmap *dc_bitmap_create(int w, int h)
 void dc_bitmap_destruct(struct DcBitmap *self)
 {
     delete_textures(self);
-    text_bitmap_close(self);
+    free(self->bits);
     self->bits = NULL;
     self->width = self->height = 0;
     self->changed = 0;
@@ -77,9 +71,10 @@ void dc_bitmap_alloc(struct DcBitmap *self, int w, int h)
     DWORD *bits;
     if (w <= 0 || h <= 0 || (size_t)w > (size_t)INT_MAX / 4 / (size_t)h)
         return;
-    bits = text_bitmap_resize(self, w, h);
+    bits = calloc((size_t)w * (size_t)h, sizeof *bits);
     if (!bits)
         return;
+    free(self->bits);
     delete_textures(self);
     self->bits = bits;
     self->width = w;

@@ -5,6 +5,7 @@
 #include "platform/win_types.h"
 #include "platform/window_handle.h"
 #include "render/gfx_format.h"
+#include "render/draw_modes.h"
 
 typedef struct gfx_surface gfx_surface;
 typedef struct gfx_mesh gfx_mesh;
@@ -20,7 +21,6 @@ struct gfx_lock {
 struct gfx_caps {
     int zbufferless;
     int trilinear;
-    int vertexFog;
     DWORD minTexW, minTexH;
     DWORD maxTexW, maxTexH;
     DWORD texAspect;
@@ -31,18 +31,17 @@ extern struct gfx_caps g_gfxCaps;
 
 #define GFX_VTX_TEX1 1
 #define GFX_VTX_TEX2 2
-/* custom: GFX_VTX_TEX1's layout with x, y and z in world coordinates, which the device takes
-   through the camera's world view (gfx_set_world_camera) to the pixel and depth a pre-transformed
-   vertex would have there; the rhw is not used, and the specular alpha is the vertex fog as for
-   GFX_VTX_TEX1. */
+/* GFX_VTX_TEX1: x, y, z, rhw, the diffuse colour (a D3DCOLOR) and one pair of texture coordinates,
+   GFX_VTX_TEX1_SIZE bytes; GFX_VTX_TEX2 the same with a second pair. custom: GFX_VTX_WORLD is
+   GFX_VTX_TEX1's layout with x, y and z in world coordinates, which the device takes through the
+   camera's world view (gfx_set_world_camera) to the pixel and depth a pre-transformed vertex would
+   have there; its rhw is the one the CPU's projection gave it, which only the fog reads. */
 #define GFX_VTX_WORLD 3
+#define GFX_VTX_TEX1_SIZE 28
+#define GFX_VTX_TEX2_SIZE 36
 
-#define GFX_PT_POINTLIST     1
-#define GFX_PT_LINELIST      2
-#define GFX_PT_LINESTRIP     3
 #define GFX_PT_TRIANGLELIST  4
 #define GFX_PT_TRIANGLESTRIP 5
-#define GFX_PT_TRIANGLEFAN   6
 
 #define GFX_CLEAR_TARGET  1
 #define GFX_CLEAR_ZBUFFER 2
@@ -54,70 +53,11 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_BLT_WAIT  1
 #define GFX_BLT_ASYNC 2
 
-#define GFX_RS_ZENABLE            7
-#define GFX_RS_ZWRITEENABLE       14
-#define GFX_RS_ALPHATESTENABLE    15
-#define GFX_RS_SRCBLEND           19
-#define GFX_RS_DESTBLEND          20
-#define GFX_RS_CULLMODE           22
-#define GFX_RS_ZFUNC              23
-#define GFX_RS_ALPHAREF           24
-#define GFX_RS_ALPHAFUNC          25
-#define GFX_RS_ALPHABLENDENABLE   27
-#define GFX_RS_FOGENABLE          28
-#define GFX_RS_FOGCOLOR           34
-#define GFX_RS_FOGTABLEMODE       35
-#define GFX_RS_FOGSTART           36
-#define GFX_RS_FOGEND             37
-#define GFX_RS_FOGDENSITY         38
-#define GFX_RS_RANGEFOGENABLE     48
-#define GFX_RS_AMBIENT            139
-#define GFX_RS_FOGVERTEXMODE      140
-
-#define GFX_TSS_COLOROP       1
-#define GFX_TSS_COLORARG1     2
-#define GFX_TSS_COLORARG2     3
-#define GFX_TSS_ALPHAOP       4
-#define GFX_TSS_ALPHAARG1     5
-#define GFX_TSS_ALPHAARG2     6
-#define GFX_TSS_TEXCOORDINDEX 11
-#define GFX_TSS_ADDRESS       12
-#define GFX_TSS_BORDERCOLOR   15
-#define GFX_TSS_MAGFILTER     16
-#define GFX_TSS_MINFILTER     17
-#define GFX_TSS_MIPFILTER     18
-
-#define GFX_BLEND_ONE         2
-#define GFX_BLEND_SRCALPHA    5
-#define GFX_BLEND_INVSRCALPHA 6
+/* custom: the cull mode of a mesh's draw (GfxMeshDraw): Direct3D 9's, which culls by the winding on
+   the screen, y down: GFX_CULL_CW drops the clockwise triangles, GFX_CULL_CCW the others. */
 #define GFX_CULL_NONE         1
 #define GFX_CULL_CW           2
 #define GFX_CULL_CCW          3
-#define GFX_CMP_LESS          2
-#define GFX_CMP_LESSEQUAL     4
-#define GFX_CMP_GREATEREQUAL  7
-#define GFX_FOG_NONE          0
-#define GFX_TOP_DISABLE       1
-#define GFX_TOP_SELECTARG1    2
-#define GFX_TOP_SELECTARG2    3
-#define GFX_TOP_MODULATE      4
-#define GFX_TOP_MODULATE2X    5
-#define GFX_TOP_ADD           7
-#define GFX_TOP_ADDSIGNED     8
-#define GFX_TOP_BLENDDIFFUSEALPHA      12
-#define GFX_TOP_BLENDTEXTUREALPHA      13
-#define GFX_TOP_MODULATEALPHA_ADDCOLOR 18
-#define GFX_TA_DIFFUSE        0
-#define GFX_TA_CURRENT        1
-#define GFX_TA_TEXTURE        2
-#define GFX_TA_COMPLEMENT     0x10
-#define GFX_TA_ALPHAREPLICATE 0x20
-#define GFX_ADDRESS_WRAP      1
-#define GFX_ADDRESS_CLAMP     3
-#define GFX_ADDRESS_BORDER    4
-#define GFX_FILTER_LINEAR     2
-#define GFX_MIPFILTER_NONE    1
-#define GFX_MIPFILTER_LINEAR  3
 
 #define GFX_E_DDRAW_CREATE      0x82000001
 #define GFX_E_DEVICE_CREATE     0x82000004
@@ -133,7 +73,6 @@ int gfx_create_screen(struct C3dDevice *d, int flags);
 int gfx_create_3d(struct C3dDevice *d, int flags);
 int gfx_create_zbuffer(struct C3dDevice *d);
 int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out);
-void gfx_default_states(struct C3dDevice *d);
 int gfx_close(struct C3dDevice *d);
 int gfx_present(struct C3dDevice *d, int vsync);
 void gfx_set_mipmaps(int on);
@@ -155,9 +94,38 @@ void gfx_end_scene(void);
 int gfx_clear(int flags, DWORD colour, float z, const RECT *r);
 gfx_surface *gfx_get_render_target(void);
 int gfx_set_render_target(gfx_surface *s);
-void gfx_set_render_state(int state, DWORD value);
-int gfx_get_render_state(int state, DWORD *out);
-void gfx_set_stage_state(int stage, int state, DWORD value);
+
+/* custom: what draws draw with, in place of Direct3D 9's render and texture stage states: the mode
+   (render/draw_modes.h, enum DrawMode), set last, which also says what targets it may draw into
+   and whether meshes may draw with it; a draw with a mode that may not draw into the current target
+   is not drawn. An effect mode (DRAW_EFFECT_*) blends by the D3DBLEND factors gfx_set_effect set
+   last, taken whole (draw_blend_factors), and combines the stages by the enum DrawCombine it set
+   (draw_effect_combine gives an effect preset's); a number that is no combination keeps the one
+   before, as the Direct3D 9 client's stage states stayed what they were while its blend factors
+   still changed. The device starts with DRAW_OVERLAY and blending by DRAW_BLEND_SRCALPHA and
+   DRAW_BLEND_INVSRCALPHA with DRAW_COMBINE_MODULATE. */
+void gfx_set_mode(int mode);
+void gfx_set_effect(int srcBlend, int destBlend, int combine);
+
+/* custom: the fog of the modes that fog, while on, computed for each vertex and interpolated across
+   the triangle, as Direct3D 9 did with the vertex fog: the vertex keeps f of its colour and takes
+   1 - f of `colour`'s (a D3DCOLOR). For the quads f is the original's vertex fog, which it computed
+   on the CPU into a vertex's specular alpha, to the bit: 1 - t in 1/255 steps rounded down,
+   t = ((1 / rhw - origin) / span - start) / (end - start) clamped to 0..1, without the division
+   where end equals start, in single precision (render/vertex_fog.h; a vertex in world coordinates
+   by the rhw it carries, one whose rhw is not positive as at the smallest normal one). For
+   the meshes f is (b - vz) / (b - a) clamped to 0..1 for the view depth vz, a and b the view depths
+   start * span + origin and end * span + origin (origin and origin + span where end equals start),
+   as the Direct3D 9 client's mesh shader computed it. The device starts without fog. */
+struct GfxFog {
+    int on;
+    DWORD colour;
+    float start, end;
+    float origin, span;
+};
+void gfx_set_fog(const struct GfxFog *fog);
+
+/* The texture a stage reads, until another is set; NULL reads opaque white. */
 void gfx_set_texture(int stage, gfx_surface *s);
 void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices);
 
@@ -179,23 +147,21 @@ struct GfxMeshVertex {
    4x3 view matrix, view-space x = view[0] * x + view[3] * y + view[6] * z + view[9], y likewise
    with entries 1, 4, 7, 10 and the depth vz with 2, 5, 8, 11. A point lands at the pixel
    (x * proj[0] / vz + centre[0], y * proj[1] / vz + centre[1]) with the depth
-   (vz - nearZ) * depthScale / vz, as a pre-transformed vertex with rhw 1 / vz would. Its fog factor
-   is (fogEnd - vz) / (fogEnd - fogStart), clamped to 0..1, as rp_vertex_fog_alpha puts it in the
-   specular alpha of a pre-transformed vertex. */
+   (vz - nearZ) * depthScale / vz, as a pre-transformed vertex with rhw 1 / vz would. */
 struct GfxWorldView {
     float view[12];
     float proj[2];
     float centre[2];
     float nearZ, depthScale;
-    float fogStart, fogEnd;
 };
 
-/* One draw of a mesh: `count` indices from `first`, a multiple of three each. kind picks what the
-   stages would do with the bound textures and what a vertex's colours hold:
-   - GFX_MESH_GROUND: texture times colour, times the lightmap's alpha (the texture bound to stage
-     1), plus its colour, as the original's two-texture ground quads have it; with stage 1's colour
-     operation GFX_TOP_DISABLE, texture times colour alone, as its ground quads without lightmaps.
-     The colour is the vertex's diffuse.
+/* One draw of a mesh: `count` indices from `first`, a multiple of three each, culled by cull
+   (GFX_CULL_*). kind picks what the stages do with the bound textures and what a vertex's colours
+   hold:
+   - GFX_MESH_GROUND: in a mode with the lightmap (DRAW_GROUND_LIGHTMAP), texture times colour,
+     times the lightmap's alpha (the texture bound to stage 1), plus its colour, as the original's
+     two-texture ground quads have it; otherwise texture times colour alone, as its ground quads
+     without lightmaps. The colour is the vertex's diffuse.
    - GFX_MESH_MODEL: texture times colour, both colour and alpha. The diffuse's red, green and blue
      are the model's own lit colour (0 to 255 a channel) and its alpha the share of the light it
      was lit with (0, 128 or 255, 0 for a model lit without its light); with lightGround set,
@@ -203,14 +169,14 @@ struct GfxWorldView {
      is colour[3] alone.
    The colour's red, green and blue are then multiplied by colour (0..1) and rounded down, as the
    CPU scales them by the weather colour, its alpha by colour[3]. The first texture's coordinates
-   go through uv: (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]). The render
-   states (blending, the alpha test, depth, culling, fog on or off) and the texture addressing are
-   the current ones, as they would be for gfx_draw. */
+   go through uv: (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]). Blending, the
+   alpha test, depth, fog and the texture addressing are the mode's, which must draw meshes
+   (DRAW_MESHES). */
 #define GFX_MESH_MODEL 1
 #define GFX_MESH_GROUND 2
 
 struct GfxMeshDraw {
-    int kind, first, count, lightGround;
+    int kind, first, count, lightGround, cull;
     float colour[4];
     float uv[6];
 };

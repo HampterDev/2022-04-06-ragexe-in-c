@@ -2,22 +2,26 @@
    MSL on macOS, one shader format handed to SDL_CreateGPUDevice so that SDL has one driver to
    choose. The shaders are HLSL compiled offline (src/render/shaders, tools/shaders).
 
-   A frame is recorded, not drawn: each draw becomes a record of its state (struct GpuDraw, read
-   by the shaders from a storage buffer through an instance-rate attribute that holds its index)
-   in a list of passes, and its vertices, indices and the texels of the textures it uses since they
-   changed go into one staging area. When the frame is presented, or the CPU needs a target's
-   pixels, one command buffer copies all of that through one transfer buffer in one copy pass and
-   replays the passes. Textures keep their pixels on the CPU in the client's own format, so that the
-   model loader's thread creates, locks and fills them without calling SDL; the main thread widens
-   them to B8G8R8A8 when a draw first uses them after a change. Render targets live on the GPU;
-   locking one downloads it. */
+   Draws are made in modes (render/draw_modes.h): the pipelines of every mode, for every kind of
+   target it draws into, are made once, when the screen's samples and depth are known
+   (gfx_create_zbuffer), and so are the samplers. A frame is
+   recorded, not drawn: each draw becomes a record of what its mode and the draw itself give the
+   shaders (struct GpuDraw, read from a storage buffer through an instance-rate attribute that holds
+   its index) in a list of passes, and its vertices, indices and the texels of the textures it uses
+   since they changed go into one staging area. When the frame is presented, or the CPU needs a
+   target's pixels, one command buffer copies all of that through one transfer buffer in one copy
+   pass and replays the passes. Textures keep their pixels on the CPU in the client's own format, so
+   that the model loader's thread creates, locks and fills them without calling SDL; the main thread
+   widens them to B8G8R8A8 when a draw first uses them after a change. Render targets live on the
+   GPU; locking one downloads it. */
 #include "render/gfx.h"
 #include "render/gfx_batch.h"
 #include "render/device.h"
 #include "render/present_fit.h"
 #include "render/texel_convert.h"
+#include "render/vertex_fog.h"
 #include "render/shaders/shader_code.h"
-#include "render/shaders/fixed.h"
+#include "render/shaders/quad.h"
 #include "render/shaders/mesh.h"
 #include "render/shaders/caster.h"
 #include "diag/perf.h"
@@ -30,8 +34,6 @@
 enum { K_SCREEN, K_TARGET, K_SAVE, K_SYSMEM, K_TEXTURE, K_RTTEX, K_ZBUFFER };
 
 #define CLIENT_SURFACE_KEY 0x00ff00ffu
-#define N_RS 256
-#define N_TSS 33
 #define FLAT_KIND 0x100
 #define TARGET_FORMAT SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM
 /* A target's textures are a pixel wider and taller than the target: every pass's viewport is the
@@ -41,11 +43,11 @@ enum { K_SCREEN, K_TARGET, K_SAVE, K_SYSMEM, K_TEXTURE, K_RTTEX, K_ZBUFFER };
 
 /* The records the shaders read (src/render/shaders/records.hlsli). */
 struct GpuDraw {
-    uint32_t stage0[4], stage0b[4], stage1[4], stage1b[4];
     uint32_t mode[4];
     float target[4];
+    uint32_t stages[4];
+    float fog[4];
     float fogColour[4];
-    float border0[4], border1[4];
     float colour[4];
     float uvU[4], uvV[4];
     float uvScale[4], uvLimit[4];
@@ -67,10 +69,15 @@ struct GpuShadow {
 };
 
 enum { KIND_SCREEN, KIND_WORLD, KIND_MESH, KIND_CASTER };
-enum { DRAW_TEXTURE = 1, DRAW_BORDER = 2 };
-enum { PROG_FIXED, PROG_MESH, PROG_CASTER, PROG_COUNT };
-enum { LAYOUT_TEX1, LAYOUT_TEX2, LAYOUT_MESH };
+enum { PROG_QUAD, PROG_MESH, PROG_CASTER, PROG_COUNT };
 enum { MASK_RGBA, MASK_RGB, MASK_NONE };
+/* What a pass draws into, as far as its pipelines care: the screen (multisampled, with depth), its
+   copy, and a render target's texture (one sample each, without depth) (render/draw_modes.h,
+   DRAW_INTO_*). */
+enum { CLASS_SCREEN, CLASS_COPY, CLASS_TEXTURE, CLASS_COUNT };
+/* The vertices of every quad in the frame's vertex data: GFX_VTX_TEX2's, one texture's
+   coordinates given twice where a draw has only those. */
+#define QUAD_STRIDE GFX_VTX_TEX2_SIZE
 
 struct gfx_surface {
     int kind, refs;
@@ -156,9 +163,26 @@ struct bytes {
     size_t size, capacity;
 };
 
-#define PIPELINE_SLOTS 512
 #define FRAMES_IN_FLIGHT 2
-#define SAMPLER_SLOTS 64
+
+/* A pipeline: its program and what it holds of a mode and of the target. */
+struct pipe_desc {
+    int program;
+    int blend, src, dst;  /* enum DrawFactor */
+    int depth;            /* enum DrawDepth; DRAW_DEPTH_OFF where the target has no depth */
+    int cull;             /* GFX_CULL_* */
+    int mask;             /* MASK_* */
+    int r32f, hasDepth, samples, a2c;
+};
+#define PIPELINE_MAX 256
+
+/* What a draw is made with, of its mode and gfx_set_effect and gfx_set_fog: draws are batched while
+   it stays the same, as the Direct3D 9 client's were while it changed no state, and a change
+   counts as a mode sent (diag/perf.h). The blend factors are the D3DBLEND numbers given, whole. */
+struct draw_state {
+    int src, dst;
+    unsigned char combine, depth, alphaTest, alphaRef, fog, colour, address[2], filter, lightmap, into;
+};
 
 static struct {
     SDL_Window *window;
@@ -179,11 +203,13 @@ static struct {
     SDL_GPUSampleCount samples;
     int mipmaps;
 
-    /* the device's state, Direct3D 9's numbers */
-    DWORD rs[N_RS];
-    DWORD tss[8][N_TSS];
-    DWORD samp[2][5];
-    struct gfx_surface *stageTex[8];
+    /* what draws are made with: the mode, the effect modes' blending and combination, the fog,
+       all of it resolved (struct draw_state), and the stages' textures */
+    int mode;
+    int effectSrc, effectDst, effectCombine;
+    struct GfxFog fog;
+    struct draw_state state;
+    struct gfx_surface *stageTex[2];
     struct GfxWorldView worldView, worldCamera;
     int worldViewSet, worldCameraSet;
 
@@ -196,12 +222,20 @@ static struct {
     /* fixed resources */
     SDL_GPUShader *vs[PROG_COUNT], *fs[PROG_COUNT];
     const struct GpuShaderCode *vsCode[PROG_COUNT], *fsCode[PROG_COUNT];
-    struct { uint64_t key; SDL_GPUGraphicsPipeline *pipeline; } pipelines[PIPELINE_SLOTS];
-    struct { uint32_t key; SDL_GPUSampler *sampler; } samplers[SAMPLER_SLOTS];
+    /* every pipeline, made once (make_pipelines), and which serves what: a mode's quads into each
+       kind of target, flat or not; its meshes by cull mode (GFX_CULL_* - 1); the effect modes'
+       quads by depth test or none and blend factors; the shadow casters */
+    struct { struct pipe_desc desc; SDL_GPUGraphicsPipeline *pipeline; } pipelines[PIPELINE_MAX];
+    int npipelines;
+    SDL_GPUGraphicsPipeline *quadPipeline[DRAW_MODE_COUNT][CLASS_COUNT][2];
+    SDL_GPUGraphicsPipeline *meshPipeline[DRAW_MODE_COUNT][3];
+    SDL_GPUGraphicsPipeline *effectPipeline[2][DRAW_FACTOR_COUNT][DRAW_FACTOR_COUNT];
+    SDL_GPUGraphicsPipeline *casterPipeline;
+    SDL_GPUSampler *samplers[2][3];  /* wrapped or not, by enum DrawFilter */
     SDL_GPUSampler *pointClamp;
     SDL_GPUTexture *white;
-    SDL_GPUBuffer *records, *views, *shadows, *vertices, *indices, *instances;
-    uint32_t recordsSize, viewsSize, shadowsSize, verticesSize, indicesSize, instanceCount;
+    SDL_GPUBuffer *records, *views, *fogs, *shadows, *vertices, *indices, *instances;
+    uint32_t recordsSize, viewsSize, fogsSize, shadowsSize, verticesSize, indicesSize, instanceCount;
     SDL_GPUTransferBuffer *upload, *download;
     /* the frames the GPU may still be drawing: at most FRAMES_IN_FLIGHT, also where no swapchain
        paces them (a hidden window), so that the CPU does not run ahead and the cycled buffers do
@@ -221,12 +255,14 @@ static struct {
     size_t nuploads, uploadCapacity, frameUploads;  /* frameUploads: those of the first copy pass */
     struct gpu_mesh_upload *meshUploads;
     size_t nmeshUploads, meshUploadCapacity;
-    struct bytes drawRecords, viewRecords, shadowRecords, vertexData, indexData, texels;
+    struct bytes drawRecords, viewRecords, fogTables, shadowRecords, vertexData, indexData, texels;
     struct gfx_surface **pins;
     size_t npins, pinCapacity;
     struct gfx_mesh **meshPins;
     size_t nmeshPins, meshPinCapacity;
     int cameraView, meshView, casterView, casterCascade;
+    int fogTable;     /* the fog's table (render/vertex_fog.h) in this frame's, or -1 */
+    float fogBase, fogDirection, fogCount;
     int unresolving;  /* the draw being recorded puts the resolved screen back into the multisampled one */
     int viewsTargetW, viewsTargetH;
 } G;
@@ -373,7 +409,7 @@ static void destroy_handle(struct gfx_surface *s)
 static void free_handle(struct gfx_surface *s)
 {
     int i, pinned;
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 2; i++)
         if (G.stageTex[i] == s) {
             batch_flush();
             G.stageTex[i] = NULL;
@@ -697,104 +733,51 @@ static SDL_GPUTexture *texture_for_draw(struct gfx_surface *s)
 
 /* ---- samplers and pipelines ---- */
 
-enum { SAMP_ADDRESS, SAMP_BORDER, SAMP_MAG, SAMP_MIN, SAMP_MIP };
-
-static SDL_GPUSampler *sampler_for(uint32_t key)
+/* The samplers, made once: linear between texels and mipmap levels, linear on the top level, or
+   the nearest texel of it (render/draw_modes.h, enum DrawFilter), each repeating or clamped to the
+   edge (a border is the shaders', records.hlsli). Linear minification is anisotropic, as the
+   Direct3D 9 client had it (build/ref/COMMIT.txt). */
+static int make_samplers(void)
 {
-    SDL_GPUSamplerCreateInfo info;
-    unsigned i, h = (key * 2654435761u) % SAMPLER_SLOTS;
-    for (i = 0; i < SAMPLER_SLOTS; i++) {
-        unsigned at = (h + i) % SAMPLER_SLOTS;
-        if (G.samplers[at].sampler && G.samplers[at].key == key)
-            return G.samplers[at].sampler;
-        if (!G.samplers[at].sampler) {
-            DWORD address = key & 7, mag = key >> 3 & 1, min = key >> 4 & 1, mip = key >> 5 & 3;
+    int wrap, filter;
+    for (wrap = 0; wrap < 2; wrap++)
+        for (filter = 0; filter < 3; filter++) {
+            SDL_GPUSamplerCreateInfo info;
+            int linear = filter != DRAW_FILTER_POINT;
             SDL_zero(info);
-            info.mag_filter = mag ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
-            info.min_filter = min ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
-            info.mipmap_mode = mip == 2 ? SDL_GPU_SAMPLERMIPMAPMODE_LINEAR : SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+            info.mag_filter = info.min_filter = linear ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
+            info.mipmap_mode = filter == DRAW_FILTER_MIPMAPS ? SDL_GPU_SAMPLERMIPMAPMODE_LINEAR
+                                                             : SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
             info.address_mode_u = info.address_mode_v = info.address_mode_w =
-                address == GFX_ADDRESS_WRAP ? SDL_GPU_SAMPLERADDRESSMODE_REPEAT
-                : address == 2 ? SDL_GPU_SAMPLERADDRESSMODE_MIRRORED_REPEAT
-                : SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+                wrap ? SDL_GPU_SAMPLERADDRESSMODE_REPEAT : SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
             info.min_lod = 0.0f;
-            info.max_lod = mip ? 1000.0f : 0.0f;
-            /* custom: anisotropic minification whenever the stage minifies linearly, as the
-               Direct3D 9 client had it (build/ref/COMMIT.txt) */
-            info.enable_anisotropy = min != 0;
+            info.max_lod = filter == DRAW_FILTER_MIPMAPS ? 1000.0f : 0.0f;
+            info.enable_anisotropy = linear;
             info.max_anisotropy = 16.0f;
-            G.samplers[at].sampler = SDL_CreateGPUSampler(G.dev, &info);
-            G.samplers[at].key = key;
-            return G.samplers[at].sampler;
+            G.samplers[wrap][filter] = SDL_CreateGPUSampler(G.dev, &info);
+            if (!G.samplers[wrap][filter])
+                return 0;
         }
-    }
-    return G.pointClamp;
+    return 1;
 }
 
-/* The sampler of one of the first two stages' states. */
-static SDL_GPUSampler *stage_sampler(int stage)
+static SDL_GPUSampler *stage_sampler(const struct draw_state *s, int stage)
 {
-    DWORD address = G.samp[stage][SAMP_ADDRESS], mip = G.samp[stage][SAMP_MIP];
-    uint32_t key = (address == GFX_ADDRESS_WRAP ? 1u : address == 2 ? 2u : 3u)
-                 | (G.samp[stage][SAMP_MAG] == GFX_FILTER_LINEAR ? 8u : 0u)
-                 | (G.samp[stage][SAMP_MIN] == GFX_FILTER_LINEAR ? 16u : 0u)
-                 | (mip == GFX_MIPFILTER_LINEAR ? 2u : mip == 2 ? 1u : 0u) << 5;
-    return sampler_for(key);
+    return G.samplers[s->address[stage] == DRAW_ADDRESS_WRAP][stage ? DRAW_FILTER_LINEAR : s->filter];
 }
 
-static SDL_GPUBlendFactor blend_factor(DWORD b, int source)
-{
-    switch (b) {
-    case 1: return SDL_GPU_BLENDFACTOR_ZERO;
-    case 3: return SDL_GPU_BLENDFACTOR_SRC_COLOR;
-    case 4: return SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_COLOR;
-    case 5: return SDL_GPU_BLENDFACTOR_SRC_ALPHA;
-    case 6: return SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    case 7: return SDL_GPU_BLENDFACTOR_DST_ALPHA;
-    case 8: return SDL_GPU_BLENDFACTOR_ONE_MINUS_DST_ALPHA;
-    case 9: return SDL_GPU_BLENDFACTOR_DST_COLOR;
-    case 10: return SDL_GPU_BLENDFACTOR_ONE_MINUS_DST_COLOR;
-    case 11: return SDL_GPU_BLENDFACTOR_SRC_ALPHA_SATURATE;
-    /* D3DBLEND_BOTHSRCALPHA and BOTHINVSRCALPHA set both factors from the source's */
-    case 12: return source ? SDL_GPU_BLENDFACTOR_SRC_ALPHA : SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    case 13: return source ? SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA : SDL_GPU_BLENDFACTOR_SRC_ALPHA;
-    default: return SDL_GPU_BLENDFACTOR_ONE;
-    }
-}
-
-static SDL_GPUCompareOp compare_op(DWORD f)
+static SDL_GPUBlendFactor sdl_factor(int f)
 {
     switch (f) {
-    case 1: return SDL_GPU_COMPAREOP_NEVER;
-    case 2: return SDL_GPU_COMPAREOP_LESS;
-    case 3: return SDL_GPU_COMPAREOP_EQUAL;
-    case 4: return SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
-    case 5: return SDL_GPU_COMPAREOP_GREATER;
-    case 6: return SDL_GPU_COMPAREOP_NOT_EQUAL;
-    case 7: return SDL_GPU_COMPAREOP_GREATER_OR_EQUAL;
-    default: return SDL_GPU_COMPAREOP_ALWAYS;
+    case DRAW_FACTOR_ZERO: return SDL_GPU_BLENDFACTOR_ZERO;
+    case DRAW_FACTOR_SRC_COLOUR: return SDL_GPU_BLENDFACTOR_SRC_COLOR;
+    case DRAW_FACTOR_INV_SRC_COLOUR: return SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_COLOR;
+    case DRAW_FACTOR_SRC_ALPHA: return SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    case DRAW_FACTOR_INV_SRC_ALPHA: return SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    case DRAW_FACTOR_DST_COLOUR: return SDL_GPU_BLENDFACTOR_DST_COLOR;
+    case DRAW_FACTOR_INV_DST_COLOUR: return SDL_GPU_BLENDFACTOR_ONE_MINUS_DST_COLOR;
+    default: return SDL_GPU_BLENDFACTOR_ONE;
     }
-}
-
-/* The pipeline's key: what it holds of the render states and the pass. */
-struct pipe_desc {
-    int program, layout, topology;
-    int blend, src, dst;
-    int ztest, zfunc, zwrite;
-    int cull;      /* GFX_CULL_* */
-    int mask;      /* MASK_* */
-    int r32f, depth, samples, a2c;
-};
-
-static uint64_t pipe_key(const struct pipe_desc *p)
-{
-    int log2s = p->samples == SDL_GPU_SAMPLECOUNT_8 ? 3 : p->samples == SDL_GPU_SAMPLECOUNT_4 ? 2
-              : p->samples == SDL_GPU_SAMPLECOUNT_2 ? 1 : 0;
-    return (uint64_t)p->program | (uint64_t)p->layout << 2 | (uint64_t)p->topology << 4 | (uint64_t)p->blend << 7
-         | (uint64_t)(p->src & 15) << 8 | (uint64_t)(p->dst & 15) << 12 | (uint64_t)p->ztest << 16
-         | (uint64_t)(p->zfunc & 15) << 17 | (uint64_t)p->zwrite << 21 | (uint64_t)(p->cull & 3) << 22
-         | (uint64_t)p->mask << 24 | (uint64_t)p->r32f << 26 | (uint64_t)p->depth << 27 | (uint64_t)log2s << 28
-         | (uint64_t)p->a2c << 31;
 }
 
 static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
@@ -815,13 +798,12 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
     buffers[1].input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE;
 #define ATTR(loc, fmt, off) (attrs[nattrs].location = (loc), attrs[nattrs].buffer_slot = 0, \
                              attrs[nattrs].format = (fmt), attrs[nattrs].offset = (off), nattrs++)
-    if (p->program == PROG_FIXED) {
-        buffers[0].pitch = p->layout == LAYOUT_TEX2 ? 40 : 32;
+    if (p->program == PROG_QUAD) {
+        buffers[0].pitch = QUAD_STRIDE;
         ATTR(0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0);
         ATTR(1, SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM, 16);
-        ATTR(2, SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM, 20);
-        ATTR(3, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 24);
-        ATTR(4, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, p->layout == LAYOUT_TEX2 ? 32 : 24);
+        ATTR(2, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 20);
+        ATTR(3, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 28);
     } else if (p->program == PROG_MESH) {
         buffers[0].pitch = sizeof(struct GfxMeshVertex);
         ATTR(0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0);
@@ -847,7 +829,7 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
     info.vertex_input_state.num_vertex_buffers = 2;
     info.vertex_input_state.vertex_attributes = attrs;
     info.vertex_input_state.num_vertex_attributes = nattrs;
-    info.primitive_type = (SDL_GPUPrimitiveType)p->topology;
+    info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
     info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
     /* Direct3D 9 culls by the winding on the screen, y down, as the target's pixels are laid out
        here too: GFX_CULL_CW drops the clockwise triangles, GFX_CULL_CCW the others */
@@ -857,13 +839,14 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
     info.rasterizer_state.enable_depth_clip = true;
     info.multisample_state.sample_count = (SDL_GPUSampleCount)p->samples;
     info.multisample_state.enable_alpha_to_coverage = p->a2c != 0;
-    info.depth_stencil_state.enable_depth_test = p->ztest != 0;
-    info.depth_stencil_state.enable_depth_write = p->zwrite != 0;
-    info.depth_stencil_state.compare_op = compare_op((DWORD)p->zfunc);
+    info.depth_stencil_state.enable_depth_test = p->depth != DRAW_DEPTH_OFF;
+    info.depth_stencil_state.enable_depth_write = p->depth == DRAW_DEPTH_WRITE || p->depth == DRAW_DEPTH_ALWAYS;
+    info.depth_stencil_state.compare_op = p->depth == DRAW_DEPTH_ALWAYS ? SDL_GPU_COMPAREOP_ALWAYS
+                                                                        : SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
     colour.format = p->r32f ? SDL_GPU_TEXTUREFORMAT_R32_FLOAT : TARGET_FORMAT;
     colour.blend_state.enable_blend = p->blend != 0;
-    colour.blend_state.src_color_blendfactor = blend_factor((DWORD)p->src, 1);
-    colour.blend_state.dst_color_blendfactor = blend_factor((DWORD)p->dst, 0);
+    colour.blend_state.src_color_blendfactor = sdl_factor(p->src);
+    colour.blend_state.dst_color_blendfactor = sdl_factor(p->dst);
     colour.blend_state.src_alpha_blendfactor = colour.blend_state.src_color_blendfactor;
     colour.blend_state.dst_alpha_blendfactor = colour.blend_state.dst_color_blendfactor;
     colour.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
@@ -874,70 +857,190 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
         : (SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A);
     info.target_info.color_target_descriptions = &colour;
     info.target_info.num_color_targets = 1;
-    info.target_info.has_depth_stencil_target = p->depth != 0;
+    info.target_info.has_depth_stencil_target = p->hasDepth != 0;
     info.target_info.depth_stencil_format = G.depthFormat;
     return SDL_CreateGPUGraphicsPipeline(G.dev, &info);
 }
 
-static SDL_GPUGraphicsPipeline *pipeline_for(struct pipe_desc *p)
+/* The pipeline of a description, made once: modes that differ in nothing a pipeline holds share
+   theirs. */
+static SDL_GPUGraphicsPipeline *pipeline(struct pipe_desc *p)
 {
-    uint64_t key;
-    unsigned i, h;
-    if (!p->depth) {
-        p->ztest = 0;
-        p->zwrite = 0;
-        p->zfunc = 0;
-    } else if (!p->ztest) {
-        p->zwrite = 0;
-        p->zfunc = 0;
-    }
+    int i;
+    if (!p->hasDepth)
+        p->depth = DRAW_DEPTH_OFF;
     if (!p->blend)
-        p->src = p->dst = 0;
-    key = pipe_key(p);
-    h = (unsigned)((key ^ key >> 29) * 0x9e3779b97f4a7c15ull >> 40) % PIPELINE_SLOTS;
-    for (i = 0; i < PIPELINE_SLOTS; i++) {
-        unsigned at = (h + i) % PIPELINE_SLOTS;
-        if (G.pipelines[at].pipeline && G.pipelines[at].key == key)
-            return G.pipelines[at].pipeline;
-        if (!G.pipelines[at].pipeline) {
-            G.pipelines[at].pipeline = create_pipeline(p);
-            if (!G.pipelines[at].pipeline) {
-                SDL_Log("gfx: SDL_CreateGPUGraphicsPipeline: %s", SDL_GetError());
-                return NULL;
-            }
-            G.pipelines[at].key = key;
-            return G.pipelines[at].pipeline;
-        }
+        p->src = p->dst = DRAW_FACTOR_ONE;
+    for (i = 0; i < G.npipelines; i++)
+        if (!memcmp(&G.pipelines[i].desc, p, sizeof *p))
+            return G.pipelines[i].pipeline;
+    if (G.npipelines == PIPELINE_MAX) {
+        SDL_Log("gfx: more than %d pipelines", PIPELINE_MAX);
+        return NULL;
     }
-    SDL_Log("gfx: more than %d pipelines", PIPELINE_SLOTS);
-    return NULL;
+    G.pipelines[i].pipeline = create_pipeline(p);
+    if (!G.pipelines[i].pipeline) {
+        SDL_Log("gfx: SDL_CreateGPUGraphicsPipeline: %s", SDL_GetError());
+        return NULL;
+    }
+    G.pipelines[i].desc = *p;
+    G.npipelines++;
+    return G.pipelines[i].pipeline;
 }
 
-/* The pipeline of the render states for a draw into a pass. */
-static void state_pipe(struct pipe_desc *p, const struct gpu_step *pass, int program, int layout, int topology,
-                       int flat)
+/* custom: multisampling smooths the edges alpha-tested texels cut, where Direct3D 9 had the
+   drivers' transparency supersampling, for what it multisampled: draws without blending that are
+   not flat on the screen. The one rule for a pipeline and the draw records made with it. */
+static int alpha_to_coverage(const struct DrawModeDesc *m, int samples, int flat)
+{
+    return samples != SDL_GPU_SAMPLECOUNT_1 && m->src == DRAW_BLEND_OFF && !flat && m->alphaTest == DRAW_ALPHA_AT_LEAST;
+}
+
+/* What a mode makes of a kind of target's pipeline: its blending (by `src` and `dst` when the mode
+   takes the draw's), depth, colour mask, samples, and alpha to coverage. */
+static void mode_pipe(struct pipe_desc *p, int program, const struct DrawModeDesc *m, int cls, int src, int dst, int flat)
 {
     memset(p, 0, sizeof *p);
     p->program = program;
-    p->layout = layout;
-    p->topology = topology;
-    p->blend = G.rs[GFX_RS_ALPHABLENDENABLE] != 0;
-    p->src = (int)G.rs[GFX_RS_SRCBLEND];
-    p->dst = (int)G.rs[GFX_RS_DESTBLEND];
-    p->ztest = G.rs[GFX_RS_ZENABLE] != 0;
-    p->zfunc = (int)G.rs[GFX_RS_ZFUNC];
-    p->zwrite = G.rs[GFX_RS_ZWRITEENABLE] != 0;
-    p->cull = G.rs[GFX_RS_CULLMODE] == GFX_CULL_CW ? GFX_CULL_CW
-            : G.rs[GFX_RS_CULLMODE] == GFX_CULL_CCW ? GFX_CULL_CCW : GFX_CULL_NONE;
+    p->blend = m->src != DRAW_BLEND_OFF;
+    if (p->blend)
+        draw_blend_factors(m->src == DRAW_BLEND_FROM_DRAW ? src : m->src, m->dst == DRAW_BLEND_FROM_DRAW ? dst : m->dst,
+                           &p->src, &p->dst);
+    p->depth = m->depth;
+    p->cull = GFX_CULL_NONE;
     /* the screen and its copy are X8R8G8B8 on Direct3D 9: their alpha stays 1 */
-    p->mask = pass->target && pass->target->kind != K_RTTEX ? MASK_RGB : MASK_RGBA;
-    p->depth = pass_has_depth(pass);
-    p->samples = pass_samples(pass);
-    /* custom: multisampling smooths the edges alpha-tested texels cut, where Direct3D 9 had the
-       drivers' transparency supersampling, for what it multisampled: draws without blending
-       that are not flat on the screen */
-    p->a2c = p->samples != SDL_GPU_SAMPLECOUNT_1 && !p->blend && !flat && G.rs[GFX_RS_ALPHATESTENABLE]
-             && G.rs[GFX_RS_ALPHAFUNC] == GFX_CMP_GREATEREQUAL;
+    p->mask = !m->colour ? MASK_NONE : cls == CLASS_TEXTURE ? MASK_RGBA : MASK_RGB;
+    p->hasDepth = cls == CLASS_SCREEN && G.depth != NULL;
+    p->samples = cls == CLASS_SCREEN ? (int)G.samples : (int)SDL_GPU_SAMPLECOUNT_1;
+    p->a2c = alpha_to_coverage(m, p->samples, flat);
+}
+
+/* Every pipeline the modes draw with, once the screen's samples and depth are known: a mode's
+   quads into each kind of target it draws into, flat and not, its meshes in each cull mode, the
+   effect modes' quads by every pair of the blend factors the screen has, and the shadow casters'. */
+static int make_pipelines(void)
+{
+    struct pipe_desc p;
+    int mode, cls, flat, cull, s, d;
+    for (mode = 0; mode < DRAW_MODE_COUNT; mode++) {
+        const struct DrawModeDesc *m = draw_mode(mode);
+        if (m->src == DRAW_BLEND_FROM_DRAW) {
+            for (s = 0; s < DRAW_FACTOR_COUNT; s++)
+                for (d = 0; d < DRAW_FACTOR_COUNT; d++) {
+                    SDL_GPUGraphicsPipeline **at = &G.effectPipeline[m->depth == DRAW_DEPTH_OFF][s][d];
+                    mode_pipe(&p, PROG_QUAD, m, CLASS_SCREEN, DRAW_BLEND_ONE, DRAW_BLEND_ONE, 1);
+                    p.src = s;
+                    p.dst = d;
+                    if (!(*at = pipeline(&p)))
+                        return 0;
+                }
+            continue;
+        }
+        for (cls = 0; cls < CLASS_COUNT; cls++) {
+            if (!(m->into & (DRAW_INTO_SCREEN << cls)))
+                continue;
+            for (flat = 0; flat < 2; flat++) {
+                mode_pipe(&p, PROG_QUAD, m, cls, 0, 0, flat);
+                if (!(G.quadPipeline[mode][cls][flat] = pipeline(&p)))
+                    return 0;
+            }
+        }
+        if (m->into & DRAW_MESHES)
+            for (cull = GFX_CULL_NONE; cull <= GFX_CULL_CCW; cull++) {
+                mode_pipe(&p, PROG_MESH, m, CLASS_SCREEN, 0, 0, 0);
+                p.cull = cull;
+                if (!(G.meshPipeline[mode][cull - GFX_CULL_NONE] = pipeline(&p)))
+                    return 0;
+            }
+    }
+    memset(&p, 0, sizeof p);
+    p.program = PROG_CASTER;
+    p.depth = DRAW_DEPTH_WRITE;
+    p.cull = GFX_CULL_NONE;
+    p.r32f = 1;
+    p.hasDepth = 1;
+    p.samples = SDL_GPU_SAMPLECOUNT_1;
+    G.casterPipeline = pipeline(&p);
+    return G.casterPipeline != NULL;
+}
+
+/* The pipeline of a quad draw in the current mode into a pass's kind of target, NULL where the mode
+   does not draw into it. */
+static SDL_GPUGraphicsPipeline *quad_pipeline(int mode, const struct draw_state *s, int cls, int flat)
+{
+    const struct DrawModeDesc *m = draw_mode(mode);
+    int src, dst;
+    if (m->src != DRAW_BLEND_FROM_DRAW)
+        return G.quadPipeline[mode][cls][flat];
+    if (cls != CLASS_SCREEN)
+        return NULL;
+    draw_blend_factors(s->src, s->dst, &src, &dst);
+    return G.effectPipeline[m->depth == DRAW_DEPTH_OFF][src][dst];
+}
+
+/* ---- modes ---- */
+
+static void resolve_state(struct draw_state *s, int mode, int src, int dst, int combine, int fog)
+{
+    const struct DrawModeDesc *m = draw_mode(mode);
+    memset(s, 0, sizeof *s);
+    s->combine = (unsigned char)(m->combine == DRAW_COMBINE_FROM_DRAW ? combine : m->combine);
+    s->src = m->src == DRAW_BLEND_FROM_DRAW ? src : m->src;
+    s->dst = m->dst == DRAW_BLEND_FROM_DRAW ? dst : m->dst;
+    s->depth = m->depth;
+    s->alphaTest = m->alphaTest;
+    s->alphaRef = m->alphaRef;
+    s->fog = (unsigned char)(m->fog && fog);
+    s->colour = m->colour;
+    s->address[0] = m->address[0];
+    s->address[1] = m->address[1];
+    s->filter = m->filter;
+    s->lightmap = m->lightmap;
+    s->into = m->into;
+}
+
+/* The draws batched so far are made with what they were batched with when that changes. */
+static void change_state(int mode, int src, int dst, int combine, const struct GfxFog *fog)
+{
+    struct draw_state s;
+    int changed;
+    resolve_state(&s, mode, src, dst, combine, fog->on);
+    changed = memcmp(&s, &G.state, sizeof s) || memcmp(fog, &G.fog, sizeof *fog);
+    perf_count_mode(changed);
+    if (changed)
+        batch_flush();
+    if (memcmp(fog, &G.fog, sizeof *fog)) {
+        G.cameraView = G.meshView = G.casterView = -1;
+        G.fogTable = -1;
+    }
+    G.mode = mode;
+    G.effectSrc = src;
+    G.effectDst = dst;
+    G.effectCombine = combine;
+    G.fog = *fog;
+    G.state = s;
+}
+
+void gfx_set_mode(int mode)
+{
+    if (draw_mode(mode))
+        change_state(mode, G.effectSrc, G.effectDst, G.effectCombine, &G.fog);
+}
+
+void gfx_set_effect(int srcBlend, int destBlend, int combine)
+{
+    if (combine < 0 || combine >= DRAW_COMBINE_COUNT || combine == 2)
+        combine = G.effectCombine;
+    change_state(G.mode, srcBlend, destBlend, combine, &G.fog);
+}
+
+void gfx_set_fog(const struct GfxFog *fog)
+{
+    struct GfxFog f;
+    memset(&f, 0, sizeof f);
+    if (fog && fog->on)
+        f = *fog;
+    change_state(G.mode, G.effectSrc, G.effectDst, G.effectCombine, &f);
 }
 
 /* ---- records ---- */
@@ -952,21 +1055,40 @@ static void colour_floats(float *out, DWORD c)
 
 /* How a stage's texture coordinates are scaled and bounded (records.hlsli, stage_uv): a target's
    texture is wider and taller than the target (MARGIN), so the coordinates scale to the target's
-   part of it, and a clamped read (clamp or border addressing) goes no further than the centre of the
-   target's last texel, as clamping at the target's edge would. */
-static void stage_scale(float *scale, float *limit, const struct gfx_surface *s, int stage)
+   part of it, and a clamped read goes no further than the centre of the target's last texel, as
+   clamping at the target's edge would. */
+static void stage_scale(float *scale, float *limit, const struct gfx_surface *s, int clamped)
 {
     const struct gfx_surface *g = is_target(s) ? gpu_of((struct gfx_surface *)s) : NULL;
-    DWORD address = G.samp[stage][SAMP_ADDRESS];
-    int clamped = address != GFX_ADDRESS_WRAP && address != 2;
     scale[0] = g ? (float)g->width / (float)(g->width + MARGIN) : 1.0f;
     scale[1] = g ? (float)g->height / (float)(g->height + MARGIN) : 1.0f;
     limit[0] = g && clamped ? ((float)g->width - 0.5f) / (float)(g->width + MARGIN) : 3.0e38f;
     limit[1] = g && clamped ? ((float)g->height - 0.5f) / (float)(g->height + MARGIN) : 3.0e38f;
 }
 
-/* The fixed-function state of a draw record. */
-static void fill_state(struct GpuDraw *r, const struct gpu_step *pass, int kind, int a2c)
+/* The fog's table of the rhw at which its steps begin (render/vertex_fog.h) in this frame's, made
+   once a frame for each fog the quads are drawn in: its number, -1 without memory. */
+static int fog_table(void)
+{
+    struct VertexFogTable table;
+    long at;
+    if (G.fogTable >= 0)
+        return G.fogTable;
+    at = bytes_add(&G.fogTables, sizeof table.rhw, 16);
+    if (at < 0)
+        return -1;
+    vertex_fog_table(G.fog.start, G.fog.end, G.fog.origin, G.fog.span, &table);
+    memcpy(G.fogTables.data + at, table.rhw, sizeof table.rhw);
+    G.fogBase = table.base;
+    G.fogDirection = table.direction;
+    G.fogCount = table.count;
+    G.fogTable = (int)(at / (long)sizeof table.rhw);
+    return G.fogTable;
+}
+
+/* What a draw record holds of the state it is made with, its stages' textures and its pass. */
+static void fill_state(struct GpuDraw *r, const struct gpu_step *pass, const struct draw_state *s,
+                       struct gfx_surface *const *tex, int kind, int a2c)
 {
     int i;
     float w = 1.0f, h = 1.0f;
@@ -975,27 +1097,29 @@ static void fill_state(struct GpuDraw *r, const struct gpu_step *pass, int kind,
         w = (float)t->width;
         h = (float)t->height;
     }
-    for (i = 0; i < 2; i++) {
-        uint32_t *s = i ? r->stage1 : r->stage0, *sb = i ? r->stage1b : r->stage0b;
-        s[0] = G.tss[i][GFX_TSS_COLOROP];
-        s[1] = G.tss[i][GFX_TSS_COLORARG1];
-        s[2] = G.tss[i][GFX_TSS_COLORARG2];
-        s[3] = G.tss[i][GFX_TSS_ALPHAOP];
-        sb[0] = G.tss[i][GFX_TSS_ALPHAARG1];
-        sb[1] = G.tss[i][GFX_TSS_ALPHAARG2];
-        sb[2] = G.tss[i][GFX_TSS_TEXCOORDINDEX];
-        sb[3] = (G.stageTex[i] ? DRAW_TEXTURE : 0) | (G.samp[i][SAMP_ADDRESS] == GFX_ADDRESS_BORDER ? DRAW_BORDER : 0);
-        colour_floats(i ? r->border1 : r->border0, G.samp[i][SAMP_BORDER]);
-        stage_scale(r->uvScale + i * 2, r->uvLimit + i * 2, G.stageTex[i], i);
-    }
     r->mode[0] = (uint32_t)kind;
-    r->mode[1] = G.rs[GFX_RS_ALPHATESTENABLE] ? G.rs[GFX_RS_ALPHAFUNC] : 0;
-    r->mode[2] = G.rs[GFX_RS_FOGENABLE] != 0;
-    r->target[0] = (float)(G.rs[GFX_RS_ALPHAREF] & 0xff);
+    r->mode[1] = s->alphaTest;
+    r->mode[2] = s->fog;
+    r->target[0] = (float)s->alphaRef;
     r->target[1] = w * 0.5f;
     r->target[2] = h * 0.5f;
     r->target[3] = a2c ? 1.0f : 0.0f;
-    colour_floats(r->fogColour, G.rs[GFX_RS_FOGCOLOR]);
+    r->stages[0] = s->combine;
+    for (i = 0; i < 2; i++) {
+        if (s->address[i] == DRAW_ADDRESS_BORDER && tex[i])
+            r->stages[1] |= 1u << i;
+        stage_scale(r->uvScale + i * 2, r->uvLimit + i * 2, tex[i], s->address[i] != DRAW_ADDRESS_WRAP);
+    }
+    r->stages[2] = s->lightmap;
+    if (s->fog && kind != KIND_MESH) {
+        int table = fog_table();
+        r->mode[2] = table >= 0;
+        r->stages[3] = table >= 0 ? (uint32_t)table : 0;
+        r->fog[0] = G.fogBase;
+        r->fog[1] = G.fogDirection;
+        r->fog[2] = G.fogCount;
+    }
+    colour_floats(r->fogColour, G.fog.colour);
 }
 
 /* The matrices are the ones the Direct3D 9 client drew with (build/ref/COMMIT.txt), computed in
@@ -1039,7 +1163,22 @@ static void world_projection(float *out, const struct GfxWorldView *v, int w, in
     out[14] = -v->nearZ * v->depthScale;
 }
 
-static int add_view(const float *toClip, const float *toView, const struct GfxWorldView *v)
+/* The meshes' fog in a view record: its start and end as view depths, and 1 / (end - start)
+   (render/gfx.h, GfxFog), computed as the Direct3D 9 client computed them. */
+static void view_fog(float *fog)
+{
+    const struct GfxFog *f = &G.fog;
+    float start = f->origin, end = f->origin + f->span;
+    if (f->end != f->start) {
+        start = f->start * f->span + f->origin;
+        end = f->end * f->span + f->origin;
+    }
+    fog[0] = start;
+    fog[1] = end;
+    fog[2] = end != start ? 1.0f / (end - start) : 0.0f;
+}
+
+static int add_view(const float *toClip, const float *toView)
 {
     struct GpuView *view;
     long at = bytes_add(&G.viewRecords, sizeof *view, 16);
@@ -1049,11 +1188,7 @@ static int add_view(const float *toClip, const float *toView, const struct GfxWo
     memcpy(view->toClip, toClip, sizeof view->toClip);
     if (toView)
         memcpy(view->toView, toView, sizeof view->toView);
-    if (v) {
-        view->fog[0] = v->fogStart;
-        view->fog[1] = v->fogEnd;
-        view->fog[2] = v->fogEnd != v->fogStart ? 1.0f / (v->fogEnd - v->fogStart) : 0.0f;
-    }
+    view_fog(view->fog);
     return (int)(at / (long)sizeof *view);
 }
 
@@ -1072,28 +1207,18 @@ static int view_for(const struct GfxWorldView *v, int *cache, const struct gpu_s
     matrix_4x3(view, v->view);
     world_projection(proj, v, w, h);
     multiply(clip, view, proj);
-    *cache = add_view(clip, view, v);
+    *cache = add_view(clip, view);
     return *cache;
 }
 
 /* ---- client draws ---- */
 
-static int topology_of(int prim)
+static void bind_stage(SDL_GPUTextureSamplerBinding *bind, const struct draw_state *s, struct gfx_surface *surface,
+                       int stage)
 {
-    switch (prim) {
-    case GFX_PT_POINTLIST: return SDL_GPU_PRIMITIVETYPE_POINTLIST;
-    case GFX_PT_LINELIST: return SDL_GPU_PRIMITIVETYPE_LINELIST;
-    case GFX_PT_LINESTRIP: return SDL_GPU_PRIMITIVETYPE_LINESTRIP;
-    case GFX_PT_TRIANGLESTRIP: return SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP;
-    default: return SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
-    }
-}
-
-static void bind_stage(SDL_GPUTextureSamplerBinding *bind, int stage)
-{
-    SDL_GPUTexture *tex = texture_for_draw(G.stageTex[stage]);
+    SDL_GPUTexture *tex = texture_for_draw(surface);
     bind->texture = tex ? tex : G.white;
-    bind->sampler = stage_sampler(stage);
+    bind->sampler = stage_sampler(s, stage);
 }
 
 /* Where the rasterizer puts an edge of a flat draw's vertex to cover the pixels whose centres it
@@ -1114,21 +1239,22 @@ static float read_float(const unsigned char *p)
     return f;
 }
 
+/* The values a quad vertex carries besides its position (QUAD_STRIDE): z, the colour's bytes and
+   the two coordinate pairs. */
+#define QUAD_VALUES 9
+
 /* Direct3D 9 drew flat draws without multisampling: every sample of a pixel was covered when its
    centre was. In a multisampled pass a flat draw's vertices move onto the pixel boundaries that
    keep that coverage (pixel_boundary), and take the values their triangle's plane has there (a
    flat triangle's values are affine on the screen), so each pixel centre reads what it read before:
-   exactly so for edges along the pixel rows and columns, which the UI's and the sprites' are. */
-static void snap_flat(unsigned char *verts, int nverts, int stride, int topology, const WORD *indices,
-                      uint32_t count)
+   exactly so for edges along the pixel rows and columns, which the UI's and the sprites' are. The
+   vertices are QUAD_STRIDE apart, the triangles a list. */
+static void snap_flat(unsigned char *verts, int nverts, const WORD *indices, uint32_t count)
 {
     static unsigned char *orig, *done;
     static size_t capacity;
-    int nvalues = stride == 40 ? 13 : 11;
-    uint32_t t, ntris;
-    size_t bytes = (size_t)nverts * stride;
-    if (topology != SDL_GPU_PRIMITIVETYPE_TRIANGLELIST && topology != SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP)
-        return;
+    uint32_t t;
+    size_t bytes = (size_t)nverts * QUAD_STRIDE;
     if (bytes + (size_t)nverts > capacity) {
         unsigned char *grown = realloc(orig, bytes + (size_t)nverts);
         if (!grown)
@@ -1139,27 +1265,25 @@ static void snap_flat(unsigned char *verts, int nverts, int stride, int topology
     done = orig + bytes;
     memcpy(orig, verts, bytes);
     memset(done, 0, (size_t)nverts);
-    ntris = topology == SDL_GPU_PRIMITIVETYPE_TRIANGLELIST ? count / 3 : (count > 2 ? count - 2 : 0);
-    for (t = 0; t < ntris; t++) {
-        uint32_t first = topology == SDL_GPU_PRIMITIVETYPE_TRIANGLELIST ? t * 3 : t;
+    for (t = 0; t + 3 <= count; t += 3) {
         int k[3], i, j;
-        float px[3], py[3], value[3][13], dx1, dy1, dx2, dy2, det;
+        float px[3], py[3], value[3][QUAD_VALUES], dx1, dy1, dx2, dy2, det;
         for (i = 0; i < 3; i++) {
-            k[i] = indices ? indices[first + i] : (int)(first + i);
+            k[i] = indices ? indices[t + i] : (int)(t + i);
             if (k[i] >= nverts)
                 break;
         }
         if (i < 3 || (done[k[0]] && done[k[1]] && done[k[2]]))
             continue;
         for (i = 0; i < 3; i++) {
-            const unsigned char *v = orig + (size_t)k[i] * stride;
+            const unsigned char *v = orig + (size_t)k[i] * QUAD_STRIDE;
             px[i] = read_float(v);
             py[i] = read_float(v + 4);
             value[i][0] = read_float(v + 8);
-            for (j = 0; j < 8; j++)
+            for (j = 0; j < 4; j++)
                 value[i][1 + j] = v[16 + j];
-            for (j = 0; j < (stride == 40 ? 4 : 2); j++)
-                value[i][9 + j] = read_float(v + 24 + j * 4);
+            for (j = 0; j < 4; j++)
+                value[i][5 + j] = read_float(v + 20 + j * 4);
         }
         dx1 = px[1] - px[0];
         dy1 = py[1] - py[0];
@@ -1169,7 +1293,7 @@ static void snap_flat(unsigned char *verts, int nverts, int stride, int topology
         if (det > -1e-6f && det < 1e-6f)
             continue;
         for (i = 0; i < 3; i++) {
-            unsigned char *out = verts + (size_t)k[i] * stride;
+            unsigned char *out = verts + (size_t)k[i] * QUAD_STRIDE;
             float sx = pixel_boundary(px[i]), sy = pixel_boundary(py[i]), ox, oy;
             if (done[k[i]])
                 continue;
@@ -1180,114 +1304,115 @@ static void snap_flat(unsigned char *verts, int nverts, int stride, int topology
             oy = sy - py[0];
             memcpy(out, &sx, 4);
             memcpy(out + 4, &sy, 4);
-            for (j = 0; j < nvalues; j++) {
+            for (j = 0; j < QUAD_VALUES; j++) {
                 float d1 = value[1][j] - value[0][j], d2 = value[2][j] - value[0][j];
                 float gx = (d1 * dy2 - d2 * dy1) / det, gy = (d2 * dx1 - d1 * dx2) / det;
                 float a = value[0][j] + gx * ox + gy * oy;
                 if (j == 0) {
                     memcpy(out + 8, &a, 4);
-                } else if (j < 9) {
+                } else if (j < 5) {
                     a = floorf(a + 0.5f);
                     out[16 + j - 1] = (unsigned char)(a < 0.0f ? 0.0f : a > 255.0f ? 255.0f : a);
                 } else {
-                    memcpy(out + 24 + (j - 9) * 4, &a, 4);
+                    memcpy(out + 20 + (j - 5) * 4, &a, 4);
                 }
             }
         }
     }
 }
 
-/* answers whether it recorded the draw */
-static int raw_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
+/* Records a quad draw of `mode` with the state s and the stages' textures tex into the current
+   target, its vertices widened to QUAD_STRIDE and a strip's triangles made a list. A mode that does
+   not draw into the target draws nothing (render/gfx.h, gfx_set_mode). Answers whether it recorded
+   the draw. */
+static int raw_draw(int mode, const struct draw_state *s, struct gfx_surface *const *tex, int prim, int vertexKind,
+                    const void *verts, int nverts, const WORD *indices, int nindices)
 {
-    int flat = (vertexKind & FLAT_KIND) != 0, kind = vertexKind & 0xff, stride = kind == GFX_VTX_TEX2 ? 40 : 32;
-    int fan = prim == GFX_PT_TRIANGLEFAN, n = nindices ? nindices : nverts, i;
+    int flat = (vertexKind & FLAT_KIND) != 0, kind = vertexKind & 0xff;
+    int stride = kind == GFX_VTX_TEX2 ? QUAD_STRIDE : GFX_VTX_TEX1_SIZE;
+    int n = nindices ? nindices : nverts, i, cls, a2c;
     struct gpu_step *pass;
     struct gpu_draw *d;
     struct GpuDraw *r;
-    struct pipe_desc p;
-    long voff, ioff = -1;
-    uint32_t count = (uint32_t)n;
+    long voff, ioff;
+    uint32_t count;
+    unsigned char *out;
+    const unsigned char *in = verts;
     SDL_GPUTextureSamplerBinding bind[2];
-    if (!G.dev || !G.target || nverts <= 0 || (kind == GFX_VTX_WORLD && !G.worldCameraSet) || G.shadowPass)
+    SDL_GPUGraphicsPipeline *pipe;
+    if (!G.dev || !G.target || nverts <= 0 || (kind == GFX_VTX_WORLD && !G.worldCameraSet) || G.shadowPass
+        || (prim != GFX_PT_TRIANGLELIST && prim != GFX_PT_TRIANGLESTRIP))
         return 0;
     /* a texture's upload may need a step of its own before the pass */
-    bind_stage(bind, 0);
-    bind_stage(bind + 1, 1);
+    bind_stage(bind, s, tex[0], 0);
+    bind_stage(bind + 1, s, tex[1], 1);
     pass = current_pass();
     if (!pass)
         return 0;
-    state_pipe(&p, pass, PROG_FIXED, kind == GFX_VTX_TEX2 ? LAYOUT_TEX2 : LAYOUT_TEX1, topology_of(prim), flat);
+    cls = pass->target == G.screen ? CLASS_SCREEN : pass->target->kind == K_RTTEX ? CLASS_TEXTURE : CLASS_COPY;
+    flat = flat && kind != GFX_VTX_WORLD;
+    pipe = quad_pipeline(mode, s, cls, flat);
+    if (!pipe)
+        return 0;
+    a2c = alpha_to_coverage(draw_mode(mode), (int)pass_samples(pass), flat);
     d = add_draw(pass);
     if (!d)
         return 0;
-    d->program = PROG_FIXED;
-    d->pipeline = pipeline_for(&p);
+    d->program = PROG_QUAD;
+    d->pipeline = pipe;
     d->bind[0] = bind[0];
     d->bind[1] = bind[1];
     d->record = add_record(&r);
-    if (!r || !d->pipeline) {
+    voff = bytes_add(&G.vertexData, (size_t)nverts * QUAD_STRIDE, 8);
+    count = prim == GFX_PT_TRIANGLESTRIP ? (uint32_t)(n > 2 ? n - 2 : 0) * 3 : (uint32_t)n;
+    ioff = prim == GFX_PT_TRIANGLESTRIP || nindices ? bytes_add(&G.indexData, (size_t)count * 2, 4) : 0;
+    if (!r || voff < 0 || ioff < 0) {
         pass->count--;
         G.ndraws--;
         return 0;
     }
-    fill_state(r, pass, kind == GFX_VTX_WORLD ? KIND_WORLD : KIND_SCREEN, p.a2c);
+    fill_state(r, pass, s, tex, kind == GFX_VTX_WORLD ? KIND_WORLD : KIND_SCREEN, a2c);
     if (kind == GFX_VTX_WORLD)
         r->mode[3] = (uint32_t)view_for(&G.worldCamera, &G.cameraView, pass);
-    voff = bytes_add(&G.vertexData, (size_t)nverts * stride, 8);
-    if (voff < 0) {
-        pass->count--;
-        G.ndraws--;
-        return 0;
+    out = G.vertexData.data + voff;
+    for (i = 0; i < nverts; i++) {
+        memcpy(out + (size_t)i * QUAD_STRIDE, in + (size_t)i * stride, (size_t)stride);
+        if (stride < QUAD_STRIDE)
+            memcpy(out + (size_t)i * QUAD_STRIDE + GFX_VTX_TEX1_SIZE, in + (size_t)i * stride + 20, 8);
     }
-    memcpy(G.vertexData.data + voff, verts, (size_t)nverts * stride);
     d->vertexOffset = (uint32_t)voff;
-    if (fan) {
-        /* SDL has no fans: their triangles as a list */
-        int tris = n > 2 ? n - 2 : 0;
-        WORD *out;
-        ioff = bytes_add(&G.indexData, (size_t)tris * 3 * 2, 4);
-        if (ioff < 0)
-            return 0;
-        out = (WORD *)(G.indexData.data + ioff);
-        for (i = 0; i < tris; i++) {
-            out[i * 3] = indices ? indices[0] : 0;
-            out[i * 3 + 1] = indices ? indices[i + 1] : (WORD)(i + 1);
-            out[i * 3 + 2] = indices ? indices[i + 2] : (WORD)(i + 2);
-        }
-        count = (uint32_t)tris * 3;
-    } else if (nindices) {
-        ioff = bytes_add(&G.indexData, (size_t)nindices * 2, 4);
-        if (ioff < 0)
-            return 0;
+    if (prim == GFX_PT_TRIANGLESTRIP)
+        batch_strip_list((WORD *)(G.indexData.data + ioff), n, indices, 0);
+    else if (nindices) {
         memcpy(G.indexData.data + ioff, indices, (size_t)nindices * 2);
     }
-    d->indexed = ioff >= 0;
-    d->firstIndex = ioff >= 0 ? (uint32_t)(ioff / 2) : 0;
+    d->indexed = prim == GFX_PT_TRIANGLESTRIP || nindices;
+    d->firstIndex = d->indexed ? (uint32_t)(ioff / 2) : 0;
     d->count = count;
-    if (flat && kind != GFX_VTX_WORLD && p.samples != SDL_GPU_SAMPLECOUNT_1)
-        snap_flat(G.vertexData.data + voff, nverts, stride, fan ? SDL_GPU_PRIMITIVETYPE_TRIANGLELIST : p.topology,
-                  d->indexed ? (const WORD *)(G.indexData.data + ioff) : NULL, count);
+    if (flat && pass_samples(pass) != SDL_GPU_SAMPLECOUNT_1)
+        snap_flat(out, nverts, d->indexed ? (const WORD *)(G.indexData.data + ioff) : NULL, count);
     G.target->version = next_version();
     return 1;
 }
 
-/* The client's vertices, batched (gfx_batch.c) or not, counted as diag/perf.h says; the blit
-   quads draw through raw_draw alone and count as blits. */
+/* The client's vertices, batched (gfx_batch.c) or not, in the current mode and with the stages'
+   textures, counted as diag/perf.h says; the blit quads draw through raw_draw alone and count as
+   blits. */
 static void client_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
 {
-    if (!raw_draw(prim, vertexKind, verts, nverts, indices, nindices))
+    if (!raw_draw(G.mode, &G.state, G.stageTex, prim, vertexKind, verts, nverts, indices, nindices))
         return;
     g_perf.draws++;
     g_perf.prims += perf_prim_count(prim, nindices ? nindices : nverts);
-    g_perf.vertexBytes += (unsigned)nverts * ((vertexKind & 0xff) == GFX_VTX_TEX2 ? 40 : 32) + (unsigned)nindices * 2;
+    g_perf.vertexBytes += (unsigned)nverts * ((vertexKind & 0xff) == GFX_VTX_TEX2 ? QUAD_STRIDE : GFX_VTX_TEX1_SIZE)
+                          + (unsigned)nindices * 2;
 }
 
 /* Pre-transformed vertices that all share one rhw lie flat on the screen (the UI, sprites); the
    Direct3D 9 client drew those without multisampling (build/ref/COMMIT.txt). */
 static int flat_draw(int vertexKind, const void *verts, int nverts)
 {
-    int stride = vertexKind == GFX_VTX_TEX2 ? 40 : 32, i;
+    int stride = vertexKind == GFX_VTX_TEX2 ? QUAD_STRIDE : GFX_VTX_TEX1_SIZE, i;
     const unsigned char *v = verts;
     DWORD rhw, other;
     if (nverts < 1)
@@ -1312,21 +1437,20 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
     client_draw(prim, vertexKind, verts, nverts, indices, nindices);
 }
 
-/* A quad from a rectangle of a surface to one of a target: one texel to a pixel when they are the
-   same size, stretched with bilinear filtering otherwise, and nothing blended, tested or fogged;
-   the client's states are as before after. */
+/* A quad from a rectangle of a surface to one of a target (DRAW_BLIT): one texel to a pixel when
+   they are the same size, stretched with the nearest texel otherwise; the client's mode, textures
+   and target are as before after. */
 static void draw_textured_quad(struct gfx_surface *dst, const RECT *d, struct gfx_surface *src, const RECT *s)
 {
-    struct { float x, y, z, rhw; DWORD diffuse, specular; float u, v; } v[4];
-    DWORD rs[N_RS], tss0[N_TSS], tss1[N_TSS], samp0[5];
-    struct gfx_surface *stage0 = G.stageTex[0], *stage1 = G.stageTex[1], *prevTarget = G.target;
+    struct { float x, y, z, rhw; DWORD diffuse; float u, v; } v[4];
+    struct gfx_surface *prevTarget = G.target, *tex[2];
+    struct draw_state state;
     float tw = (float)src->width, th = (float)src->height;
     int i;
     for (i = 0; i < 4; i++) {
         v[i].z = 0.0f;
         v[i].rhw = 1.0f;
         v[i].diffuse = 0xffffffff;
-        v[i].specular = 0;
     }
     v[0].x = (float)d->left - 0.5f;  v[0].y = (float)d->top - 0.5f;    v[0].u = s->left / tw;  v[0].v = s->top / th;
     v[1].x = (float)d->right - 0.5f; v[1].y = (float)d->top - 0.5f;    v[1].u = s->right / tw; v[1].v = s->top / th;
@@ -1334,37 +1458,11 @@ static void draw_textured_quad(struct gfx_surface *dst, const RECT *d, struct gf
     v[3].x = (float)d->right - 0.5f; v[3].y = (float)d->bottom - 0.5f; v[3].u = s->right / tw; v[3].v = s->bottom / th;
     batch_flush();
     g_perf.blitQuads++;
-    memcpy(rs, G.rs, sizeof rs);
-    memcpy(tss0, G.tss[0], sizeof tss0);
-    memcpy(tss1, G.tss[1], sizeof tss1);
-    memcpy(samp0, G.samp[0], sizeof samp0);
-    G.rs[GFX_RS_ALPHATESTENABLE] = 0;
-    G.rs[GFX_RS_ALPHABLENDENABLE] = 0;
-    G.rs[GFX_RS_ZENABLE] = 0;
-    G.rs[GFX_RS_ZWRITEENABLE] = 0;
-    G.rs[GFX_RS_FOGENABLE] = 0;
-    G.rs[GFX_RS_CULLMODE] = GFX_CULL_NONE;
-    G.tss[0][GFX_TSS_COLOROP] = GFX_TOP_SELECTARG1;
-    G.tss[0][GFX_TSS_COLORARG1] = GFX_TA_TEXTURE;
-    G.tss[0][GFX_TSS_ALPHAOP] = GFX_TOP_SELECTARG1;
-    G.tss[0][GFX_TSS_ALPHAARG1] = GFX_TA_TEXTURE;
-    G.tss[0][GFX_TSS_TEXCOORDINDEX] = 0;
-    G.tss[1][GFX_TSS_COLOROP] = GFX_TOP_DISABLE;
-    G.tss[1][GFX_TSS_ALPHAOP] = GFX_TOP_DISABLE;
-    G.samp[0][SAMP_ADDRESS] = GFX_ADDRESS_CLAMP;
-    G.samp[0][SAMP_MAG] = 1;
-    G.samp[0][SAMP_MIN] = 1;
-    G.samp[0][SAMP_MIP] = GFX_MIPFILTER_NONE;
-    G.stageTex[0] = src;
-    G.stageTex[1] = NULL;
+    resolve_state(&state, DRAW_BLIT, 0, 0, 0, 0);
+    tex[0] = src;
+    tex[1] = NULL;
     G.target = dst;
-    raw_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1 | FLAT_KIND, v, 4, NULL, 0);
-    memcpy(G.rs, rs, sizeof rs);
-    memcpy(G.tss[0], tss0, sizeof tss0);
-    memcpy(G.tss[1], tss1, sizeof tss1);
-    memcpy(G.samp[0], samp0, sizeof samp0);
-    G.stageTex[0] = stage0;
-    G.stageTex[1] = stage1;
+    raw_draw(DRAW_BLIT, &state, tex, GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1 | FLAT_KIND, v, 4, NULL, 0);
     G.target = prevTarget;
 }
 
@@ -1489,7 +1587,7 @@ static int caster_view(void)
         return G.casterView;
     matrix_4x3(view, G.worldView.view);
     multiply(clip, view, G.shadow.fromView[G.shadowCascade]);
-    G.casterView = add_view(clip, view, &G.worldView);
+    G.casterView = add_view(clip, view);
     G.casterCascade = G.shadowCascade;
     return G.casterView;
 }
@@ -1499,8 +1597,9 @@ void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
     struct gpu_step *pass;
     struct gpu_draw *d;
     struct GpuDraw *r;
-    struct pipe_desc p;
+    SDL_GPUGraphicsPipeline *pipe;
     SDL_GPUTextureSamplerBinding bind[2];
+    int cull;
     g_perf.drawCalls++;
     batch_flush();
     if (!G.dev || !G.target || !m || !draw || !G.worldViewSet || draw->first < 0 || draw->count <= 0
@@ -1508,49 +1607,42 @@ void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
         return;
     if (G.shadowPass && G.shadowCascade < 0)
         return;
-    if (!mesh_ready(m))
+    cull = draw->cull >= GFX_CULL_NONE && draw->cull <= GFX_CULL_CCW ? draw->cull : GFX_CULL_NONE;
+    pipe = G.shadowPass ? G.casterPipeline : G.meshPipeline[G.mode][cull - GFX_CULL_NONE];
+    if (!pipe || (!G.shadowPass && gpu_of(G.target) != G.screen) || !mesh_ready(m))
         return;
-    bind_stage(bind, 0);
-    if (!G.shadowPass)
-        bind_stage(bind + 1, 1);
+    /* the casters read their texture as the opaque lists do */
+    if (G.shadowPass) {
+        struct draw_state caster;
+        resolve_state(&caster, DRAW_OPAQUE_CLAMP, 0, 0, 0, 0);
+        bind_stage(bind, &caster, G.stageTex[0], 0);
+    } else {
+        bind_stage(bind, &G.state, G.stageTex[0], 0);
+        bind_stage(bind + 1, &G.state, G.stageTex[1], 1);
+    }
     pass = current_pass();
     if (!pass)
         return;
     if (!pin_mesh(m))
         return;
-    g_perf.draws++;
-    g_perf.prims += (unsigned)draw->count / 3;
-    if (G.shadowPass) {
-        memset(&p, 0, sizeof p);
-        p.program = PROG_CASTER;
-        p.layout = LAYOUT_MESH;
-        p.topology = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
-        p.ztest = 1;
-        p.zfunc = GFX_CMP_LESSEQUAL;
-        p.zwrite = 1;
-        p.cull = GFX_CULL_NONE;
-        p.r32f = 1;
-        p.depth = 1;
-        p.samples = SDL_GPU_SAMPLECOUNT_1;
-    } else {
-        state_pipe(&p, pass, PROG_MESH, LAYOUT_MESH, SDL_GPU_PRIMITIVETYPE_TRIANGLELIST, 0);
-    }
     d = add_draw(pass);
     if (!d)
         return;
-    d->program = p.program;
-    d->pipeline = pipeline_for(&p);
+    d->program = G.shadowPass ? PROG_CASTER : PROG_MESH;
+    d->pipeline = pipe;
     d->mesh = m;
     d->indexed = 1;
     d->firstIndex = (uint32_t)draw->first;
     d->count = (uint32_t)draw->count;
     d->bind[0] = bind[0];
     d->record = add_record(&r);
-    if (!r || !d->pipeline) {
+    if (!r) {
         pass->count--;
         G.ndraws--;
         return;
     }
+    g_perf.draws++;
+    g_perf.prims += (unsigned)draw->count / 3;
     r->uvU[0] = draw->uv[0];
     r->uvU[1] = draw->uv[2];
     r->uvU[2] = draw->uv[4];
@@ -1560,18 +1652,17 @@ void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
     r->mesh[0] = draw->kind == GFX_MESH_MODEL;
     if (G.shadowPass) {
         r->mode[0] = KIND_CASTER;
-        r->stage0b[3] = G.stageTex[0] ? DRAW_TEXTURE : 0;
-        stage_scale(r->uvScale, r->uvLimit, G.stageTex[0], 0);
+        stage_scale(r->uvScale, r->uvLimit, G.stageTex[0], 1);
         r->mode[3] = (uint32_t)caster_view();
         return;
     }
     d->bind[1] = bind[1];
     d->bind[2].texture = G.shadowReceive ? G.shadowMaps : G.noShadow;
     d->bind[2].sampler = G.pointClamp;
-    fill_state(r, pass, KIND_MESH, p.a2c);
+    /* meshes are never flat */
+    fill_state(r, pass, &G.state, G.stageTex, KIND_MESH, alpha_to_coverage(draw_mode(G.mode), (int)G.samples, 0));
     memcpy(r->colour, draw->colour, sizeof r->colour);
     r->mesh[1] = draw->kind == GFX_MESH_MODEL && draw->lightGround;
-    r->mesh[2] = G.tss[1][GFX_TSS_COLOROP] != GFX_TOP_DISABLE;
     r->mesh[3] = G.shadowReceive ? (uint32_t)shadow_record() + 1 : 0;
     r->mode[3] = (uint32_t)view_for(&G.worldView, &G.meshView, pass);
     G.target->version = next_version();
@@ -1824,15 +1915,19 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
             SDL_GenerateMipmapsForGPUTexture(cmd, G.uploads[i].tex);
 }
 
+/* The storage buffers the programs read (src/render/shaders): the quads' vertex shader the fog
+   tables, the meshes' shaders the shadows. */
 static void bind_program(SDL_GPURenderPass *pass, int program)
 {
     SDL_GPUBuffer *vertex[3], *fragment[2];
     Uint32 nv = 2, nf = 1;
     vertex[0] = G.records;
     vertex[1] = G.views;
-    vertex[2] = G.shadows;
+    vertex[2] = program == PROG_QUAD ? G.fogs : G.shadows;
     fragment[0] = G.records;
     fragment[1] = G.shadows;
+    if (program == PROG_QUAD)
+        nv = 3;
     if (program == PROG_MESH) {
         nv = 3;
         nf = 2;
@@ -1905,7 +2000,7 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     SDL_BindGPUVertexBuffers(pass, 1, &binding, 1);
     for (i = s->first; i < s->first + s->count; i++) {
         const struct gpu_draw *d = &G.draws[i];
-        int nbind = d->program == PROG_MESH ? 3 : d->program == PROG_FIXED ? 2 : 1;
+        int nbind = d->program == PROG_MESH ? 3 : d->program == PROG_QUAD ? 2 : 1;
         if (!d->pipeline)
             continue;
         if (d->pipeline != bound) {
@@ -2069,9 +2164,9 @@ static void frame_reset(void)
     }
     G.npins = G.nmeshPins = 0;
     G.nsteps = G.ndraws = G.nuploads = G.frameUploads = G.nmeshUploads = 0;
-    G.drawRecords.size = G.viewRecords.size = G.shadowRecords.size = 0;
+    G.drawRecords.size = G.viewRecords.size = G.fogTables.size = G.shadowRecords.size = 0;
     G.vertexData.size = G.indexData.size = G.texels.size = 0;
-    G.cameraView = G.meshView = G.casterView = G.casterCascade = G.shadowRecord = -1;
+    G.cameraView = G.meshView = G.casterView = G.casterCascade = G.shadowRecord = G.fogTable = -1;
     G.frame++;
     if (!G.frame)
         G.frame = 1;
@@ -2154,7 +2249,7 @@ static int flush(const struct flush_extra *extra)
     SDL_GPUCommandBuffer *cmd;
     SDL_GPUCopyPass *copy;
     SDL_GPUFence *fence;
-    uint32_t oRecords, oViews, oShadows, oVertices, oIndices, oTexels, total;
+    uint32_t oRecords, oViews, oFogs, oShadows, oVertices, oIndices, oTexels, total;
     long instances;
     unsigned char *mapped;
     size_t i;
@@ -2171,6 +2266,8 @@ static int flush(const struct flush_extra *extra)
         bytes_add(&G.drawRecords, sizeof(struct GpuDraw), 16);
     if (!G.viewRecords.size)
         bytes_add(&G.viewRecords, sizeof(struct GpuView), 16);
+    if (!G.fogTables.size)
+        bytes_add(&G.fogTables, 16, 16);
     if (!G.shadowRecords.size)
         bytes_add(&G.shadowRecords, sizeof(struct GpuShadow), 16);
     if (!G.indexData.size)
@@ -2180,7 +2277,8 @@ static int flush(const struct flush_extra *extra)
     instances = instances_needed((uint32_t)(G.drawRecords.size / sizeof(struct GpuDraw)));
     oRecords = 0;
     oViews = align16(oRecords + (uint32_t)G.drawRecords.size);
-    oShadows = align16(oViews + (uint32_t)G.viewRecords.size);
+    oFogs = align16(oViews + (uint32_t)G.viewRecords.size);
+    oShadows = align16(oFogs + (uint32_t)G.fogTables.size);
     oVertices = align16(oShadows + (uint32_t)G.shadowRecords.size);
     oIndices = align16(oVertices + (uint32_t)G.vertexData.size);
     oTexels = align16(oIndices + (uint32_t)G.indexData.size);
@@ -2188,6 +2286,7 @@ static int flush(const struct flush_extra *extra)
     if (instances == -2
         || !ensure_buffer(&G.records, &G.recordsSize, (uint32_t)G.drawRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.views, &G.viewsSize, (uint32_t)G.viewRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
+        || !ensure_buffer(&G.fogs, &G.fogsSize, (uint32_t)G.fogTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.shadows, &G.shadowsSize, (uint32_t)G.shadowRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.vertices, &G.verticesSize, (uint32_t)G.vertexData.size, SDL_GPU_BUFFERUSAGE_VERTEX)
         || !ensure_buffer(&G.indices, &G.indicesSize, (uint32_t)G.indexData.size, SDL_GPU_BUFFERUSAGE_INDEX)) {
@@ -2216,6 +2315,7 @@ static int flush(const struct flush_extra *extra)
         goto failed;
     memcpy(mapped + oRecords, G.drawRecords.data, G.drawRecords.size);
     memcpy(mapped + oViews, G.viewRecords.data, G.viewRecords.size);
+    memcpy(mapped + oFogs, G.fogTables.data, G.fogTables.size);
     memcpy(mapped + oShadows, G.shadowRecords.data, G.shadowRecords.size);
     memcpy(mapped + oVertices, G.vertexData.data, G.vertexData.size);
     memcpy(mapped + oIndices, G.indexData.data, G.indexData.size);
@@ -2231,6 +2331,7 @@ static int flush(const struct flush_extra *extra)
     copy = SDL_BeginGPUCopyPass(cmd);
     copy_into(copy, oRecords, G.records, (uint32_t)G.drawRecords.size);
     copy_into(copy, oViews, G.views, (uint32_t)G.viewRecords.size);
+    copy_into(copy, oFogs, G.fogs, (uint32_t)G.fogTables.size);
     copy_into(copy, oShadows, G.shadows, (uint32_t)G.shadowRecords.size);
     copy_into(copy, oVertices, G.vertices, (uint32_t)G.vertexData.size);
     copy_into(copy, oIndices, G.indices, (uint32_t)G.indexData.size);
@@ -2406,34 +2507,15 @@ static SDL_GPUShader *make_shader(const struct GpuShaderCode *code)
     return SDL_CreateGPUShader(G.dev, &info);
 }
 
+/* What the device starts drawing with (render/gfx.h, gfx_set_mode). */
 static void reset_state(void)
 {
-    int i;
-    memset(G.rs, 0, sizeof G.rs);
-    memset(G.tss, 0, sizeof G.tss);
-    G.rs[GFX_RS_ZENABLE] = 1;
-    G.rs[GFX_RS_ZWRITEENABLE] = 1;
-    G.rs[GFX_RS_SRCBLEND] = GFX_BLEND_ONE;
-    G.rs[GFX_RS_DESTBLEND] = 1;
-    G.rs[GFX_RS_CULLMODE] = GFX_CULL_CCW;
-    G.rs[GFX_RS_ZFUNC] = GFX_CMP_LESSEQUAL;
-    G.rs[GFX_RS_ALPHAFUNC] = 8;
-    for (i = 0; i < 8; i++) {
-        G.tss[i][GFX_TSS_COLOROP] = i ? GFX_TOP_DISABLE : GFX_TOP_MODULATE;
-        G.tss[i][GFX_TSS_COLORARG1] = GFX_TA_TEXTURE;
-        G.tss[i][GFX_TSS_COLORARG2] = GFX_TA_CURRENT;
-        G.tss[i][GFX_TSS_ALPHAOP] = i ? GFX_TOP_DISABLE : GFX_TOP_SELECTARG1;
-        G.tss[i][GFX_TSS_ALPHAARG1] = GFX_TA_TEXTURE;
-        G.tss[i][GFX_TSS_ALPHAARG2] = GFX_TA_CURRENT;
-        G.tss[i][GFX_TSS_TEXCOORDINDEX] = (DWORD)i;
-    }
-    for (i = 0; i < 2; i++) {
-        G.samp[i][SAMP_ADDRESS] = GFX_ADDRESS_WRAP;
-        G.samp[i][SAMP_BORDER] = 0;
-        G.samp[i][SAMP_MAG] = 1;
-        G.samp[i][SAMP_MIN] = 1;
-        G.samp[i][SAMP_MIP] = GFX_MIPFILTER_NONE;
-    }
+    G.mode = DRAW_OVERLAY;
+    G.effectSrc = DRAW_BLEND_SRCALPHA;
+    G.effectDst = DRAW_BLEND_INVSRCALPHA;
+    G.effectCombine = DRAW_COMBINE_MODULATE;
+    memset(&G.fog, 0, sizeof G.fog);
+    resolve_state(&G.state, G.mode, G.effectSrc, G.effectDst, G.effectCombine, 0);
     memset(G.stageTex, 0, sizeof G.stageTex);
 }
 
@@ -2502,8 +2584,8 @@ static int create_device(void)
     int i;
     if (G.dev)
         return 1;
-    G.vsCode[PROG_FIXED] = &fixed_vs;
-    G.fsCode[PROG_FIXED] = &fixed_fs;
+    G.vsCode[PROG_QUAD] = &quad_vs;
+    G.fsCode[PROG_QUAD] = &quad_fs;
     G.vsCode[PROG_MESH] = &mesh_vs;
     G.fsCode[PROG_MESH] = &mesh_fs;
     G.vsCode[PROG_CASTER] = &caster_vs;
@@ -2552,12 +2634,12 @@ static int create_device(void)
     info.layer_count_or_depth = 1;
     info.num_levels = 1;
     G.noShadow = SDL_CreateGPUTexture(G.dev, &info);
-    if (!G.pointClamp || !G.white || !G.noShadow || !upload_white()) {
+    if (!G.pointClamp || !G.white || !G.noShadow || !make_samplers() || !upload_white()) {
         SDL_Log("gfx: device resources: %s", SDL_GetError());
         return 0;
     }
     G.frame = 1;
-    G.cameraView = G.meshView = G.casterView = G.casterCascade = G.shadowRecord = -1;
+    G.cameraView = G.meshView = G.casterView = G.casterCascade = G.shadowRecord = G.fogTable = -1;
     if (G.window && SDL_ClaimWindowForGPUDevice(G.dev, G.window)) {
         SDL_GPUPresentMode mode = SDL_GPU_PRESENTMODE_VSYNC;
         G.claimed = 1;
@@ -2674,7 +2756,8 @@ int gfx_create_zbuffer(struct C3dDevice *d)
     if (!z)
         return GFX_E_ZBUFFER;
     d->zbuffer = z;
-    return 0;
+    /* the screen's samples and depth are known: every pipeline can be made */
+    return make_pipelines() ? 0 : GFX_E_ZBUFFER;
 }
 
 int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
@@ -2684,7 +2767,6 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
         return -1;
     memset(out, 0, sizeof *out);
     out->zbufferless = 0;
-    out->vertexFog = 1;
     out->trilinear = 1;
     out->minTexW = 1;
     out->minTexH = 1;
@@ -2698,49 +2780,6 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     out->guardBottom = 32767.0f;
     out->bltStretch = 1;
     return 0;
-}
-
-void gfx_default_states(struct C3dDevice *d)
-{
-    static const struct { int state; DWORD value; } render_states[] = {
-        { GFX_RS_CULLMODE, GFX_CULL_NONE },
-        { GFX_RS_ZFUNC, GFX_CMP_LESSEQUAL },
-        { GFX_RS_ALPHAFUNC, GFX_CMP_GREATEREQUAL },
-        { GFX_RS_ALPHAREF, 0xf0 },
-        { GFX_RS_ZENABLE, TRUE },
-        { GFX_RS_ZWRITEENABLE, TRUE },
-        { GFX_RS_SRCBLEND, GFX_BLEND_SRCALPHA },
-        { GFX_RS_DESTBLEND, GFX_BLEND_INVSRCALPHA },
-    };
-    static const struct { int stage, state; DWORD value; } stage_states[] = {
-        { 0, GFX_TSS_TEXCOORDINDEX, 0 },
-        { 0, GFX_TSS_COLOROP, GFX_TOP_MODULATE },
-        { 0, GFX_TSS_COLORARG1, GFX_TA_TEXTURE },
-        { 0, GFX_TSS_COLORARG2, GFX_TA_DIFFUSE },
-        { 0, GFX_TSS_ALPHAOP, GFX_TOP_MODULATE },
-        { 0, GFX_TSS_ALPHAARG1, GFX_TA_TEXTURE },
-        { 0, GFX_TSS_ALPHAARG2, GFX_TA_DIFFUSE },
-        { 1, GFX_TSS_TEXCOORDINDEX, 1 },
-        { 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE },
-        { 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR },
-        { 1, GFX_TSS_COLORARG2, GFX_TA_CURRENT },
-        { 1, GFX_TSS_ALPHAOP, GFX_TOP_DISABLE },
-        { 2, GFX_TSS_COLOROP, GFX_TOP_DISABLE },
-        { 2, GFX_TSS_ALPHAOP, GFX_TOP_DISABLE },
-        { 0, GFX_TSS_MINFILTER, GFX_FILTER_LINEAR },
-        { 0, GFX_TSS_MAGFILTER, GFX_FILTER_LINEAR },
-        { 1, GFX_TSS_MINFILTER, GFX_FILTER_LINEAR },
-        { 1, GFX_TSS_MAGFILTER, GFX_FILTER_LINEAR },
-        { 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP },
-        { 1, GFX_TSS_ADDRESS, GFX_ADDRESS_BORDER },
-        { 1, GFX_TSS_BORDERCOLOR, 0xff000000 },
-    };
-    size_t i;
-    (void)d;
-    for (i = 0; i < sizeof render_states / sizeof render_states[0]; i++)
-        gfx_set_render_state(render_states[i].state, render_states[i].value);
-    for (i = 0; i < sizeof stage_states / sizeof stage_states[0]; i++)
-        gfx_set_stage_state(stage_states[i].stage, stage_states[i].state, stage_states[i].value);
 }
 
 int gfx_close(struct C3dDevice *d)
@@ -2779,12 +2818,11 @@ int gfx_close(struct C3dDevice *d)
                 m->buffer = NULL;
             }
         }
-        for (i = 0; i < PIPELINE_SLOTS; i++)
-            if (G.pipelines[i].pipeline)
-                SDL_ReleaseGPUGraphicsPipeline(G.dev, G.pipelines[i].pipeline);
-        for (i = 0; i < SAMPLER_SLOTS; i++)
-            if (G.samplers[i].sampler)
-                SDL_ReleaseGPUSampler(G.dev, G.samplers[i].sampler);
+        for (i = 0; i < G.npipelines; i++)
+            SDL_ReleaseGPUGraphicsPipeline(G.dev, G.pipelines[i].pipeline);
+        for (i = 0; i < 6; i++)
+            if (G.samplers[i / 3][i % 3])
+                SDL_ReleaseGPUSampler(G.dev, G.samplers[i / 3][i % 3]);
         for (i = 0; i < PROG_COUNT; i++) {
             if (G.vs[i])
                 SDL_ReleaseGPUShader(G.dev, G.vs[i]);
@@ -2800,6 +2838,7 @@ int gfx_close(struct C3dDevice *d)
         if (G.msaa) SDL_ReleaseGPUTexture(G.dev, G.msaa);
         if (G.records) SDL_ReleaseGPUBuffer(G.dev, G.records);
         if (G.views) SDL_ReleaseGPUBuffer(G.dev, G.views);
+        if (G.fogs) SDL_ReleaseGPUBuffer(G.dev, G.fogs);
         if (G.shadows) SDL_ReleaseGPUBuffer(G.dev, G.shadows);
         if (G.vertices) SDL_ReleaseGPUBuffer(G.dev, G.vertices);
         if (G.indices) SDL_ReleaseGPUBuffer(G.dev, G.indices);
@@ -2813,13 +2852,18 @@ int gfx_close(struct C3dDevice *d)
     G.dev = NULL;
     G.claimed = 0;
     memset(G.pipelines, 0, sizeof G.pipelines);
+    G.npipelines = 0;
+    memset(G.quadPipeline, 0, sizeof G.quadPipeline);
+    memset(G.meshPipeline, 0, sizeof G.meshPipeline);
+    memset(G.effectPipeline, 0, sizeof G.effectPipeline);
+    G.casterPipeline = NULL;
     memset(G.samplers, 0, sizeof G.samplers);
     memset(G.vs, 0, sizeof G.vs);
     memset(G.fs, 0, sizeof G.fs);
     G.pointClamp = NULL;
     G.white = G.noShadow = G.shadowMaps = G.shadowDepth = G.depth = G.msaa = NULL;
-    G.records = G.views = G.shadows = G.vertices = G.indices = G.instances = NULL;
-    G.recordsSize = G.viewsSize = G.shadowsSize = G.verticesSize = G.indicesSize = G.instanceCount = 0;
+    G.records = G.views = G.fogs = G.shadows = G.vertices = G.indices = G.instances = NULL;
+    G.recordsSize = G.viewsSize = G.fogsSize = G.shadowsSize = G.verticesSize = G.indicesSize = G.instanceCount = 0;
     G.upload = G.download = NULL;
     G.uploadSize = G.downloadSize = 0;
     G.shadowState = 0;
@@ -3298,10 +3342,12 @@ int gfx_clear(int flags, DWORD colour, float z, const RECT *r)
             pass->loadDepth = SDL_GPU_LOADOP_CLEAR;
         }
     } else if ((flags & GFX_CLEAR_TARGET) || depth) {
-        /* a clear inside a pass: a quad over the rectangle that writes the colour and the depth */
-        struct { float x, y, z, rhw; DWORD diffuse, specular; float u, v; } v[4];
-        DWORD rs[N_RS], tss0[N_TSS];
-        struct gfx_surface *stage0 = G.stageTex[0];
+        /* a clear inside a pass: a quad over the rectangle that writes the colour, the depth or
+           both */
+        struct { float x, y, z, rhw; DWORD diffuse; float u, v; } v[4];
+        struct gfx_surface *none[2] = { NULL, NULL };
+        struct draw_state state;
+        int mode = !(flags & GFX_CLEAR_TARGET) ? DRAW_CLEAR_DEPTH : depth ? DRAW_CLEAR : DRAW_CLEAR_COLOUR;
         int i;
         for (i = 0; i < 4; i++) {
             v[i].x = (float)((i & 1) ? rc.right : rc.left) - 0.5f;
@@ -3309,51 +3355,10 @@ int gfx_clear(int flags, DWORD colour, float z, const RECT *r)
             v[i].z = z;
             v[i].rhw = 1.0f;
             v[i].diffuse = colour;
-            v[i].specular = 0;
             v[i].u = v[i].v = 0.0f;
         }
-        memcpy(rs, G.rs, sizeof rs);
-        memcpy(tss0, G.tss[0], sizeof tss0);
-        G.rs[GFX_RS_ALPHATESTENABLE] = 0;
-        G.rs[GFX_RS_ALPHABLENDENABLE] = 0;
-        G.rs[GFX_RS_FOGENABLE] = 0;
-        G.rs[GFX_RS_CULLMODE] = GFX_CULL_NONE;
-        G.rs[GFX_RS_ZENABLE] = depth;
-        G.rs[GFX_RS_ZWRITEENABLE] = depth;
-        G.rs[GFX_RS_ZFUNC] = 8;
-        G.tss[0][GFX_TSS_COLOROP] = GFX_TOP_DISABLE;
-        G.stageTex[0] = NULL;
-        {
-            /* a clear of the depth alone leaves the colour */
-            struct pipe_desc p;
-            struct gpu_draw *d;
-            struct GpuDraw *rec;
-            long voff;
-            state_pipe(&p, pass, PROG_FIXED, LAYOUT_TEX1, SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP, 1);
-            if (!(flags & GFX_CLEAR_TARGET))
-                p.mask = MASK_NONE;
-            d = add_draw(pass);
-            if (d) {
-                d->program = PROG_FIXED;
-                d->pipeline = pipeline_for(&p);
-                d->bind[0].texture = d->bind[1].texture = G.white;
-                d->bind[0].sampler = d->bind[1].sampler = G.pointClamp;
-                d->record = add_record(&rec);
-                voff = bytes_add(&G.vertexData, sizeof v, 8);
-                if (rec && voff >= 0 && d->pipeline) {
-                    fill_state(rec, pass, KIND_SCREEN, 0);
-                    memcpy(G.vertexData.data + voff, v, sizeof v);
-                    d->vertexOffset = (uint32_t)voff;
-                    d->count = 4;
-                } else {
-                    pass->count--;
-                    G.ndraws--;
-                }
-            }
-        }
-        memcpy(G.rs, rs, sizeof rs);
-        memcpy(G.tss[0], tss0, sizeof tss0);
-        G.stageTex[0] = stage0;
+        resolve_state(&state, mode, 0, 0, 0, 0);
+        raw_draw(mode, &state, none, GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1 | FLAT_KIND, v, 4, NULL, 0);
     }
     t->version = next_version();
     return 0;
@@ -3376,62 +3381,9 @@ int gfx_set_render_target(gfx_surface *s)
     return 0;
 }
 
-/* The states are counted as diag/perf.h says. */
-void gfx_set_render_state(int state, DWORD value)
-{
-    if ((unsigned)state >= N_RS)
-        return;
-    perf_count_state(G.rs[state] != value);
-    if (G.rs[state] == value)
-        return;
-    batch_flush();
-    G.rs[state] = value;
-}
-
-int gfx_get_render_state(int state, DWORD *out)
-{
-    if ((unsigned)state >= N_RS)
-        return -1;
-    *out = G.rs[state];
-    return 0;
-}
-
-static void set_sampler(int stage, int which, DWORD value)
-{
-    if (stage >= 2)
-        return;
-    perf_count_state(G.samp[stage][which] != value);
-    if (G.samp[stage][which] == value)
-        return;
-    batch_flush();
-    G.samp[stage][which] = value;
-}
-
-void gfx_set_stage_state(int stage, int state, DWORD value)
-{
-    if ((unsigned)stage >= 8)
-        return;
-    switch (state) {
-    case GFX_TSS_ADDRESS:     set_sampler(stage, SAMP_ADDRESS, value); break;
-    case GFX_TSS_BORDERCOLOR: set_sampler(stage, SAMP_BORDER, value); break;
-    case GFX_TSS_MAGFILTER:   set_sampler(stage, SAMP_MAG, value); break;
-    case GFX_TSS_MINFILTER:   set_sampler(stage, SAMP_MIN, value); break;
-    case GFX_TSS_MIPFILTER:   set_sampler(stage, SAMP_MIP, value); break;
-    default:
-        if ((unsigned)state >= N_TSS)
-            break;
-        perf_count_state(G.tss[stage][state] != value);
-        if (G.tss[stage][state] != value) {
-            batch_flush();
-            G.tss[stage][state] = value;
-        }
-        break;
-    }
-}
-
 void gfx_set_texture(int stage, gfx_surface *s)
 {
-    if ((unsigned)stage >= 8 || G.stageTex[stage] == s)
+    if ((unsigned)stage >= 2 || G.stageTex[stage] == s)
         return;
     batch_flush();
     g_perf.texSets++;

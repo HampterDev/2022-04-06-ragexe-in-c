@@ -197,8 +197,8 @@ void sprite_particle_render(struct SpriteParticle *self)
                 batch->base.verts[k].z = renderer_project_depth(batch->base.verts[k].rhw);
             }
         }
-        batch->base.srcBlend = GFX_BLEND_SRCALPHA;
-        batch->base.destBlend = self->base.list_flags != LIST_WORLD ? GFX_BLEND_INVSRCALPHA : GFX_BLEND_ONE;
+        batch->base.srcBlend = DRAW_BLEND_SRCALPHA;
+        batch->base.destBlend = self->base.list_flags != LIST_WORLD ? DRAW_BLEND_INVSRCALPHA : DRAW_BLEND_ONE;
         renderer_add_prim(g_renderer, &batch->base, self->base.list_flags);
     }
 }

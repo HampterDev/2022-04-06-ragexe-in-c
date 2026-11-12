@@ -5,23 +5,21 @@
 
 struct Draw
 {
-    uint4 stage0;     // the colour operation, its two arguments, the alpha operation (GFX_TOP_*, GFX_TA_*)
-    uint4 stage0b;    // the alpha arguments, the coordinate index, flags (DRAW_TEXTURE, DRAW_BORDER)
-    uint4 stage1;
-    uint4 stage1b;
-    uint4 mode;       // the kind (KIND_*), the alpha test's function (GFX_CMP_*, 0 off), fog on, the view
+    uint4 mode;       // the kind (KIND_*), the alpha test (ALPHA_*), fog on, the view
     float4 target;    // the alpha test's reference (0 to 255), half the target's width and height, alpha
                       // to coverage
+    uint4 stages;     // the combination (render/draw_modes.h, enum DrawCombine), the stages that read
+                      // opaque black outside 0 to 1 (bit 0 stage 0, bit 1 stage 1), the ground's
+                      // lightmap, the quads' fog table (64 float4 each, render/vertex_fog.h)
+    float4 fog;       // the quads' fog: its table's base, direction and count
     float4 fogColour;
-    float4 border0;   // the border colour of each stage
-    float4 border1;
     float4 colour;    // a mesh draw's colour (render/gfx.h, GfxMeshDraw)
     float4 uvU;       // its first texture's coordinates: u' = dot(float3(u, v, 1), uvU.xyz)
     float4 uvV;
     float4 uvScale;   // each stage's texture coordinates times this, and then at most uvLimit: a
     float4 uvLimit;   // target's texture is wider than the target (render/gfx_gpu.c, MARGIN), and a
                       // clamped read stays off the margin
-    uint4 mesh;       // a model, its ground light, stage 1 on, the shadow record + 1 while receiving
+    uint4 mesh;       // a model, its ground light, -, the shadow record + 1 while receiving
 };
 
 struct View
@@ -49,6 +47,13 @@ float2 stage_uv(float2 uv, float2 scale, float2 limit)
     return min(uv * scale, limit);
 }
 
+// A stage's texel: opaque black outside 0 to 1 where the stage reads with a border
+// (render/draw_modes.h, DRAW_ADDRESS_BORDER), what it sampled elsewhere.
+float4 bordered(float4 sampled, float2 uv, bool border)
+{
+    return border && any(abs(uv - 0.5) > 0.5) ? float4(0, 0, 0, 1) : sampled;
+}
+
 // A point times a row-major matrix in the order Direct3D 9's shader compiler multiplied it in (fxc,
 // vs_2_0 and vs_3_0: y, then x, then z, then the translation), so that a vertex lands on the
 // pixel the Direct3D 9 client put it on, to the last bit as far as the GPU allows.
@@ -72,21 +77,29 @@ float2 snapped_ndc(float2 window, float2 half)
     return float2(p.x / half.x - 1, 1 - p.y / half.y);
 }
 
-#define KIND_SCREEN 0     // pre-transformed: pixels with Direct3D 9's centres, z, rhw
+// Draw.mode.x, the kind of draw (render/gfx_gpu.c, KIND_*), where a shader tells them apart:
 #define KIND_WORLD 1       // GFX_VTX_WORLD: world coordinates through the camera's view
-#define KIND_MESH 2
-#define KIND_CASTER 3
 
-#define DRAW_TEXTURE 1
-#define DRAW_BORDER 2
+// render/draw_modes.h, enum DrawAlphaTest
+#define ALPHA_AT_LEAST 1
+#define ALPHA_BELOW 2
 
-#define TOP_DISABLE 1
-
-// The alpha test: alpha (0 to 1, rounded to 0 to 255) against the reference, by the function
-// (render/gfx.h: GFX_CMP_LESS, GFX_CMP_LESSEQUAL, GFX_CMP_GREATEREQUAL; 0, the test off, and any
-// other pass everything).
-bool alpha_passes(uint func, float alpha, float reference)
+// Whether a pixel of this alpha (0 to 1, rounded to 0 to 255) passes the alpha test against the
+// reference.
+bool alpha_passes(uint test, float alpha, float reference)
 {
     float a = floor(alpha * 255 + 0.5);
-    return func == 2 ? a < reference : func == 4 ? a <= reference : func == 7 ? a >= reference : true;
+    return test == ALPHA_AT_LEAST ? a >= reference : test == ALPHA_BELOW ? a < reference : true;
+}
+
+// The alpha test of a draw, or alpha to coverage in its place: the edge where alpha crosses the
+// reference, a pixel wide, spread over the samples. Answers false where the pixel is dropped.
+bool alpha_test(inout float alpha, Draw d)
+{
+    if (d.target.w != 0) {
+        float a = alpha * 255;
+        alpha = saturate((a - d.target.x) / max(fwidth(a), 1.0 / 16) + 0.5);
+        return alpha > 0;
+    }
+    return alpha_passes(d.mode.y, alpha, d.target.x);
 }

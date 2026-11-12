@@ -45,15 +45,12 @@ struct Texture *texture_cache_get(struct TexCache *cache,
 
 struct TexDrawPrim *renderer_new_prim(struct Renderer *r)
 {
-    int i;
     assert(r == &renderer);
     ++allocations;
     if (fail_allocation)
         return NULL;
     memset(&primitive, 0, sizeof primitive);
     primitive.base.verts = primitive.quad;
-    for (i = 0; i < 4; ++i)
-        primitive.base.verts[i].specular = 0x12345678;
     return &primitive;
 }
 
@@ -85,7 +82,7 @@ static void check_quad(const float positions[4][2], DWORD colour, const float uv
         near_value(v->x, positions[i][0]);
         near_value(v->y, positions[i][1]);
         assert(v->z == 0.125f && v->rhw == expected_rhw);
-        assert(v->diffuse == colour && v->specular == 0x12345678);
+        assert(v->diffuse == colour);
         near_value(v->u, uv[i][0]);
         near_value(v->v, uv[i][1]);
     }

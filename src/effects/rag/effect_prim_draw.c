@@ -7,11 +7,6 @@
 
 #define PRIM_POOL_LIMIT 0x1fe
 
-#define D3DBLEND_ZERO        1
-#define D3DBLEND_ONE         2
-#define D3DBLEND_SRCALPHA    5
-#define D3DBLEND_INVSRCALPHA 6
-
 struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float *matrix, Vec3 pos)
 {
     out->x = 0.0f;
@@ -19,7 +14,6 @@ struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float
     out->z = 0.0f;
     out->rhw = 0.0f;
     out->diffuse = 0;
-    out->specular = 0xff000000;
     out->u = 0.0f;
     out->v = 0.0f;
     renderer_project_vertex(g_renderer, &pos, matrix, out);
@@ -80,7 +74,7 @@ void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, V
                                float v_p2p3, float v_p0p1, float u_p0p3, float u_p1p2, unsigned char mode)
 {
     const struct RagEffect *master = self->master;
-    int dest = blend != PRIM_BLEND_ADDITIVE ? D3DBLEND_INVSRCALPHA : D3DBLEND_ONE;
+    int dest = blend != PRIM_BLEND_ADDITIVE ? DRAW_BLEND_INVSRCALPHA : DRAW_BLEND_ONE;
     int red = r, green = g, blue = b;
     unsigned argb;
     struct PrimTriangle *tri;
@@ -118,11 +112,11 @@ void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, V
 
     tri = &self->triangles[*count];
     if (blend == PRIM_BLEND_OPAQUE) {
-        tri->src_blend = D3DBLEND_ONE;
-        tri->dest_blend = D3DBLEND_ZERO;
+        tri->src_blend = DRAW_BLEND_ONE;
+        tri->dest_blend = DRAW_BLEND_ZERO;
     } else {
-        tri->src_blend = D3DBLEND_SRCALPHA;
-        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? D3DBLEND_INVSRCALPHA : dest;
+        tri->src_blend = DRAW_BLEND_SRCALPHA;
+        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? DRAW_BLEND_INVSRCALPHA : dest;
     }
     set_vertex(&tri->v[0], matrix, p0, argb, u_p0p3, v_p0p1);
     set_vertex(&tri->v[1], matrix, p1, argb, u_p1p2, v_p0p1);
@@ -134,11 +128,11 @@ void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, V
 
     tri = &self->triangles[*count];
     if (blend == PRIM_BLEND_OPAQUE) {
-        tri->src_blend = D3DBLEND_ONE;
-        tri->dest_blend = D3DBLEND_ZERO;
+        tri->src_blend = DRAW_BLEND_ONE;
+        tri->dest_blend = DRAW_BLEND_ZERO;
     } else {
-        tri->src_blend = D3DBLEND_SRCALPHA;
-        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? D3DBLEND_INVSRCALPHA : dest;
+        tri->src_blend = DRAW_BLEND_SRCALPHA;
+        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? DRAW_BLEND_INVSRCALPHA : dest;
     }
     set_vertex(&tri->v[0], matrix, p3, argb, u_p0p3, v_p2p3);
     set_vertex(&tri->v[1], matrix, p2, argb, u_p1p2, v_p2p3);
@@ -275,7 +269,7 @@ void prim_draw_strip(struct EffectPrim *self, int *count, int segment, short alp
     p3.z = self->base.pos.z + p3.z;
 
     tri = &self->triangles[*count];
-    tri->src_blend = D3DBLEND_SRCALPHA;
+    tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
     set_vertex(&tri->v[0], matrix, p0, argb, u0, look.v);
     set_vertex(&tri->v[1], matrix, p1, argb, u1, look.v);
@@ -285,7 +279,7 @@ void prim_draw_strip(struct EffectPrim *self, int *count, int segment, short alp
     ++*count;
 
     tri = &self->triangles[*count];
-    tri->src_blend = D3DBLEND_SRCALPHA;
+    tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
     set_vertex(&tri->v[0], matrix, p3, argb, u0, 0.0f);
     set_vertex(&tri->v[1], matrix, p2, argb, u1, 0.0f);

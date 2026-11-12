@@ -33,10 +33,6 @@ typedef uintptr_t DWORD_PTR;
 typedef DWORD COLORREF;
 
 typedef void *HANDLE;
-typedef struct PlatformDcHandle *HDC;
-typedef struct PlatformGdiObject *HGDIOBJ;
-typedef struct PlatformBitmapHandle *HBITMAP;
-typedef struct PlatformFontHandle *HFONT;
 
 typedef struct _GUID {
     DWORD Data1;

@@ -199,7 +199,7 @@ static void queued_all_routes(struct Renderer *renderer)
     draw.draw.count = 3;
     renderer_add_mesh_draw(renderer, RENDER_GROUND_MESH, &draw, texture, texture, 0.0f);
     renderer_add_mesh_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, NULL, 0.0f);
-    draw.cull = GFX_CULL_CW;
+    draw.draw.cull = GFX_CULL_CW;
     renderer_add_mesh_draw(renderer, renderer_mesh_pass(0x21), &draw, texture, NULL, 0.00125f);
     assert(surface->refs == 1 + submissions + 2 + 1 + 4);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {

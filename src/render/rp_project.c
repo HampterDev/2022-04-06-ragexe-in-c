@@ -89,8 +89,6 @@ float sprite_ground_squash(const float *up, const float *pos)
 
 void renderer_world_view(const struct Renderer *self, const float *view, struct GfxWorldView *out)
 {
-    float range = g_fogFar - g_fogNear;
-
     memcpy(out->view, view, sizeof out->view);
     out->proj[0] = self->proj[0];
     out->proj[1] = self->proj[1];
@@ -98,15 +96,6 @@ void renderer_world_view(const struct Renderer *self, const float *view, struct 
     out->centre[1] = (float)self->centreY;
     out->nearZ = RENDER_NEAR_Z;
     out->depthScale = RENDER_DEPTH_SCALE;
-    /* rp_vertex_fog_alpha: 1 - ((vz - 10) / 1490 - near) / (far - near), or without the second
-       step when far equals near */
-    if (range != 0.0f) {
-        out->fogStart = g_fogNear * 1490.0f + 10.0f;
-        out->fogEnd = g_fogFar * 1490.0f + 10.0f;
-    } else {
-        out->fogStart = 10.0f;
-        out->fogEnd = 1500.0f;
-    }
 }
 
 /* custom: the cascades of the meshes' shadow maps (render/gfx.h). The ground and the models

@@ -7,10 +7,15 @@
 # answer the client's message boxes on stderr (headless.h). A test that needs a real window is
 # labelled `interactive`.
 
-# 64-bit Windows tests link the client's window services and sound, which run on SDL. It is added
-# first, so that it builds with its own options and not the tests' below.
+# 64-bit Windows tests link the client's window services and sound, which run on SDL, and its text,
+# which FreeType draws. They are added first, so that they build with their own options and not the
+# tests' below. Elsewhere the text tests use the system's FreeType, where it is installed.
 if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     include(${PROJECT_SOURCE_DIR}/cmake/SDL3.cmake)
+    include(${PROJECT_SOURCE_DIR}/cmake/Freetype.cmake)
+elseif(NOT WIN32)
+    find_package(Freetype)
+    find_package(Fontconfig)
 endif()
 
 # Assertions stay on in every configuration, in the tests and in the client code they test.
@@ -37,7 +42,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/vendor/lua-5
 if(WIN32)
     # What the Windows tests link beyond CMake's default Windows libraries; an import library adds
     # nothing to a program that does not call into it.
-    set(RAGE_TEST_SYSTEM_LIBRARIES winmm ws2_32 imm32 gdiplus dbghelp)
+    set(RAGE_TEST_SYSTEM_LIBRARIES winmm ws2_32 imm32 dbghelp)
 endif()
 
 # ---- The client's files ----
@@ -415,6 +420,9 @@ rage_test(math3d CLIENT render/math3d.c)
 rage_test(display_options W4 CLIENT render/display_options.c)
 rage_test(present_fit W4)
 rage_test(texel_convert W4 CLIENT render/texel_convert.c)
+rage_test(draw_modes W4 CLIENT render/draw_modes.c)
+rage_test(vertex_fog W4 CLIENT render/vertex_fog.c)
+rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
 rage_test(frame_timer W1 NO_WX CLIENT contents/frame_timer.c)
 rage_test(string W4)
 rage_test(touch CLIENT core/touch.c)
@@ -427,6 +435,31 @@ rage_test_generate(chat_room_title OUTPUTS chat_room_title.inc DEPENDS actor/act
 rage_test(chat_room_title WE4013 GENERATED chat_room_title)
 rage_test_generate(latest_achievements OUTPUTS latest_achievements.inc DEPENDS session/session_achievements.c)
 rage_test(latest_achievements WE4013 CLIENT std/tree.c GENERATED latest_achievements LIBS rage_lua)
+
+# Text, where FreeType is part of the build: the font finder's folder scan and the font cache over
+# fonts the tests make (tests/font_fixture.c), on every platform; and the text drawn in the system's
+# own fonts, which on Windows the finder reads from the registry and elsewhere Fontconfig finds.
+if(TARGET Freetype::Freetype)
+    if(WIN32)
+        set(text_defines)
+        set(text_finder src/render/font_match_scan.c)
+        set(text_libraries Freetype::Freetype)
+    else()
+        set(text_defines _POSIX_C_SOURCE=200809L)
+        set(text_finder src/render/font_match_fc.c)
+        set(text_libraries Freetype::Freetype Fontconfig::Fontconfig)
+    endif()
+    rage_test(font_finder tests/font_fixture.c DEFINES RAGE_FONT_SCAN ${text_defines}
+        CLIENT render/font_faces.c core/cstr.c ${platform_files} LIBS Freetype::Freetype)
+    rage_test(font_cache tests/font_fixture.c DEFINES RAGE_FONT_SCAN ${text_defines}
+        CLIENT render/font_faces.c core/cstr.c core/client_path.c ${platform_files} LIBS Freetype::Freetype)
+    if(WIN32 OR Fontconfig_FOUND)
+        rage_test(text_freetype src/render/fonts_ft.c ${text_finder} src/render/font_faces.c src/render/textdc.c
+            src/render/ctextdc.c src/render/text_unicode.c src/render/text_runs.c src/render/cdc.c
+            src/core/text_format.c src/core/owned_text.c src/core/hex.c src/core/client_path.c src/core/cstr.c
+            DEFINES ${text_defines} CLIENT ${platform_files} LIBS ${text_libraries})
+    endif()
+endif()
 
 # Sound (platform/audio_sdl.c, which the test includes), where SDL is part of the build: decoding,
 # and mixing through SDL's disk driver into files in the test's directory, never to a sound device.
@@ -534,7 +567,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/crash_dialog_fixture.h)
     rage_test_objects(test_crash_report_crash_report src/diag/crash_report.c FORCE_INCLUDE
         tests/crash_report_fixture.h)
-    rage_test_objects(test_font_cache_fonts src/render/fonts.c FORCE_INCLUDE tests/font_cache_fixture.h)
     rage_test_objects(test_mouse_mouse src/contents/mouse.c FORCE_INCLUDE tests/mouse_fixture.h)
     rage_test_objects(test_mouse_window_sdl src/platform/window_sdl.c FORCE_INCLUDE tests/mouse_fixture.h
         LIBS SDL3::SDL3)
@@ -585,7 +617,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/ui_invalidation_fixture.h OPTIONS /Oy-)
     rage_test_objects(test_win_utf8_win_utf8 W4 src/platform/win_utf8.c FORCE_INCLUDE
         tests/win_utf8_fixture.h)
-    rage_test_objects(rage_test_font_family W4 vendor/font_backend/font_family.cpp)
 
     rage_test(achievement_owner W1 WE4013 src/contents/achievement.c src/contents/achievement_lua.c
         src/contents/achievement_std.c src/contents/lua_data.c src/core/text_util.c src/std/std_comdats.c
@@ -735,12 +766,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(file_io CLIENT core/utf8.c fileio/file.c fileio/file_mgr.c fileio/resource_path.c
         platform/code_page_win32.c platform/filesystem_win32.c platform/system_memory_win32.c)
     rage_test(fit_plain_text W1 CLIENT core/fatal.c core/memory.c core/utf8.c std/string.c)
-    rage_test(font_cache CLIENT core/cstr.c OBJECTS test_font_cache_fonts)
-    rage_test(font_cache_system CLIENT core/cstr.c platform/code_page_win32.c render/fonts.c OBJECTS
-        rage_test_font_family)
-    rage_test(font_family MAIN tests/test_font_family.cpp W4 vendor/font_backend/font_family.cpp DEFINES
-        FONT_FAMILY_MOCK)
-    rage_test(font_family_system MAIN tests/test_font_family.cpp W4 OBJECTS rage_test_font_family)
+    # The font cache on this Windows's fonts against GDI (tests/test_font_system.c).
+    rage_test(font_system CLIENT render/font_faces.c core/cstr.c core/client_path.c ${platform_files}
+        LIBS Freetype::Freetype)
     rage_test(forget_window CLIENT ui/wndmgr/forget_window.c ui/wndmgr/window_table.c
         ui/wndmgr/wndmgr_handlers.c GENERATED window_rows)
     rage_test(format_string_msg WE4013 CLIENT core/memory.c core/utf8.c std/string.c GENERATED
@@ -757,7 +785,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # The GPU backend (render/gfx_gpu.c) on this machine's GPU, in a hidden window of the platform's
     # video driver (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/gfx_batch.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+        CLIENT platform/thread_win32.c render/draw_modes.c render/vertex_fog.c LIBS SDL3::SDL3 ARGS 1
+        ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(gfx_gpu gfx_gpu_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     rage_test(gm_name_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
@@ -973,7 +1002,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/render_operations_boundaries.h)
     rage_test(renderer_storage CLIENT core/utf8.c fileio/resource_path.c platform/clock_win32.c
         platform/code_page_win32.c platform/filesystem_win32.c platform/system_memory_win32.c
-        platform/thread_win32.c platform/window_sdl.c std/std_sort.c)
+        platform/thread_win32.c platform/window_sdl.c render/draw_modes.c std/std_sort.c)
     rage_test_run(renderer_storage_growth_failure COMMAND test_renderer_storage growth_failure EXIT 3)
     rage_test_run(renderer_storage_queue_failure COMMAND test_renderer_storage queue_failure EXIT 3)
     rage_test(renew_quest_text CLIENT contents/renew_quest_text.c core/memory.c core/utf8.c std/string.c)
@@ -1131,15 +1160,6 @@ endif()
 # ---- Linux, macOS ----
 if(NOT WIN32)
     rage_test(platform_settings CLIENT ${platform_files} DEFINES _POSIX_C_SOURCE=200809L)
-    find_package(Freetype)
-    find_package(Fontconfig)
-    if(FREETYPE_FOUND AND Fontconfig_FOUND)
-        rage_test(text_freetype src/render/fonts_ft.c src/render/font_match_fc.c src/render/textdc.c
-            src/render/ctextdc.c src/render/text_freetype.c src/render/text_unicode.c
-            src/render/text_runs.c src/render/cdc.c src/core/text_format.c src/core/owned_text.c
-            src/core/hex.c src/core/client_path.c src/core/cstr.c DEFINES _POSIX_C_SOURCE=200809L
-            CLIENT ${platform_files} LIBS Freetype::Freetype Fontconfig::Fontconfig)
-    endif()
     if(TARGET SDL3::SDL3)
         # The clipboard needs a video driver; the offscreen one shows no window.
         rage_test(platform_window src/platform/window_sdl.c CLIENT ${platform_files} render/display_options.c

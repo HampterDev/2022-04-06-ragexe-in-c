@@ -22,7 +22,6 @@ static void set_vertex(struct TexDrawVertex *v, float x, float y, DWORD colour, 
     v->z = TEXDRAW_Z;
     v->rhw = rhw;
     v->diffuse = colour;
-    v->specular = 0xffffffff;
     v->u = u;
     v->v = tv;
 }

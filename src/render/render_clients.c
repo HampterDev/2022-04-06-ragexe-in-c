@@ -3,10 +3,11 @@
 #include "std/list.h"
 #include <stdlib.h>
 
+/* The quads drawn into a render target w by h pixels and copied into *out, made when NULL, in the
+   interface's composite mode (render/draw_modes.h, DRAW_COMPOSITE). */
 char render_quads_to_texture(int w, int h, const struct List *quads, struct Texture **out)
 {
     gfx_surface *rt, *old = NULL;
-    DWORD oldZ = 0, oldFog = 0;
     char ok;
 
     if (!*out) {
@@ -17,14 +18,11 @@ char render_quads_to_texture(int w, int h, const struct List *quads, struct Text
     rt = gfx_create_render_target(w, h);
     if (!rt) {
         ok = 0;
-    } else if ((old = gfx_get_render_target()) == NULL
-               || gfx_get_render_state(GFX_RS_ZENABLE, &oldZ) != 0
-               || gfx_get_render_state(GFX_RS_FOGENABLE, &oldFog) != 0) {
+    } else if ((old = gfx_get_render_target()) == NULL) {
         ok = 0;
     } else {
         if (gfx_set_render_target(rt) == 0) {
-            gfx_set_render_state(GFX_RS_ZENABLE, 0);
-            gfx_set_render_state(GFX_RS_FOGENABLE, 0);
+            gfx_set_mode(DRAW_COMPOSITE);
             gfx_clear(GFX_CLEAR_TARGET, 0, 0.0f, NULL);
             if (gfx_begin_scene() == 0) {
                 struct ListNode *n;
@@ -42,8 +40,6 @@ char render_quads_to_texture(int w, int h, const struct List *quads, struct Text
                 texture_copy_rect_from(*out, rt, &rc);
             }
             gfx_set_render_target(old);
-            gfx_set_render_state(GFX_RS_ZENABLE, oldZ);
-            gfx_set_render_state(GFX_RS_FOGENABLE, oldFog);
         }
         ok = 1;
     }

@@ -1,23 +1,30 @@
 #include "render/font_match.h"
-#include "render/fonts.h"
-#if defined(RAGE_FONT_SCAN) && !defined(TEXT_BACKEND_GDI)
+#ifdef RAGE_FONT_SCAN
 #include "core/cstr.h"
 #include "platform/filesystem.h"
 #include "platform/thread.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_SFNT_NAMES_H
 #include FT_TRUETYPE_TABLES_H
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-/* The fonts are the faces in the font folders (RAGE_FONT_DIRS, separated by ':', on Windows by ';',
-   or the system's), read when the font cache starts. A search sorts them as Fontconfig would for
-   these requests: the asked families in order, then the faces that cover the language, then the
-   closest slant and weight. */
+/* The installed faces, read when the font cache starts: on Windows from the fonts the registry
+   lists, as GDI loads them (the machine's under HKEY_LOCAL_MACHINE, then the user's under
+   HKEY_CURRENT_USER); elsewhere from the system's font folders; with RAGE_FONT_DIRS (folders
+   separated by ':', on Windows by ';') from those folders instead, four levels deep. Each face is
+   kept with its family names, weight, slant, pitch and languages; render/font_faces.c sorts them.
+   Font files are data from outside: one that FreeType cannot open, or a face without a family name
+   or a character map, is left out. */
 #ifdef _WIN32
 #define FOLDER_SEPARATOR ';'
+#define FONTS_KEY L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts"
 #elif defined(__ANDROID__)
 #define FOLDER_SEPARATOR ':'
 #define SYSTEM_FONT_DIRS "/system/fonts:/product/fonts"
@@ -29,53 +36,33 @@
 #define SYSTEM_FONT_DIRS "/usr/share/fonts:/usr/local/share/fonts"
 #endif
 #define FOLDER_DEPTH 4
+#define PATH_SIZE 4096
+#define NAME_SIZE 256
+/* More faces than any real collection has: a file that claims more is read no further. */
+#define FACES_PER_FILE 1024
 #define WEIGHT_REGULAR 400
 #define WEIGHT_BOLD 700
 #define WEIGHT_DEMIBOLD 600
 #define BMP_WORDS (0x10000 / 32)
 
-struct Language {
-    const char *lang;
-    uint16_t probes[3];
-};
-
-/* The characters a face must have to count as covering a language. */
-static const struct Language languages[] = {
-    {"en", {0x0041, 0x007a}},
-    {"ko", {0xac00, 0xd7a3}},
-    {"ja", {0x3042, 0x30a2, 0x65e5}},
-    {"zh-cn", {0x4e2d, 0x56fd}},
-    {"zh-tw", {0x4e2d, 0x570b}},
-    {"th", {0x0e01, 0x0e3f}},
-    {"vi", {0x1ea0, 0x01b0}},
-    {"ru", {0x0416, 0x044f}},
-    {"el", {0x03a9, 0x03c9}},
-    {"tr", {0x011f, 0x0131}},
-    {"he", {0x05d0, 0x05ea}},
-    {"ar", {0x0627, 0x064a}},
-    {"lt", {0x0117, 0x012f}},
-    {"pl", {0x0142, 0x017c}},
-};
-
-struct Face {
+struct FaceFile {
     char *file;
     int index;
-    char *family;
-    int weight, slanted;
-    unsigned langs;
     uint32_t *coverage;
     int coverage_failed;
 };
 
 struct FontMatches {
     int count;
+    int *family;
     int order[];
 };
 
 static FT_Library library;
-static struct Face *faces;
-static size_t face_count, face_capacity;
-static int catalog_read;
+static struct FontFace *faces;
+static struct FaceFile *files;
+static int face_count, face_capacity;
+static unsigned display_language;
 static struct PlatformMutex *coverage_lock;
 
 static char *copy_text(const char *text)
@@ -85,65 +72,101 @@ static char *copy_text(const char *text)
     return copy ? memcpy(copy, text, size) : NULL;
 }
 
-static int language_index(const char *lang)
-{
-    size_t i;
-    for (i = 0; i < sizeof languages / sizeof languages[0]; ++i)
-        if (!cstr_compare_nocase(languages[i].lang, lang))
-            return (int)i;
-    return -1;
-}
-
 static unsigned face_languages(FT_Face face)
 {
     unsigned langs = 0;
-    size_t i, j;
-    for (i = 0; i < sizeof languages / sizeof languages[0]; ++i) {
-        for (j = 0; j < 3 && languages[i].probes[j]; ++j)
-            if (!FT_Get_Char_Index(face, languages[i].probes[j]))
+    int language, i;
+    for (language = 0; font_faces_language_probe(language, 0); ++language) {
+        for (i = 0; font_faces_language_probe(language, i); ++i)
+            if (!FT_Get_Char_Index(face, font_faces_language_probe(language, i)))
                 break;
-        if (j == 3 || !languages[i].probes[j])
-            langs |= 1u << i;
+        if (!font_faces_language_probe(language, i))
+            langs |= 1u << language;
     }
     return langs;
+}
+
+/* The face's family names in English (english, never empty) and in the display language (local,
+   empty when it has none of its own); 0 when it has no family name. */
+static int face_names(FT_Face face, char *english, char *local)
+{
+    FT_UInt count = FT_Get_Sfnt_Name_Count(face), i;
+    struct FontNameRecord *records = count ? malloc(count * sizeof *records) : NULL;
+    int found = 0, english_record, local_record;
+    *english = *local = 0;
+    for (i = 0; records && i < count; ++i) {
+        FT_SfntName name;
+        if (FT_Get_Sfnt_Name(face, i, &name))
+            continue;
+        records[found].platform = name.platform_id;
+        records[found].encoding = name.encoding_id;
+        records[found].language = name.language_id;
+        records[found].name = name.name_id;
+        records[found].text = name.string;
+        records[found++].length = name.string_len;
+    }
+    font_faces_pick_family(records, found, display_language, &english_record, &local_record);
+    if (english_record >= 0)
+        font_faces_name_text(&records[english_record], english, NAME_SIZE);
+    if (!*english && face->family_name && strlen(face->family_name) < NAME_SIZE)
+        strcpy(english, face->family_name);
+    if (local_record >= 0 && font_faces_name_text(&records[local_record], local, NAME_SIZE)
+        && !strcmp(local, english))
+        *local = 0;
+    free(records);
+    return *english != 0;
+}
+
+static int reserve_face(void)
+{
+    int capacity;
+    struct FontFace *grown_faces;
+    struct FaceFile *grown_files;
+    if (face_count < face_capacity)
+        return 1;
+    capacity = face_capacity ? face_capacity * 2 : 256;
+    grown_faces = realloc(faces, (size_t)capacity * sizeof *grown_faces);
+    if (grown_faces)
+        faces = grown_faces;
+    grown_files = realloc(files, (size_t)capacity * sizeof *grown_files);
+    if (grown_files)
+        files = grown_files;
+    if (!grown_faces || !grown_files)
+        return 0;
+    face_capacity = capacity;
+    return 1;
 }
 
 static void add_face(const char *file, int index, FT_Face face)
 {
     TT_OS2 *os2 = FT_Get_Sfnt_Table(face, FT_SFNT_OS2);
-    struct Face *entry;
-    if (!face->family_name || !face->charmap)
+    char english[NAME_SIZE], local[NAME_SIZE];
+    struct FontFace *entry;
+    struct FaceFile *source;
+    if (!face->charmap || !face_names(face, english, local) || !reserve_face())
         return;
-    if (face_count == face_capacity) {
-        size_t capacity = face_capacity ? face_capacity * 2 : 256;
-        struct Face *grown = realloc(faces, capacity * sizeof *grown);
-        if (!grown)
-            return;
-        faces = grown;
-        face_capacity = capacity;
-    }
     entry = &faces[face_count];
+    source = &files[face_count];
     memset(entry, 0, sizeof *entry);
-    entry->file = copy_text(file);
-    entry->family = copy_text(face->family_name);
-    if (!entry->file || !entry->family) {
-        free(entry->file);
-        free(entry->family);
+    memset(source, 0, sizeof *source);
+    source->file = copy_text(file);
+    entry->family = copy_text(english);
+    entry->local_family = *local ? copy_text(local) : NULL;
+    if (!source->file || !entry->family || (*local && !entry->local_family)) {
+        free(source->file);
+        free((char *)entry->family);
+        free((char *)entry->local_family);
         return;
     }
-    entry->index = index;
+    source->index = index;
     entry->weight = os2 && os2->version != 0xffff && os2->usWeightClass
                   ? os2->usWeightClass : (face->style_flags & FT_STYLE_FLAG_BOLD ? WEIGHT_BOLD : WEIGHT_REGULAR);
+    if (entry->weight < 10)
+        entry->weight *= 100;
     entry->slanted = (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0;
+    entry->fixed_pitch = FT_IS_FIXED_WIDTH(face) != 0;
     entry->langs = face_languages(face);
     ++face_count;
-}
-
-static int is_font_file(const char *name)
-{
-    const char *dot = strrchr(name, '.');
-    return dot && (!cstr_compare_nocase(dot, ".ttf") || !cstr_compare_nocase(dot, ".otf")
-                   || !cstr_compare_nocase(dot, ".ttc") || !cstr_compare_nocase(dot, ".otc"));
 }
 
 static void add_file(const char *file)
@@ -152,13 +175,20 @@ static void add_file(const char *file)
     FT_Long count, i;
     if (FT_New_Face(library, file, -1, &face))
         return;
-    count = face->num_faces;
+    count = face->num_faces < FACES_PER_FILE ? face->num_faces : FACES_PER_FILE;
     FT_Done_Face(face);
     for (i = 0; i < count; ++i)
         if (!FT_New_Face(library, file, i, &face)) {
             add_face(file, (int)i, face);
             FT_Done_Face(face);
         }
+}
+
+static int is_font_file(const char *name)
+{
+    const char *dot = strrchr(name, '.');
+    return dot && (!cstr_compare_nocase(dot, ".ttf") || !cstr_compare_nocase(dot, ".otf")
+                   || !cstr_compare_nocase(dot, ".ttc") || !cstr_compare_nocase(dot, ".otc"));
 }
 
 struct Listing {
@@ -202,7 +232,7 @@ static void scan_folder(const char *folder, int depth)
     qsort(listing.names, listing.count, sizeof *listing.names, compare_names);
     for (i = 0; i < listing.count; ++i) {
         const char *name = listing.names[i] + 1;
-        char path[4096];
+        char path[PATH_SIZE];
         if ((size_t)snprintf(path, sizeof path, "%s/%s", folder, name) < sizeof path) {
             if (listing.names[i][0] == 'd' && depth < FOLDER_DEPTH)
                 scan_folder(path, depth + 1);
@@ -214,27 +244,9 @@ static void scan_folder(const char *folder, int depth)
     free(listing.names);
 }
 
-static const char *system_font_dirs(char *out, size_t size)
+static void scan_folders(const char *folders)
 {
-#ifdef _WIN32
-    const char *windows = getenv("WINDIR");
-    if (windows && (size_t)snprintf(out, size, "%s\\Fonts", windows) < size)
-        return out;
-    return "C:\\Windows\\Fonts";
-#else
-    (void)out;
-    (void)size;
-    return SYSTEM_FONT_DIRS;
-#endif
-}
-
-static void read_catalog(void)
-{
-    const char *folders = getenv("RAGE_FONT_DIRS");
-    char system[1024], *list, *folder, *end;
-    if (FT_Init_FreeType(&library))
-        return;
-    list = copy_text(folders && *folders ? folders : system_font_dirs(system, sizeof system));
+    char *list = copy_text(folders), *folder, *end;
     if (!list)
         return;
     for (folder = list; folder; folder = end ? end + 1 : NULL) {
@@ -247,85 +259,157 @@ static void read_catalog(void)
     free(list);
 }
 
-void font_match_init(void)
+#ifdef _WIN32
+/* A path as the system's code page names it, which is how FreeType and the platform's files open
+   one; failing that (a character the code page lacks), its short form. 0 when neither has it. */
+static int native_path(const wchar_t *path, char *out, int size)
 {
-    if (catalog_read)
+    wchar_t short_path[MAX_PATH];
+    BOOL lossy = FALSE;
+    DWORD length;
+    if (WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, path, -1, out, size, NULL, &lossy) > 0 && !lossy)
+        return 1;
+    length = GetShortPathNameW(path, short_path, MAX_PATH);
+    lossy = FALSE;
+    return length && length < MAX_PATH
+        && WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, short_path, -1, out, size, NULL, &lossy) > 0 && !lossy;
+}
+
+static int is_full_path(const wchar_t *path)
+{
+    if ((path[0] == L'\\' || path[0] == L'/') && (path[1] == L'\\' || path[1] == L'/'))
+        return 1;
+    return ((path[0] >= L'A' && path[0] <= L'Z') || (path[0] >= L'a' && path[0] <= L'z')) && path[1] == L':'
+        && (path[2] == L'\\' || path[2] == L'/');
+}
+
+/* The fonts one registry key lists: each value's data is a file in the fonts folder or a full path. */
+static void scan_key(HKEY root, const wchar_t *fonts_folder)
+{
+    static wchar_t name[16384], data[PATH_SIZE / 2], expanded[PATH_SIZE / 2], full[PATH_SIZE / 2];
+    HKEY key;
+    DWORD i;
+    if (RegOpenKeyExW(root, FONTS_KEY, 0, KEY_READ, &key) != ERROR_SUCCESS)
         return;
-    catalog_read = 1;
-    coverage_lock = platform_mutex_create();
-    read_catalog();
-}
-
-/* The generic family the client asks by name, resolved as Fontconfig's configuration does. */
-static const char *const monospace_families[] = {
-    "Lucida Console", "Consolas", "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "Droid Sans Mono",
-    "Courier New", NULL,
-};
-
-struct SortKey {
-    int index, family, lang, slant, weight;
-};
-
-static int compare_keys(const void *a, const void *b)
-{
-    const struct SortKey *x = a, *y = b;
-    if (x->family != y->family)
-        return x->family - y->family;
-    if (x->lang != y->lang)
-        return x->lang - y->lang;
-    if (x->slant != y->slant)
-        return x->slant - y->slant;
-    if (x->weight != y->weight)
-        return x->weight - y->weight;
-    return x->index - y->index;
-}
-
-static int family_rank(const char *name, const char *family, const char *const *fallbacks)
-{
-    int rank = 0;
-    if (family) {
-        if (!cstr_compare_nocase(name, family))
-            return 0;
-        ++rank;
+    for (i = 0;; ++i) {
+        DWORD name_size = sizeof name / sizeof name[0], data_size = sizeof data - sizeof data[0], type;
+        char native[PATH_SIZE], folder[PATH_SIZE], value[PATH_SIZE];
+        LONG result = RegEnumValueW(key, i, name, &name_size, NULL, &type, (BYTE *)data, &data_size);
+        const wchar_t *text = data;
+        if (result == ERROR_NO_MORE_ITEMS)
+            break;
+        if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ))
+            continue;
+        data[data_size / sizeof data[0]] = 0;
+        if (type == REG_EXPAND_SZ) {
+            DWORD length = ExpandEnvironmentStringsW(data, expanded, sizeof expanded / sizeof expanded[0]);
+            if (!length || length > sizeof expanded / sizeof expanded[0])
+                continue;
+            text = expanded;
+        }
+        if (native_path(fonts_folder, folder, sizeof folder) && native_path(text, value, sizeof value)
+            && font_faces_registry_path(folder, value, native, sizeof native)) {
+            add_file(native);
+            continue;
+        }
+        /* A name the code page cannot spell: the full path in its short form, if it has one. */
+        if ((size_t)_snwprintf(full, sizeof full / sizeof full[0], L"%ls\\%ls", fonts_folder, text)
+            >= sizeof full / sizeof full[0])
+            continue;
+        if (native_path(is_full_path(text) ? text : full, native, sizeof native))
+            add_file(native);
     }
-    for (; fallbacks && *fallbacks; ++fallbacks, ++rank)
-        if (!cstr_compare_nocase(name, *fallbacks))
-            return rank;
-    return rank;
+    RegCloseKey(key);
 }
 
-struct FontMatches *font_match_sort(const char *family, const char *const *fallbacks, const char *lang, int bold,
-                                    int italic)
+static void scan_system(void)
+{
+    wchar_t fonts_folder[MAX_PATH];
+    UINT length = GetWindowsDirectoryW(fonts_folder, MAX_PATH - 6);
+    if (!length || length >= MAX_PATH - 6)
+        return;
+    wcscat(fonts_folder, L"\\Fonts");
+    scan_key(HKEY_LOCAL_MACHINE, fonts_folder);
+    scan_key(HKEY_CURRENT_USER, fonts_folder);
+}
+
+static unsigned system_display_language(void)
+{
+    return GetUserDefaultUILanguage();
+}
+#else
+static void scan_system(void)
+{
+    scan_folders(SYSTEM_FONT_DIRS);
+}
+
+static unsigned system_display_language(void)
+{
+    return 0;
+}
+#endif
+
+void font_match_init(unsigned language)
+{
+    const char *folders = getenv("RAGE_FONT_DIRS");
+    FT_Library opened;
+    if (library || FT_Init_FreeType(&opened))
+        return;
+    coverage_lock = platform_mutex_create();
+    if (!coverage_lock) {
+        FT_Done_FreeType(opened);
+        return;
+    }
+    library = opened;
+    display_language = language ? language : system_display_language();
+    if (folders && *folders)
+        scan_folders(folders);
+    else
+        scan_system();
+}
+
+void font_match_shutdown(void)
+{
+    int i;
+    for (i = 0; i < face_count; ++i) {
+        free((char *)faces[i].family);
+        free((char *)faces[i].local_family);
+        free(files[i].file);
+        free(files[i].coverage);
+    }
+    free(faces);
+    free(files);
+    faces = NULL;
+    files = NULL;
+    face_count = face_capacity = 0;
+    if (coverage_lock)
+        platform_mutex_destroy(coverage_lock);
+    coverage_lock = NULL;
+    if (library)
+        FT_Done_FreeType(library);
+    library = NULL;
+}
+
+struct FontMatches *font_match_sort(const struct FontRequest *request)
 {
     struct FontMatches *matches;
-    struct SortKey *keys;
-    int language = language_index(lang), wanted = bold ? WEIGHT_BOLD : WEIGHT_REGULAR;
-    size_t i;
+    uint64_t *keys;
+    int i;
     if (!face_count)
         return NULL;
-    if (family && !cstr_compare_nocase(family, "monospace")) {
-        family = NULL;
-        fallbacks = monospace_families;
-    }
-    keys = malloc(face_count * sizeof *keys);
-    matches = malloc(sizeof *matches + face_count * sizeof matches->order[0]);
+    keys = malloc((size_t)face_count * sizeof *keys);
+    matches = malloc(sizeof *matches + 2 * (size_t)face_count * sizeof matches->order[0]);
     if (!keys || !matches) {
         free(keys);
         free(matches);
         return NULL;
     }
-    for (i = 0; i < face_count; ++i) {
-        keys[i].index = (int)i;
-        keys[i].family = family_rank(faces[i].family, family, fallbacks);
-        keys[i].lang = !(language >= 0 && (faces[i].langs >> language & 1));
-        keys[i].slant = faces[i].slanted != (italic != 0);
-        keys[i].weight = abs(faces[i].weight - wanted);
-    }
-    qsort(keys, face_count, sizeof *keys, compare_keys);
-    matches->count = (int)face_count;
-    for (i = 0; i < face_count; ++i)
-        matches->order[i] = keys[i].index;
+    font_faces_sort(faces, face_count, request, keys, matches->order);
     free(keys);
+    matches->count = face_count;
+    matches->family = matches->order + face_count;
+    for (i = 0; i < face_count; ++i)
+        matches->family[i] = font_faces_family(&faces[matches->order[i]], request);
     return matches;
 }
 
@@ -336,37 +420,42 @@ int font_match_count(const struct FontMatches *matches)
 
 const char *font_match_file(const struct FontMatches *matches, int i, int *face_index)
 {
-    const struct Face *face = &faces[matches->order[i]];
-    *face_index = face->index;
-    return face->file;
+    const struct FaceFile *file = &files[matches->order[i]];
+    *face_index = file->index;
+    return file->file;
+}
+
+int font_match_family(const struct FontMatches *matches, int i)
+{
+    return matches->family[i];
 }
 
 int font_match_covers_language(const struct FontMatches *matches, int i, const char *lang)
 {
-    int language = language_index(lang);
+    int language = font_faces_language(lang);
     return language >= 0 && (faces[matches->order[i]].langs >> language & 1);
 }
 
 /* Which characters of the Basic Multilingual Plane a face has, read on the first question. */
-static const uint32_t *face_coverage(struct Face *face)
+static const uint32_t *face_coverage(struct FaceFile *file)
 {
     FT_Face opened;
     FT_ULong code;
     FT_UInt glyph;
-    if (face->coverage || face->coverage_failed)
-        return face->coverage;
-    face->coverage_failed = 1;
-    if (FT_New_Face(library, face->file, face->index, &opened))
+    if (file->coverage || file->coverage_failed)
+        return file->coverage;
+    file->coverage_failed = 1;
+    if (FT_New_Face(library, file->file, file->index, &opened))
         return NULL;
-    face->coverage = calloc(BMP_WORDS, sizeof *face->coverage);
-    if (face->coverage) {
-        face->coverage_failed = 0;
+    file->coverage = calloc(BMP_WORDS, sizeof *file->coverage);
+    if (file->coverage) {
+        file->coverage_failed = 0;
         for (code = FT_Get_First_Char(opened, &glyph); glyph; code = FT_Get_Next_Char(opened, code, &glyph))
             if (code < 0x10000)
-                face->coverage[code >> 5] |= 1u << (code & 31);
+                file->coverage[code >> 5] |= 1u << (code & 31);
     }
     FT_Done_Face(opened);
-    return face->coverage;
+    return file->coverage;
 }
 
 int font_match_has_char(struct FontMatches *matches, int i, unsigned code)
@@ -376,7 +465,7 @@ int font_match_has_char(struct FontMatches *matches, int i, unsigned code)
     if (code >= 0x10000)
         return 0;
     platform_mutex_lock(coverage_lock);
-    coverage = face_coverage(&faces[matches->order[i]]);
+    coverage = face_coverage(&files[matches->order[i]]);
     has = coverage && (coverage[code >> 5] >> (code & 31) & 1);
     platform_mutex_unlock(coverage_lock);
     return has;
@@ -384,7 +473,7 @@ int font_match_has_char(struct FontMatches *matches, int i, unsigned code)
 
 void font_match_style(const struct FontMatches *matches, int i, int *bold, int *slanted)
 {
-    const struct Face *face = &faces[matches->order[i]];
+    const struct FontFace *face = &faces[matches->order[i]];
     *bold = face->weight >= WEIGHT_DEMIBOLD;
     *slanted = face->slanted;
 }

@@ -213,7 +213,7 @@ void prim_rainbow_quad(struct EffectPrim *self, int *count, int seg, short alpha
                        const float *matrix, unsigned char blend, unsigned char r, unsigned char g, unsigned char b)
 {
     const struct RagEffect *m = self->master;
-    int dest = blend != 0 ? GFX_BLEND_INVSRCALPHA : GFX_BLEND_ONE;
+    int dest = blend != 0 ? DRAW_BLEND_INVSRCALPHA : DRAW_BLEND_ONE;
     int cr = r, cg = g, cb = b;
     unsigned argb;
     float v0, v1;
@@ -253,7 +253,7 @@ void prim_rainbow_quad(struct EffectPrim *self, int *count, int seg, short alpha
     p3.z = self->base.pos.z + p3.z;
 
     tri = &self->triangles[*count];
-    tri->src_blend = GFX_BLEND_SRCALPHA;
+    tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
     set_vertex(&tri->v[0], matrix, p0, argb, 1.0f, v0);
     set_vertex(&tri->v[1], matrix, p1, argb, 1.0f, v1);
@@ -263,7 +263,7 @@ void prim_rainbow_quad(struct EffectPrim *self, int *count, int seg, short alpha
     ++*count;
 
     tri = &self->triangles[*count];
-    tri->src_blend = GFX_BLEND_SRCALPHA;
+    tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
     set_vertex(&tri->v[0], matrix, p3, argb, 0.0f, v0);
     set_vertex(&tri->v[1], matrix, p2, argb, 0.0f, v1);

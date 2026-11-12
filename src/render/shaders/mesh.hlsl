@@ -1,6 +1,6 @@
 // The ground's and the models' meshes (render/gfx.h, gfx_draw_mesh), as the Direct3D 9 client
 // drew them: the stages' work for a model's or the ground's quads, the fog by view depth, and the
-// shadow maps while receiving (GfxShadow), with the alpha test of the render states.
+// shadow maps while receiving (GfxShadow), with the alpha test of the draw's mode.
 #include "records.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
@@ -148,20 +148,13 @@ float4 fs_main(MeshOut i) : SV_Target0
         // colour, with the shadow maps in place of the shadows baked into that intensity: down to
         // the darkness of a shadow the intensity counts as lit, and the shadow maps darken to it;
         // darker texels keep their own darkness
-        if ((d.stage1b.w & DRAW_BORDER) != 0 && any(abs(i.uv.zw - 0.5) > 0.5))
-            lightTexel = d.border1;
-        float4 lm = d.mesh.z != 0 ? lightTexel : float4(0, 0, 0, 1);
+        float4 lm = d.stages.z != 0 ? bordered(lightTexel, i.uv.zw, (d.stages.y & 2) != 0) : float4(0, 0, 0, 1);
         float keep = lerp(saturate(lm.a / darkness) * lerp(darkness, 1, seen.x), lm.a, seen.y);
         c = float4(saturate(lm.rgb + keep * saturate(t.rgb * i.lit.rgb)), t.a * i.lit.a);
     }
     if (d.mode.z != 0)
         c.rgb = lerp(d.fogColour.rgb, c.rgb, i.depthFog.y);
-    if (d.target.w != 0) {
-        c.a = saturate((c.a * 255 - d.target.x) / max(fwidth(c.a * 255), 1.0 / 16) + 0.5);
-        if (c.a <= 0)
-            discard;
-    } else if (!alpha_passes(d.mode.y, c.a, d.target.x)) {
+    if (!alpha_test(c.a, d))
         discard;
-    }
     return c;
 }
