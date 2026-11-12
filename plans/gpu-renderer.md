@@ -2,9 +2,12 @@
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
 resolution. Phases 2 and 3 are done on Windows. On Linux their unit tests and scene harness have run
-in WSL with Mesa's lavapipe, but no one has played on it; the macOS and Android clients have not
-been built or run on it, and no Metal compiler has seen its shaders. Phases 4 to 7 are to do. File
-references drift as the code changes. Sizes are judgement, not measurement.
+in WSL with Mesa's lavapipe, but no one has played on it. The Android client of phase 2 builds for
+both ABIs and draws the login screen on the x86_64 emulator (the host's GPU through gfxstream, and
+SwiftShader); no map has been drawn on Android. The macOS client has not been built or run on it,
+and no Metal compiler has seen its shaders. Phases 4 to 7 are to do; parts of phases 5 and 6 are
+built ahead of them on branches of their own (see those phases). File references drift as the code
+changes. Sizes are judgement, not measurement.
 
 ## Goal
 
@@ -156,21 +159,31 @@ Nothing below this floor is supported by a second path.
   resources and filling transfer buffers, so the loader only prepares pixels on the CPU, as the GL
   backend does, and the main thread places them in their texture array layer in the frame's upload.
 - **Static data is resident.** A map's ground and model meshes share one vertex and one index
-  buffer, filled when the map loads and as streamed models arrive. Map textures and lightmap pages
-  live in texture arrays by size class, so a draw picks its texture by layer instead of by binding.
+  buffer, filled when the map loads and as streamed models arrive, each mesh behind the ones placed
+  with its 16-bit indices and a base vertex. Map textures and lightmap pages live in texture arrays,
+  one per exact size (a texture in a larger layer would filter, wrap and mip differently), so a
+  draw picks its texture by layer instead of by binding. Over the 943 maps of the game's data
+  there are 41 sizes; 256 by 256 holds 74 % of the textures and every lightmap page; a map needs 8
+  arrays at the median and 23 at most, 338 layers of one size at most (two arrays at Vulkan's
+  minimum of 256 layers), and 33 MB of RGBA8 with mips on average, 471 MB at most.
 
 ### The static world, GPU-driven
 
 - At load, every (block or node, texture run) of the ground and the models becomes a draw record in
-  a storage buffer: its index range, texture layer, lightmap layer, flags, bounds and transform
-  index.
+  a storage buffer: its index range and base vertex, texture and lightmap (array and layer), pass,
+  cull mode, flags, bounds, transform slot, texture-coordinate matrix slot (RSM2 nodes), today's sort
+  keys and, for alpha, the key's point.
 - Each frame a compute pass culls the records against the view and against each shadow cascade and
-  writes indirect draw commands; the passes draw them with one indirect call per pipeline. SDL has
-  no draw whose count the GPU writes (`draw_count` is the CPU's), so the pass writes one command per
-  record and culls a record by giving it no instances. The CPU no longer walks the scene graph's
-  leaves to queue mesh draws.
-- Animated model nodes write their matrices into a per-frame transform buffer; static nodes'
-  matrices stay put.
+  writes indirect draw commands; the passes draw them with one indirect call per pipeline and
+  texture array, the records sorted by pass, then array, then today's texture order (SDL binds at
+  most 16 sampled textures a stage, and a map can need 23 arrays). SDL has no draw whose count the
+  GPU writes (`draw_count` is the CPU's), so the pass writes one command per record and culls a
+  record by giving it no instances. The CPU no longer walks the scene graph's leaves to queue mesh
+  draws.
+- Alpha-blended model draws stay among the sprites and effects, sorted back to front as today: the
+  CPU culls and keys them from their records.
+- Animated model nodes (the model animates and the node or an ancestor has more than one key in a
+  channel) write their matrices into a per-frame transform buffer; static nodes' matrices stay put.
 - Water becomes a static mesh per map whose waves the vertex shader animates from the time.
 
 ### Shadows, fitted on the GPU
@@ -180,31 +193,55 @@ and offset, the ground's baked shadows replaced where the maps reach, and the sh
 times the camera's distance. What changes is who fits them. A CPU fit can only fit to the geometry
 it is given; the GPU fits to what the frame shows (sample distribution shadow maps):
 
-1. A depth-only pass draws the receivers, the ground and the models, from the culled draw records.
-   The main pass then reuses that depth, so it shades each pixel once.
+1. A single-sample pass draws the receivers, the ground and the models, from the culled draw
+   records, writing their view depth into an R32F target. It cannot be the main pass's depth: the
+   fit must come before the main pass, which shades with the cascades, and with multisampling on
+   SDL can neither resolve a depth target nor let a compute pass read a multisampled texture. The
+   multisampled main pass keeps its own depth.
 2. A compute pass reduces that depth to the nearest and farthest depth on screen, splits the range
-   into four slices, and reduces each slice's pixels to their extent across the light.
+   into four slices by today's scheme, and reduces each slice's pixels to their extent across the
+   light.
 3. A compute pass turns those into the four cascade matrices, rounding each square up and snapping
-   its centre to whole texels so edges do not crawl, and takes the light's depth range from the
-   map's bounds. The matrices go into a buffer that the cull pass, the shadow pass and the
-   receiving shaders read; the CPU never sees them.
-4. The cull pass picks each cascade's casters from the draw records; the shadow pass draws them
-   into the four layers of one depth-array texture.
+   its centre to whole texels, and takes the light's depth range from the map's bounds. Snapping
+   holds edges still only while a square keeps its size, and a square fitted to the pixels resizes
+   three to six times as often as today's when the camera walks among walls and models; so a square
+   grows 5 % ahead of what it needs and is kept while it is at most 20 % too big, from last frame's
+   squares in a buffer kept on the GPU and reset with the map, which brings every motion measured
+   below today's rate of resizes for squares 1 to 7 % wider. The matrices and the count of cascades
+   that receive go into a buffer that the cull pass, the shadow pass and the receiving shaders read;
+   the CPU never sees them. A frame where nothing in reach receives keeps the ground's baked
+   shadows, as today.
+4. The cull pass picks each cascade's casters from the draw records (today every caster is drawn
+   into all four maps); the shadow pass draws them into the four layers of one depth-array texture.
 
-Because the fit comes from the pixels themselves, no visible receiver can fall outside its cascade,
-and the squares are as tight as the screen allows, so texels are as small as today's or smaller.
+Because the fit comes from the pixels themselves, no visible receiver can fall outside its cascade.
+The squares are as tight as the screen allows: against today's fit, a receiving pixel's texel is 1
+to 15 % smaller on average; up to 5 % of the pixels get coarser texels, up to twice as coarse, where
+the tighter depth range moves a slice's boundary.
 Deleted then: `renderer_shadow_frame`'s fit, `ShadowBox`, `view_shadow_boxes`, the leaves'
 `groundMin` and `groundMax`, `view_cast_shadows`, `ShadowReach` and `renderer_shadow_reaches`, with
 the tests that cover them.
 
 ### Sprites, actors and effects
 
-- Actor sprites, damage numbers, item and screen sprites, particles and STR effect quads become
-  instances: a world anchor (or a screen position), size, offsets, atlas layer and rectangle, colour
-  and depth parameters. The vertex shader projects them, carrying over the sprite depth rules now in
-  `actor/sprite_quad.c` and `render/rp_project.c` (one perspective per billboard, the linear row
-  depth, the feet lift). Sprite atlas pages become one texture array.
-- Granny actors are skinned in the vertex shader from bone matrices in the frame's upload.
+- Actor sprites, ground items and effect sprites become screen-quad instances, made by
+  `render_object_clip_to_quad` as today: the corners, the two rows' rhw, the flipped-screen offsets,
+  the rotation, the atlas layer and rectangle and the colour. The CPU keeps projecting them, since
+  picking builds its rectangles from the quads, name tags and balloons take the anchor, and callers
+  add depth tweaks of their own, some with doubles from Lua; the vertex shader does what building
+  the vertices, batching and the multisampled pixel snap do today. The UI's quads take the same
+  instance. Sprite atlas pages become one texture array.
+- Particles and STR quads hand over the world corners the CPU builds, and the vertex shader projects
+  them as `renderer_project_vertex` does.
+- Granny actors are skinned in the vertex shader from bone matrices in the frame's upload; bone
+  and mesh matrices and the light vector stay on the CPU.
+- A shader that must reproduce the CPU's floats does so to the bit only under strict rules:
+  `precise` on every operation, assigned to a variable first; no fused multiply-add, `mul()` or dot
+  product; division through a correctly rounded helper; the C code's double expressions computed
+  exactly and rounded once; constants given by their bits. Under them a vertex shader puts sprites
+  on the CPU's pixels on NVIDIA's driver and Mesa's lavapipe alike (20 million vertices, pictures
+  equal at 1x and 4x); a shader written plainly moves about a pixel a scene to another sprite, ten
+  with multisampling, and samples another texel in about twenty.
 - What the CPU still builds per frame is a list of instances and a few matrices, uploaded once.
 
 ### 2D, UI and text
@@ -228,11 +265,12 @@ deleted.
 
 1. Copy pass: the frame's upload.
 2. Compute: cull the draw records for the view.
-3. Depth pass: the receivers.
+3. Depth pass (single-sample, view depth): the receivers.
 4. Compute: fit the cascades from that depth, then cull the draw records for each cascade.
 5. Shadow pass: four layers, indirect draws of the casters.
-6. Main pass (multisampled, on the depth pass's depth): indirect draws of the ground and models,
-   then water, then the instanced sprites and effects in the queues' order, resolved.
+6. Main pass (multisampled, with its own depth): indirect draws of the ground and models, then
+   water, then the alpha-blended models, instanced sprites and effects in the queues' order,
+   resolved.
 7. The wobble pass when it runs, then the 2D pass onto the swapchain, then present.
 
 ## Phases
@@ -329,20 +367,35 @@ recorded.
 - Shared map buffers, texture arrays, draw records, the compute cull for the view, the depth pass,
   the cascade fit and the cascade culls in compute, indirect draws, the transform buffer, water as a
   mesh.
+- Built ahead, on branches of their own: the fit's math as a pure C reference with its three
+  compute shaders (`render/shadow_fit.c`, branch `gpu-shadow-fit`; the shaders match the reference
+  to the bit in range, extents, squares and snapped translations, and within a few units in the last
+  place elsewhere, as Vulkan lets a GPU round a division or root), and the records' data side
+  (`render/static_world.c`, branch `gpu-world-records`: layout, records, texture arrays and a CPU
+  cull, which on 8 maps at 12 poses each draw exactly today's draws, the dropped ones having no
+  pixel on screen). The hysteresis of the cascades' squares is not in the reference yet.
 - Delete the per-leaf mesh queuing in `view_on_render`, the CPU shadow fit and caster choice (the
   list under *Shadows, fitted on the GPU*), the `GROUND_MESH` and `SHADOW_CASTERS` queues, and the
   per-tick CPU water heights.
 - Done when the scene set, the hill scenes and the gate scene show the same shadows as the
   reference, edge for edge where the texels allow, and the flat and steep far views from 2,500 to
-  10,000 keep theirs.
+  10,000 keep theirs. The review entry accounts for the pixels that change on purpose: where
+  coplanar faces sharing a texture z-fight, today's unstable sort and the records' fixed order
+  differ (today itself draws about half of such pairs in both orders); animated parts that today's
+  leaf culling leaves out show (on `amatsu` up to 31 pixels at a distance of 2,500).
 
 ### Phase 6: sprites, actors and effects as instances (large)
 
-- Instanced sprites, damage numbers, particles and STR quads projected in the vertex shader; the
-  sprite atlas as a texture array; Granny skinning in the vertex shader.
-- Delete the CPU projection of these (`sprite_quad.c` corners, `renderer_project_point` for
-  anchors, Granny's per-vertex projection and lighting), `gfx_batch.c` and the pre-transformed
-  vertex kinds.
+- Screen-quad instances for sprites, ground items, effect sprites and the UI; particles and STR
+  quads projected in the vertex shader from their world corners; the sprite atlas as a texture
+  array; Granny skinning in the vertex shader. Built ahead on the branch `gpu-instance-study`: the
+  rules for exact shaders (`render/shaders/sprites.hlsli`), the sprite vertex shader and a test that
+  compares it with the CPU on 9 million records and in pictures, with a check that fails on a
+  shader breaking the rules.
+- Delete the vertex building of `render_object_submit_spr_quad`, `snap_flat` for instanced draws,
+  Granny's per-vertex CPU work, and `gfx_batch.c` and the pre-transformed vertex kinds once the UI is
+  instanced. `render_object_clip_to_quad` and `renderer_project_point` stay: they make the instances
+  and feed picking.
 
 ### Phase 7: measure and settle (small)
 
@@ -374,10 +427,14 @@ recorded.
   top-left fill rule, as the GL backend does (`docs/portability.md`); GPU mips and RGBA8 sampling of
   quantised texels differ from CPU mips by small amounts. Each phase's review entry accounts for the
   pixels that change.
-- **The GPU shadow fit moves when the picture does.** It follows what is on screen, so a character
-  walking close past the camera can change a cascade's square from one frame to the next; the
-  rounding and texel snapping must hold the edges still, and phase 5 checks it with the moving
-  captures.
+- **The GPU shadow fit moves when the picture does.** It follows the receivers on screen (the
+  ground and the models; characters are not receivers), so the camera and animated model nodes move
+  it; the hysteresis of the squares and the texel snapping must hold the edges still, and phase 5
+  checks it with the moving captures.
+- **Shaders that must match the CPU or Direct3D 9.** `records.hlsli`'s `transform()` for world
+  vertices, meshes and casters matches Direct3D 9 only where the driver fuses its multiply-adds, as
+  NVIDIA's does and lavapipe does not; the shaders of phases 5 and 6 that must match follow the
+  rules under *Sprites, actors and effects*.
 - **Threads.** The loader thread's texture creation moves to the main thread's upload (see *Memory
   and uploads*); SDL's drivers lock creation internally, but the API does not promise it, so the
   plan does not lean on it.

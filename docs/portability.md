@@ -822,8 +822,13 @@ names the servers as on any other platform; an emulator reaches servers on its h
   (zoom) and SDL's empty cursor over the client's own. A hardware keyboard types and plays as on a
   desktop and the on-screen keyboard stays away.
 - Drawing goes through Vulkan, as on Linux: the app asks for Vulkan 1.0
-  (`android.hardware.vulkan.version` in the manifest). The renderer has not been run on Android
-  yet.
+  (`android.hardware.vulkan.version` in the manifest). On the Android 15 x86_64 emulator, headless
+  (`-no-window`), the renderer draws the login screen through both of the emulator's Vulkan
+  drivers: the host's GPU (`-gpu host`, gfxstream) and SwiftShader (`-gpu swiftshader`). The arm64
+  libraries, installed there with `adb install --abi arm64-v8a` and run through the image's ARM
+  translation, draw the same pixels as the x86_64 ones under SwiftShader, apart from the animated
+  cursor. No map has been drawn on Android with this renderer, and no Android GPU (Adreno, Mali)
+  has run it.
 - Fonts: there is no Fontconfig, so `render/font_match_scan.c` reads the faces in `/system/fonts`
   and `/product/fonts` once and sorts them for the client's requests as `render/font_faces.c` says
   (the asked families in order, then for a fixed-pitch request the fixed-pitch faces, then the
@@ -927,7 +932,8 @@ the other entry's second one, which is not an ordering; it compares like with li
 5. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
 6. Run the renderer on Linux (Vulkan), macOS (Metal, whose MSL no Metal compiler has seen yet) and
-   Android, and compare their captures with Windows'.
+   Android (so far only its login screen, on the emulator), and compare their captures with
+   Windows'.
 7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
    Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
    play at the screen's own size, which the client draws at (*Android client*).
