@@ -25,7 +25,7 @@ struct perf_counters g_perf;
 #define OV_MARGIN 8
 
 static const char *const phase_name[PERF_N] = {
-    "frame", "scene", "destroy", "endscene", "overlay", "targetlock", "present", "text", "texlock",
+    "frame", "scene", "destroy", "endscene", "overlay", "present", "text", "texlock",
     "l_ground", "l_water", "l_multitexture", "l_blended_nodepth", "l_alpha_nodepth", "l_alpha_depth", "l_additive_fog", "l_alphatest",
     "l_alpha_writedepth", "l_alpha_cutout", "l_additive", "l_blended_wrap", "l_additive_overlay", "l_overlay_ordered", "l_blended_overlay",
 };
@@ -120,9 +120,9 @@ static void build_lines(void)
     snprintf(P.lines[0], sizeof P.lines[0], "%s  FPS %s  frame %s ms (max %s)  frames %u", PERF_RENDERER,
              tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
              tenths(b3, P.snap.frameMax10), P.snap.frames);
-    snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
+    snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s",
              tenths(b1, P.snap.ms10[PERF_SCENE]), tenths(b2, P.snap.ms10[PERF_DESTROY]),
-             tenths(b3, P.snap.ms10[PERF_ENDSCENE]), tenths(b4, P.snap.ms10[PERF_TARGETLOCK]));
+             tenths(b3, P.snap.ms10[PERF_ENDSCENE]));
     snprintf(P.lines[2], sizeof P.lines[2], "present %s (the blank wait)  logic %s (text %s, surface locks %s)  overlay %s",
              tenths(b1, P.snap.ms10[PERF_PRESENT]), tenths(b2, P.snap.logic10),
              tenths(b3, P.snap.ms10[PERF_TEXT]), tenths(b4, P.snap.ms10[PERF_TEXLOCK]), tenths(b5, P.snap.ms10[PERF_OVERLAY]));
@@ -138,9 +138,9 @@ static void build_lines(void)
     for (i = 0; i < 5 && i < nl; i++) {
         snprintf(s + strlen(s), sizeof P.lines[3] - strlen(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
     }
-    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  modes %u sent / %u skipped  tex sets %u  locks %u (target %u)",
+    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  modes %u sent / %u skipped  tex sets %u  locks %u",
              c->draws / f, c->drawCalls / f, c->prims / f, c->modesSent / f, c->modesSkipped / f, c->texSets / f,
-             c->locks / f, c->targetLocks / f);
+             c->locks / f);
     snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
              c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f,
              (c->textMeasured + c->textHits) / f,
@@ -165,7 +165,7 @@ static void roll(LONGLONG t)
     P.snap.frames = P.frames;
     P.snap.per = g_perf;
     logic = P.snap.ms10[PERF_FRAME] - P.snap.ms10[PERF_SCENE] - P.snap.ms10[PERF_DESTROY] - P.snap.ms10[PERF_ENDSCENE]
-          - P.snap.ms10[PERF_OVERLAY] - P.snap.ms10[PERF_TARGETLOCK] - P.snap.ms10[PERF_PRESENT];
+          - P.snap.ms10[PERF_OVERLAY] - P.snap.ms10[PERF_PRESENT];
     P.snap.logic10 = logic < 0 ? 0 : logic;
     P.snap.valid = 1;
     build_lines();
@@ -257,7 +257,7 @@ static int upload(void)
         if (!P.tex)
             return 0;
     }
-    if (gfx_lock(P.tex, NULL, GFX_LOCK_WAIT, &lk) < 0) {
+    if (gfx_lock(P.tex, NULL, &lk) < 0) {
         gfx_release(P.tex);
         P.tex = NULL;
         return 0;

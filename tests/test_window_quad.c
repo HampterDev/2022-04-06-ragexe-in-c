@@ -5,7 +5,6 @@
 
 static struct Renderer renderer;
 struct Renderer *g_renderer = &renderer;
-float g_texelOffsetU, g_texelOffsetV;
 static struct Texture texture;
 static struct TexDrawPrim quad;
 static unsigned uploads, allocations;
@@ -47,7 +46,9 @@ int main(void)
     assert(uploads == 1 && allocations == 1);
     assert(quad.base.texture == &texture);
     assert(quad.quad[3].x == 20 && quad.quad[3].y == 10);
-    assert(quad.quad[3].u == 0.625f && quad.quad[3].v == 0.625f);
+    /* each pixel centre reads its texel's centre (TEXEL_CENTRE) */
+    assert(quad.quad[0].u == 0.5f / 32 && quad.quad[0].v == 0.5f / 16);
+    assert(quad.quad[3].u == 20.5f / 32 && quad.quad[3].v == 10.5f / 16);
     assert(quad.quad[0].diffuse == 0xffabcdef);
     window.composites = 1;
     window.canvas = NULL;

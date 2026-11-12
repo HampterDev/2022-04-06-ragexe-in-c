@@ -5,7 +5,8 @@
 
 struct Draw
 {
-    uint4 mode;       // the kind (KIND_*), the alpha test (ALPHA_*), fog on, the view
+    uint4 mode;       // the kind (KIND_*), the alpha test (ALPHA_*), fog on, the view (the wobble's:
+                      // its first row in the row tables, rows.hlsl)
     float4 target;    // the alpha test's reference (0 to 255), half the target's width and height, alpha
                       // to coverage
     uint4 stages;     // the combination (render/draw_modes.h, enum DrawCombine), the stages that read

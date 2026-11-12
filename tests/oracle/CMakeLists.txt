@@ -24,7 +24,8 @@ add_library(oracle_lifted STATIC oracle_image.c
     ${PROJECT_SOURCE_DIR}/src/game/skill_notify.c ${PROJECT_SOURCE_DIR}/src/game/skill_use.c
     ${PROJECT_SOURCE_DIR}/src/game/skill_use_basic.c ${PROJECT_SOURCE_DIR}/src/game/skill_use_companion.c
     ${PROJECT_SOURCE_DIR}/src/game/skill_use_extra.c ${PROJECT_SOURCE_DIR}/src/game/skill_use_late.c
-    ${PROJECT_SOURCE_DIR}/src/game/skill_use_second.c ${PROJECT_SOURCE_DIR}/src/render/math3d.c
+    ${PROJECT_SOURCE_DIR}/src/game/skill_use_second.c ${PROJECT_SOURCE_DIR}/src/render/cdcbitmap.c
+    ${PROJECT_SOURCE_DIR}/src/render/math3d.c
     ${PROJECT_SOURCE_DIR}/src/session/session_cast_effect.c ${PROJECT_SOURCE_DIR}/src/session/session_use_effect.c
     ${PROJECT_SOURCE_DIR}/src/std/tree.c)
 
@@ -45,7 +46,7 @@ add_custom_command(OUTPUT ${generated}/job_lookups.inc
     COMMENT "Extracting the job lookups for the oracle" VERBATIM)
 add_custom_target(oracle_job_lookups DEPENDS ${generated}/job_lookups.inc)
 
-foreach(name skill_poses job_lookups ground_skill skill_use skill_hit skill_cast)
+foreach(name skill_poses job_lookups ground_skill skill_use skill_hit skill_cast canvas_texels)
     add_executable(test_${name} test_${name}.c)
     target_link_libraries(test_${name} PRIVATE oracle_lifted user32)
     # Linked away from the original's base 0x400000, which the oracle maps the original at.
@@ -56,3 +57,5 @@ foreach(name skill_poses job_lookups ground_skill skill_use skill_hit skill_cast
 endforeach()
 add_dependencies(test_job_lookups oracle_job_lookups)
 target_include_directories(test_job_lookups PRIVATE ${generated})
+# The canvas test makes managed textures through the system's DirectDraw.
+target_link_libraries(test_canvas_texels PRIVATE ddraw dxguid)

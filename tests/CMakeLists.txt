@@ -423,6 +423,7 @@ rage_test(present_fit W4)
 rage_test(texel_convert W4 CLIENT render/texel_convert.c)
 rage_test(draw_modes W4 CLIENT render/draw_modes.c)
 rage_test(vertex_fog W4 CLIENT render/vertex_fog.c)
+rage_test(screen_wobble W4 CLIENT render/screen_wobble.c)
 rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
 rage_test(world_layout W4 CLIENT render/world_layout.c render/static_world.c)
 rage_test(static_world W4 CLIENT render/math3d.c render/rp_project.c render/rp_screen.c render/static_world.c
@@ -670,6 +671,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(byte_lines W1 WE4013 CLIENT core/hex.c core/owned_text.c core/text_array.c core/text_format.c
         core/utf8.c platform/code_page_win32.c ui/controls/item_id_tag.c ui/controls/text_lines.c)
     rage_test(byte_queue W4 CLIENT contents/byte_queue.c)
+    rage_test(c3d_device)
     rage_test(c_text_streams CLIENT contents/guild_emblem_name.c core/text_tokens.c std/container_memory.c
         std/string.c std/string_vec.c std/vec.c)
     rage_test(camera_consumers)
@@ -779,6 +781,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         ui/wndmgr/wndmgr_handlers.c GENERATED window_rows)
     rage_test(format_string_msg WE4013 CLIENT core/memory.c core/utf8.c std/string.c GENERATED
         format_string_msg)
+    rage_test(frame_extras CLIENT render/screen_wobble.c)
     rage_test(frustum CLIENT world/frustum.c)
     rage_test(game_context CLIENT game/context.c world/mode_context.c world/mode_dispatch.c)
     rage_test(game_mode_layout W1 WE4013 CLIENT core/once_win32.c core/utf8.c platform/clock_win32.c
@@ -790,12 +793,16 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(gfx_batch CLIENT platform/thread_win32.c render/gfx_batch.c)
     # The GPU backend (render/gfx_gpu.c) on this machine's GPU, in a hidden window of the platform's
     # video driver (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
+    # gfx_gpu_present runs under the offscreen video driver, which shows its window nowhere, so that
+    # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
+    # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/gfx_batch.c src/render/texel_convert.c
         CLIENT platform/thread_win32.c render/draw_modes.c render/static_world.c render/vertex_fog.c
         render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
-    set_tests_properties(gfx_gpu gfx_gpu_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
+    rage_test_run(gfx_gpu_present COMMAND test_gfx_gpu 1 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
+    set_tests_properties(gfx_gpu gfx_gpu_msaa gfx_gpu_present PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     rage_test(gm_name_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
     rage_test(granny_models MAIN tests/test_granny_model_storage.c tests/granny_model_geometry.c CLIENT
         core/fatal.c core/memory.c render/math3d.c std/vec.c)

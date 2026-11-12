@@ -200,8 +200,9 @@ void renderer_world_view(const struct Renderer *renderer, const float *view, str
 int gfx_begin_scene(void) { abort(); }
 void gfx_end_scene(void) { abort(); }
 gfx_surface *gfx_create_surface(int w, int h) { (void)w; (void)h; abort(); }
-int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT *srcRect, int flags)
-{ (void)dst; (void)dstRect; (void)src; (void)srcRect; (void)flags; abort(); }
+gfx_surface *gfx_create_render_target(int w, int h) { (void)w; (void)h; abort(); }
+int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT *srcRect)
+{ (void)dst; (void)dstRect; (void)src; (void)srcRect; abort(); }
 
 static void growth(void)
 {

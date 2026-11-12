@@ -4,16 +4,16 @@
 
    Draws are made in modes (render/draw_modes.h): the pipelines of every mode, for every kind of
    target it draws into, are made once, when the screen's samples and depth are known
-   (gfx_create_zbuffer), and so are the samplers. A frame is
-   recorded, not drawn: each draw becomes a record of what its mode and the draw itself give the
-   shaders (struct GpuDraw, read from a storage buffer through an instance-rate attribute that holds
-   its index) in a list of passes, and its vertices, indices and the texels of the textures it uses
-   since they changed go into one staging area. When the frame is presented, or the CPU needs a
-   target's pixels, one command buffer copies all of that through one transfer buffer in one copy
-   pass and replays the passes. Textures keep their pixels on the CPU in the client's own format, so
-   that the model loader's thread creates, locks and fills them without calling SDL; the main thread
-   widens them to B8G8R8A8 when a draw first uses them after a change. Render targets live on the
-   GPU; locking one downloads it.
+   (gfx_create_zbuffer), and so are the samplers. A frame is recorded, not drawn: each draw becomes
+   a record of what its mode and the draw itself give the shaders (struct GpuDraw, read from a
+   storage buffer through an instance-rate attribute that holds its index) in a list of passes, and
+   its vertices, indices and the texels of the textures it uses since they changed go into one
+   staging area. When the frame is presented, or the screen's picture is read (gfx_read_frame), one
+   command buffer copies all of that through one transfer buffer in one copy pass and replays the
+   passes. Textures keep their pixels on the CPU in the client's own format, so that the model
+   loader's thread creates, locks and fills them without calling SDL; the main thread widens them to
+   B8G8R8A8 when a draw first uses them after a change. Render targets live on the GPU, and nothing
+   of them comes back to the CPU but the screen's picture when it is read.
 
    custom: the static world (gfx_world_*) stays on the GPU from frame to frame: its meshes in shared
    vertex and index buffers, its textures in texture arrays, its draw records, transform slots and
@@ -28,6 +28,7 @@
 #include "render/gfx_batch.h"
 #include "render/device.h"
 #include "render/present_fit.h"
+#include "render/screen_wobble.h"
 #include "render/texel_convert.h"
 #include "render/vertex_fog.h"
 #include "render/world_layout.h"
@@ -39,6 +40,7 @@
 #include "render/shaders/world_cull.h"
 #include "render/shaders/world_compact.h"
 #include "render/shaders/water.h"
+#include "render/shaders/rows.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
 #include <math.h>
@@ -46,7 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { K_SCREEN, K_TARGET, K_SAVE, K_SYSMEM, K_TEXTURE, K_RTTEX, K_ZBUFFER };
+enum { K_SCREEN, K_SYSMEM, K_TEXTURE, K_RTTEX };
 
 #define CLIENT_SURFACE_KEY 0x00ff00ffu
 #define FLAT_KIND 0x100
@@ -83,15 +85,14 @@ struct GpuShadow {
 };
 
 enum { KIND_SCREEN, KIND_WORLD, KIND_MESH };
-enum { PROG_QUAD, PROG_WORLD, PROG_CASTER, PROG_WATER, PROG_COUNT };
+enum { PROG_QUAD, PROG_WORLD, PROG_CASTER, PROG_WATER, PROG_ROWS, PROG_COUNT };
 /* The cull modes of the pipelines: Direct3D 9's, which culls by the winding on the screen, y down:
    CULL_CW drops the clockwise triangles, CULL_CCW the others. */
 enum { CULL_NONE = 1, CULL_CW, CULL_CCW };
 enum { MASK_RGBA, MASK_RGB, MASK_NONE };
-/* What a pass draws into, as far as its pipelines care: the screen (multisampled, with depth), its
-   copy, and a render target's texture (one sample each, without depth) (render/draw_modes.h,
-   DRAW_INTO_*). */
-enum { CLASS_SCREEN, CLASS_COPY, CLASS_TEXTURE, CLASS_COUNT };
+/* What a pass draws into, as far as its pipelines care: the screen (multisampled, with depth) and a
+   render target's texture (one sample, without depth) (render/draw_modes.h, DRAW_INTO_*). */
+enum { CLASS_SCREEN, CLASS_TEXTURE, CLASS_COUNT };
 /* The vertices of every quad in the frame's vertex data: GFX_VTX_TEX2's, one texture's
    coordinates given twice where a draw has only those. */
 #define QUAD_STRIDE GFX_VTX_TEX2_SIZE
@@ -101,15 +102,12 @@ struct gfx_surface {
     int width, height;
     int fmt;                /* the client's format; GFX_FMT_8888 for targets and system surfaces */
     int levels;
-    unsigned char *pixels;  /* level 0 in fmt's layout; a target's lock buffer, B8G8R8A8 */
-    unsigned char *lockCopy;/* a target's pixels as downloaded, to tell whether a lock wrote */
+    unsigned char *pixels;  /* level 0 in fmt's layout; a target has none */
     SDL_GPUTexture *tex;    /* B8G8R8A8 */
     DWORD key;
     int dirty;              /* the CPU's pixels are newer than tex, in dirtyRect */
     RECT dirtyRect, lockRect;
     int mips;               /* the lower levels are to be made again */
-    int gpuNewer;           /* tex is newer than the CPU's pixels (a copy from a target) */
-    int blitDest;           /* tex takes stretched copies from targets: it is a colour target too */
     unsigned pinned;        /* the frame whose recorded commands use it */
     int dead;               /* released while pinned: freed after that frame */
     struct gfx_surface *prev, *next;
@@ -139,7 +137,8 @@ struct gpu_draw {
 
 enum { STEP_PASS, STEP_UPLOADS, STEP_COPY };
 
-/* A render pass: the draws into one target, or into one shadow cascade. */
+/* A step of the frame: a render pass, the draws into one target or into one shadow cascade; the
+   uploads of textures changed after the frame's first draws; or a copy between GPU textures. */
 struct gpu_step {
     int kind;
     /* STEP_PASS */
@@ -149,16 +148,17 @@ struct gpu_step {
     SDL_FColor clearColour;
     float clearDepth;
     int unresolve;               /* draws the resolved picture back into the multisampled one */
+    int whole;                   /* the wobble's: its viewport is the whole target (gfx_wobble) */
     /* STEP_PASS: draws; STEP_UPLOADS: uploads */
     uint32_t first, count;
-    /* STEP_COPY */
+    /* STEP_COPY: from a target's texture into another target's (gfx_blit), or the screen's into the
+       wobble's copy of it (gfx_wobble) */
     SDL_GPUTexture *src, *dst;
-    struct gfx_surface *dstSurface;  /* a surface's texture it copies into, or NULL for a target */
     RECT srcRect, dstRect;
 };
 
 struct gpu_upload {
-    struct gfx_surface *surface;  /* whose pixels go up, or NULL */
+    struct gfx_surface *surface;  /* a texture or system surface whose pixels go up */
     SDL_GPUTexture *tex;
     uint32_t x, y, w, h;
     uint32_t offset;   /* into the staging texels */
@@ -194,16 +194,15 @@ struct draw_state {
 static struct {
     SDL_Window *window;
     SDL_GPUDevice *dev;
-    int claimed;
-    SDL_ThreadID mainThread;
+    int claimed, claimLogged;  /* the window takes the device's pictures (claim_window) */
     SDL_Mutex *lock;
     SDL_AtomicInt contentTick;
     struct gfx_surface *handles;
     SDL_GPUTexture **deadTextures;
     size_t deadCount, deadCapacity;
 
-    /* the main target: screen holds the picture (resolved when multisampled) */
-    struct gfx_surface *screen, *mainTarget, *target;
+    /* the screen holds the picture (resolved when multisampled); target is where draws go */
+    struct gfx_surface *screen, *target;
     SDL_GPUTexture *depth, *msaa;
     SDL_GPUTextureFormat depthFormat;
     SDL_GPUSampleCount samples;
@@ -230,19 +229,21 @@ static struct {
     const struct GpuShaderCode *vsCode[PROG_COUNT], *fsCode[PROG_COUNT];
     /* every pipeline, made once (make_pipelines), and which serves what: a mode's quads into each
        kind of target, flat or not; its world records by cull mode (CULL_* - 1) and its water; the
-       effect modes' quads by depth test or none and blend factors; the shadow casters */
+       effect modes' quads by depth test or none and blend factors; the shadow casters; the wobble */
     struct { struct pipe_desc desc; SDL_GPUGraphicsPipeline *pipeline; } pipelines[PIPELINE_MAX];
     int npipelines;
     SDL_GPUGraphicsPipeline *quadPipeline[DRAW_MODE_COUNT][CLASS_COUNT][2];
     SDL_GPUGraphicsPipeline *worldPipeline[DRAW_MODE_COUNT][3];
     SDL_GPUGraphicsPipeline *waterPipeline[DRAW_MODE_COUNT];
     SDL_GPUGraphicsPipeline *effectPipeline[2][DRAW_FACTOR_COUNT][DRAW_FACTOR_COUNT];
-    SDL_GPUGraphicsPipeline *casterPipeline;
+    SDL_GPUGraphicsPipeline *casterPipeline, *rowsPipeline;
     SDL_GPUSampler *samplers[2][3];  /* wrapped or not, by enum DrawFilter */
     SDL_GPUSampler *pointClamp;
     SDL_GPUTexture *white;
-    SDL_GPUBuffer *records, *views, *fogs, *shadows, *vertices, *indices, *instances;
-    uint32_t recordsSize, viewsSize, fogsSize, shadowsSize, verticesSize, indicesSize, instanceCount;
+    SDL_GPUTexture *frameCopy;  /* the screen's picture as the wobble found it (gfx_wobble) */
+    int frameCopyW, frameCopyH;
+    SDL_GPUBuffer *records, *views, *fogs, *shadows, *rows, *vertices, *indices, *instances;
+    uint32_t recordsSize, viewsSize, fogsSize, shadowsSize, rowsSize, verticesSize, indicesSize, instanceCount;
     SDL_GPUTransferBuffer *upload, *download;
     /* the frames the GPU may still be drawing: at most FRAMES_IN_FLIGHT, also where no swapchain
        paces them (a hidden window), so that the CPU does not run ahead and the cycled buffers do
@@ -261,7 +262,7 @@ static struct {
     size_t ndraws, drawCapacity;
     struct gpu_upload *uploads;
     size_t nuploads, uploadCapacity, frameUploads;  /* frameUploads: those of the first copy pass */
-    struct bytes drawRecords, viewRecords, fogTables, shadowRecords, vertexData, indexData, texels;
+    struct bytes drawRecords, viewRecords, fogTables, shadowRecords, rowTables, vertexData, indexData, texels;
     struct gfx_surface **pins;
     size_t npins, pinCapacity;
     int cameraView;
@@ -386,11 +387,6 @@ static unsigned next_version(void)
     return (unsigned)SDL_AddAtomicInt(&G.contentTick, 1) + 1;
 }
 
-static int on_main_thread(void)
-{
-    return SDL_GetCurrentThreadID() == G.mainThread;
-}
-
 static void lock_handles(void)
 {
     if (G.lock)
@@ -436,18 +432,7 @@ static long bytes_add(struct bytes *b, size_t size, size_t align)
 
 static int is_target(const struct gfx_surface *s)
 {
-    return s && (s->kind == K_SCREEN || s->kind == K_TARGET || s->kind == K_SAVE || s->kind == K_RTTEX);
-}
-
-static int is_main_target(const struct gfx_surface *s)
-{
-    return s && (s->kind == K_SCREEN || s->kind == K_TARGET);
-}
-
-/* The surface whose texture a target uses: the back buffer shares the screen's. */
-static struct gfx_surface *gpu_of(struct gfx_surface *s)
-{
-    return s && s->kind == K_TARGET && G.screen ? G.screen : s;
+    return s && (s->kind == K_SCREEN || s->kind == K_RTTEX);
 }
 
 static struct gfx_surface *new_handle(int kind, int w, int h, int fmt)
@@ -504,10 +489,8 @@ static void destroy_handle(struct gfx_surface *s)
     if (s->next)
         s->next->prev = s->prev;
     unlock_handles();
-    if (s->kind != K_TARGET)
-        retire_texture(s->tex);
+    retire_texture(s->tex);
     free(s->pixels);
-    free(s->lockCopy);
     free(s);
 }
 
@@ -519,12 +502,10 @@ static void free_handle(struct gfx_surface *s)
             batch_flush();
             G.stageTex[i] = NULL;
         }
-    if (G.mainTarget == s)
-        G.mainTarget = NULL;
     if (G.screen == s)
         G.screen = NULL;
     if (G.target == s)
-        G.target = G.mainTarget;
+        G.target = G.screen;
     lock_handles();
     pinned = s->pinned == G.frame && G.frame;
     if (pinned)
@@ -644,13 +625,13 @@ static struct gpu_step *current_pass(void)
         }
         return s;
     }
-    if (s && s->kind == STEP_PASS && s->target && gpu_of(s->target) == gpu_of(G.target)
+    if (s && s->kind == STEP_PASS && s->target && !s->whole && s->target == G.target
         && s->unresolve == G.unresolving)
         return s;
     s = add_step(STEP_PASS);
     if (!s)
         return NULL;
-    s->target = gpu_of(G.target);
+    s->target = G.target;
     s->unresolve = G.unresolving;
     s->loadColour = SDL_GPU_LOADOP_LOAD;
     s->loadDepth = SDL_GPU_LOADOP_LOAD;
@@ -694,14 +675,13 @@ static uint32_t add_record(struct GpuDraw **out)
 /* ---- textures for draws ---- */
 
 /* A surface's GPU texture, made when first needed: a colour target as well where its mipmaps are
-   made on the GPU or a stretched copy from a target goes into it (SDL's blits and mipmaps draw). */
+   made on the GPU (SDL's mipmaps draw). */
 static SDL_GPUTexture *ensure_texture(struct gfx_surface *s)
 {
     if (s->tex || !G.dev)
         return s->tex;
     s->tex = new_texture(s->width, s->height, s->levels,
-                         SDL_GPU_TEXTUREUSAGE_SAMPLER
-                         | (s->levels > 1 || s->blitDest ? SDL_GPU_TEXTUREUSAGE_COLOR_TARGET : 0));
+                         SDL_GPU_TEXTUREUSAGE_SAMPLER | (s->levels > 1 ? SDL_GPU_TEXTUREUSAGE_COLOR_TARGET : 0));
     if (!s->tex) {
         SDL_Log("gfx: SDL_CreateGPUTexture %dx%d: %s", s->width, s->height, SDL_GetError());
         return NULL;
@@ -795,8 +775,8 @@ static SDL_GPUTexture *texture_for_draw(struct gfx_surface *s)
     if (!s)
         return NULL;
     if (is_target(s)) {
-        pin(gpu_of(s));
-        return gpu_of(s)->tex;
+        pin(s);
+        return s->tex;
     }
     if (!ensure_texture(s))
         return NULL;
@@ -880,13 +860,14 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
     SDL_GPUVertexBufferDescription buffers[2];
     SDL_GPUVertexAttribute attrs[8];
     Uint32 nattrs = 0;
+    Uint32 nbuffers = 2;
     SDL_zero(info);
     SDL_zero(colour);
     SDL_zero(buffers);
     SDL_zero(attrs);
     /* the quads: their vertices, then the draw's record per instance (instances_needed); the
        world's records and casters: their vertices, then each vertex's record id; the water: a cell
-       and its colour per instance */
+       and its colour per instance; the wobble: the draw's record per instance alone */
     buffers[0].slot = 0;
     buffers[0].input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
     buffers[1].slot = 1;
@@ -915,17 +896,24 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
         ATTR(0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0);
         ATTR(1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 32);
         ATTR(2, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
-    } else {
+    } else if (p->program == PROG_WATER) {
         buffers[0].pitch = WATER_INSTANCE;
         buffers[0].input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE;
         ATTR(0, 0, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
         ATTR(1, 0, SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM, 4);
+        nbuffers = 1;
+    } else {
+        /* the wobble's triangle comes from the vertex index: the draw's record alone */
+        buffers[0] = buffers[1];
+        buffers[0].input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE;
+        ATTR(0, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
+        nbuffers = 1;
     }
 #undef ATTR
     info.vertex_shader = G.vs[p->program];
     info.fragment_shader = G.fs[p->program];
     info.vertex_input_state.vertex_buffer_descriptions = buffers;
-    info.vertex_input_state.num_vertex_buffers = p->program == PROG_WATER ? 1 : 2;
+    info.vertex_input_state.num_vertex_buffers = nbuffers;
     info.vertex_input_state.vertex_attributes = attrs;
     info.vertex_input_state.num_vertex_attributes = nattrs;
     info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
@@ -1007,7 +995,7 @@ static void mode_pipe(struct pipe_desc *p, int program, const struct DrawModeDes
                            &p->src, &p->dst);
     p->depth = m->depth;
     p->cull = CULL_NONE;
-    /* the screen and its copy are X8R8G8B8 on Direct3D 9: their alpha stays 1 */
+    /* the screen is X8R8G8B8 on Direct3D 9: its alpha stays 1 */
     p->mask = !m->colour ? MASK_NONE : cls == CLASS_TEXTURE ? MASK_RGBA : MASK_RGB;
     p->hasDepth = cls == CLASS_SCREEN && G.depth != NULL;
     p->samples = cls == CLASS_SCREEN ? (int)G.samples : (int)SDL_GPU_SAMPLECOUNT_1;
@@ -1016,8 +1004,8 @@ static void mode_pipe(struct pipe_desc *p, int program, const struct DrawModeDes
 
 /* Every pipeline the modes draw with, once the screen's samples and depth are known: a mode's
    quads into each kind of target it draws into, flat and not, its world records in each cull mode
-   and its water, the effect modes' quads by every pair of the blend factors the screen has, and the
-   shadow casters'. */
+   and its water, the effect modes' quads by every pair of the blend factors the screen has, the
+   shadow casters' and the wobble's (gfx_wobble). */
 static int make_pipelines(void)
 {
     struct pipe_desc p;
@@ -1068,7 +1056,16 @@ static int make_pipelines(void)
     p.hasDepth = 1;
     p.samples = SDL_GPU_SAMPLECOUNT_1;
     G.casterPipeline = pipeline(&p);
-    return G.casterPipeline != NULL;
+    /* the wobble's, into the screen with its depth kept, its alpha 1 */
+    memset(&p, 0, sizeof p);
+    p.program = PROG_ROWS;
+    p.depth = DRAW_DEPTH_OFF;
+    p.cull = CULL_NONE;
+    p.mask = MASK_RGB;
+    p.hasDepth = G.depth != NULL;
+    p.samples = (int)G.samples;
+    G.rowsPipeline = pipeline(&p);
+    return G.casterPipeline && G.rowsPipeline;
 }
 
 /* The pipeline of a quad draw in the current mode into a pass's kind of target, NULL where the mode
@@ -1166,7 +1163,7 @@ static void colour_floats(float *out, DWORD c)
    clamping at the target's edge would. */
 static void stage_scale(float *scale, float *limit, const struct gfx_surface *s, int clamped)
 {
-    const struct gfx_surface *g = is_target(s) ? gpu_of((struct gfx_surface *)s) : NULL;
+    const struct gfx_surface *g = is_target(s) ? s : NULL;
     scale[0] = g ? (float)g->width / (float)(g->width + MARGIN) : 1.0f;
     scale[1] = g ? (float)g->height / (float)(g->height + MARGIN) : 1.0f;
     limit[0] = g && clamped ? ((float)g->width - 0.5f) / (float)(g->width + MARGIN) : 3.0e38f;
@@ -1425,7 +1422,7 @@ static int raw_draw(int mode, const struct draw_state *s, struct gfx_surface *co
     pass = current_pass();
     if (!pass)
         return 0;
-    cls = pass->target == G.screen ? CLASS_SCREEN : pass->target->kind == K_RTTEX ? CLASS_TEXTURE : CLASS_COPY;
+    cls = pass->target == G.screen ? CLASS_SCREEN : CLASS_TEXTURE;
     flat = flat && kind != GFX_VTX_WORLD;
     pipe = quad_pipeline(mode, s, cls, flat);
     if (!pipe)
@@ -1900,7 +1897,7 @@ static int world_cull(int flags)
 static int world_ready(void)
 {
     const struct DrawModeDesc *m = draw_mode(G.mode);
-    return world_on() && G.target && W.frameSet && gpu_of(G.target) == G.screen && !G.shadowPass
+    return world_on() && G.target && W.frameSet && G.target == G.screen && !G.shadowPass
            && (m->into & DRAW_MESHES) && W.recordCount && W.slotCount;
 }
 
@@ -2069,7 +2066,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
     g_perf.drawCalls++;
     batch_flush();
     if (!world_on() || !G.target || !cells || !count || !W.frameSet || !W.cellCount || !W.waveCount
-        || !G.worldCameraSet || G.shadowPass || gpu_of(G.target) != G.screen || !G.waterPipeline[G.mode]
+        || !G.worldCameraSet || G.shadowPass || G.target != G.screen || !G.waterPipeline[G.mode]
         || count > 0x7fffffff)
         return;
     bind_stage(bind, &G.state, G.stageTex[0], 0);
@@ -2946,7 +2943,7 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
    their vertex and index buffers: the quads' the frame's vertices, which each draw binds at its
    offset, and the records' instances; the world's records and casters the shared buffers, whose
    index buffer run_pass binds by the draw (the shared indices, or the frame's compacted ones); the
-   water its cells' instances. */
+   water its cells' instances; the wobble the records and its rows, and the records' instances. */
 static void bind_program(SDL_GPURenderPass *pass, int program)
 {
     SDL_GPUBuffer *vertex[6], *fragment[2];
@@ -2979,7 +2976,7 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
         binding[1].buffer = W.ids;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
         break;
-    default:
+    case PROG_WATER:
         vertex[nv++] = G.records;
         vertex[nv++] = G.views;
         vertex[nv++] = G.fogs;
@@ -2988,6 +2985,12 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
         vertex[nv++] = W.sineBuffer;
         binding[0].buffer = W.instanceBuffer;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 1);
+        break;
+    default:
+        vertex[nv++] = G.records;
+        fragment[0] = G.rows;
+        binding[1].buffer = G.instances;
+        SDL_BindGPUVertexBuffers(pass, 1, &binding[1], 1);
         break;
     }
     SDL_BindGPUVertexStorageBuffers(pass, 0, vertex, nv);
@@ -3065,8 +3068,9 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
         SDL_Log("gfx: SDL_BeginGPURenderPass: %s", SDL_GetError());
         return;
     }
-    /* the target moved by half a pixel, to where Direct3D 9's pixel centres were (MARGIN) */
-    viewport.x = viewport.y = 0.5f;
+    /* the target moved by half a pixel, to where Direct3D 9's pixel centres were (MARGIN); the
+       wobble's covers the whole target, every sample of its first column and row too */
+    viewport.x = viewport.y = s->whole ? 0.0f : 0.5f;
     viewport.w = (float)w;
     viewport.h = (float)h;
     viewport.min_depth = 0.0f;
@@ -3078,9 +3082,10 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     SDL_SetGPUScissor(pass, &scissor);
     for (i = s->first; i < s->first + s->count; i++) {
         const struct gpu_draw *d = &G.draws[i];
-        int nbind = d->program == PROG_WORLD ? 3 : d->program == PROG_CASTER ? 1 : 2;
+        int world = d->program != PROG_QUAD && d->program != PROG_ROWS;  /* of gfx_world_* */
+        int nbind = d->program == PROG_WORLD ? 3 : d->program == PROG_QUAD || d->program == PROG_WATER ? 2 : 1;
         SDL_GPUTextureSamplerBinding bind[3];
-        if (!d->pipeline || (d->program != PROG_QUAD && !world_drawable(d)))
+        if (!d->pipeline || (world && !world_drawable(d)))
             continue;
         memcpy(bind, d->bind, sizeof bind);
         if (d->program == PROG_WORLD || d->program == PROG_CASTER)
@@ -3111,7 +3116,7 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
             memcpy(textures, bind, (size_t)nbind * sizeof *textures);
             SDL_BindGPUFragmentSamplers(pass, 0, textures, (Uint32)nbind);
         }
-        if (d->program != PROG_QUAD && (!pushedAny || memcmp(pushed, d->uniform, sizeof pushed))) {
+        if (world && (!pushedAny || memcmp(pushed, d->uniform, sizeof pushed))) {
             push_uniforms(cmd, d);
             memcpy(pushed, d->uniform, sizeof pushed);
             pushedAny = 1;
@@ -3127,6 +3132,9 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
                 SDL_DrawGPUIndexedPrimitives(pass, d->count, 1, d->firstIndex, 0, d->record);
             else
                 SDL_DrawGPUPrimitives(pass, d->count, 1, 0, d->record);
+        } else if (d->program == PROG_ROWS) {
+            /* no vertices: the triangle comes from the vertex index */
+            SDL_DrawGPUPrimitives(pass, d->count, 1, 0, d->record);
         } else if (d->program == PROG_WATER) {
             SDL_DrawGPUPrimitives(pass, 6, d->instances, 0, d->firstInstance);
         } else if (d->indirect) {
@@ -3247,7 +3255,7 @@ static void frame_reset(void)
     }
     G.npins = 0;
     G.nsteps = G.ndraws = G.nuploads = G.frameUploads = 0;
-    G.drawRecords.size = G.viewRecords.size = G.fogTables.size = G.shadowRecords.size = 0;
+    G.drawRecords.size = G.viewRecords.size = G.fogTables.size = G.shadowRecords.size = G.rowTables.size = 0;
     G.vertexData.size = G.indexData.size = G.texels.size = 0;
     G.cameraView = G.shadowRecord = G.fogTable = -1;
     W.instances.size = 0;
@@ -3273,8 +3281,9 @@ static void wait_frames(int all)
     }
 }
 
-/* What a flush also does: present the screen, waiting for the window's next picture or not, and
-   download a rectangle of a texture. */
+/* What a flush also does: end the frame (gfx_present), showing the screen where the window is
+   claimed (claim_window), waiting for the window's next picture or not; and download a rectangle of
+   the screen (gfx_read_frame). */
 struct flush_extra {
     int present, wait;
     SDL_GPUTexture *download;
@@ -3291,8 +3300,6 @@ static void requeue_uploads(long instances)
     for (i = 0; i < G.nuploads; i++) {
         const struct gpu_upload *u = &G.uploads[i];
         struct gfx_surface *s = u->surface;
-        if (!s || is_target(s))
-            continue;
         if (u->w && u->h) {
             RECT r;
             r.left = (LONG)u->x;
@@ -3312,10 +3319,6 @@ static void requeue_uploads(long instances)
         G.instances = NULL;
         G.instanceCount = 0;
     }
-    /* the copies from targets into textures were not made: the CPU's pixels are the textures' */
-    for (i = 0; i < G.nsteps; i++)
-        if (G.steps[i].kind == STEP_COPY && G.steps[i].dstSurface)
-            G.steps[i].dstSurface->gpuNewer = 0;
 }
 
 static uint32_t align16(uint32_t v)
@@ -3330,7 +3333,7 @@ static int flush(const struct flush_extra *extra)
     SDL_GPUCommandBuffer *cmd;
     SDL_GPUCopyPass *copy;
     SDL_GPUFence *fence;
-    uint32_t oRecords, oViews, oFogs, oShadows, oVertices, oIndices, oTexels, total;
+    uint32_t oRecords, oViews, oFogs, oShadows, oRows, oVertices, oIndices, oTexels, total;
     long instances;
     unsigned char *mapped;
     size_t i;
@@ -3369,7 +3372,8 @@ static int flush(const struct flush_extra *extra)
     oViews = align16(oRecords + (uint32_t)G.drawRecords.size);
     oFogs = align16(oViews + (uint32_t)G.viewRecords.size);
     oShadows = align16(oFogs + (uint32_t)G.fogTables.size);
-    oVertices = align16(oShadows + (uint32_t)G.shadowRecords.size);
+    oRows = align16(oShadows + (uint32_t)G.shadowRecords.size);
+    oVertices = align16(oRows + (uint32_t)G.rowTables.size);
     oIndices = align16(oVertices + (uint32_t)G.vertexData.size);
     oTexels = align16(oIndices + (uint32_t)G.indexData.size);
     total = oTexels + (uint32_t)G.texels.size;
@@ -3391,6 +3395,8 @@ static int flush(const struct flush_extra *extra)
         || !ensure_buffer(&G.views, &G.viewsSize, (uint32_t)G.viewRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.fogs, &G.fogsSize, (uint32_t)G.fogTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.shadows, &G.shadowsSize, (uint32_t)G.shadowRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
+        || (G.rowTables.size
+            && !ensure_buffer(&G.rows, &G.rowsSize, (uint32_t)G.rowTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
         || !ensure_buffer(&G.vertices, &G.verticesSize, (uint32_t)G.vertexData.size, SDL_GPU_BUFFERUSAGE_VERTEX)
         || !ensure_buffer(&G.indices, &G.indicesSize, (uint32_t)G.indexData.size, SDL_GPU_BUFFERUSAGE_INDEX)) {
         SDL_Log("gfx: frame buffers: %s", SDL_GetError());
@@ -3420,6 +3426,8 @@ static int flush(const struct flush_extra *extra)
     memcpy(mapped + oViews, G.viewRecords.data, G.viewRecords.size);
     memcpy(mapped + oFogs, G.fogTables.data, G.fogTables.size);
     memcpy(mapped + oShadows, G.shadowRecords.data, G.shadowRecords.size);
+    if (G.rowTables.size)
+        memcpy(mapped + oRows, G.rowTables.data, G.rowTables.size);
     memcpy(mapped + oVertices, G.vertexData.data, G.vertexData.size);
     memcpy(mapped + oIndices, G.indexData.data, G.indexData.size);
     if (G.texels.size)
@@ -3436,6 +3444,7 @@ static int flush(const struct flush_extra *extra)
     copy_into(copy, oViews, G.views, (uint32_t)G.viewRecords.size);
     copy_into(copy, oFogs, G.fogs, (uint32_t)G.fogTables.size);
     copy_into(copy, oShadows, G.shadows, (uint32_t)G.shadowRecords.size);
+    copy_into(copy, oRows, G.rows, (uint32_t)G.rowTables.size);
     copy_into(copy, oVertices, G.vertices, (uint32_t)G.vertexData.size);
     copy_into(copy, oIndices, G.indices, (uint32_t)G.indexData.size);
     if (instances >= 0) {
@@ -3557,28 +3566,33 @@ static int flush_only(void)
     return flush(&extra);
 }
 
-/* Downloads a rectangle of a target's or a texture's GPU picture, the whole of it without one,
-   into B8G8R8A8 rows `pitch` bytes apart. */
-static int download(struct gfx_surface *s, const RECT *r, unsigned char *out, size_t pitch)
+/* The screen's picture, a rectangle of it or the whole without one, downloaded after everything
+   recorded before it (render/gfx.h): the frame's work is submitted with the download, and the CPU
+   waits for both. */
+int gfx_read_frame(const RECT *r, void *out, size_t pitch)
 {
     struct flush_extra extra;
-    struct gfx_surface *g = gpu_of(s);
-    SDL_zero(extra);
-    if (!g->tex)
-        return 0;
-    extra.download = g->tex;
+    RECT rect;
+    if (!G.dev || !G.screen || !G.screen->tex || !out)
+        return -1;
+    whole_rect(&rect, G.screen);
     if (r) {
-        extra.x = r->left;
-        extra.y = r->top;
-        extra.w = r->right - r->left;
-        extra.h = r->bottom - r->top;
-    } else {
-        extra.w = g->width;
-        extra.h = g->height;
+        if (r->left < 0 || r->top < 0 || r->right > G.screen->width || r->bottom > G.screen->height
+            || r->left >= r->right || r->top >= r->bottom)
+            return -1;
+        rect = *r;
     }
+    if (pitch < (size_t)(rect.right - rect.left) * 4)
+        return -1;
+    SDL_zero(extra);
+    extra.download = G.screen->tex;
+    extra.x = rect.left;
+    extra.y = rect.top;
+    extra.w = rect.right - rect.left;
+    extra.h = rect.bottom - rect.top;
     extra.out = out;
     extra.pitch = pitch;
-    return flush(&extra);
+    return flush(&extra) ? 0 : -1;
 }
 
 /* ---- the device ---- */
@@ -3724,6 +3738,8 @@ static int create_device(void)
     G.fsCode[PROG_CASTER] = &world_caster_fs;
     G.vsCode[PROG_WATER] = &water_vs;
     G.fsCode[PROG_WATER] = &water_fs;
+    G.vsCode[PROG_ROWS] = &rows_vs;
+    G.fsCode[PROG_ROWS] = &rows_fs;
     props = SDL_CreateProperties();
     SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, debug && debug[0] == '1');
 #ifdef __APPLE__
@@ -3742,7 +3758,6 @@ static int create_device(void)
         SDL_Log("gfx: SDL_CreateGPUDevice: %s", SDL_GetError());
         return 0;
     }
-    G.mainThread = SDL_GetCurrentThreadID();
     for (i = 0; i < PROG_COUNT; i++) {
         G.vs[i] = make_shader(G.vsCode[i]);
         G.fs[i] = make_shader(G.fsCode[i]);
@@ -3779,32 +3794,53 @@ static int create_device(void)
     G.frame = 1;
     G.cameraView = G.shadowRecord = G.fogTable = W.casterRecord = -1;
     W.generation++;
-    if (G.window && SDL_ClaimWindowForGPUDevice(G.dev, G.window)) {
-        SDL_GPUPresentMode mode = SDL_GPU_PRESENTMODE_VSYNC;
-        G.claimed = 1;
-        if (!choose_vsync()) {
-            if (SDL_WindowSupportsGPUPresentMode(G.dev, G.window, SDL_GPU_PRESENTMODE_IMMEDIATE))
-                mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
-            else if (SDL_WindowSupportsGPUPresentMode(G.dev, G.window, SDL_GPU_PRESENTMODE_MAILBOX))
-                mode = SDL_GPU_PRESENTMODE_MAILBOX;
-        }
-        SDL_SetGPUSwapchainParameters(G.dev, G.window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode);
-    } else if (G.window) {
-        /* without a swapchain the frames are drawn and can be captured, not shown */
-        SDL_Log("gfx: SDL_ClaimWindowForGPUDevice: %s", SDL_GetError());
-    }
     return 1;
 }
 
-int gfx_open(struct C3dDevice *d, int flags)
+/* The window claimed for the device, to take its pictures, where it can be: it is claimed, and
+   gets its swapchain, at the first present while it is shown, not minimized and of a size in
+   pixels. A window never shown (the scene harness's) is never claimed, so there is no swapchain at
+   all, and its frames are drawn and can be read (gfx_read_frame), not shown. A claim counts once
+   SDL keeps the window, which it says by knowing its swapchain's format: SDL 3.4's Vulkan driver
+   answers true for a window whose surface has no size (a minimized one on Windows) but keeps
+   nothing of it. A claim that fails or is not kept is tried again at the next present: on Android,
+   the window has no surface while the app is in the background. */
+static void claim_window(void)
 {
-    (void)flags;
+    SDL_GPUPresentMode mode = SDL_GPU_PRESENTMODE_VSYNC;
+    int w = 0, h = 0;
+    if (G.claimed)
+        return;
+    if (!G.window || (SDL_GetWindowFlags(G.window) & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED))
+        || !SDL_GetWindowSizeInPixels(G.window, &w, &h) || w <= 0 || h <= 0)
+        return;
+    if (!SDL_ClaimWindowForGPUDevice(G.dev, G.window)) {
+        /* said once, not at every present it is tried again */
+        if (!G.claimLogged)
+            SDL_Log("gfx: SDL_ClaimWindowForGPUDevice: %s", SDL_GetError());
+        G.claimLogged = 1;
+        return;
+    }
+    if (SDL_GetGPUSwapchainTextureFormat(G.dev, G.window) == SDL_GPU_TEXTUREFORMAT_INVALID)
+        return;
+    G.claimed = 1;
+    G.claimLogged = 0;
+    if (!choose_vsync()) {
+        if (SDL_WindowSupportsGPUPresentMode(G.dev, G.window, SDL_GPU_PRESENTMODE_IMMEDIATE))
+            mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
+        else if (SDL_WindowSupportsGPUPresentMode(G.dev, G.window, SDL_GPU_PRESENTMODE_MAILBOX))
+            mode = SDL_GPU_PRESENTMODE_MAILBOX;
+    }
+    SDL_SetGPUSwapchainParameters(G.dev, G.window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode);
+}
+
+int gfx_open(struct C3dDevice *d)
+{
     G.window = d->hwnd;
     if (!G.window)
         return GFX_E_DDRAW_CREATE;
     if (!G.lock)
         G.lock = SDL_CreateMutex();
-    d->dd = G.window;
     return 0;
 }
 
@@ -3825,9 +3861,11 @@ static SDL_GPUTexture *new_samples_texture(int w, int h, int depth)
     return SDL_CreateGPUTexture(G.dev, &info);
 }
 
-int gfx_create_screen(struct C3dDevice *d, int flags)
+/* The screen: d->target, the one surface the client draws the frame into and the window shows, a
+   render target that holds the resolved picture where the screen is multisampled. */
+int gfx_create_screen(struct C3dDevice *d)
 {
-    struct gfx_surface *screen, *save;
+    struct gfx_surface *screen;
     if (!G.window || !create_device())
         return GFX_E_PRIMARY;
     reset_state();
@@ -3840,46 +3878,18 @@ int gfx_create_screen(struct C3dDevice *d, int flags)
     screen->tex = new_target_texture(d->width, d->height);
     if (!screen->tex)
         return GFX_E_PRIMARY;
-    d->primary = screen;
-    if (flags & 2) {
-        d->back = new_handle(K_TARGET, d->width, d->height, GFX_FMT_8888);
-        if (!d->back)
-            return GFX_E_PRIMARY;
-    }
-    d->target = (flags & 2) ? d->back : d->primary;
-    d->target->refs++;
-    G.mainTarget = d->target;
-    G.target = d->target;
+    d->target = screen;
+    G.target = screen;
     d->bpp = 32;
     d->rMask = 0xff0000;
     d->gMask = 0xff00;
     d->bMask = 0xff;
-    d->aMask = 0;
-    save = new_handle(K_SAVE, d->width, d->height, GFX_FMT_8888);
-    if (!save)
-        return GFX_E_PRIMARY;
-    save->tex = new_target_texture(d->width, d->height);
-    if (!save->tex)
-        return GFX_E_PRIMARY;
-    d->save = save;
     d->dev = G.dev;
-    return 0;
-}
-
-int gfx_create_3d(struct C3dDevice *d, int flags)
-{
-    (void)flags;
-    if (!G.dev)
-        return GFX_E_DEVICE_CREATE;
-    d->d3d = G.dev;
-    d->zbufferCaps = 0;
-    memset(d->zformat, 0, sizeof(d->zformat));
     return 0;
 }
 
 int gfx_create_zbuffer(struct C3dDevice *d)
 {
-    struct gfx_surface *z;
     if (!G.screen)
         return GFX_E_ZBUFFER;
     G.samples = pick_samples();
@@ -3891,21 +3901,15 @@ int gfx_create_zbuffer(struct C3dDevice *d)
     G.depth = new_samples_texture(d->width, d->height, 1);
     if (!G.depth)
         return GFX_E_ZBUFFER;
-    z = new_handle(K_ZBUFFER, d->width, d->height, GFX_FMT_8888);
-    if (!z)
-        return GFX_E_ZBUFFER;
-    d->zbuffer = z;
     /* the screen's samples and depth are known: every pipeline can be made */
     return make_pipelines() ? 0 : GFX_E_ZBUFFER;
 }
 
-int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
+int gfx_get_caps(struct gfx_caps *out)
 {
-    (void)d;
     if (!G.dev)
         return -1;
     memset(out, 0, sizeof *out);
-    out->zbufferless = 0;
     out->trilinear = 1;
     out->minTexW = 1;
     out->minTexH = 1;
@@ -3917,7 +3921,6 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     out->guardTop = -32768.0f;
     out->guardRight = 32767.0f;
     out->guardBottom = 32767.0f;
-    out->bltStretch = 1;
     return 0;
 }
 
@@ -3928,19 +3931,16 @@ int gfx_close(struct C3dDevice *d)
     if (G.dev)
         flush_only();
     batch_drop();
-    if (d->target)  { gfx_release(d->target);  d->target = NULL; }
-    if (d->back)    { gfx_release(d->back);    d->back = NULL; }
-    if (d->primary) { gfx_release(d->primary); d->primary = NULL; }
-    if (d->zbuffer) { gfx_release(d->zbuffer); d->zbuffer = NULL; }
-    if (d->save)    { gfx_release(d->save);    d->save = NULL; }
-    G.mainTarget = G.target = G.screen = NULL;
+    if (d->target) { gfx_release(d->target); d->target = NULL; }
+    if (d->save)   { gfx_release(d->save);   d->save = NULL; }
+    G.target = G.screen = NULL;
     if (G.dev) {
         wait_frames(1);
         SDL_WaitForGPUIdle(G.dev);
         lock_handles();
         for (s = G.handles; s; s = next) {
             next = s->next;
-            if (s->kind != K_TARGET && s->tex)
+            if (s->tex)
                 SDL_ReleaseGPUTexture(G.dev, s->tex);
             s->tex = NULL;
             s->dirty = 1;
@@ -3993,6 +3993,8 @@ int gfx_close(struct C3dDevice *d)
         if (G.views) SDL_ReleaseGPUBuffer(G.dev, G.views);
         if (G.fogs) SDL_ReleaseGPUBuffer(G.dev, G.fogs);
         if (G.shadows) SDL_ReleaseGPUBuffer(G.dev, G.shadows);
+        if (G.rows) SDL_ReleaseGPUBuffer(G.dev, G.rows);
+        if (G.frameCopy) SDL_ReleaseGPUTexture(G.dev, G.frameCopy);
         if (G.vertices) SDL_ReleaseGPUBuffer(G.dev, G.vertices);
         if (G.indices) SDL_ReleaseGPUBuffer(G.dev, G.indices);
         if (G.instances) SDL_ReleaseGPUBuffer(G.dev, G.instances);
@@ -4003,39 +4005,39 @@ int gfx_close(struct C3dDevice *d)
         SDL_DestroyGPUDevice(G.dev);
     }
     G.dev = NULL;
-    G.claimed = 0;
+    G.claimed = G.claimLogged = 0;
     memset(G.pipelines, 0, sizeof G.pipelines);
     G.npipelines = 0;
     memset(G.quadPipeline, 0, sizeof G.quadPipeline);
     memset(G.worldPipeline, 0, sizeof G.worldPipeline);
     memset(G.waterPipeline, 0, sizeof G.waterPipeline);
     memset(G.effectPipeline, 0, sizeof G.effectPipeline);
-    G.casterPipeline = NULL;
+    G.casterPipeline = G.rowsPipeline = NULL;
     memset(G.samplers, 0, sizeof G.samplers);
     memset(G.vs, 0, sizeof G.vs);
     memset(G.fs, 0, sizeof G.fs);
     G.pointClamp = NULL;
-    G.white = G.noShadow = G.shadowMaps = G.shadowDepth = G.depth = G.msaa = NULL;
-    G.records = G.views = G.fogs = G.shadows = G.vertices = G.indices = G.instances = NULL;
-    G.recordsSize = G.viewsSize = G.fogsSize = G.shadowsSize = G.verticesSize = G.indicesSize = G.instanceCount = 0;
+    G.white = G.noShadow = G.shadowMaps = G.shadowDepth = G.depth = G.msaa = G.frameCopy = NULL;
+    G.frameCopyW = G.frameCopyH = 0;
+    G.records = G.views = G.fogs = G.shadows = G.rows = G.vertices = G.indices = G.instances = NULL;
+    G.recordsSize = G.viewsSize = G.fogsSize = G.shadowsSize = G.rowsSize = G.verticesSize = G.indicesSize = 0;
+    G.instanceCount = 0;
     G.upload = G.download = NULL;
     G.uploadSize = G.downloadSize = 0;
     G.shadowState = 0;
     d->dev = NULL;
-    d->d3d = NULL;
-    d->dd = NULL;
     return 0;
 }
 
-/* The present mode follows RAGEXE_VSYNC (create_device). Without vsync the frame never waits for the
-   window: it is drawn but not shown unless a refresh has passed since the last picture
-   (present_into). */
-int gfx_present(struct C3dDevice *d, int vsync)
+/* The present mode follows RAGEXE_VSYNC (claim_window). Without vsync the frame never waits for
+   the window: it is drawn but not shown unless a refresh has passed since the last picture
+   (present_into). A window not claimed shows nothing; the frame is drawn and ends all the same. */
+int gfx_present(int vsync)
 {
     struct flush_extra extra;
-    (void)d;
     if (!G.dev || !G.screen)
         return -1;
+    claim_window();
     SDL_zero(extra);
     extra.present = 1;
     extra.wait = vsync;
@@ -4043,13 +4045,12 @@ int gfx_present(struct C3dDevice *d, int vsync)
     return 0;
 }
 
-/* custom: the screen, its multisampled picture and depth, and its copy at w by h, for a window
-   resized to that; the swapchain follows the window by itself. Without memory for them it answers
-   -1 and keeps the old ones. */
-int gfx_resize(struct C3dDevice *d, int w, int h)
+/* custom: the screen, its multisampled picture and depth at w by h, for a window resized to that;
+   the swapchain follows the window by itself. Without memory for them it answers -1 and keeps the
+   old ones. */
+int gfx_resize(int w, int h)
 {
-    struct gfx_surface *s;
-    SDL_GPUTexture *screen, *msaa = NULL, *depth = NULL, *save = NULL;
+    SDL_GPUTexture *screen, *msaa = NULL, *depth = NULL;
     if (!G.dev || !G.screen || w <= 0 || h <= 0)
         return -1;
     flush_only();
@@ -4058,16 +4059,13 @@ int gfx_resize(struct C3dDevice *d, int w, int h)
         msaa = new_samples_texture(w, h, 0);
     if (G.depth)
         depth = new_samples_texture(w, h, 1);
-    if (d->save)
-        save = new_target_texture(w, h);
-    if (!screen || (G.msaa && !msaa) || (G.depth && !depth) || (d->save && !save)) {
-        SDL_GPUTexture *made[4];
+    if (!screen || (G.msaa && !msaa) || (G.depth && !depth)) {
+        SDL_GPUTexture *made[3];
         int i;
         made[0] = screen;
         made[1] = msaa;
         made[2] = depth;
-        made[3] = save;
-        for (i = 0; i < 4; i++)
+        for (i = 0; i < 3; i++)
             if (made[i])
                 SDL_ReleaseGPUTexture(G.dev, made[i]);
         return -1;
@@ -4082,22 +4080,9 @@ int gfx_resize(struct C3dDevice *d, int w, int h)
         SDL_ReleaseGPUTexture(G.dev, G.depth);
         G.depth = depth;
     }
-    if (d->save) {
-        SDL_ReleaseGPUTexture(G.dev, d->save->tex);
-        d->save->tex = save;
-    }
     G.screen->version = next_version();
-    lock_handles();
-    for (s = G.handles; s; s = s->next)
-        if (s->kind == K_SCREEN || s->kind == K_TARGET || s->kind == K_SAVE || s->kind == K_ZBUFFER) {
-            s->width = w;
-            s->height = h;
-            /* the lock buffers are made again at the new size */
-            free(s->pixels);
-            free(s->lockCopy);
-            s->pixels = s->lockCopy = NULL;
-        }
-    unlock_handles();
+    G.screen->width = w;
+    G.screen->height = h;
     G.viewsTargetW = G.viewsTargetH = 0;
     return 0;
 }
@@ -4194,35 +4179,12 @@ int gfx_get_size(gfx_surface *s, int *w, int *h)
     return 0;
 }
 
-/* The CPU's pixels of a surface whose GPU texture took a copy from a target since. */
-static int cpu_current(struct gfx_surface *s)
-{
-    unsigned char *bgra;
-    int ok;
-    if (!s->gpuNewer)
-        return 1;
-    bgra = malloc((size_t)s->width * s->height * 4);
-    if (!bgra)
-        return 0;
-    ok = download(s, NULL, bgra, (size_t)s->width * 4);
-    if (ok) {
-        int bytes = texel_bytes(s->fmt);
-        texel_rows_from_bgra(s->fmt, bgra, (long)s->width * 4, s->width, s->height, s->pixels,
-                             (long)s->width * bytes);
-        s->gpuNewer = 0;
-    }
-    free(bgra);
-    return ok;
-}
-
-/* A rectangle of a surface, the whole of it without one; a target's is downloaded, and only that.
-   A rectangle that is empty or reaches outside the surface locks nothing. */
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
+/* A rectangle of a texture's or a system surface's CPU pixels, the whole of them without one; a
+   target has none. A rectangle that is empty or reaches outside the surface locks nothing. */
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out)
 {
     RECT rect;
     int bytes;
-    if (flags & GFX_LOCK_UNSIZED)
-        return -1;
     perf_count_shared(&g_perf.locks, 1);
     whole_rect(&rect, s);
     if (r) {
@@ -4231,26 +4193,9 @@ int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
             return -1;
         rect = *r;
     }
-    bytes = is_target(s) ? 4 : texel_bytes(s->fmt);
-    if (is_target(s)) {
-        size_t size = (size_t)s->width * s->height * 4, pitch = (size_t)s->width * 4;
-        size_t at = (size_t)rect.top * pitch + (size_t)rect.left * 4, row = (size_t)(rect.right - rect.left) * 4;
-        int y;
-        if (!on_main_thread())
-            return -1;
-        g_perf.targetLocks++;
-        if (!s->pixels)
-            s->pixels = malloc(size);
-        if (!s->lockCopy)
-            s->lockCopy = malloc(size);
-        if (!s->pixels || !s->lockCopy || !download(s, &rect, s->pixels + at, pitch))
-            return -1;
-        for (y = 0; y < rect.bottom - rect.top; y++)
-            memcpy(s->lockCopy + at + (size_t)y * pitch, s->pixels + at + (size_t)y * pitch, row);
-    } else {
-        if (!s->pixels || (s->gpuNewer && (!on_main_thread() || !cpu_current(s))))
-            return -1;
-    }
+    if (!s->pixels)
+        return -1;
+    bytes = s->kind == K_SYSMEM ? 4 : texel_bytes(s->fmt);
     s->lockRect = rect;
     out->bits = s->pixels + (size_t)rect.top * s->width * bytes + (size_t)rect.left * bytes;
     out->pitch = s->width * bytes;
@@ -4260,7 +4205,7 @@ int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
     return 0;
 }
 
-/* The multisampled screen takes the resolved picture after the CPU or a copy changed it. */
+/* The multisampled screen takes the resolved picture after a copy changed it. */
 static void unresolve(void)
 {
     struct gfx_surface *prev = G.target;
@@ -4275,50 +4220,11 @@ static void unresolve(void)
     G.unresolving = 0;
 }
 
-/* The pixels a lock of a target changed go back to it where the frame has got to, drawn back into
-   the multisampled screen as well: the locked rectangle's rows from the first that changed to the
-   last. */
-static void target_write_back(struct gfx_surface *s)
-{
-    struct gfx_surface *g = gpu_of(s);
-    const RECT *r = &s->lockRect;
-    size_t pitch = (size_t)s->width * 4, row = (size_t)(r->right - r->left) * 4, left = (size_t)r->left * 4, i;
-    int y0 = -1, y1 = -1, y;
-    long at;
-    if (!s->pixels || !s->lockCopy || !g->tex)
-        return;
-    for (y = r->top; y < r->bottom; y++)
-        if (memcmp(s->pixels + (size_t)y * pitch + left, s->lockCopy + (size_t)y * pitch + left, row)) {
-            if (y0 < 0)
-                y0 = y;
-            y1 = y + 1;
-        }
-    if (y0 < 0)
-        return;
-    at = bytes_add(&G.texels, (size_t)(y1 - y0) * row, 16);
-    if (at < 0)
-        return;
-    for (y = y0; y < y1; y++)
-        memcpy(G.texels.data + at + (size_t)(y - y0) * row, s->pixels + (size_t)y * pitch + left, row);
-    if (is_main_target(s) || s->kind == K_SAVE)
-        for (i = 0; i < (size_t)(y1 - y0) * row / 4; i++)
-            G.texels.data[at + i * 4 + 3] = 0xff;
-    pin(g);
-    add_upload(g, g->tex, (uint32_t)r->left, (uint32_t)y0, (uint32_t)(r->right - r->left), (uint32_t)(y1 - y0),
-               (uint32_t)at, 0);
-    if (g == G.screen)
-        unresolve();
-}
-
 int gfx_unlock(gfx_surface *s)
 {
     s->version = next_version();
-    if (is_target(s)) {
-        if (on_main_thread())
-            target_write_back(s);
-    } else {
+    if (s->pixels)
         mark_dirty(s, &s->lockRect);
-    }
     return 0;
 }
 
@@ -4374,69 +4280,40 @@ static int cpu_blit(struct gfx_surface *dst, const RECT *dp, struct gfx_surface 
 
 /* Rectangles that are empty or reach outside their surfaces copy nothing, as Direct3D 9 copied
    nothing between surfaces in memory for them. */
-int gfx_blit(gfx_surface *dst, const RECT *dr, gfx_surface *src, const RECT *sr, int flags)
+int gfx_blit(gfx_surface *dst, const RECT *dr, gfx_surface *src, const RECT *sr)
 {
     RECT d, s;
-    (void)flags;
     batch_flush();
     g_perf.blits++;
     dst->version = next_version();
-    if (dst == src || (is_target(dst) && is_target(src) && gpu_of(dst) == gpu_of(src)))
+    if (dst == src)
         return 0;
     if (!blit_rects(dst, dr, src, sr, &d, &s))
         return 0;
     if (is_target(src)) {
-        /* from a target: a copy on the GPU, into a target or into a surface's texture, whose
-           CPU pixels follow when they are locked */
-        struct gfx_surface *g = gpu_of(src);
+        /* from a target into a target: a copy on the GPU; a target's pixels never go to the CPU */
         struct gpu_step *step;
-        SDL_GPUTexture *into;
-        int stretch = d.right - d.left != s.right - s.left || d.bottom - d.top != s.bottom - s.top;
-        if (!G.dev || !g->tex)
+        if (!G.dev || !is_target(dst) || !src->tex || !dst->tex)
             return -1;
-        if (is_target(dst)) {
-            into = gpu_of(dst)->tex;
-            pin(gpu_of(dst));
-        } else {
-            if (!cpu_current(dst))
-                return -1;
-            if (stretch && !dst->blitDest) {
-                /* a stretched copy draws: the texture is made again as a colour target, and its
-                   pixels go up again from the CPU's */
-                dst->blitDest = 1;
-                retire_texture(dst->tex);
-                dst->tex = NULL;
-            }
-            if (!ensure_texture(dst))
-                return -1;
-            into = texture_for_draw(dst);
-        }
-        if (!into)
-            return -1;
-        pin(g);
+        pin(src);
+        pin(dst);
         step = add_step(STEP_COPY);
         if (!step)
             return -1;
-        step->src = g->tex;
-        step->dst = into;
+        step->src = src->tex;
+        step->dst = dst->tex;
         step->srcRect = s;
         step->dstRect = d;
-        if (!is_target(dst)) {
-            step->dstSurface = dst;
-            dst->gpuNewer = 1;
-        }
-        else if (gpu_of(dst) == G.screen)
+        if (dst == G.screen)
             unresolve();
         return 0;
     }
     if (is_target(dst)) {
-        if (!src->pixels || (src->gpuNewer && !cpu_current(src)))
+        if (!src->pixels)
             return -1;
         draw_textured_quad(dst, &d, src, &s);
         return 0;
     }
-    if ((src->gpuNewer && !cpu_current(src)) || (dst->gpuNewer && !cpu_current(dst)))
-        return -1;
     return cpu_blit(dst, &d, src, &s);
 }
 
@@ -4476,13 +4353,13 @@ int gfx_clear(int flags, DWORD colour, float z, const RECT *r)
         return -1;
     if (r) {
         rc = *r;
-        if (!clip_rect(&rc, gpu_of(t)))
+        if (!clip_rect(&rc, t))
             return 0;
     } else {
-        whole_rect(&rc, gpu_of(t));
+        whole_rect(&rc, t);
     }
     depth = (flags & GFX_CLEAR_ZBUFFER) && pass_has_depth(pass);
-    whole = rc.left == 0 && rc.top == 0 && rc.right == gpu_of(t)->width && rc.bottom == gpu_of(t)->height;
+    whole = rc.left == 0 && rc.top == 0 && rc.right == t->width && rc.bottom == t->height;
     if (!pass->count && whole) {
         if (flags & GFX_CLEAR_TARGET) {
             colour_floats(&pass->clearColour.r, colour);
@@ -4529,7 +4406,7 @@ gfx_surface *gfx_get_render_target(void)
 int gfx_set_render_target(gfx_surface *s)
 {
     batch_flush();
-    if (!G.dev || !s || !is_target(s) || !gpu_of(s)->tex)
+    if (!G.dev || !s || !is_target(s) || !s->tex)
         return -1;
     G.target = s;
     return 0;
@@ -4542,6 +4419,87 @@ void gfx_set_texture(int stage, gfx_surface *s)
     batch_flush();
     g_perf.texSets++;
     G.stageTex[stage] = s;
+}
+
+/* The texture the wobble copies the screen's picture into, at the screen's size; one of another
+   size goes after the frames that may use it. */
+static int frame_copy_ready(void)
+{
+    if (G.frameCopy && G.frameCopyW == G.screen->width && G.frameCopyH == G.screen->height)
+        return 1;
+    retire_texture(G.frameCopy);
+    G.frameCopy = new_texture(G.screen->width, G.screen->height, 1, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    G.frameCopyW = G.frameCopy ? G.screen->width : 0;
+    G.frameCopyH = G.frameCopy ? G.screen->height : 0;
+    return G.frameCopy != NULL;
+}
+
+/* A copy of the screen's picture (resolved, when multisampled, at the end of the pass before), then
+   a pass of its own over the whole screen that draws it back with the rows moved, into the
+   multisampled picture as well. Everything that can fail is in place before `fill` is called, and
+   is taken back where something failed. */
+int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *context), void *context)
+{
+    struct gfx_surface *screen = G.screen;
+    size_t nsteps, ndraws, nrecords, nrows;
+    struct gpu_step *copy, *pass;
+    struct gpu_draw *d;
+    struct GpuDraw *r = NULL;
+    uint32_t *table;
+    long at;
+    int y;
+    batch_flush();
+    if (!G.dev || !screen || !screen->tex || G.shadowPass || !G.rowsPipeline || !rows || count <= 0 || !fill
+        || !frame_copy_ready())
+        return 0;
+    /* what the frame holds with the draws batched so far, to take back to */
+    nsteps = G.nsteps;
+    ndraws = G.ndraws;
+    nrecords = G.drawRecords.size;
+    nrows = G.rowTables.size;
+    at = bytes_add(&G.rowTables, (size_t)screen->height * sizeof *table, 16);
+    copy = at >= 0 ? add_step(STEP_COPY) : NULL;
+    pass = copy ? add_step(STEP_PASS) : NULL;
+    d = pass ? add_draw(pass) : NULL;
+    if (d)
+        d->record = add_record(&r);
+    if (!r) {
+        G.nsteps = nsteps;
+        G.ndraws = ndraws;
+        G.drawRecords.size = nrecords;
+        G.rowTables.size = nrows;
+        return 0;
+    }
+    /* add_step may have moved the steps */
+    copy = &G.steps[nsteps];
+    pin(screen);
+    copy->src = screen->tex;
+    copy->dst = G.frameCopy;
+    whole_rect(&copy->srcRect, screen);
+    copy->dstRect = copy->srcRect;
+    pass->target = screen;
+    pass->whole = 1;
+    pass->loadColour = SDL_GPU_LOADOP_LOAD;
+    pass->loadDepth = SDL_GPU_LOADOP_LOAD;
+    pass->first = (uint32_t)ndraws;
+    d->program = PROG_ROWS;
+    d->pipeline = G.rowsPipeline;
+    d->bind[0].texture = G.frameCopy;
+    d->bind[0].sampler = G.pointClamp;
+    d->count = 3;
+    r->mode[3] = (uint32_t)(at / (long)sizeof *table);
+    fill(context);
+    table = (uint32_t *)(G.rowTables.data + at);
+    for (y = 0; y < screen->height; y++) {
+        int source = y, shift = 0;
+        if (y < count && rows[y].source >= 0 && rows[y].source < screen->height && rows[y].shift >= 0) {
+            source = rows[y].source;
+            shift = rows[y].shift < screen->width ? rows[y].shift : screen->width;
+        }
+        table[y] = (uint32_t)source | (uint32_t)shift << 16;
+    }
+    screen->version = next_version();
+    return 1;
 }
 
 unsigned gfx_content_version(gfx_surface *s)

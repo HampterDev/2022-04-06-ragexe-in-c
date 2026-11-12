@@ -85,7 +85,8 @@ __declspec(allocate(".CRT$XCU")) void (*scene_defaults_entry)(void) = scene_defa
 __attribute__((constructor)) static void scene_defaults(void)
 {
 #ifndef __APPLE__
-    /* no window; macOS keeps the client's window, hidden (scene_app_hidden.c) */
+    /* nothing on a desktop, and no need for one: the client's window is never shown
+       (scene_app_hidden.c); macOS keeps Cocoa's driver, the one SDL's Metal driver runs with */
     setenv("SDL_VIDEODRIVER", "offscreen", 0);
 #endif
     setenv("SDL_AUDIODRIVER", "dummy", 0);
@@ -509,63 +510,60 @@ static int write_counters(const char *name)
 
 /* scene.capture(name[, {w, h, x, y, jpeg}]): the whole frame, or a w x h part of it whose top
    left corner is x, y (default: centred on the frame), as <out>/<name>.png, or with jpeg = quality
-   (1 to 100) as <out>/<name>.jpg, and the frame's counters beside it. */
+   (1 to 100) as <out>/<name>.jpg, and the frame's counters beside it. The frame is the one just
+   shown, downloaded from the GPU (gfx_read_frame). */
 static int l_capture(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
     int crop = lua_istable(L, 2), jpeg = opt_int(L, crop ? 2 : 0, "jpeg", 0);
-    struct gfx_lock lk;
-    unsigned char *rgb;
+    unsigned char *bgra, *rgb;
     char path[1200];
     FILE *file;
-    DWORD x, y, x0 = 0, y0 = 0, w, h;
-    int ok;
-    if (!g_3dDevice.target || gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lk) < 0)
-        return luaL_error(L, "capture: cannot read the frame");
-    w = lk.width;
-    h = lk.height;
+    int frameW = 0, frameH = 0, w, h, x, y, ok;
+    RECT r;
+    if (!g_3dDevice.target || gfx_get_size(g_3dDevice.target, &frameW, &frameH) < 0 || frameW <= 0 || frameH <= 0)
+        return luaL_error(L, "capture: no frame");
+    w = frameW;
+    h = frameH;
+    r.left = r.top = 0;
     if (crop) {
-        int cw = opt_int(L, 2, "w", (int)lk.width), ch = opt_int(L, 2, "h", (int)lk.height);
-        int cx = opt_int(L, 2, "x", ((int)lk.width - cw) / 2), cy = opt_int(L, 2, "y", ((int)lk.height - ch) / 2);
-        if (cw <= 0 || ch <= 0 || cx < 0 || cy < 0 || cx + cw > (int)lk.width || cy + ch > (int)lk.height) {
-            gfx_unlock(g_3dDevice.target);
-            return luaL_error(L, "capture: %dx%d at %d,%d is not inside the %ux%u frame", cw, ch, cx, cy,
-                              (unsigned)lk.width, (unsigned)lk.height);
-        }
-        x0 = (DWORD)cx;
-        y0 = (DWORD)cy;
-        w = (DWORD)cw;
-        h = (DWORD)ch;
+        w = opt_int(L, 2, "w", frameW);
+        h = opt_int(L, 2, "h", frameH);
+        r.left = opt_int(L, 2, "x", (frameW - w) / 2);
+        r.top = opt_int(L, 2, "y", (frameH - h) / 2);
+        if (w <= 0 || h <= 0 || r.left < 0 || r.top < 0 || r.left + w > frameW || r.top + h > frameH)
+            return luaL_error(L, "capture: %dx%d at %d,%d is not inside the %dx%d frame", w, h, (int)r.left,
+                              (int)r.top, frameW, frameH);
     }
+    r.right = r.left + w;
+    r.bottom = r.top + h;
+    bgra = malloc((size_t)w * h * 4);
     rgb = malloc((size_t)w * h * 3);
-    if (!rgb) {
-        gfx_unlock(g_3dDevice.target);
+    if (!bgra || !rgb) {
+        free(bgra);
+        free(rgb);
         return luaL_error(L, "capture: out of memory");
     }
-    for (y = 0; y < h; y++) {
-        const unsigned char *row = (const unsigned char *)lk.bits + (size_t)(y + y0) * lk.pitch;
-        for (x = 0; x < w; x++) {
-            const unsigned char *p = row + (size_t)(x + x0) * (lk.bpp / 8);
-            unsigned char *o = rgb + ((size_t)y * w + x) * 3;
-            if (lk.bpp == 32) {
-                o[0] = p[2];
-                o[1] = p[1];
-                o[2] = p[0];
-            } else {
-                unsigned v = p[0] | p[1] << 8;
-                o[0] = (unsigned char)(((v >> 11) & 31) * 255 / 31);
-                o[1] = (unsigned char)(((v >> 5) & 63) * 255 / 63);
-                o[2] = (unsigned char)((v & 31) * 255 / 31);
-            }
-        }
+    if (gfx_read_frame(&r, bgra, (size_t)w * 4) < 0) {
+        free(bgra);
+        free(rgb);
+        return luaL_error(L, "capture: cannot read the frame");
     }
-    gfx_unlock(g_3dDevice.target);
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+            const unsigned char *p = bgra + ((size_t)y * w + x) * 4;
+            unsigned char *o = rgb + ((size_t)y * w + x) * 3;
+            o[0] = p[2];
+            o[1] = p[1];
+            o[2] = p[0];
+        }
+    free(bgra);
     snprintf(path, sizeof path, "%s/%s.%s", S.out, name, jpeg > 0 ? "jpg" : "png");
     file = fopen(path, "wb");
     if (jpeg > 0)
-        ok = file && stbi_write_jpg_to_func(write_file, file, (int)w, (int)h, 3, rgb, jpeg > 100 ? 100 : jpeg);
+        ok = file && stbi_write_jpg_to_func(write_file, file, w, h, 3, rgb, jpeg > 100 ? 100 : jpeg);
     else
-        ok = file && stbi_write_png_to_func(write_file, file, (int)w, (int)h, 3, rgb, (int)w * 3);
+        ok = file && stbi_write_png_to_func(write_file, file, w, h, 3, rgb, w * 3);
     if (file && fclose(file))
         ok = 0;
     free(rgb);

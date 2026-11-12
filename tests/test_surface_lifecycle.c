@@ -19,6 +19,7 @@ static void *checked_calloc(size_t count, size_t size)
 #undef free
 #undef calloc
 #include "../src/render/tex_cache.c"
+#include "../src/render/render_clients.c"
 
 struct gfx_surface {
     int width, height, format, live;
@@ -48,8 +49,14 @@ gfx_surface *gfx_create_texture(int w, int h, int format)
     return surface;
 }
 gfx_surface *gfx_create_surface(int w, int h) { return gfx_create_texture(w, h, GFX_FMT_8888); }
+gfx_surface *gfx_create_render_target(int w, int h) { return gfx_create_texture(w, h, GFX_FMT_8888); }
+/* the screen, the render target render_quads_to_texture takes and sets back */
+static gfx_surface screen_target;
+static int screen_refs;
+
 void gfx_release(gfx_surface *surface)
 {
+    if (surface == &screen_target) { assert(screen_refs > 0); --screen_refs; return; }
     assert(surface && surface->live && handles);
     if (resetting) assert(!resetting->surface);
     surface->live = 0; --handles; ++releases; checked_free(surface);
@@ -58,10 +65,9 @@ int gfx_texture_format_ok(int format) { (void)format; return 1; }
 void gfx_world_clear(void) {}
 int gfx_get_size(gfx_surface *surface, int *w, int *h)
 { assert(surface && surface->live); if (fail_size) return -1; *w = surface->width; *h = surface->height; return 0; }
-int gfx_lock(gfx_surface *surface, const RECT *rect, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *surface, const RECT *rect, struct gfx_lock *out)
 {
     unsigned bytes;
-    (void)flags;
     ++locks;
     if (fail_lock) return -1;
     assert(surface && surface->live);
@@ -74,9 +80,9 @@ int gfx_lock(gfx_surface *surface, const RECT *rect, int flags, struct gfx_lock 
 }
 int gfx_unlock(gfx_surface *surface)
 { assert(surface && surface->live); surface->version = ++tick; return fail_unlock ? -1 : 0; }
-int gfx_blit(gfx_surface *dest, const RECT *dr, gfx_surface *source, const RECT *sr, int flags)
+int gfx_blit(gfx_surface *dest, const RECT *dr, gfx_surface *source, const RECT *sr)
 {
-    assert(dest && source && dest->live && source->live); (void)dr; (void)sr; (void)flags;
+    assert(dest && source && dest->live && source->live); (void)dr; (void)sr;
     if (fail_copy) return -1;
     dest->pixels[0] = source->pixels[0]; ++copies; return 0;
 }
@@ -107,6 +113,112 @@ static void test_texture(void)
     resetting = &texture->base; surface_reset(&texture->base); surface_reset(&texture->base); resetting = NULL;
     assert(!handles && outstanding == 1 && texture->base.ops == &texture_surface_ops);
     texture_destroy(texture); assert(!outstanding);
+}
+/* A window's texture that is a render target: its own size, no CPU pixels to fill, the next serial,
+   destroyed like any texture, and nothing left when the target or the memory is missing. */
+static void test_target(void)
+{
+    struct Texture *before = texture_create(4, 4, GFX_FMT_8888), *target;
+    unsigned point;
+    assert(before);
+    target = texture_create_target(5, 3);
+    assert(target && target->base.ops == &texture_surface_ops && handles == 2);
+    assert(target->base.width == 5 && target->base.height == 3 && target->reqWidth == 5 && target->reqHeight == 3);
+    assert(target->format == GFX_FMT_8888 && target->serial == before->serial + 1);
+    texture_destroy(target);
+    texture_destroy(before);
+    assert(!handles && !outstanding);
+    fail_create = 1; assert(!texture_create_target(5, 3)); fail_create = 0;
+    for (point = 1; point <= 2; ++point) {
+        fail_at = allocation_calls + point; target = texture_create_target(5, 3);
+        if (target) texture_destroy(target);
+        assert(!outstanding && !handles);
+    }
+    fail_at = 0;
+}
+/* What render_quads_to_texture asks of the device: the screen it takes and gives back, the window's
+   target it draws into in the composite mode, cleared, and each quad drawn with its texture. */
+static gfx_surface *bound_target, *bound_texture;
+static int fail_get_target, fail_set_target, fail_begin, clears, scenes, ndrawn;
+static struct RPQuad *drawn[4];
+static gfx_surface *drawn_with[4];
+
+gfx_surface *gfx_get_render_target(void)
+{ if (fail_get_target) return NULL; assert(bound_target == &screen_target); ++screen_refs; return bound_target; }
+int gfx_set_render_target(gfx_surface *surface)
+{ assert(surface && (surface == &screen_target || surface->live)); if (fail_set_target) return -1; bound_target = surface; return 0; }
+void gfx_set_mode(int mode) { assert(mode == DRAW_COMPOSITE && bound_target != &screen_target); }
+int gfx_clear(int flags, DWORD colour, float z, const RECT *rect)
+{ assert(flags == GFX_CLEAR_TARGET && !colour && !rect && bound_target != &screen_target); (void)z; ++clears; return 0; }
+int gfx_begin_scene(void) { return fail_begin ? -1 : 0; }
+void gfx_end_scene(void) { ++scenes; }
+void gfx_set_texture(int stage, gfx_surface *surface) { assert(stage == 0); bound_texture = surface; }
+void rp_quad_draw(struct RPQuad *quad)
+{ assert(ndrawn < 4 && bound_target != &screen_target); drawn[ndrawn] = quad; drawn_with[ndrawn++] = bound_texture; }
+
+/* render/render_clients.c: a composited window's quads drawn into its texture, a render target at
+   the window's size, made when there is none, kept while the size stays and made again at a new one
+   before the old one goes; the screen set back and its reference given back. Where no target of the
+   size can be made (the device or the memory failing), for an empty size and without a screen to
+   set back, nothing is drawn and the window keeps the texture it had. */
+static void test_composite(void)
+{
+    struct Texture *window = NULL, *texture = texture_create(4, 4, GFX_FMT_8888);
+    struct RPQuad a, b;
+    struct { struct ListNode node; struct RPQuad *quad; } items[2];
+    struct ListNode head;
+    struct List quads;
+    unsigned serial, point;
+    assert(texture);
+    memset(&a, 0, sizeof a); memset(&b, 0, sizeof b);
+    a.texture = texture;
+    items[0].quad = &a; items[1].quad = &b;
+    head.next = &items[0].node; items[0].node.next = &items[1].node; items[1].node.next = &head;
+    head.prev = &items[1].node; items[1].node.prev = &items[0].node; items[0].node.prev = &head;
+    quads.head = &head; quads.size = 2;
+    bound_target = &screen_target;
+
+    assert(render_quads_to_texture(5, 3, &quads, &window) == 1);
+    assert(window && window->base.width == 5 && window->base.height == 3 && handles == 2);
+    assert(ndrawn == 2 && drawn[0] == &a && drawn_with[0] == texture->base.surface && drawn[1] == &b && !drawn_with[1]);
+    assert(clears == 1 && scenes == 1 && bound_target == &screen_target && !screen_refs);
+    serial = window->serial; ndrawn = 0;
+    assert(render_quads_to_texture(5, 3, &quads, &window) == 1);
+    assert(window->serial == serial && handles == 2 && ndrawn == 2 && clears == 2 && !screen_refs);
+
+    ndrawn = 0;
+    fail_create = 1;
+    assert(render_quads_to_texture(7, 2, &quads, &window) == 0);
+    fail_create = 0;
+    for (point = 1; point <= 2; ++point) {
+        fail_at = allocation_calls + point;
+        assert(render_quads_to_texture(7, 2, &quads, &window) == 0);
+    }
+    fail_at = 0;
+    assert(window->serial == serial && window->base.width == 5 && handles == 2 && !ndrawn && !screen_refs);
+    assert(render_quads_to_texture(7, 2, &quads, &window) == 1);
+    assert(window->serial != serial && window->base.width == 7 && window->base.height == 2 && handles == 2);
+    assert(ndrawn == 2 && bound_target == &screen_target && !screen_refs);
+
+    serial = window->serial; ndrawn = 0;
+    assert(render_quads_to_texture(0, 2, &quads, &window) == 0 && render_quads_to_texture(7, -1, &quads, &window) == 0);
+    fail_get_target = 1;
+    assert(render_quads_to_texture(7, 2, &quads, &window) == 0);
+    fail_get_target = 0;
+    assert(window->serial == serial && handles == 2 && !ndrawn && !screen_refs);
+    fail_set_target = 1;
+    assert(render_quads_to_texture(7, 2, &quads, &window) == 1);
+    fail_set_target = 0;
+    assert(!ndrawn && bound_target == &screen_target && !screen_refs);
+    fail_begin = 1; clears = scenes = 0;
+    assert(render_quads_to_texture(7, 2, &quads, &window) == 1);
+    fail_begin = 0;
+    assert(clears == 1 && !scenes && !ndrawn && bound_target == &screen_target && !screen_refs);
+    texture_destroy(window);
+    window = NULL;
+    assert(render_quads_to_texture(-3, 2, &quads, &window) == 0 && !window && handles == 1);
+    texture_destroy(texture);
+    assert(!handles && !outstanding);
 }
 static void test_surface(void)
 {
@@ -316,10 +428,10 @@ int main(void)
     g_3dDevice.maxTexW = g_3dDevice.maxTexH = 16;
     g_3dDevice.rBits = g_3dDevice.gBits = g_3dDevice.bBits = 3;
     g_3dDevice.rShift = 10; g_3dDevice.gShift = 5;
-    test_texture(); test_surface(); test_failures(); test_replacement(); test_pixels();
+    test_texture(); test_target(); test_composite(); test_surface(); test_failures(); test_replacement(); test_pixels();
     test_upload_failure(); test_sprite_upload(); test_cache_upload();
     assert(releases && !handles && !outstanding);
-    puts("Surface ownership: typed callbacks, four pixel formats, downsampling, wallpaper, transactional recreation, allocation/driver failures and repeated cleanup passed");
+    puts("Surface ownership: typed callbacks, render-target textures, composited windows' targets, four pixel formats, downsampling, wallpaper, transactional recreation, allocation/driver failures and repeated cleanup passed");
     return 0;
 }
 

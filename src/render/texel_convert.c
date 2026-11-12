@@ -67,24 +67,6 @@ void texel_rows_to_bgra(int fmt, const void *src, long srcPitch, int w, int h, v
     }
 }
 
-void texel_rows_from_bgra(int fmt, const void *src, long srcPitch, int w, int h, void *dst, long dstPitch)
-{
-    int bytes = texel_bytes(fmt), x, y;
-    for (y = 0; y < h; y++) {
-        const unsigned char *in = (const unsigned char *)src + (size_t)y * srcPitch;
-        unsigned char *out = (unsigned char *)dst + (size_t)y * dstPitch;
-        if (bytes == 4) {
-            memcpy(out, in, (size_t)w * 4);
-            continue;
-        }
-        for (x = 0; x < w; x++) {
-            DWORD v = texel_pack(fmt, read_texel(in + (size_t)x * 4, 4));
-            out[x * 2] = (unsigned char)v;
-            out[x * 2 + 1] = (unsigned char)(v >> 8);
-        }
-    }
-}
-
 void texel_rows_keyed_to_bgra(const void *src, long srcPitch, int w, int h, DWORD key, void *dst, long dstPitch)
 {
     int x, y;

@@ -379,9 +379,6 @@ void renderer_flip(struct Renderer *self, char vsync)
     } else {
         self->fpsCount++;
     }
-    perf_begin(PERF_TARGETLOCK);
-    self->bpp = g_3dDevice.bpp;
-    perf_end(PERF_TARGETLOCK);
     TIMED(PERF_PRESENT, c3d_device_show_frame(&g_3dDevice, vsync));
     perf_frame_end(self);
 }

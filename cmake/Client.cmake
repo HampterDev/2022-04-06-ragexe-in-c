@@ -28,14 +28,10 @@ list(REMOVE_ITEM RAGE_CLIENT_SOURCES ${RAGE_CLIENT_EXCLUDED})
 
 # ragexe_scenes is the client with the clock, the sockets, the threads, the settings store and the per-frame
 # driver hook replaced, driven by a Lua scene script (tests/scenes/README.md).
+# The client's window is never shown (scene_app_hidden.c), so the GPU device makes no swapchain.
 set(RAGE_SCENE_HARNESS tests/scenes/scene_clock.c tests/scenes/scene_net.c tests/scenes/scene_thread.c
-    tests/scenes/scene_settings.c tests/scenes/scene_rand.c tests/scenes/scene_driver.c)
-set(RAGE_SCENE_REPLACED "/src/(platform/(net|clock|thread|settings)_posix|core/drive_state)[.]c$")
-if(APPLE)
-    # SDL's Metal driver draws for a window's view: the harness keeps the client's window, hidden.
-    set(RAGE_SCENE_REPLACED "/src/(platform/(net|clock|thread|settings)_posix|core/(drive_state|app_sdl))[.]c$")
-    list(APPEND RAGE_SCENE_HARNESS tests/scenes/scene_app_hidden.c)
-endif()
+    tests/scenes/scene_settings.c tests/scenes/scene_rand.c tests/scenes/scene_driver.c tests/scenes/scene_app_hidden.c)
+set(RAGE_SCENE_REPLACED "/src/(platform/(net|clock|thread|settings)_posix|core/(drive_state|app_sdl))[.]c$")
 if(ANDROID)
     # The client is libmain.so, which SDL's activity loads and calls; the scene harness stays on desktops.
     set(RAGE_CLIENT_TARGETS ragexe)
@@ -131,13 +127,18 @@ if(BUILD_TESTING AND NOT ANDROID)
     rage_enable_assertions(test_gfx_gpu)
     add_test(NAME gfx_gpu COMMAND test_gfx_gpu 1)
     add_test(NAME gfx_gpu_msaa COMMAND test_gfx_gpu 4)
+    add_test(NAME gfx_gpu_present COMMAND test_gfx_gpu 1)
     # The link check of the library table (tools/libraries.txt) on the client's objects, through nm.
     add_test(NAME library_links COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/depmap/check_links.py
         --nm ${CMAKE_BINARY_DIR}/CMakeFiles/ragexe.dir --strict)
     # gfx_gpu needs a GPU device, so it keeps the platform's video driver, in a hidden window, and
-    # is skipped without one.
+    # is skipped without one. gfx_gpu_present runs under the offscreen video driver, which shows its
+    # window nowhere, so that the window is claimed and presented into where that driver gives
+    # windows a swapchain (Mesa's Vulkan drivers do).
     set_tests_properties(gfx_gpu gfx_gpu_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60
         ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
+    set_tests_properties(gfx_gpu_present PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60
+        ENVIRONMENT "SDL_AUDIO_DRIVER=dummy;SDL_VIDEO_DRIVER=offscreen")
     set_tests_properties(library_links PROPERTIES ENVIRONMENT "${RAGE_TEST_ENVIRONMENT}")
 
     # The scene captures need game data; with RAGE_SCENE_GOLDEN they are compared with golden images.

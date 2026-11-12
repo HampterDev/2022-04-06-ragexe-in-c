@@ -9,35 +9,21 @@
 struct C3dDevice {
     PlatformWindow hwnd;
     int width, height;
-    RECT rcWindow;
-    gfx_surface *primary;
-    gfx_surface *back;
-    gfx_surface *target;
-    gfx_surface *zbuffer;
-    void *dd;
-    void *d3d;
-    void *dev;
-    BYTE devcaps[0xec];
-    DWORD zbufferCaps;
-    BYTE zformat[0x20];
-    gfx_surface *save;
+    gfx_surface *target;  /* the screen (render/gfx.h, gfx_create_screen) */
+    void *dev;            /* the GPU device, while there is one */
+    gfx_surface *save;    /* the frame c3d_device_save_frame keeps */
     DWORD rShift, rBits;
     DWORD gShift, gBits;
     DWORD bShift, bBits;
-    DWORD aShift, aBits;
     DWORD bpp;
-    DWORD rMask, gMask, bMask, aMask;
+    DWORD rMask, gMask, bMask;
     DWORD minTexW, minTexH;
     DWORD maxTexW, maxTexH;
     DWORD texAspect;
-    BYTE bltStretch;
-    BYTE tex1024;
     DWORD colorKeyPixel;
     const wchar_t *faceNamesB[12];
     const wchar_t *faceNamesA[12];
     int faceCharsets[12];
-    BYTE hexDigitFlags[0x140];
-    signed char hexDigitValues[0x140];
 };
 
 extern struct C3dDevice g_3dDevice;
@@ -48,13 +34,12 @@ void c3d_device_clamp_texture_size(struct C3dDevice *self, unsigned *pw, unsigne
 void c3d_device_save_frame(struct C3dDevice *self);
 int c3d_device_clear(struct C3dDevice *self, DWORD colour);
 int c3d_device_clear_z(struct C3dDevice *self);
-int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, int flags);
+int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd);
 void c3d_device_enable_mipmap(struct C3dDevice *self);
 struct Renderer *c3d_device_create_renderer(struct C3dDevice *self);
 void c3d_device_delete_renderer(struct C3dDevice *self, struct Renderer *r);
 int c3d_device_release_all(struct C3dDevice *self);
 void c3d_device_restore_frame(struct C3dDevice *self);
 int c3d_device_show_frame(struct C3dDevice *self, char vsync);
-int c3d_device_probe_texel_offset(struct C3dDevice *self);
 
 #endif

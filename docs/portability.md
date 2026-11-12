@@ -75,9 +75,12 @@ labelled with the libraries whose `.c` files it compiles, links or includes, so
 
 Every test runs headless and silent: CTest gives it `SDL_VIDEO_DRIVER=dummy` and
 `SDL_AUDIO_DRIVER=dummy` (`RAGE_TEST_ENVIRONMENT`), `audio` SDL's `disk` driver, which writes
-into files in its directory, `platform_window` the offscreen video driver, and `gfx_gpu` and
+into files in its directory, `platform_window` the offscreen video driver, `gfx_gpu` and
 `gfx_gpu_msaa` keep the platform's video driver, in a hidden window, for a GPU device (the dummy
-driver has no Vulkan); they report themselves skipped where SDL finds no GPU. SDL shows no message box
+driver has no Vulkan), and `gfx_gpu_present` the offscreen one, which shows its window nowhere, so
+that the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
+with `VK_EXT_headless_surface`, as Mesa's are; NVIDIA's on Windows has none, and the test says it
+did not present); they report themselves skipped where SDL finds no GPU. SDL shows no message box
 with the dummy video driver, and on Windows the client libraries compile `platform/window_sdl.c`
 with `tests/headless.h` and `platform/net_win32.c`, whose two boxes call `MessageBoxA` itself,
 with `tests/headless_win32.h`, which write the client's message boxes to stderr even when a test
@@ -109,8 +112,9 @@ both pointer widths.
 
 `jpeg_image_write` accepts an already-open `FILE *`, never opens/closes it, and
 reports encoder/write failures. The caller must check `fclose` for buffered I/O
-errors. Frame capture unlocks the render target before opening/writing the file,
-keeps the existing Windows filename handling and checks close failures. This avoids
+errors. Frame capture downloads the screen (`gfx_read_frame`), copies it into the JPEG image
+and frees the download before opening/writing the file, keeps the existing Windows filename
+handling and checks close failures. This avoids
 mixing filename encoding policy into the codec.
 
 The tests `jpeg_codec`, `jpeg_bitmap` and `jpeg_capture` cover the real decoder/encoder, bitmap
@@ -597,21 +601,24 @@ game does not draw; it draws at the new size when the drag ends.
 SPIR-V shaders on Windows, Linux and Android, Metal with MSL on macOS, the one shader format of the
 platform handed to `SDL_CreateGPUDevice`, so that SDL has one driver to choose. Without a GPU device
 the client does not start ("Cannot init d3d OR grf file has problem.", with SDL's reason in the
-log). `tests/test_gfx_gpu.c` drives it through the gfx API and reads the pixels back (the tests
-`gfx_gpu` and `gfx_gpu_msaa`): clears, Direct3D 9's pixel centres and top-left rule, every texture
-format, texel centres, culling, textures changed and released within a frame, the alpha test, the
-fog (the quads' at the first rhw of every step, and the one before it, against the original's CPU
-formula), blending, the effect modes' blending and the 16 effect presets against Direct3D 9's
-texture stages, two textures, the ground's records with and without lightmaps, two-pass alpha,
-effects behind depth, composites into a target's texture, clears inside a pass, the overlays drawn
-as one batch, mipmaps, render targets, system-surface blits, copies between targets, pixels written
-into a locked target, world vertices, the static world's records (each cull mode, one by one and
-culled by the GPU, from an odd index), its transform slots, animated ones too, its
+log). `tests/test_gfx_gpu.c` drives it through the gfx API and reads the screen's pixels back with
+`gfx_read_frame` (the tests `gfx_gpu`, `gfx_gpu_msaa` and `gfx_gpu_present`): clears, Direct3D 9's
+pixel centres and top-left rule, every texture format, texel centres, culling, textures changed and
+released within a frame, the alpha test, the fog (the quads' at the first rhw of every step, and the
+one before it, against the original's CPU formula), blending, the effect modes' blending and the 16
+effect presets against Direct3D 9's texture stages, two textures, the ground's records with and
+without lightmaps, two-pass alpha, effects behind depth, composites into a target's texture and that
+texture drawn, clears inside a pass, the overlays drawn as one batch, mipmaps, render targets, a
+composited window's target drawn as its quad draws it (every pixel its own texel), system-surface
+blits, copies between targets, the screen wobble recorded between other passes of a frame, the
+screen read whole and in part, world vertices, the static world's records (each cull mode, one by
+one and culled by the GPU, from an odd index), its transform slots, animated ones too, its
 texture-coordinate matrices and texture arrays, the water's cells, the GPU's cull of a pass run by
 run against a frustum narrower than the screen (an animated record moved into it and out), the
 world's buffers and arrays grown while holding what earlier frames put up, an array layer's mipmaps
 against the same texture's own, casters into a shadow map and the ground in their shadow, and a
-world cleared after its draws were recorded, without and with multisampling.
+world cleared after its draws were recorded, without and with multisampling, and the window not
+claimed while hidden, and claimed and presented into once shown where the video driver allows it.
 
 Draws are made in draw modes (`render/draw_modes.c`, the library `draw-modes`, tested by
 `test_draw_modes` against the render states the Direct3D 9 client set for each of its lists): each
@@ -634,24 +641,40 @@ shaders (the combination, the alpha test, the fog, the viewport scale; `struct G
 into a list of passes, one per target or shadow cascade; its vertices and indices, and the texels of
 the textures it uses that changed since they last went up, widened to B8G8R8A8
 (`render/texel_convert.c`, the `texel-convert` library), go into one staging area. When the frame is
-presented, or the CPU needs a target's pixels (`gfx_lock` on a target: the scene harness's captures,
-screenshots, the wobble), one command buffer copies all of it through one transfer buffer in one
-copy pass (the static world's meshes and textures went up before it, through a stream of their own,
-below), runs the static world's compute passes (below) and replays the passes, then downloads the
-target (`SDL_DownloadFromGPUTexture`) or presents, fitted into the window by `present_fit`. The
-shaders read the records from storage buffers, finding a draw's through an instance-rate vertex
-attribute that holds its index (a draw's first instance), or for the static world's draws through a
-uniform, never through the instance ID. Textures keep their pixels on the CPU in the client's own
-format, so the model loader's thread creates, locks and fills them without calling SDL; the main
-thread uploads them when a draw first uses them after a change, and a texture changed after a draw
-used it in the same frame takes its new texels in a copy pass of its own between the render passes,
-so that the earlier draw keeps the old ones. Mipmaps are made on the GPU
-(`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up. Render
-targets live on the GPU; a copy from one into a texture stays on the GPU until the texture is
-locked. Without a swapchain (the scene harness's hidden window) frames are drawn and captured all
-the same, and a fence on each frame keeps the CPU at most two frames ahead of the GPU with or
-without one. A transfer buffer far larger than the frames have needed for 120 flushes in a row is
-made again as large as they need, and the staging texels' memory given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
+presented, or the screen's picture is read (`gfx_read_frame`: screenshots and the scene harness's
+captures, after the frame is presented), one command buffer copies all of it through one transfer
+buffer in one copy pass (the static world's meshes and textures went up before it, through a stream
+of their own, below), runs the static world's compute passes (below) and replays the passes, then
+presents, fitted into the window by `present_fit`, or downloads the screen
+(`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else is read back: a render target's pixels
+never reach the CPU (`gfx_lock` takes only textures and system surfaces, and `gfx_blit` copies from
+a target only into a target). The shaders read the records from storage buffers, finding a draw's
+through an instance-rate vertex attribute that holds its index (a draw's first instance), or for the
+static world's draws through a uniform, never through the instance ID. Textures keep their pixels on
+the CPU in the client's own format, so the model loader's thread creates, locks and fills them
+without calling SDL; the main thread uploads them when a draw first uses them after a change, and a
+texture changed after a draw used it in the same frame takes its new texels in a copy pass of its
+own between the render passes, so that the earlier draw keeps the old ones. Mipmaps are made on the
+GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up. The
+windows that composite (the menu icons, the party plates) draw into a render target of their own,
+which their quad reads as a texture (`texture_create_target`, `render/render_clients.c`). The screen
+wobble (the player's status 0x108) is a step of the frame: a copy of the screen's picture so far,
+then a pass over the whole screen that draws it again with each row taken from the row and the shift
+a table gives (`gfx_wobble`, `src/render/shaders/rows.hlsl`), every sample of a pixel alike, so that
+a multisampled screen resolves to the texels exactly; the CPU computes the table from the same
+random numbers, drawn in the same order, as the original's loop over the locked frame
+(`render/screen_wobble.c`, the `screen-wobble` library); where the device cannot draw the wobble,
+the table is not computed, so no random number is drawn, as the original drew none when it could not
+lock the frame. The device claims its window, and makes a swapchain for it, at the first present
+while the window is shown, not minimized and of a size in pixels, and a claim counts once SDL keeps
+the window (SDL 3.4's Vulkan driver answers a claim of a window whose surface has no size, a
+minimized one on Windows, with success but keeps nothing of it); a claim that fails or is not kept
+is tried again at the next present (on Android the window has no surface while the app is in the
+background). A window never shown (the scene harness's) has no swapchain, its frames are drawn, end
+at each present and can be read all the same, and a fence on each frame keeps the CPU at most two
+frames ahead of the GPU with or without one. A transfer buffer far larger than the frames have
+needed for 120 flushes in a row is made again as large as they need, and the staging texels' memory
+given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
 waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits for the window:
 SDL's acquire of a picture waits for the presentation engine even when told not to block, so such a
 frame asks for one only once a refresh of the display (60 Hz where its mode does not say) has passed
@@ -662,7 +685,9 @@ it. A GPU device is never lost: the client has no lost-device handling, and a wi
 has no memory for is tried again when the size changes.
 
 Pixels: every vertex lands where Direct3D 9 put it. Every pass's viewport is its target moved by
-half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's;
+half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's
+(the wobble's pass, which draws whole pixels of a copy of the screen, covers the whole target from
+0, 0);
 since a viewport must lie within its texture (SDL's GPU API, Metal), a target's textures are a pixel
 wider and taller than the target, and a stage that samples a target scales its texture coordinates
 to match and, when it clamps, keeps them off the margin. The static world's records, its casters and
@@ -732,22 +757,22 @@ has no float operation without `NoContraction`, and their results against the C 
 
 The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, with the texture stages'
 combinations and the vertex fog; `world.hlsl` for the static world's records with their shadows,
-`world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the water, and the compute
-passes `world_transform.hlsl`, `world_cull.hlsl` and `world_compact.hlsl`; `shadow_range.hlsl`,
-`shadow_extents.hlsl` and `shadow_cascades.hlsl`, the shadow fit of phase 5's second half, which
-only `test_shadow_fit_gpu` runs yet; and what they share in `records.hlsli`, `quad.hlsli`,
-`world.hlsli`, `water.hlsli`, `shadow_fit.hlsli` and `exact.hlsli`; test programs' own shaders in
-`tests/shaders`). `tools\shaders\build.bat` compiles each with the Vulkan
-SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through
-SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes `<name>.h`
-beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the
-compilers' versions, and hashes of the source with its includes, of the tool's own source (which
-holds the flags and the binding rules) and of the arrays. The tool fails when a resource is not
-where SDL's binding rules put it. The headers are committed, so builds need no shader compiler;
+`world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the water, `rows.hlsl` for
+the screen wobble, and the compute passes `world_transform.hlsl`, `world_cull.hlsl` and
+`world_compact.hlsl`; `shadow_range.hlsl`, `shadow_extents.hlsl` and `shadow_cascades.hlsl`, the
+shadow fit of phase 5's second half, which only `test_shadow_fit_gpu` runs yet; and what they share
+in `records.hlsli`, `quad.hlsli`, `world.hlsli`, `water.hlsli`, `shadow_fit.hlsli` and
+`exact.hlsli`; test programs' own shaders in `tests/shaders`). `tools\shaders\build.bat` compiles
+each with the Vulkan SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into
+MSL through SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes
+`<name>.h` beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo`
+needs, the compilers' versions, and hashes of the source with its includes, of the tool's own source
+(which holds the flags and the binding rules) and of the arrays. The tool fails when a resource is
+not where SDL's binding rules put it. The headers are committed, so builds need no shader compiler;
 `tools/shaders/check.py` (in `build.bat check`, and the test `shader_sources`) fails when a source
-or the tool changed and the headers were not made again, or when a header was edited. Run the tool after changing a shader; it needs the
-Vulkan SDK (`VULKAN_SDK`) and Visual Studio's C compiler. The MSL has not been compiled by a Metal
-compiler yet.
+or the tool changed and the headers were not made again, or when a header was edited. Run the tool
+after changing a shader; it needs the Vulkan SDK (`VULKAN_SDK`) and Visual Studio's C compiler. The
+MSL has not been compiled by a Metal compiler yet.
 
 ### What was verified
 
@@ -945,12 +970,13 @@ client's own timeout, not a network fault.
 
 `ragexe_scenes` is the client with the clock, the sockets, the threads, the settings store and
 the per-frame driver hook replaced: a Lua script enters a map from the login screen, spawns
-monsters, NPCs and players, makes them talk, clicks windows open and captures PNGs, headless
-through SDL's offscreen driver on Linux (a headless Vulkan surface) and with a hidden window on
-Windows
-(`tests\scenes\build.bat`). `tests/scenes/run.py` runs every script and compares the captures
-with golden images (`tests/scenes/README.md`). On the Mint VM each of the three scenes takes 3–4 s,
-on Windows 2 s, and both repeat bit for bit (Windows with `RAGEXE_MSAA=1`).
+monsters, NPCs and players, makes them talk, clicks windows open and captures PNGs, headless: the
+client's window is never shown, so the device makes no swapchain, and a capture downloads the frame
+just drawn (SDL's offscreen video driver on Linux, the platform's own, the window hidden, on
+Windows and macOS; `tests\scenes\build.bat` builds it on Windows). `tests/scenes/run.py` runs every
+script and compares the captures with golden images (`tests/scenes/README.md`). On the Mint VM each
+of the three scenes takes 3–4 s, on Windows 2 s, and both repeat bit for bit (Windows with
+`RAGEXE_MSAA=1`).
 
 Comparing Windows and Linux captures of the same scenes and data:
 

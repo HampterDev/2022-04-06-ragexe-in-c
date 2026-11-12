@@ -34,7 +34,6 @@ struct Renderer {
     int width, height;
     int centreX, centreY;
     int frame;
-    DWORD bpp;
     int fpsCount;
     DWORD fpsTick;
     int fps;
@@ -44,8 +43,6 @@ struct Renderer {
     float clipTop, clipBottom;
     DWORD clearColor;
     BYTE twoPassAlpha;
-    void *targetBits;
-    LONG targetPitch;
     struct RenderQueue queues[RENDER_PASS_COUNT];
     struct SpriteAtlasCache *sprite_atlas;
     struct RenderStorage *storage;

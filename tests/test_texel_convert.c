@@ -17,7 +17,7 @@ static void check_format(int fmt)
     for (v = 0; v < 0x10000; v++) {
         DWORD argb = texel_unpack(fmt, v), want, a, r, g, b, back;
         unsigned char row[4];
-        WORD in = (WORD)v, out;
+        WORD in = (WORD)v;
         if (fmt == GFX_FMT_565) {
             a = 255;
             r = replicate(v >> 11, 5);
@@ -40,8 +40,6 @@ static void check_format(int fmt)
         assert(back == v);
         texel_rows_to_bgra(fmt, &in, 2, 1, 1, row, 4);
         assert(row[0] == b && row[1] == g && row[2] == r && row[3] == a);
-        texel_rows_from_bgra(fmt, row, 4, 1, 1, &out, 2);
-        assert(out == in);
     }
     assert(texel_bytes(fmt) == 2);
 }

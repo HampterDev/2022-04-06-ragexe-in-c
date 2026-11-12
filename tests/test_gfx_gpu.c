@@ -1,17 +1,22 @@
 /* render/gfx_gpu.c through render/gfx.h on a real GPU, in a hidden window: what each draw puts on
-   the target, read back through gfx_lock. Skipped (77) where SDL finds no GPU device. The argument
-   is RAGEXE_MSAA: the test runs once without multisampling and once with it. */
+   the screen, downloaded through gfx_read_frame, and the window claimed and presented into where
+   the video driver lets it be shown without showing anything (check_present). Skipped (77) where
+   SDL finds no GPU device. The argument is RAGEXE_MSAA: the test runs once without multisampling
+   and once with it. */
 #include "render/gfx.h"
 #include "render/device.h"
+#include "render/screen_wobble.h"
 #include "render/vertex_fog.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 struct perf_counters g_perf;
 struct C3dDevice g_3dDevice;
+static int multisampled;  /* RAGEXE_MSAA asks for more than one sample */
 
 #define W 64
 #define H 48
@@ -24,13 +29,27 @@ struct Vertex {
 
 static DWORD screen_pixel(struct C3dDevice *d, int x, int y)
 {
-    struct gfx_lock lk;
+    RECT r;
     DWORD p;
-    assert(gfx_lock(d->target, NULL, 0, &lk) == 0);
-    assert(lk.bpp == 32 && lk.width == W && lk.height == H);
-    memcpy(&p, (const BYTE *)lk.bits + y * lk.pitch + x * 4, 4);
-    gfx_unlock(d->target);
+    (void)d;
+    r.left = x;
+    r.top = y;
+    r.right = x + 1;
+    r.bottom = y + 1;
+    assert(gfx_read_frame(&r, &p, 4) == 0);
     return p & 0xffffff;
+}
+
+/* The whole screen's pixels, W by H, without their alpha, which is 255. */
+static void read_screen(struct C3dDevice *d, DWORD *out)
+{
+    int i;
+    (void)d;
+    assert(gfx_read_frame(NULL, out, W * 4) == 0);
+    for (i = 0; i < W * H; i++) {
+        assert(out[i] >> 24 == 0xff);
+        out[i] &= 0xffffff;
+    }
 }
 
 static void quad(struct Vertex *v, float x0, float y0, float x1, float y1, DWORD diffuse)
@@ -48,17 +67,17 @@ static void quad(struct Vertex *v, float x0, float y0, float x1, float y1, DWORD
 }
 
 /* The modes these checks draw in (render/draw_modes.h): the texture as it is, by the nearest texel;
-   the vertex colour; the texture times the vertex colour, filtered linearly; none of them blends or
-   touches depth. */
+   the vertex colour; the texture times the vertex colour, filtered linearly, blended by its alpha
+   (the interface's mode; what these checks draw with it is opaque). None of them touches depth. */
 #define TEXTURE DRAW_BLIT
 #define COLOUR DRAW_CLEAR_COLOUR
-#define FILTERED DRAW_PROBE
+#define FILTERED DRAW_OVERLAY
 
 static void fill_2x2(gfx_surface *t, int fmt, const DWORD argb[4])
 {
     struct gfx_lock lk;
     int i;
-    assert(gfx_lock(t, NULL, 0, &lk) == 0);
+    assert(gfx_lock(t, NULL, &lk) == 0);
     for (i = 0; i < 4; i++) {
         BYTE *p = (BYTE *)lk.bits + (i / 2) * lk.pitch + (i % 2) * (lk.bpp / 8);
         DWORD c = argb[i], a = c >> 24, r = (c >> 16) & 0xff, g = (c >> 8) & 0xff, b = c & 0xff;
@@ -88,7 +107,7 @@ static gfx_surface *texture_square(int fmt, int n, DWORD argb)
     gfx_surface *t = gfx_create_texture(n, n, fmt);
     struct gfx_lock lk;
     int x, y;
-    assert(t && fmt == GFX_FMT_8888 && gfx_lock(t, NULL, 0, &lk) == 0);
+    assert(t && fmt == GFX_FMT_8888 && gfx_lock(t, NULL, &lk) == 0);
     for (y = 0; y < n; y++)
         for (x = 0; x < n; x++)
             memcpy((BYTE *)lk.bits + y * lk.pitch + x * 4, &argb, 4);
@@ -352,93 +371,51 @@ static void check_release_in_frame(struct C3dDevice *d)
     assert(screen_pixel(d, 4, 4) == 0x0000ff);
 }
 
-/* A copy from a target into a texture, read back through a lock, and a target's copy saved and
-   put back (c3d_device_save_frame and c3d_device_restore_frame). */
+/* Copies between targets stay on the GPU: a render target's rectangle into the screen, a copy into
+   a texture refused, rectangles outside their surfaces copying nothing, and the frame saved into a
+   render target and put back, under the draws after it (c3d_device_save_frame and
+   c3d_device_restore_frame). */
 static void check_target_copies(struct C3dDevice *d)
 {
     gfx_surface *rt = gfx_create_render_target(16, 16), *tex = gfx_create_texture(16, 16, GFX_FMT_8888);
-    struct gfx_lock lk;
-    RECT r = { 0, 0, 16, 16 };
-    DWORD p;
-    assert(rt && tex);
+    gfx_surface *save = gfx_create_render_target(W, H);
+    RECT r = { 0, 0, 16, 16 }, into = { 20, 10, 36, 26 };
+    assert(rt && tex && save);
     assert(gfx_set_render_target(rt) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     gfx_set_mode(COLOUR);
     draw_quad(0, 8, 16, 16, 0xff00ff00);
     gfx_end_scene();
     assert(gfx_set_render_target(d->target) == 0);
-    assert(gfx_blit(tex, &r, rt, &r, GFX_BLT_WAIT) == 0);
-    assert(gfx_lock(tex, NULL, 0, &lk) == 0);
-    memcpy(&p, (const BYTE *)lk.bits + 2 * lk.pitch + 2 * 4, 4);
-    assert((p & 0xffffff) == 0);
-    memcpy(&p, (const BYTE *)lk.bits + 12 * lk.pitch + 2 * 4, 4);
-    assert((p & 0xffffff) == 0x00ff00);
-    gfx_unlock(tex);
-
-    /* stretched into a texture drawn from before in the frame: the texture is made a colour
-       target and keeps its pixels outside the copy; the draw before keeps the old ones */
-    {
-        RECT half = { 0, 0, 8, 8 }, rest = { 0, 8, 16, 16 };
-        gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
-        gfx_set_mode(TEXTURE);
-        gfx_set_texture(0, tex);
-        draw_quad(0, 0, 16, 16, 0xffffffff);
-        gfx_set_texture(0, NULL);
-        assert(gfx_blit(tex, &half, rt, &rest, GFX_BLT_WAIT) == 0);
-        gfx_end_scene();
-        assert(screen_pixel(d, 2, 2) == 0 && screen_pixel(d, 2, 12) == 0x00ff00);
-        assert(gfx_lock(tex, NULL, 0, &lk) == 0);
-        memcpy(&p, (const BYTE *)lk.bits + 2 * lk.pitch + 2 * 4, 4);
-        assert((p & 0xffffff) == 0x00ff00);
-        memcpy(&p, (const BYTE *)lk.bits + 2 * lk.pitch + 12 * 4, 4);
-        assert((p & 0xffffff) == 0);
-        memcpy(&p, (const BYTE *)lk.bits + 12 * lk.pitch + 2 * 4, 4);
-        assert((p & 0xffffff) == 0x00ff00);
-        gfx_unlock(tex);
-    }
+    gfx_clear(GFX_CLEAR_TARGET, 0xff0000ff, 1.0f, NULL);
+    assert(gfx_blit(d->target, &into, rt, &r) == 0);
+    assert(gfx_blit(tex, &r, rt, &r) < 0);
+    gfx_end_scene();
+    assert(screen_pixel(d, 22, 12) == 0 && screen_pixel(d, 22, 22) == 0x00ff00 && screen_pixel(d, 19, 22) == 0x0000ff
+           && screen_pixel(d, 36, 22) == 0x0000ff);
     /* rectangles outside their surfaces copy nothing */
     {
         RECT outside = { 8, 8, 17, 16 }, negative = { -1, 0, 4, 4 }, empty = { 4, 4, 4, 8 }, beyond = { 60, 40, 70, 48 };
-        gfx_set_render_target(rt);
-        gfx_clear(GFX_CLEAR_TARGET, 0xffff0000, 1.0f, NULL);
-        gfx_set_render_target(d->target);
-        assert(gfx_blit(tex, &outside, rt, NULL, GFX_BLT_WAIT) == 0);
-        assert(gfx_blit(tex, NULL, rt, &negative, GFX_BLT_WAIT) == 0);
-        assert(gfx_blit(tex, &empty, rt, &empty, GFX_BLT_WAIT) == 0);
-        assert(gfx_blit(d->target, &beyond, tex, NULL, GFX_BLT_WAIT) == 0);
-        assert(gfx_lock(tex, NULL, 0, &lk) == 0);
-        memcpy(&p, (const BYTE *)lk.bits + 12 * lk.pitch + 12 * 4, 4);
-        assert((p & 0xffffff) == 0x00ff00);
-        gfx_unlock(tex);
+        assert(gfx_blit(rt, &outside, d->target, NULL) == 0);
+        assert(gfx_blit(d->target, NULL, rt, &negative) == 0);
+        assert(gfx_blit(d->target, &empty, rt, &empty) == 0);
+        assert(gfx_blit(d->target, &beyond, rt, NULL) == 0);
+        gfx_end_scene();
+        assert(screen_pixel(d, 22, 22) == 0x00ff00 && screen_pixel(d, 62, 42) == 0x0000ff);
     }
     gfx_release(rt);
     gfx_release(tex);
 
     gfx_clear(GFX_CLEAR_TARGET, 0xff203040, 1.0f, NULL);
-    assert(gfx_blit(d->save, NULL, d->target, NULL, GFX_BLT_WAIT) == 0);
+    assert(gfx_blit(save, NULL, d->target, NULL) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     assert(screen_pixel(d, 30, 30) == 0);
-    assert(gfx_blit(d->target, NULL, d->save, NULL, GFX_BLT_WAIT) == 0);
+    assert(gfx_blit(d->target, NULL, save, NULL) == 0);
     draw_quad(0, 0, 4, 4, 0xffffffff);
     gfx_end_scene();
     assert(screen_pixel(d, 30, 30) == 0x203040);
     assert(screen_pixel(d, 2, 2) == 0xffffff);
-}
-
-/* Pixels written into a locked target stay there, under the draws after them. */
-static void check_target_write_back(struct C3dDevice *d)
-{
-    struct gfx_lock lk;
-    DWORD c = 0xff123456;
-    gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
-    assert(gfx_lock(d->target, NULL, 0, &lk) == 0);
-    memcpy((BYTE *)lk.bits + 40 * lk.pitch + 40 * 4, &c, 4);
-    gfx_unlock(d->target);
-    gfx_set_mode(COLOUR);
-    draw_quad(0, 0, 4, 4, 0xffffffff);
-    gfx_end_scene();
-    assert(screen_pixel(d, 40, 40) == 0x123456);
-    assert(screen_pixel(d, 2, 2) == 0xffffff);
+    gfx_release(save);
 }
 
 /* A target of odd size drawn enlarged with linear filtering and clamped addressing reads its own
@@ -464,26 +441,29 @@ static void check_target_edges(struct C3dDevice *d)
     gfx_release(rt);
 }
 
-/* A lock of a rectangle of a target reads that rectangle, and what it writes there goes back;
-   rectangles outside the target lock nothing. */
-static void check_target_rect_lock(struct C3dDevice *d)
+/* The screen's picture is read, a rectangle of it or the whole, with what was drawn before; a
+   rectangle outside it, an empty one and a pitch narrower than the rows read nothing, and a target
+   locks nothing: its pixels are the GPU's. */
+static void check_read_frame(struct C3dDevice *d)
 {
+    static DWORD all[W * H];
+    DWORD part[4 * 10];
+    RECT r = { 20, 10, 30, 14 }, outside = { 60, 40, 65, 44 }, empty = { 5, 5, 5, 9 };
     struct gfx_lock lk;
-    RECT r = { 20, 10, 30, 14 }, outside = { 60, 40, 65, 44 };
-    DWORD c = 0xff654321, p;
+    int x, y;
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     gfx_set_mode(COLOUR);
     draw_quad(0, 0, W, H, 0xff0000ff);
-    gfx_end_scene();
-    assert(gfx_lock(d->target, &outside, 0, &lk) < 0);
-    assert(gfx_lock(d->target, &r, 0, &lk) == 0);
-    assert(lk.pitch == W * 4);
-    memcpy(&p, lk.bits, 4);
-    assert((p & 0xffffff) == 0x0000ff);
-    memcpy((BYTE *)lk.bits + 3 * lk.pitch + 9 * 4, &c, 4);
-    gfx_unlock(d->target);
-    assert(screen_pixel(d, 29, 13) == 0x654321 && screen_pixel(d, 28, 13) == 0x0000ff
-           && screen_pixel(d, 30, 13) == 0x0000ff && screen_pixel(d, 2, 2) == 0x0000ff);
+    draw_quad(29, 13, 30, 14, 0xff654321);
+    assert(gfx_read_frame(&outside, part, 40) < 0 && gfx_read_frame(&empty, part, 40) < 0);
+    assert(gfx_read_frame(&r, part, 36) < 0);
+    assert(gfx_read_frame(&r, part, 40) == 0);
+    for (y = 0; y < 4; y++)
+        for (x = 0; x < 10; x++)
+            assert((part[y * 10 + x] & 0xffffff) == (x == 9 && y == 3 ? 0x654321u : 0x0000ffu));
+    read_screen(d, all);
+    assert(all[13 * W + 29] == 0x654321 && all[13 * W + 28] == 0x0000ff && all[W + 1] == 0x0000ff);
+    assert(gfx_lock(d->target, NULL, &lk) < 0);
 }
 
 /* A clear of a rectangle after draws in the same pass, of the colour and of the depth alone. */
@@ -529,7 +509,7 @@ static void check_mipmaps(struct C3dDevice *d)
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     for (pass = 0; pass < 2; pass++) {
         DWORD dark = pass ? 0xff0000ffu : 0xff000000u;
-        assert(gfx_lock(t, NULL, 0, &lk) == 0);
+        assert(gfx_lock(t, NULL, &lk) == 0);
         for (y = 0; y < 8; y++)
             for (x = 0; x < 8; x++) {
                 DWORD c = (x + y) & 1 ? 0xffffffffu : dark;
@@ -747,25 +727,41 @@ static void check_water(struct C3dDevice *d)
     assert(screen_pixel(d, 37, 21) == 0 && screen_pixel(d, 38, 22) == 0);
 }
 
-/* A window resized: the screen and its copy take the new size, keep drawing and lock at it, and go
-   back. */
+/* A window resized: the screen takes the new size, keeps drawing and is read at it, the wobble
+   covers it, and it goes back. */
+/* rows 0 to 19 from row 39 moved right by 8, the others as they are */
+static void fill_resized_rows(void *context)
+{
+    struct WobbleRow *rows = context;
+    int y;
+    for (y = 0; y < 40; y++) {
+        rows[y].source = y < 20 ? 39 : y;
+        rows[y].shift = y < 20 ? 8 : 0;
+    }
+}
+
 static void check_resize(struct C3dDevice *d)
 {
-    struct gfx_lock lk;
-    assert(gfx_resize(d, 80, 40) == 0);
+    static DWORD frame[80 * 40];
+    struct WobbleRow rows[40];
+    RECT beyond = { 0, 0, 81, 40 };
+    int w = 0, h = 0;
+    assert(gfx_resize(80, 40) == 0);
     d->width = 80;
     d->height = 40;
+    assert(gfx_get_size(d->target, &w, &h) == 0 && w == 80 && h == 40);
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff405060, 1.0f, NULL);
     gfx_set_mode(COLOUR);
     draw_quad(70, 30, 80, 40, 0xffffffff);
+    assert(gfx_wobble(rows, 40, fill_resized_rows, rows) == 1);
     gfx_end_scene();
-    assert(gfx_lock(d->target, NULL, 0, &lk) == 0);
-    assert(lk.width == 80 && lk.height == 40 && lk.pitch == 80 * 4);
-    assert((((const DWORD *)lk.bits)[0] & 0xffffff) == 0x405060);
-    assert((((const DWORD *)((const BYTE *)lk.bits + 39 * lk.pitch))[79] & 0xffffff) == 0xffffff);
-    gfx_unlock(d->target);
-    assert(gfx_blit(d->save, NULL, d->target, NULL, GFX_BLT_WAIT) == 0);
-    assert(gfx_resize(d, W, H) == 0);
+    assert(gfx_read_frame(&beyond, frame, 81 * 4) < 0);
+    assert(gfx_read_frame(NULL, frame, 80 * 4) == 0);
+    assert((frame[0] & 0xffffff) == 0x405060 && (frame[39 * 80 + 79] & 0xffffff) == 0xffffff);
+    /* rows 0 to 19 show row 39 moved right by 8: its white from 78 on */
+    assert((frame[5 * 80 + 78] & 0xffffff) == 0xffffff && (frame[5 * 80 + 77] & 0xffffff) == 0x405060);
+    assert((frame[19 * 80 + 79] & 0xffffff) == 0xffffff && (frame[20 * 80 + 79] & 0xffffff) == 0x405060);
+    assert(gfx_resize(W, H) == 0);
     d->width = W;
     d->height = H;
     gfx_clear(GFX_CLEAR_TARGET, 0xff102030, 1.0f, NULL);
@@ -1263,12 +1259,13 @@ static void check_effect_depth(struct C3dDevice *d)
 }
 
 /* The interface composited into a window's texture (DRAW_COMPOSITE): blended by the source's alpha
-   into the target's colour and alpha, texels of alpha 0 dropped. */
+   into the target's colour and alpha, texels of alpha 0 dropped. The window then draws the target as
+   a texture: copied as it is, its colour shows; drawn in the interface's mode over blue, its alpha
+   blends it. */
 static void check_composite(struct C3dDevice *d)
 {
     static const DWORD texels[4] = { 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff };
     gfx_surface *rt = gfx_create_render_target(16, 16), *t = texture_2x2(GFX_FMT_8888, texels);
-    struct gfx_lock lk;
     DWORD p, q;
     assert(rt && gfx_set_render_target(rt) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0x00000000, 1.0f, NULL);
@@ -1277,13 +1274,21 @@ static void check_composite(struct C3dDevice *d)
     draw_quad(0, 0, 16, 16, 0x80ff0000);
     gfx_end_scene();
     assert(gfx_set_render_target(d->target) == 0);
-    assert(gfx_lock(rt, NULL, 0, &lk) == 0);
-    memcpy(&p, (const BYTE *)lk.bits + 8 * lk.pitch + 2 * 4, 4);
-    memcpy(&q, (const BYTE *)lk.bits + 8 * lk.pitch + 13 * 4, 4);
-    gfx_unlock(rt);
-    /* half red over transparent black: red 0x80, alpha a half of a half */
-    assert(near_value(p >> 16 & 0xff, 0x80) && (p & 0xffff) == 0 && near_value(p >> 24, 0x40));
-    assert(q == 0);
+    gfx_clear(GFX_CLEAR_TARGET, 0xff0000ff, 1.0f, NULL);
+    gfx_set_texture(0, rt);
+    gfx_set_mode(TEXTURE);
+    draw_quad(0, 0, 16, 16, 0xffffffff);
+    gfx_set_mode(DRAW_OVERLAY);
+    draw_quad(20, 0, 36, 16, 0xffffffff);
+    gfx_end_scene();
+    /* half red over transparent black: red 0x80, alpha a half of a half, which over blue leaves a
+       quarter of the red and three quarters of the blue */
+    p = screen_pixel(d, 2, 8);
+    q = screen_pixel(d, 13, 8);
+    assert(near_value(p >> 16 & 0xff, 0x80) && (p & 0xffff) == 0 && q == 0);
+    p = screen_pixel(d, 22, 8);
+    q = screen_pixel(d, 33, 8);
+    assert(near_value(p >> 16 & 0xff, 0x20) && (p >> 8 & 0xff) == 0 && near_value(p & 0xff, 0xbf) && q == 0x0000ff);
     gfx_set_texture(0, NULL);
     gfx_release(t);
     gfx_release(rt);
@@ -1343,6 +1348,204 @@ static void check_overlay_batch(struct C3dDevice *d)
     gfx_end_scene();
     assert(g_perf.draws == draws + 2);
     assert(screen_pixel(d, 4, 4) == 0xffffff && screen_pixel(d, 12, 4) == 0xffffff);
+}
+
+/* The rows gfx_wobble draws with, filled when it asks: row y from row (7y + 3) mod H, moved right by
+   4 (y mod 8) pixels, row 5 by more than the row is wide. */
+struct TestRows {
+    struct WobbleRow *rows;
+    int count, fills;
+};
+
+static void fill_test_rows(void *context)
+{
+    struct TestRows *t = context;
+    int y;
+    for (y = 0; y < t->count; y++) {
+        t->rows[y].source = (y * 7 + 3) % H;
+        t->rows[y].shift = y == 5 ? W + 30 : (y % 8) * 4;
+    }
+    t->fills++;
+}
+
+static DWORD wobble_pattern(int x, int y)
+{
+    return (DWORD)(x << 16 | y << 8 | ((x * 7 + y * 13) & 0xff));
+}
+
+/* One frame of check_wobble: the pattern from sys, a red quad, the wobble, a white quad; with
+   `other`, a pass into that target between the pattern and the red quad. */
+static void check_wobble_frame(struct C3dDevice *d, gfx_surface *sys, gfx_surface *other)
+{
+    static DWORD after[W * H];
+    struct WobbleRow rows[H];
+    struct TestRows t;
+    int x, y;
+    memset(rows, 0xff, sizeof rows);
+    t.rows = rows;
+    t.count = H - 2;
+    t.fills = 0;
+    assert(gfx_wobble(rows, 0, fill_test_rows, &t) == 0 && gfx_wobble(NULL, H, fill_test_rows, &t) == 0);
+    assert(t.fills == 0);
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    assert(gfx_blit(d->target, NULL, sys, NULL) == 0);
+    if (other) {
+        assert(gfx_set_render_target(other) == 0);
+        gfx_clear(GFX_CLEAR_TARGET, 0, 0.0f, NULL);
+        assert(gfx_set_render_target(d->target) == 0);
+    }
+    gfx_set_mode(COLOUR);
+    draw_quad(30, 20, 40, 24, 0xffff0000);
+    assert(gfx_wobble(rows, t.count, fill_test_rows, &t) == 1 && t.fills == 1);
+    draw_quad(4, 4, 8, 8, 0xffffffff);
+    gfx_end_scene();
+    read_screen(d, after);
+    for (y = 0; y < H; y++)
+        for (x = 0; x < W; x++) {
+            int sx = x, sy = y;
+            DWORD want;
+            if (y < t.count && x >= rows[y].shift) {
+                sx = x - rows[y].shift;
+                sy = rows[y].source;
+            }
+            want = sx >= 30 && sx < 40 && sy >= 20 && sy < 24 ? 0xff0000 : wobble_pattern(sx, sy);
+            if (x >= 4 && x < 8 && y >= 4 && y < 8)
+                want = 0xffffff;
+            else if (multisampled && (sx == 0 || sy == 0))
+                continue;
+            assert(after[y * W + x] == want);
+        }
+}
+
+/* The screen wobble (gfx_wobble) in a frame as the client records it: the picture drawn in a pass
+   that resolves, the wobble, and a quad after it, in one command buffer, read once at the end. Each
+   row is drawn again from its source row moved right by its shift, the pixels left of the shift
+   keeping the row's own, a shift past the row keeping all of it, rows past the table's count kept;
+   multisampled too, every sample of a pixel the same, so the screen resolves to the frame's pixels
+   exactly; what is drawn after the wobble lands on top of it. The quad still batched when the
+   wobble comes goes before it, into the screen's pass and, the second time, into a pass of its own
+   after one into another target. The rows are filled only when the device asks, after everything
+   else is in place, and not at all for a wobble it cannot draw. Multisampled, the pixels that come
+   from the picture's first column or row are left out: a GPU that clips to the viewport covers
+   only some of their samples, which the passes' half-pixel viewport leaves out in part
+   (render/gfx_gpu.c, MARGIN). */
+static void check_wobble(struct C3dDevice *d)
+{
+    gfx_surface *sys = gfx_create_surface(W, H), *other = gfx_create_render_target(4, 4);
+    struct gfx_lock lk;
+    int x, y, round;
+    assert(sys && other && gfx_lock(sys, NULL, &lk) == 0);
+    for (y = 0; y < H; y++)
+        for (x = 0; x < W; x++) {
+            DWORD c = wobble_pattern(x, y);
+            memcpy((BYTE *)lk.bits + y * lk.pitch + x * 4, &c, 4);
+        }
+    gfx_unlock(sys);
+    for (round = 0; round < 2; round++)
+        check_wobble_frame(d, sys, round ? other : NULL);
+    gfx_release(other);
+    gfx_release(sys);
+}
+
+/* A composited window's target drawn as the window's quad draws it (ui_window_make_quad_base,
+   texture_draw_surface): at the window's place and size, its texture coordinates from the first
+   texel's centre to a texel past the last one's (render/render_api.h, TEXEL_CENTRE). Every pixel
+   shows its own texel exactly, for a target of odd size, and nothing around the window changes: by
+   the nearest texel, and filtered linearly in the interface's mode, as the client draws it. Mesa's
+   lavapipe filters anisotropically even where a pixel covers one texel when the coordinates are a
+   target's, which the device scales to the target's part of its texture (render/gfx_gpu.c, MARGIN),
+   and mixes the neighbours in (docs/custom-review.md, "No read-backs"): there the linear read is
+   not compared. Answers whether it was. */
+static int check_window_target(struct C3dDevice *d)
+{
+    enum { TW = 15, TH = 9, X = 21, Y = 13 };
+    static DWORD all[W * H];
+    gfx_surface *rt = gfx_create_render_target(TW, TH), *sys = gfx_create_surface(TW, TH);
+    const char *gpu = SDL_GetStringProperty(SDL_GetGPUDeviceProperties(d->dev), SDL_PROP_GPU_DEVICE_NAME_STRING, "");
+    int linear = !strstr(gpu, "llvmpipe");
+    struct gfx_lock lk;
+    struct Vertex v[4];
+    int x, y, i, pass;
+    assert(rt && sys && gfx_lock(sys, NULL, &lk) == 0);
+    for (y = 0; y < TH; y++)
+        for (x = 0; x < TW; x++) {
+            DWORD c = 0xff000000u | (DWORD)(x * 17 + 1) << 16 | (DWORD)(y * 29 + 3) << 8 | (DWORD)((x * y * 5 + 7) & 0xff);
+            memcpy((BYTE *)lk.bits + y * lk.pitch + x * 4, &c, 4);
+        }
+    gfx_unlock(sys);
+    assert(gfx_set_render_target(rt) == 0);
+    gfx_clear(GFX_CLEAR_TARGET, 0, 0.0f, NULL);
+    assert(gfx_blit(rt, NULL, sys, NULL) == 0);
+    for (pass = 0; pass < 1 + linear; pass++) {
+        assert(gfx_set_render_target(d->target) == 0);
+        gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
+        gfx_set_mode(pass ? DRAW_OVERLAY : TEXTURE);
+        gfx_set_texture(0, rt);
+        for (i = 0; i < 4; i++) {
+            v[i].x = (float)(X + (i & 1 ? TW : 0));
+            v[i].y = (float)(Y + (i & 2 ? TH : 0));
+            v[i].z = 0.5f;
+            v[i].rhw = 1.0f;
+            v[i].diffuse = 0xffffffff;
+            v[i].u = ((float)(i & 1 ? TW : 0) + 0.5f) / (float)TW;
+            v[i].v = ((float)(i & 2 ? TH : 0) + 0.5f) / (float)TH;
+        }
+        gfx_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1, v, 4, NULL, 0);
+        gfx_end_scene();
+        read_screen(d, all);
+        for (y = 0; y < H; y++)
+            for (x = 0; x < W; x++) {
+                DWORD want = 0;
+                if (x >= X && x < X + TW && y >= Y && y < Y + TH) {
+                    int tx = x - X, ty = y - Y;
+                    want = (DWORD)(tx * 17 + 1) << 16 | (DWORD)(ty * 29 + 3) << 8 | (DWORD)((tx * ty * 5 + 7) & 0xff);
+                }
+                assert(all[y * W + x] == want);
+            }
+    }
+    gfx_set_texture(0, NULL);
+    gfx_release(sys);
+    gfx_release(rt);
+    return linear;
+}
+
+/* The window is claimed for the device, and gets its swapchain, at the first present while it is
+   shown, and never while it is hidden, as the scene harness's window never is shown: its frames
+   are drawn and read all the same. SDL says whether it keeps a window for the device by knowing its
+   swapchain's format. A window is shown only under the offscreen video driver, which shows nothing
+   on the desktop; where that driver cannot give a window a swapchain (a Vulkan without
+   VK_EXT_headless_surface), SDL itself must fail to claim it. Answers whether presenting into a
+   swapchain was checked. */
+static int check_present(struct C3dDevice *d)
+{
+    SDL_GPUDevice *dev = d->dev;
+    const char *driver = SDL_GetCurrentVideoDriver();
+    int i;
+    gfx_clear(GFX_CLEAR_TARGET, 0xff334455, 1.0f, NULL);
+    assert(gfx_present(0) == 0 && gfx_present(1) == 0);
+    assert(SDL_GetGPUSwapchainTextureFormat(dev, d->hwnd) == SDL_GPU_TEXTUREFORMAT_INVALID);
+    assert(screen_pixel(d, 5, 5) == 0x334455);
+    if (!driver || strcmp(driver, "offscreen"))
+        return 0;
+    assert(SDL_ShowWindow(d->hwnd));
+    assert(gfx_present(1) == 0);
+    if (SDL_GetGPUSwapchainTextureFormat(dev, d->hwnd) == SDL_GPU_TEXTUREFORMAT_INVALID) {
+        assert(!SDL_ClaimWindowForGPUDevice(dev, d->hwnd));
+        SDL_HideWindow(d->hwnd);
+        return 0;
+    }
+    for (i = 0; i < 4; i++) {
+        gfx_clear(GFX_CLEAR_TARGET, 0xff000000 | (DWORD)i * 0x101010, 1.0f, NULL);
+        gfx_set_mode(COLOUR);
+        draw_quad(2, 2, 10, 10, 0xffffffff);
+        assert(gfx_present(i & 1) == 0);
+        assert(screen_pixel(d, 5, 5) == 0xffffff && screen_pixel(d, 20, 20) == (DWORD)i * 0x101010);
+    }
+    /* hidden again, the window keeps its claim and takes no pictures */
+    assert(SDL_HideWindow(d->hwnd));
+    assert(gfx_present(1) == 0 && gfx_present(0) == 0);
+    assert(SDL_GetGPUSwapchainTextureFormat(dev, d->hwnd) != SDL_GPU_TEXTUREFORMAT_INVALID);
+    return 1;
 }
 
 /* A mode set again, or an effect's blending in a mode that does not take it, changes nothing it
@@ -1557,7 +1760,7 @@ static void check_world_mips(struct C3dDevice *d)
     gfx_set_mipmaps(1);
     t = gfx_create_texture(8, 8, GFX_FMT_8888);
     gfx_set_mipmaps(0);
-    assert(t && gfx_lock(t, NULL, 0, &lk) == 0);
+    assert(t && gfx_lock(t, NULL, &lk) == 0);
     for (y = 0; y < 8; y++)
         for (x = 0; x < 8; x++) {
             DWORD c = 0xff000000u | (DWORD)(x * 36) << 16 | (DWORD)(y * 36) << 8 | (DWORD)((x ^ y) * 36);
@@ -1720,9 +1923,10 @@ int main(int argc, char **argv)
     struct Vertex v[4];
     gfx_surface *rt, *sys;
     struct gfx_lock lk;
-    int x, y;
+    int x, y, presented, linear;
     if (argc > 1)
         SDL_setenv_unsafe("RAGEXE_MSAA", argv[1], 1);
+    multisampled = argc > 1 ? atoi(argv[1]) > 1 : 1;
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
@@ -1734,13 +1938,12 @@ int main(int argc, char **argv)
     }
     d->width = W;
     d->height = H;
-    assert(gfx_open(d, 0) == 0);
-    if (gfx_create_screen(d, 2) != 0) {
+    assert(gfx_open(d) == 0);
+    if (gfx_create_screen(d) != 0) {
         fprintf(stderr, "skipped: no GPU device\n");
         return 77;
     }
-    assert(gfx_create_3d(d, 0) == 0);
-    assert(gfx_get_caps(d, &g_gfxCaps) == 0);
+    assert(gfx_get_caps(&g_gfxCaps) == 0);
     assert(gfx_create_zbuffer(d) == 0);
 
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff102030, 1.0f, NULL);
@@ -1852,7 +2055,7 @@ int main(int argc, char **argv)
     check_modes_counted();
 
     sys = gfx_create_surface(8, 8);
-    assert(sys && gfx_lock(sys, NULL, 0, &lk) == 0);
+    assert(sys && gfx_lock(sys, NULL, &lk) == 0);
     for (y = 0; y < 8; y++)
         for (x = 0; x < 8; x++) {
             DWORD c = y < 4 ? 0x00ffff00 : 0x00ff00ff;
@@ -1862,16 +2065,17 @@ int main(int argc, char **argv)
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     {
         RECT dst = {10, 10, 18, 18};
-        assert(gfx_blit(d->target, &dst, sys, NULL, GFX_BLT_WAIT) == 0);
+        assert(gfx_blit(d->target, &dst, sys, NULL) == 0);
     }
     assert(screen_pixel(d, 12, 11) == 0xffff00 && screen_pixel(d, 12, 16) == 0xff00ff && screen_pixel(d, 9, 9) == 0);
     gfx_release(sys);
 
     check_mipmaps(d);
     check_target_copies(d);
-    check_target_write_back(d);
-    check_target_rect_lock(d);
+    check_read_frame(d);
     check_target_edges(d);
+    linear = check_window_target(d);
+    check_wobble(d);
     check_clears(d);
     check_world(d);
     check_slots(d);
@@ -1883,7 +2087,7 @@ int main(int argc, char **argv)
     check_world_cleared(d);
 
     check_resize(d);
-    assert(gfx_present(d, 0) == 0);
+    presented = check_present(d);
     gfx_close(d);
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
@@ -1891,11 +2095,13 @@ int main(int argc, char **argv)
            "culling, textures changed and released in a frame, alpha test, fog (the quads' at every step), blending, "
            "the effect modes' blending, the 16 presets against Direct3D 9's stages, two textures, the ground's records, "
            "two-pass alpha, effects behind depth, composites, clears inside a pass, the overlays batched, mipmaps, "
-           "render targets and their edges, modes kept from targets "
-           "they do not draw into, modes counted, system surface blits, target copies, stretched and out of "
-           "bounds, write-back, rectangle locks, world vertices and records, transform slots, texture-coordinate "
+           "render targets and their edges, a window's target read 1:1 (%s), the wobble in a frame, modes kept from targets "
+           "they do not draw into, modes counted, system surface blits, copies between targets and out of "
+           "bounds, frames read whole and in part, world vertices and records, transform slots, texture-coordinate "
            "matrices, the water, the world's cull compacted by run, its buffers and arrays grown, its mipmaps, "
-           "casters and shadows, a world cleared in a frame, resizing passed\n",
-           argc > 1 ? argv[1] : "4");
+           "casters and shadows, a world cleared in a frame, resizing, %s passed\n",
+           argc > 1 ? argv[1] : "4", linear ? "by the nearest texel and filtered" : "by the nearest texel only",
+           presented ? "the window claimed when shown and presented into"
+                     : "the window unclaimed while hidden (no swapchain to present into on this video driver)");
     return 0;
 }

@@ -50,9 +50,9 @@ static void draw_surface(struct Texture *self, int x, int y, int w, int h, DWORD
 {
     float fw = size_to_float((unsigned)self->base.width);
     float fh = size_to_float((unsigned)self->base.height);
-    float u0 = g_texelOffsetU / fw, v0 = g_texelOffsetV / fh;
-    float v1 = ((float)h + g_texelOffsetV) / fh;
-    float u1 = ((float)w + g_texelOffsetU) / fw;
+    float u0 = TEXEL_CENTRE / fw, v0 = TEXEL_CENTRE / fh;
+    float v1 = ((float)h + TEXEL_CENTRE) / fh;
+    float u1 = ((float)w + TEXEL_CENTRE) / fw;
 
     submit_to(self, x, y, x + w, y + h, colour, u0, v0, u1, v1, list, rhw);
 }
@@ -70,11 +70,11 @@ void texture_draw_surface_on_top(struct Texture *self, int x, int y, int w, int 
 static void stretch(struct Texture *self, int x, int y, int w, int h, DWORD colour)
 {
     float fw = size_to_float((unsigned)self->base.width);
-    float u0 = g_texelOffsetU / fw;
+    float u0 = TEXEL_CENTRE / fw;
     float fh = size_to_float((unsigned)self->base.height);
-    float v0 = g_texelOffsetV / fh;
-    float u1 = (size_to_float((unsigned)self->reqWidth) + g_texelOffsetU) / fw;
-    float v1 = (size_to_float((unsigned)self->reqHeight) + g_texelOffsetV) / fh;
+    float v0 = TEXEL_CENTRE / fh;
+    float u1 = (size_to_float((unsigned)self->reqWidth) + TEXEL_CENTRE) / fw;
+    float v1 = (size_to_float((unsigned)self->reqHeight) + TEXEL_CENTRE) / fh;
 
     submit(self, x, y, x + w, y + h, colour, u0, v0, u1, v1);
 }

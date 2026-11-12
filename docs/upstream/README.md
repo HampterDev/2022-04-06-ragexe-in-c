@@ -398,10 +398,23 @@ rule for data from outside, with a check in `main`'s packet-handler oracle, and 
 `custom` draws through `render/gfx_gpu.c` on every platform and no longer has the Direct3D 9
 backend (`render/gfx_d3d9.c`) `main` draws with, nor its GDI text (`render/text_gdi.c`,
 `render/fonts.c`): `custom` draws text with FreeType alone. A fix `main` makes inside them has
-nowhere to land here; it goes below as not needed, with what `custom` does in its place. None has
-come yet. Fixes above `render/gfx.h` pick as before, except that the render states `main`'s lists
-are drawn with (`render/crenderer.c`) are `custom`'s draw modes (`render/draw_modes.c`): a fix to
-them lands as a change of the modes.
+nowhere to land here; it goes below as not needed, with what `custom` does in its place. Fixes
+above `render/gfx.h` pick as before, except that the render states `main`'s lists are drawn with
+(`render/crenderer.c`) are `custom`'s draw modes (`render/draw_modes.c`): a fix to them lands as a
+change of the modes.
+
+`CDCBitmap`'s scaled texel draw (`0x4d0fb0`) locks its texture with a surface description it
+never sizes. DirectDraw accepts that for the client's managed textures, so the original draws
+there. The lift took the lock for one that fails and drew nothing: the monster in the monster
+info window, and in the navigation window the map picture, the target view's hint and the
+monster and NPC sprites. On `main` the fix removes the refusal from `gfx_d3d9.c`'s lock. Here it
+is removed from `gfx_gpu.c`'s, whose texture locks read the CPU copy every texture keeps. It was
+picked with `git cherry-pick -x` onto `custom` before the switch and onto the switch's line,
+with `tests/scenes/scripts/canvas_pictures.lua`, which shows the five pictures.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [9775c52229](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9775c52229cd3d735d3eb83b3e89e85d25c90717) | [239d464715](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/239d464715d3b874c8ca106d587a54804a7db4da) before the switch, [90a4d88745](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/90a4d887452bdd9be53f438a169f5264d6469f3d) on `gfx_gpu.c` (both adapted) | The canvas's scaled draw locks its texture as the original does |
 
 ## A fix for `main` made on `custom` first, 2026-11-12
 

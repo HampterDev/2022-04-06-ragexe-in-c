@@ -7,9 +7,11 @@
 #include "render/gfx_format.h"
 #include "render/draw_modes.h"
 #include "render/static_world.h"
+#include <stddef.h>
 
 typedef struct gfx_surface gfx_surface;
 struct C3dDevice;
+struct WobbleRow;
 
 struct gfx_lock {
     void *bits;
@@ -19,13 +21,11 @@ struct gfx_lock {
 };
 
 struct gfx_caps {
-    int zbufferless;
     int trilinear;
     DWORD minTexW, minTexH;
     DWORD maxTexW, maxTexH;
     DWORD texAspect;
     float guardLeft, guardTop, guardRight, guardBottom;
-    BYTE bltStretch;
 };
 extern struct gfx_caps g_gfxCaps;
 
@@ -46,29 +46,25 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_CLEAR_TARGET  1
 #define GFX_CLEAR_ZBUFFER 2
 
-#define GFX_LOCK_WAIT      1
-#define GFX_LOCK_WRITEONLY 2
-#define GFX_LOCK_UNSIZED   8
-
-#define GFX_BLT_WAIT  1
-#define GFX_BLT_ASYNC 2
 
 #define GFX_E_DDRAW_CREATE      0x82000001
-#define GFX_E_DEVICE_CREATE     0x82000004
 #define GFX_E_ZBUFFER           0x82000005
 #define GFX_E_PRIMARY           0x82000007
 #define GFX_E_NO_PRIMARY        0x8200000e
 #define GFX_E_INVALIDARG         ((int)0x80070057)
 
-int gfx_open(struct C3dDevice *d, int flags);
+int gfx_open(struct C3dDevice *d);
 /* custom: the device draws into its window at d->width by d->height and never changes the
-   display's mode; fullscreen is the window's (render/display_options.h). */
-int gfx_create_screen(struct C3dDevice *d, int flags);
-int gfx_create_3d(struct C3dDevice *d, int flags);
+   display's mode; fullscreen is the window's (render/display_options.h). The screen, d->target, is
+   the one surface the frame is drawn into and the window shows. */
+int gfx_create_screen(struct C3dDevice *d);
 int gfx_create_zbuffer(struct C3dDevice *d);
-int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out);
+int gfx_get_caps(struct gfx_caps *out);
 int gfx_close(struct C3dDevice *d);
-int gfx_present(struct C3dDevice *d, int vsync);
+/* custom: the frame into the window, which the device claims at the first present while it is
+   shown; a window never shown (the scene harness's) has no swapchain, and its frames are drawn and
+   read (gfx_read_frame), not shown. */
+int gfx_present(int vsync);
 void gfx_set_mipmaps(int on);
 
 gfx_surface *gfx_create_surface(int w, int h);
@@ -78,9 +74,13 @@ gfx_surface *gfx_create_render_target(int w, int h);
 void gfx_addref(gfx_surface *s);
 void gfx_release(gfx_surface *s);
 int gfx_get_size(gfx_surface *s, int *w, int *h);
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out);
+/* custom: the CPU's pixels of a texture or a system surface, a rectangle of them or all; a render
+   target has none (-1), its pixels stay on the GPU. */
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out);
 int gfx_unlock(gfx_surface *s);
-int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT *srcRect, int flags);
+/* custom: a copy from a render target goes into a render target, on the GPU; into a texture or a
+   system surface it is refused (-1). */
+int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT *srcRect);
 int gfx_refresh_mips(gfx_surface *tex, const RECT *r);
 
 int gfx_begin_scene(void);
@@ -315,10 +315,28 @@ void gfx_shadow_receive(int receiver);
    below `ids`; a ground's records cast without their texture. */
 void gfx_world_cast(uint32_t firstIndex, uint32_t count, uint32_t baseVertex, uint8_t textureArray, uint32_t ids);
 
+/* custom: the screen wobble (render/screen_wobble.h): the screen as drawn so far, multisampled or
+   not, drawn again with row y showing row rows[y].source moved right by rows[y].shift pixels, the
+   pixels left of that keeping row y's own, for the screen's first `count` rows; what is drawn after
+   it is drawn over it as it is. The screen's picture is copied and read on the GPU. fill(context)
+   fills rows[0] to rows[count - 1] once the device has all it needs to draw the wobble; where it
+   cannot draw it (no screen, no memory), fill is not called, nothing is drawn and the answer is 0,
+   so that the caller draws its random numbers only for a wobble drawn. */
+int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *context), void *context);
+
+/* custom: the screen's picture as drawn so far, a rectangle of it or the whole without one, as
+   B8G8R8A8 rows `pitch` bytes apart into out, alpha 255: downloaded from the GPU when asked, with
+   what was recorded before it drawn first, the CPU waiting for both. Called after gfx_present it
+   reads the frame just presented (screenshots, the scene harness's captures). 0, or -1 for a
+   rectangle that is empty or reaches outside the screen, a pitch narrower than its rows, or a
+   download that failed. */
+int gfx_read_frame(const RECT *r, void *out, size_t pitch);
+
 unsigned gfx_content_version(gfx_surface *s);
 
-/* custom: the back buffer and the targets of its size at w by h, for a window resized to that;
-   -1, with the old ones kept, when the device has no memory for them. */
-int gfx_resize(struct C3dDevice *d, int w, int h);
+/* custom: the screen, its multisampled picture and its depth at w by h, for a window resized to
+   that; -1, with the old ones kept, when the device has no memory for them. A render target of the
+   old size keeps it (c3d_device_save_frame makes its own again). */
+int gfx_resize(int w, int h);
 
 #endif

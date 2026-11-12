@@ -72,6 +72,13 @@ note    The original's vertex fog as pure logic (render/vertex_fog.c): the step 
 uses
 paths   render/vertex_fog.*
 
+library screen-wobble
+note    The screen wobble as pure logic (render/screen_wobble.c): for each frame of it, which row of
+        the frame each row shows and how far it is moved, drawing the C runtime's random numbers as
+        the original did, and how its amplitude and frames advance. Uses nothing else of the client.
+uses
+paths   render/screen_wobble.*
+
 library font-faces
 note    The font finder's rules as pure functions (render/font_faces.c): which family names a face
         answers to, how a request ranks the installed faces, a face's family names from its name
@@ -130,7 +137,7 @@ library render
 note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
-uses    fileio display-options texel-convert draw-modes vertex-fog font-finder world-layout
+uses    fileio display-options texel-convert draw-modes vertex-fog screen-wobble font-finder world-layout
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 
@@ -683,7 +690,6 @@ remove  Give each lower library the settings it reads in a structure of its own,
         session when the options load, or hooks for the state.
 include core/text_util.c session/state.h
 include game/rodex_mail.h session/state.h
-include render/cframe.c session/state.h
 include render/render_api.h session/state.h
 include render/rp_hud.c session/state.h
 include ui/controls/button.c session/state.h
@@ -855,7 +861,6 @@ why     The device notes a shown frame for the drive state (drive_state_frame_sh
         core/drive_state.c), and render files include game/context.h and platform/clientinfo.h.
 remove  A frame hook for the drive state; narrower includes.
 include render/c3ddevice.c core/drive_state.h
-include render/cframe.c game/context.h
 include render/render_api.h game/context.h
 include render/screen_draw.c game/context.h
 include render/textdc.c platform/clientinfo.h
