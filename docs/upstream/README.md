@@ -367,3 +367,18 @@ reduces -90 to 270.
 | [8d01bd194a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8d01bd194a9f02ca4ccd70ebde3009fdb4fd3275) | Not needed on custom, code removed (cash shop) | Cash shop cart: page up and page down take the scroll arm |
 | [8aef09d5f4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8aef09d5f4d76c507e952dc12b40717f356497cf) | Not ported: docs/changes.md | docs: negative angles are no longer a change from the original |
 | [bbec17c670](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbec17c670b3756642f4a2ef625035984bf32bda) | Not ported: tests ea40abe7, which custom does not have | test_math3d: the cosine and radian lookups at -90 |
+
+## Foundation fixes from the canvas lock review, 2026-11-12
+
+`CDCBitmap`'s scaled texel draw (`0x4d0fb0`) locks its texture with a surface description it
+never sizes. DirectDraw accepts that for the client's managed textures, so the original draws
+there. The lift took the lock for one that fails and drew nothing: the monster in the monster
+info window, and in the navigation window the map picture, the target view's hint and the
+monster and NPC sprites. The fix was made on `main`, which had not been pushed yet, and picked
+with `git cherry-pick -x`. On `custom` the GL renderer, the FreeType text, the scene driver and
+their tests also lose `gfx_lock`'s flags, and `tests/scenes/scripts/canvas_pictures.lua` shows
+the five pictures.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [9775c52229](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9775c52229cd3d735d3eb83b3e89e85d25c90717) | [239d464715](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/239d464715d3b874c8ca106d587a54804a7db4da) (adapted) | The canvas's scaled draw locks its texture as the original does |
