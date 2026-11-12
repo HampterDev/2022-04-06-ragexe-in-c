@@ -22,7 +22,7 @@ static DWORD screen_pixel(struct C3dDevice *d, int x, int y)
 {
     struct gfx_lock lk;
     DWORD p;
-    assert(gfx_lock(d->target, NULL, 0, &lk) == 0);
+    assert(gfx_lock(d->target, NULL, &lk) == 0);
     assert(lk.bpp == 32 && lk.width == W && lk.height == H);
     memcpy(&p, (const BYTE *)lk.bits + y * lk.pitch + x * 4, 4);
     gfx_unlock(d->target);
@@ -64,7 +64,7 @@ static gfx_surface *texture_2x2(int fmt, const DWORD argb[4])
     gfx_surface *t = gfx_create_texture(2, 2, fmt);
     struct gfx_lock lk;
     int i;
-    assert(t && gfx_lock(t, NULL, 0, &lk) == 0);
+    assert(t && gfx_lock(t, NULL, &lk) == 0);
     for (i = 0; i < 4; i++) {
         BYTE *p = (BYTE *)lk.bits + (i / 2) * lk.pitch + (i % 2) * (lk.bpp / 8);
         DWORD c = argb[i], a = c >> 24, r = (c >> 16) & 0xff, g = (c >> 8) & 0xff, b = c & 0xff;
@@ -240,7 +240,7 @@ int main(void)
     gfx_release(rt);
 
     sys = gfx_create_surface(8, 8);
-    assert(sys && gfx_lock(sys, NULL, 0, &lk) == 0);
+    assert(sys && gfx_lock(sys, NULL, &lk) == 0);
     for (y = 0; y < 8; y++)
         for (x = 0; x < 8; x++) {
             DWORD c = y < 4 ? 0x00ffff00 : 0x00ff00ff;

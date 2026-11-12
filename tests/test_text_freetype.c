@@ -60,9 +60,9 @@ static struct gfx_surface *const test_surface = (struct gfx_surface *)(uintptr_t
 
 void gfx_addref(gfx_surface *surface) { assert(surface == test_surface); ++surface_refs; }
 void gfx_release(gfx_surface *surface) { assert(surface == test_surface && surface_refs > 0); --surface_refs; }
-int gfx_lock(gfx_surface *surface, const RECT *r, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *surface, const RECT *r, struct gfx_lock *out)
 {
-    assert(surface == test_surface && !r && flags == GFX_LOCK_WAIT);
+    assert(surface == test_surface && !r);
     ++surface_locks;
     out->bits = surface_pixels;
     out->pitch = 64 * 4;

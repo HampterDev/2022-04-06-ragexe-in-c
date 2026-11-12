@@ -148,7 +148,7 @@ static int text_dc_target(struct TextDC *self, struct FontTarget *target)
         return 0;
     if (!self->state.locked) {
         self->state.locked = -1;
-        if (gfx_lock(self->surface, NULL, GFX_LOCK_WAIT, &lock) < 0)
+        if (gfx_lock(self->surface, NULL, &lock) < 0)
             return 0;
         if (lock.bpp != 32) {
             gfx_unlock(self->surface);

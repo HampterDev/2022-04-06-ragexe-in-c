@@ -477,7 +477,7 @@ static int l_capture(lua_State *L)
     FILE *file;
     DWORD x, y, x0 = 0, y0 = 0, w, h;
     int ok;
-    if (!g_3dDevice.target || gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lk) < 0)
+    if (!g_3dDevice.target || gfx_lock(g_3dDevice.target, NULL, &lk) < 0)
         return luaL_error(L, "capture: cannot read the frame");
     w = lk.width;
     h = lk.height;

@@ -1748,11 +1748,9 @@ int gfx_get_size(gfx_surface *s, int *w, int *h)
     return 0;
 }
 
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out)
 {
     int bytes;
-    if (flags & GFX_LOCK_UNSIZED)
-        return -1;
     g_perf.locks++;
     if (is_gpu_target(s)) {
         if (!s->pixels[0]) {

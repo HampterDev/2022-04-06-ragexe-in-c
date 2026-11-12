@@ -19,7 +19,7 @@ void pixel16_to_bgr(WORD pix, BYTE *out)
 int renderer_lock_target(struct Renderer *self)
 {
     struct gfx_lock lk;
-    if (!self || gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lk) < 0)
+    if (!self || gfx_lock(g_3dDevice.target, NULL, &lk) < 0)
         return 0;
     if (!lk.bits || self->width <= 0 || self->height <= 0 ||
         (unsigned)self->width > lk.width || (unsigned)self->height > lk.height ||
@@ -41,7 +41,7 @@ char renderer_screenshot(struct Renderer *self, struct String filename)
     char ok = 0;
     (void)self;
 
-    if (gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lock) >= 0) {
+    if (gfx_lock(g_3dDevice.target, NULL, &lock) >= 0) {
         if (lock.bits && lock.width && lock.height &&
             lock.width <= INT_MAX && lock.height <= INT_MAX &&
             (lock.bpp == 16 || lock.bpp == 32) && lock.pitch > 0 &&
