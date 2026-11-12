@@ -15381,3 +15381,215 @@ claim that failed, which no headless run can bring about (SDL's offscreen driver
 and on Windows with NVIDIA it makes no swapchain), and claiming and presenting into a window on
 Windows at all: the client's own window was not shown, and the claim and the present ran only on
 lavapipe's headless swapchain.
+
+## Sprites, effects and the UI as instances (2026-11-12)
+
+The first part of phase 6 of `plans/gpu-renderer.md`: every quad and triangle the client draws, the
+meshes aside, is an instance, a record of the frame's quads from which the quad shader's vertex
+shader makes the vertices the client's C code made before, to the bit. The CPU no longer builds a
+sprite's vertices, nor moves a flat draw's corners for multisampling, nor projects a particle's
+points; the device no longer takes vertices of its own kinds.
+
+- **The records** (`render/quads.c`, the library `quads`, pure, with `render/quads.h`'s `struct
+  GfxQuad` and `struct TexDrawVertex`). A record is a 16-byte header (its kind and flags, the layer
+  of the atlas array its stage 0 reads, its draw's record, a colour and a value of its kind) and
+  what its kind holds, in the frame's quads, one storage buffer that also holds, each on rows of
+  its own, the matrices and the vertices records name; an instance-rate attribute gives each
+  instance the row its record starts at, so records are as long as their kind needs. A sprite (80
+  bytes) holds the quad `render_object_clip_to_quad` makes (its columns, rows, the two rows' rhw,
+  the flipped screen's offsets, the turn's cosine and sine, the region and the colour), and the
+  shader makes `render_object_submit_spr_quad`'s four vertices of it: each corner moved by half a
+  pixel or turned about the quad's centre, the rows' z from their rhw (`renderer_project_depth`),
+  every corner the top row's rhw. A particle's quad (112 bytes, 144 with a second stage's
+  coordinates) holds its points and the shader projects them as `renderer_project_vertex` did,
+  through a matrix and projection among the frame's quads (64 bytes, once for every run of
+  instances that share it), then takes the rhw or adds to it, and takes z from it, adds to that or
+  makes it 0, as the particle kinds did on the CPU; `particle.c`'s particles, each with a matrix of
+  its own, hand over their points in view space instead (the three sums the CPU computes anyway
+  for their rhw), so that the shader divides and moves them onto the screen. Everything else, the
+  interface, STR effects, effect primitives, the cooldown pies, Granny's vertices and water, is
+  drawn from the client's own vertices, a strip of four or a list of triangles, which go among the
+  frame's quads once (28 bytes a vertex) with a 16-byte record for each quad or triangle naming
+  them; a strip that is an axis-aligned rectangle with one rhw and colour, z along each row and
+  texture coordinates by column and row, which most of the interface's are, takes a 64-byte record
+  of its own instead. Vertices in world coordinates (Granny's camera path and water, `RPQuad.world`)
+  go through the camera's view as before, Direct3D 9's matrices on the GPU, with the CPU's rhw for
+  the fog.
+- **To the bit.** The shader follows rules (`render/shaders/exact.hlsli`): `precise` on every
+  operation, assigned to a variable first; no fused multiply-add, `mul()` or dot product; division
+  through a correctly rounded helper (`div_rn`); constants given by their bits. The vertex the quad
+  shader draws is `quad_vertex` (`render/shaders/instances.hlsli`): the corner as the client made
+  it, a triangle's fourth corner its third, the colour's bytes made floats as Direct3D 9's vertex
+  unit made them. A flat draw's corners in a multisampled pass move onto the pixel boundaries that
+  keep the pixels Direct3D 9 covered, with the values their triangle's plane has there
+  (`snapped`), as `snap_flat` moved them on the CPU: a quad's triangles are (0, 1, 2) and (2, 1,
+  3), a vertex taking the plane of the first that has it unless that one has no area, the colour's
+  bytes rounded as before. The boundary is found from a coordinate's 256ths as the C code found it
+  in double: the half is compared with what lies above the floor, since 256ths plus a half may round
+  in float (a coordinate of 2^-9 - 2^-33 would move a whole pixel column otherwise); a coordinate of
+  32,768 pixels or more is its own. Whether a draw is flat is decided per primitive of the client,
+  as `gfx_draw` decided it per call: every vertex the same rhw.
+- **What the rules rest on.** An addition, subtraction or multiplication rounded to nearest, ties
+  to even: Vulkan promises correct rounding but leaves the mode to the device unless a shader
+  declares RoundingModeRTE, which shaders for Vulkan 1.0 devices cannot. The device checks it when
+  it is made (`check_rounding`, `render/shaders/rounding.hlsl`: 16 pairs whose sums, differences,
+  products and `div_rn` quotients tell the modes apart, drawn into a row of float pixels and
+  compared with the CPU's; 2.5 ms) and logs where a GPU differs, whose quads then land a pixel
+  apart from Direct3D 9's now and then; the GTX 970 rounds as the CPU does. The C code's float
+  operations must each round once, in the order written: MSVC's `/fp:precise` contracts nothing on
+  x64, GCC and Clang do unless compiled with `-ffp-contract=off`, which the CMake builds do not pass
+  here. On Metal SDL compiles the MSL with fast math, under which `div_rn`'s test for an infinite
+  quotient is not assured.
+- **The renderer's quads.** Sprites and sprite particles take the renderer's quads of vertices
+  (`renderer_new_prim_instance`, `struct TexDrawPrim`: four vertices or, in their place, an
+  instance) in the order they always did, and the multitexture particles a pool of their own, as
+  the original's two-texture quads. A quad keeps what the last one in its place left there: on a
+  map that draws alpha in two passes a sprite leaves `alpha_mode` 0, which sends the water, smoke
+  or interface box that takes its place in a later frame to the list drawn once after both
+  passes, and an STR layer leaves its texture-stage preset for an interface box drawn among the
+  effects. The original does the same: the function that hands out a quad batch (0x4e6ed0, which
+  the sprite's submit calls at 0x751287) gives the list element at its cursor untouched and makes
+  one with `RPQuadBatch`'s constructor (0x4e4be0) only when the list is used up, the renderer's
+  constructor makes 512 of them ahead, and `CRenderer::DestroyAllRPList` (0x4e7600) only moves the
+  cursors back to the lists' heads; of the functions that hand out the renderer's quads only the one
+  of the quads whose vertices lie elsewhere (0x4e6e00) clears a field (`nindices`). `two_pass_alpha`
+  (`1@tcamp`, which draws alpha in two passes and has water and 18 chimney smokes) shows it: with
+  the sprites' quads taken from a pool of their own, a smoke puff there draws in other passes
+  (2,702 pixels of one capture differ).
+- **The same draws, fewer of them.** Instances are batched into one draw while the mode, the
+  effect's blending and preset, the fog, the textures and the target stay the same and all are flat
+  or none, as Direct3D 9's draws were until a state changed; the textures of the draw are taken up
+  (their changed texels staged) when it is made, as the batch's were when it was flushed. The order
+  of everything drawn is the queues' as before. `gfx_set_texture` no longer ends a batch: the next
+  quad joins it while it reads the same textures. An instance whose layered texture the batch has
+  no memory to hold is not drawn.
+- **The atlas as texture arrays.** The sprite atlas's pages (`render/rp_atlas.c`: 256 by 256 in
+  1555, and pages of multiples of 256 for larger images) are layered textures
+  (`gfx_create_layer_texture`, `texture_create_layer`), which the device places, on the thread that
+  draws, when a draw first reads one, as a layer of an array of its size and mipmap levels. An
+  array holds as many pages as make 16 MB, no more than 64 (64 of 256 by 256) and no fewer than one
+  (a page of 2048 by 2048 or more is as large as it would be alone); another is made when it is
+  full, so nothing is ever copied, and an array goes with its last page. A page given up frees its
+  layer once the frame that read it is submitted; the next upload into the layer is recorded in a
+  later command buffer, which the queue runs after it. The fragment shader reads stage 0 from the
+  array where the draw's record says so (`Draw.stages.y` bit 2), at the layer the instance gives,
+  and sprites of several pages are one draw. A page's mipmaps (the Trilinear option) are made as a
+  texture's: the page goes up whole into a scratch texture of its size and levels,
+  `SDL_GenerateMipmapsForGPUTexture` makes its levels, and every level is copied into the layer. A
+  texture or array the GPU has no memory for is remembered, not tried again at every draw, and its
+  quads read white.
+- **Storage buffers.** The quad vertex shader reads four (the draw records, the views, the fog
+  tables, the frame's quads), the most every Vulkan device takes
+  (`maxPerStageDescriptorStorageBuffers`); SDL tells nothing of a device's limits, so the device
+  refuses to make a shader that reads more (`STORAGE_BUFFERS_MAX`).
+- **What stays on the CPU.** The sprites' projection and `render_object_clip_to_quad`, which
+  picking, name tags and the callers' depth tweaks need; the rhw of a particle's corners, which the
+  lists sort by and which say whether it is flat; the screen-space building of STR effects, which
+  are made on the screen around one projected anchor (`ez2str_draw.c`, `rag_str_anim.c`), not from
+  world corners, so they are drawn from their vertices; effect primitives, whose corners some modes
+  move by projected values (`quad_depth`), and Granny, whose vertices the second part of the phase
+  skins on the GPU.
+- **Deleted:** `render/gfx_batch.c` with `test_gfx_batch`, `gfx_draw` and the device's vertex
+  kinds (`GFX_VTX_TEX1`, `GFX_VTX_TEX2`, `GFX_VTX_WORLD`, their sizes, `GFX_PT_*`), the quad
+  vertex layout and its widening to two coordinate pairs, `snap_flat`, `flat_draw`,
+  `pixel_boundary`, `raw_draw` and `client_draw` in `render/gfx_gpu.c`, the frame's vertex and index
+  data for quads (the corners and triangles of a quad are uploaded once), the vertex building of
+  `render_object_submit_spr_quad`, the CPU projection of particles, sprite particles and the
+  multitexture particles, `renderer_project_multitex_vertex`, the two-texture vertices and quads
+  (`RPTwoTexVertex`, `RPTwoTex`, `RPTwoTexQuad` and their constructor; the multitexture list takes
+  instances from a pool of their own), `RPQuad.indices` and `nindices`, which no primitive ever set,
+  and the draw records' kind (`Draw.mode.x`, `KIND_*`), which no shader reads any longer.
+- **Counters.** `instance_bytes` (`diag/perf.h`, `tests/scenes/README.md`): the records of the
+  quads drawn, their offsets, the matrices and the client's vertices they name; `vertex_bytes`
+  counts the meshes' alone. `draw_calls` counts `gfx_draw_quad`, `gfx_draw_vertices` and
+  `gfx_draw_mesh`.
+
+Tests: `test_quads` checks every kind's words in place, the instances a primitive makes, flatness
+bit for bit and that a field of a rectangle a bit off makes it none. `test_quad_instances` (new)
+runs on the GPU. The SPIR-V: `tests/shaders/quad_probe.hlsl`, which runs `instances.hlsli` and
+`exact.hlsli` alone, has no operation the rules forbid, and `quad.hlsl`'s vertex shader only the 18
+phase 4's quad shader had too (`snapped_ndc`, the vertex fog, the camera's transform, the colour and
+coordinates times q), so an operation left unmarked, scalar or vector, or a division that is not
+`div_rn`'s, fails it. The operations: 17 million (every divisor from 1 to 2 under 1 and under a
+random numerator, `renderer_project_depth`, `renderer_project_vertex`). The records: 5.4 million,
+each drawn as made and as a flat draw's in a multisampled pass gets it, of every kind, realistic, at
+the edges and fuzzed: sprites made by `render_object_submit_spr_quad` itself; rectangles, strips and
+triangles flat or not, among them coordinates a hair under half a 256th of a pixel; world vertices
+for the camera's view; projected points by every rhw and z rule, in view space and not, with a
+second stage; particles made by `particle_render` and sprite particles by `sprite_particle_render`
+themselves, turned, scaled, rolled, mirrored and tinted. Each corner's x, y, z, rhw, colour and both
+stages' coordinates from `quad_vertex`, and the sprites' and particles' sort keys and flatness on
+the CPU, against the CPU code they replaced (`tests/fixtures/quad_reference.c`: the vertices
+`render_object_submit_spr_quad`, `particle_render` and `sprite_particle_render` made, and
+`snap_flat`): no difference. The pictures: 30 scenes of 1280 by 720 through `render/gfx_gpu.c`,
+sprites drawn as instances from layered textures and as the reference's vertices from plain ones,
+blended and alpha-tested, and projected quads drawn as instances and as `renderer_project_vertex`'s
+vertices, additive and alpha-tested, with and without multisampling: no pixel differs. Broken on
+purpose, it fails: `renderer_project_depth`'s division written plainly gives 27 divisions not
+`div_rn`'s and some 10,000 depths of 100,000 off; the boundary taken as `floor(scaled + 0.5)` moves
+the snapped corners of 1,210 screen vertices at the edges; a vector product left unmarked counts as
+one more operation. `test_gfx_gpu` draws layered textures and plain ones of the same texels by the
+nearest texel, filtered, magnified and shrunk, with mipmaps too, pixel for pixel, the layers of one
+array in one draw, an array full (64 pages) and the next page in a second one, a layer given up
+after the frame that read it and taken by a new texture (64 quads one draw again), five pages of
+1024 by 1024 two draws and three of 2048 by 2048 three, and lists of triangles flat and not.
+`test_renderer_storage` checks that a sprite's quad is the next of the pool of quads of vertices and
+keeps the header the last quad in its place left, and the reverse, the multitexture particles'
+instances (their points, both stages' coordinates, the nudge as z added, the textures) and their
+pool's growth and reuse; `test_surface_lifecycle` an atlas page as a layered texture;
+`test_projection` `renderer_project_rhw` and `renderer_project_view` against
+`renderer_project_vertex`.
+
+Captures with `RAGEXE_VSYNC=0` and SDL's dummy audio, phase 4's scene harness and this one's run one
+after the other. Two new scenes show what the set did not: `effects_instances` (damage numbers, STR
+effects of both kinds, a rag effect and an ez2str one, Evil Land's cells of two textures, and the
+same with the screen flipped, the player's status 0x22, which turns every sprite) and
+`two_pass_alpha`. The 30 captures of the 14 scripts are phase 4's to the pixel, with `RAGEXE_MSAA=1`
+and with `RAGEXE_MSAA=4`.
+
+Video memory, on Prontera crowded with 40 kinds of monster and 12 players, after a map change to
+Geffen, and with a crowd there again: Windows' count of the process's dedicated GPU memory, which
+moves in the driver's blocks, is 295 MB with phase 4 and 270 MB with this part throughout. The
+atlas's part, as the device makes it: at the crowd's height 130 pages of 256 by 256, which took 34
+MB as textures of their own and take 48 MB as three full arrays; after the map change, the pages
+beyond the 50 spares gone, 13 MB against one array of 16 MB; with the second crowd 34 MB against 48
+MB again. A scene of its own, not in the set; all its pages were 256 by 256.
+
+Start-up, from launching the scene harness to the login screen's first capture, the median of seven
+runs, 1.43 s with phase 4 and 1.43 s with this part, the 147 pipelines made in 4 ms and the rounding
+check in 2.5 ms from the driver's cache; with the driver's shader cache empty
+(`__GL_SHADER_DISK_CACHE_PATH` an empty folder, five runs) 1.79 s against 2.41 s: the pipelines take
+980 ms there, the large quad vertex shader (256 KB of SPIR-V) compiled for each, and the check 17
+ms.
+
+Counters, the counts the same in every run and the times the median of three, phase 4 against this
+part:
+
+| capture | draws | bytes (vertex + instance) | scene ms | view ms |
+|---|---|---|---|---|
+| `camera_level_view` | 3,345 / 3,343 | 38,192 / 39,296 | 0.40 / 0.40 | 0.65 / 0.71 |
+| `camera_level_view_moving` | 3,318 / 3,316 | 40,672 / 41,952 | 0.40 / 0.40 | 0.81 / 0.81 |
+| `prontera_crowd` | 1,174 / 1,164 | 100,336 / 93,972 | 0.18 / 0.19 | 0.52 / 0.44 |
+| `effects_instances` | 1,160 / 1,154 | 23,656 / 21,288 | 0.70 / 0.72 | 0.32 / 0.45 |
+| `hunter_traps` | 1,198 / 1,196 | 8,556 / 7,172 | 0.13 / 0.12 | 0.37 / 0.27 |
+| `granny_models` | 1,147 / 1,145 | 295,678 / 338,660 | 0.16 / 0.17 | 0.56 / 0.71 |
+| `guild_flags` | 1,129 / 1,127 | 58,448 / 64,904 | 0.12 / 0.13 | 0.36 / 0.39 |
+| `windows_open` | 274 / 272 | 4,216 / 2,360 | 0.06 / 0.04 | 0.23 / 0.21 |
+| `keyboard` | 266 / 264 | 3,224 / 1,816 | 0.04 / 0.04 | 0.21 / 0.21 |
+
+Draw calls and primitives are the same in every capture. The interface's bytes fall by about 45 %
+(its rectangles take 68 bytes where four vertices and their indices took 124), the sprites' by a
+third (84 where 124), the particles' a little (116, the matrix shared); Granny's triangles take
+104 bytes where they took 90 and water's quads 132 where 124 (a record and an offset for each
+besides its vertices, which shared generated indices before: `granny_models` 15 % more in all),
+until phase 5 makes water a mesh and the second part skins Granny on the GPU. The atlas's arrays
+take two to ten draws a frame off. The times are a single frame's and move by a fifth from run to
+run; no change stands out from that in either direction.
+
+`build.bat check` passes (the include check over 1,832 files in 30 libraries, the link check over
+1,144 objects, the shaders' check). The whole suite passes, its 326 tests and the 6 oracle tests.
+Not run or not checked: Linux (lavapipe), macOS and Android, which were not built, and the MSL of
+the new shaders, which no Metal compiler has seen; mipmaps in a capture (the scene data has
+Trilinear off; `test_gfx_gpu` compares them); a GPU that rounds otherwise (the check's report was
+seen only with an expectation made wrong on purpose); an array or texture the GPU has no memory for;
+and a game played by hand.

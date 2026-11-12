@@ -15,44 +15,14 @@ struct RPQuad *rp_quad_construct(struct RPQuad *self)
     self->verts = NULL;
     self->nverts = 0;
     self->texture = NULL;
-    self->indices = NULL;
-    self->nindices = 0;
     self->alpha_mode = 1;
     self->world = 0;
     self->srcBlend = 0;
     self->destBlend = 0;
     self->stageMode = 0;
-    self->prim = 4;
-    return self;
-}
-
-static void two_tex_vertex_construct(struct RPTwoTexVertex *v)
-{
-    v->x = 0.0f;
-    v->y = 0.0f;
-    v->z = 0.0f;
-    v->rhw = 0.0f;
-    v->diffuse = 0;
-    v->u0 = 0.0f;
-    v->v0 = 0.0f;
-}
-
-static void two_tex_quad_header(struct RPTwoTexQuad *self)
-{
-    int i;
-
-    for (i = 0; i < 4; i++)
-        two_tex_vertex_construct(&self->quad[i]);
-    self->prim.verts = self->quad;
-    self->prim.nverts = 4;
-    self->prim.indices = NULL;
-    self->prim.nindices = 0;
-    self->prim.prim = 5;
-}
-
-struct RPTwoTexQuad *rp_two_tex_quad_construct(struct RPTwoTexQuad *self)
-{
-    two_tex_quad_header(self);
+    self->prim = RP_LIST;
+    self->instance = NULL;
+    self->rhw[0] = self->rhw[1] = 0.0f;
     return self;
 }
 
@@ -81,8 +51,8 @@ static void tex_draw_prim_header(struct TexDrawPrim *self)
     h->verts = self->quad;
     h->nverts = 4;
     h->texture = NULL;
-    h->indices = NULL;
-    h->nindices = 0;
+    h->instance = NULL;
+    h->rhw[0] = h->rhw[1] = 0.0f;
     h->alpha_mode = 1;
     h->world = 0;
     h->srcBlend = 0;
@@ -90,7 +60,7 @@ static void tex_draw_prim_header(struct TexDrawPrim *self)
     h->stageMode = 0;
     for (i = 0; i < 4; i++)
         tex_vertex_default(&self->quad[i]);
-    h->prim = 5;
+    h->prim = RP_STRIP;
 }
 
 struct TexDrawPrim *rp_quad_batch_construct(struct TexDrawPrim *self)
@@ -99,9 +69,11 @@ struct TexDrawPrim *rp_quad_batch_construct(struct TexDrawPrim *self)
     return self;
 }
 
-struct TexDrawPrim *rp_quad_batch_copy_verts(struct TexDrawPrim *self, const struct TexDrawPrim *src)
+struct TexDrawPrim *rp_instance_construct(struct TexDrawPrim *self)
 {
-    memcpy(self->quad, src->quad, sizeof(self->quad));
+    tex_draw_prim_header(self);
+    memset(&self->instance, 0, sizeof self->instance);
+    self->base.instance = &self->instance;
     return self;
 }
 
@@ -118,7 +90,7 @@ struct RenderPool {
 };
 
 struct RenderStorage {
-    struct RenderPool quads, primitives, two_texture_quads, vertices, mesh_draws;
+    struct RenderPool quads, primitives, multitexture_quads, vertices, mesh_draws;
 };
 
 static void pool_free(struct RenderPool *pool)
@@ -186,7 +158,7 @@ static void pool_rewind(struct RenderPool *pool)
 
 static void initialize_quad(void *item) { rp_quad_construct(item); }
 static void initialize_primitive(void *item) { rp_quad_batch_construct(item); }
-static void initialize_two_texture_quad(void *item) { rp_two_tex_quad_construct(item); }
+static void initialize_multitexture_quad(void *item) { rp_instance_construct(item); }
 
 static void queue_clear(struct RenderQueue *queue)
 {
@@ -210,7 +182,7 @@ static void renderer_storage_free(struct Renderer *renderer)
     if (storage) {
         pool_free(&storage->quads);
         pool_free(&storage->primitives);
-        pool_free(&storage->two_texture_quads);
+        pool_free(&storage->multitexture_quads);
         pool_free(&storage->vertices);
         pool_free(&storage->mesh_draws);
         free(storage);
@@ -231,7 +203,7 @@ struct Renderer *renderer_construct(struct Renderer *self)
     if (!storage) return NULL;
     if (!pool_init(&storage->quads, sizeof(struct RPQuad), 1024, initialize_quad)
         || !pool_init(&storage->primitives, sizeof(struct TexDrawPrim), 512, initialize_primitive)
-        || !pool_init(&storage->two_texture_quads, sizeof(struct RPTwoTexQuad), 8192, initialize_two_texture_quad)
+        || !pool_init(&storage->multitexture_quads, sizeof(struct TexDrawPrim), 1024, initialize_multitexture_quad)
         || !pool_init(&storage->vertices, sizeof(struct TexDrawVertex), 10240, NULL)
         || !pool_init(&storage->mesh_draws, sizeof(struct RPMeshDraw), 256, NULL)) {
         renderer_storage_free(self);
@@ -266,18 +238,29 @@ struct TexDrawPrim *renderer_new_prim(struct Renderer *renderer)
 {
     struct TexDrawPrim *prim = pool_take(&renderer->storage->primitives, 1);
     prim->base.world = 0;
+    prim->base.instance = NULL;
     return prim;
 }
 
-struct RPTwoTexQuad *renderer_new_two_tex_quad(struct Renderer *renderer)
+struct TexDrawPrim *renderer_new_prim_instance(struct Renderer *renderer)
 {
-    return pool_take(&renderer->storage->two_texture_quads, 1);
+    struct TexDrawPrim *prim = renderer_new_prim(renderer);
+    memset(&prim->instance, 0, sizeof prim->instance);
+    prim->base.instance = &prim->instance;
+    return prim;
+}
+
+struct TexDrawPrim *renderer_new_multi_tex_quad(struct Renderer *renderer)
+{
+    struct TexDrawPrim *quad = pool_take(&renderer->storage->multitexture_quads, 1);
+    memset(&quad->instance, 0, sizeof quad->instance);
+    quad->base.instance = &quad->instance;
+    return quad;
 }
 
 struct RPQuad *renderer_new_quad(struct Renderer *renderer)
 {
     struct RPQuad *quad = pool_take(&renderer->storage->quads, 1);
-    quad->nindices = 0;
     quad->world = 0;
     return quad;
 }
@@ -322,20 +305,25 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     ++queue->count;
 }
 
-void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim)
+void renderer_add_multi_tex_batch(struct Renderer *self, struct RPQuad *prim, struct Texture *texture1)
 {
-    queue_append(&self->queues[RENDER_MULTITEXTURE], prim, 0.0f, prim->tex0, prim->tex1);
+    queue_append(&self->queues[RENDER_MULTITEXTURE], prim, 0.0f, prim->texture, texture1);
 }
 
-static float edge_key(const struct TexDrawVertex *v)
+static float edge_key(const float *rhw)
 {
-    return (v[0].rhw - v[1].rhw) * 0.5f + v[1].rhw;
+    return (rhw[0] - rhw[1]) * 0.5f + rhw[1];
 }
 
+/* The lists of a depth order sort a primitive by the rhw of its first two vertices, an instance by
+   that of its first two corners. */
 void renderer_add_prim(struct Renderer *r, struct RPQuad *p, int flags)
 {
     struct RPQuad *q = p;
-    const struct TexDrawVertex *v = (const struct TexDrawVertex *)q->verts;
+    float v[2];
+
+    v[0] = q->instance ? q->rhw[0] : q->verts[0].rhw;
+    v[1] = q->instance ? q->rhw[1] : q->verts[1].rhw;
 
     if (!(flags & 1)) {
         if (flags & 0x20)
@@ -378,17 +366,17 @@ void renderer_add_prim(struct Renderer *r, struct RPQuad *p, int flags)
         return;
     }
     if (flags & 0x20) {
-        queue_append(&r->queues[RENDER_ALPHA_WRAP], q, v[0].rhw, q->texture, NULL);
+        queue_append(&r->queues[RENDER_ALPHA_WRAP], q, v[0], q->texture, NULL);
         return;
     }
     if (q->alpha_mode == 1) {
         if (flags & 0x8000)
-            queue_append(&r->queues[RENDER_ALPHA_WRITE_DEPTH], q, v[0].rhw, q->texture, NULL);
+            queue_append(&r->queues[RENDER_ALPHA_WRITE_DEPTH], q, v[0], q->texture, NULL);
         else
-            queue_append(&r->queues[RENDER_ALPHA_CLAMP], q, v[0].rhw, q->texture, NULL);
+            queue_append(&r->queues[RENDER_ALPHA_CLAMP], q, v[0], q->texture, NULL);
         return;
     }
-    queue_append(&r->queues[RENDER_ALPHA_REMAINDER], q, v[0].rhw, q->texture, NULL);
+    queue_append(&r->queues[RENDER_ALPHA_REMAINDER], q, v[0], q->texture, NULL);
 }
 
 void renderer_add_triangle(struct Renderer *r, struct PrimTriangle *tri, int list_flags)
@@ -462,7 +450,7 @@ void renderer_destroy_all_rp_list(struct Renderer *self)
     if (storage) {
         pool_rewind(&storage->quads);
         pool_rewind(&storage->primitives);
-        pool_rewind(&storage->two_texture_quads);
+        pool_rewind(&storage->multitexture_quads);
         pool_rewind(&storage->vertices);
         pool_rewind(&storage->mesh_draws);
     }

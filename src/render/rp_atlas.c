@@ -58,7 +58,7 @@ void sprite_atlas_initialize(struct Renderer *renderer)
     struct SpriteAtlasCache *cache = atlas_cache(renderer);
     if (!cache) return;
     while (cache->spare_count < ATLAS_SPARES) {
-        struct Texture *texture = texture_create(ATLAS_PAGE_SIZE, ATLAS_PAGE_SIZE, GFX_FMT_1555);
+        struct Texture *texture = texture_create_layer(ATLAS_PAGE_SIZE, ATLAS_PAGE_SIZE, GFX_FMT_1555);
         if (!texture) break;
         cache->spares[cache->spare_count++] = texture;
     }
@@ -100,7 +100,7 @@ static struct SpriteAtlasPage *atlas_page_create(struct SpriteAtlasCache *cache,
         texture = cache->spares[--cache->spare_count];
         reusable = 1;
     } else {
-        texture = texture_create(width, height, GFX_FMT_1555);
+        texture = texture_create_layer(width, height, GFX_FMT_1555);
     }
     page->texture = texture;
     page->reusable = reusable;

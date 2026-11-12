@@ -10,6 +10,9 @@ struct Texture *texture_create(int width, int height, int format);
 /* custom: a texture whose pixels are a render target's, width by height, which draws go into
    (gfx_set_render_target) and quads read as they read any texture; its pixels stay on the GPU. */
 struct Texture *texture_create_target(int width, int height);
+/* custom: a texture the device keeps as a layer of an array of its size (render/gfx.h,
+   gfx_create_layer_texture), which only quads read: the sprite atlas's pages. */
+struct Texture *texture_create_layer(int width, int height, int format);
 
 struct Texture *texture_from_pixels(int width, int height, const DWORD *pixels,
     int format, int keyed, int full_size);

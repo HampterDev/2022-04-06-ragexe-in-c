@@ -47,7 +47,7 @@ static void granny_projection_ownership(void)
     assert(renderer.queues[RENDER_OPAQUE_CLAMP].count == 1);
     first = renderer.queues[RENDER_OPAQUE_CLAMP].items[0].primitive;
     assert(first->verts != vertices && first->nverts == 6 && first->alpha_mode == 1 && !first->world);
-    assert(first->prim == GFX_PT_TRIANGLELIST && !first->indices && !first->nindices);
+    assert(first->prim == RP_LIST && !first->instance);
     assert(!first->srcBlend && !first->destBlend && !first->stageMode);
     assert(!memcmp(first->verts, first_vertices, sizeof first_vertices));
     for (i = 0; i < 6; ++i) vertices[i].x += 100;

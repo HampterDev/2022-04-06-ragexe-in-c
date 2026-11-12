@@ -89,13 +89,11 @@ static void test_vertices(struct Renderer *renderer)
             float raw[3] = {point.x, point.y, point.z};
             float expected[4], actual[4];
             struct { unsigned before; struct TexDrawVertex value; unsigned after; } single;
-            struct { unsigned before; struct RPTwoTexVertex value; unsigned after; } multi;
             struct TexDrawVertex old_single;
-            struct RPTwoTexVertex old_multi;
             const float *view = matrices[matrix];
+            float in_view[3], rhw;
             memset(&single, 0xa5, sizeof single);
-            memset(&multi, 0x5a, sizeof multi);
-            old_single = single.value; old_multi = multi.value;
+            old_single = single.value;
 
             renderer_project_point(renderer, &point, view, &actual[0], &actual[1], &actual[2]);
             reference_CRenderer_ProjectPoint(renderer, raw, view, &expected[0], &expected[1], &expected[2]);
@@ -113,15 +111,14 @@ static void test_vertices(struct Renderer *renderer)
             assert(!memcmp(&single.value, &old_single, sizeof old_single));
             assert(single.before == 0xa5a5a5a5 && single.after == 0xa5a5a5a5);
 
-            renderer_project_multitex_vertex(renderer, &point, view, &multi.value);
-            reference_CRenderer_ProjectMultiTexVertex(renderer, raw, view, expected);
-            actual[0] = multi.value.x; actual[1] = multi.value.y;
-            actual[2] = multi.value.z; actual[3] = multi.value.rhw;
-            assert(!memcmp(actual, expected, sizeof actual));
-            old_multi.x = expected[0]; old_multi.y = expected[1];
-            old_multi.z = expected[2]; old_multi.rhw = expected[3];
-            assert(!memcmp(&multi.value, &old_multi, sizeof old_multi));
-            assert(multi.before == 0x5a5a5a5a && multi.after == 0x5a5a5a5a);
+            /* the rhw alone, and the point in view space, from which the rest follows to the bit
+               (what render/shaders/exact.hlsli's project_view computes of it) */
+            same_float(renderer_project_rhw(&point, view), old_single.rhw);
+            renderer_project_view(&point, view, in_view);
+            rhw = 1.0f / in_view[2];
+            same_float(rhw, old_single.rhw);
+            same_float(in_view[0] * rhw * renderer->proj[0] + (float)renderer->centreX, old_single.x);
+            same_float(in_view[1] * rhw * renderer->proj[1] + (float)renderer->centreY, old_single.y);
         }
     }
 }

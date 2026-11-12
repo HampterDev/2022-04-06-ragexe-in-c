@@ -37,7 +37,7 @@ struct TestTexture { struct Texture texture; struct PaintedCell painted[256]; si
 void surface_destroy(struct Surface *surface)
 { assert(textures); --textures; checked_free(surface); }
 static int power_two(int x) { int n = 1; while (n < x) n *= 2; return n; }
-struct Texture *texture_create(int width, int height, int format)
+struct Texture *texture_create_layer(int width, int height, int format)
 {
     struct TestTexture *texture;
     assert(format == GFX_FMT_1555 && width > 0 && height > 0);

@@ -602,7 +602,9 @@ released within a frame, the alpha test, the fog (the quads' at the first rhw of
 one before it, against the original's CPU formula), blending, the effect modes' blending and the 16
 effect presets against Direct3D 9's texture stages, two textures, the ground's meshes with and
 without lightmaps, two-pass alpha, effects behind depth, composites into a target's texture and that
-texture drawn, clears inside a pass, the overlays drawn as one batch, mipmaps, render targets, a
+texture drawn, clears inside a pass, the overlays drawn as one batch, mipmaps, layered textures read
+as the same texels in plain ones (filtered and with mipmaps, several layers one draw, a layer given
+up and taken again, arrays of 16 MB), lists of triangles, render targets, a
 composited window's target drawn as its quad draws it (every pixel its own texel), system-surface
 blits, copies between targets, the screen wobble recorded between other passes of a frame, the
 screen read whole and in part, world vertices and meshes, without and with multisampling, and the
@@ -627,22 +629,45 @@ since a GPU's division need not round as the CPU's does.
 
 A frame is recorded, not drawn. Each draw becomes a record of what its mode and the draw give the
 shaders (the combination, the alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes
-into a list of passes, one per target or shadow cascade; its vertices and indices, and the texels of
-the textures it uses that changed since they last went up, widened to B8G8R8A8
-(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. When the frame is
+into a list of passes, one per target or shadow cascade; what it draws, and the texels of the
+textures it uses that changed since they last went up, widened to B8G8R8A8
+(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. Every quad and
+triangle the client draws, the meshes aside, is an instance (`render/gfx.h`, `gfx_draw_quad` and
+`gfx_draw_vertices`): a record of the frame's quads (`render/quads.c`, the library `quads`) from
+which the quad shader's vertex shader makes the vertices the client's C code made before, to the
+bit: a sprite's from its quad's rows, their rhw and its turn (`render_object_submit_spr_quad`'s
+vertices); a particle's by projecting its points as `renderer_project_vertex` did; and the rest
+from the client's own vertices, an axis-aligned rectangle with one rhw and colour into a short
+record of its own. The frame's quads, one storage buffer, hold the records and what they name:
+the matrices particles are projected with and the client's vertices. A draw is a run of instances
+made with the same mode, effect, fog, textures and target, all flat or none, drawn as one
+instanced draw of the triangles (0, 1, 2) and (2, 1, 3) of their corners. The sprite atlas's pages
+are layered textures (`gfx_create_layer_texture`), which the device places as layers of texture
+arrays when a draw first reads them, so that sprites of several pages are one draw; the fragment
+shader reads stage 0 from the array where the draw's record says so, at the layer the instance
+gives. An array holds pages of one size and number of mipmap levels, as many as make 16 MB and no
+more than 64 (64 of the atlas's 256 by 256 pages; one of 2048 by 2048 or more, as large as it
+would be alone), another is made when it is full, and it goes with its last page: on a map change
+only the arrays holding the atlas's spare pages (up to 50, kept from map to map) stay. A texture or
+array the GPU has no memory for is not tried again: its quads read white. When the frame is
 presented, or the screen's picture is read (`gfx_read_frame`: screenshots and the scene harness's
 captures, after the frame is presented), one command buffer copies all of it through one transfer
 buffer in one copy pass and replays the passes, then presents, fitted into the window by
 `present_fit`, or downloads the screen (`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else
 is read back: a render target's pixels never reach the CPU (`gfx_lock` takes only textures and
 system surfaces, and `gfx_blit` copies from a target only into a target). The shaders read the
-records from storage buffers, finding a draw's through an instance-rate vertex attribute that holds
-its index (a draw's first instance), never through the instance ID. Textures keep their pixels on
-the CPU in the client's own format, so the model loader's thread creates, locks and fills them
+records from storage buffers, at most four a shader stage, as many as every Vulkan device takes
+(SDL tells nothing of a device's limits, so the device refuses a shader that reads more): a mesh's
+draw finds its record through an instance-rate vertex attribute that holds its index (a draw's
+first instance), a quad through the header of its own record, never through the instance ID.
+Textures keep their pixels on the CPU in the client's own format, so the model loader's thread
+creates, locks and fills them
 without calling SDL; the main thread uploads them when a draw first uses them after a change, and a
 texture changed after a draw used it in the same frame takes its new texels in a copy pass of its
 own between the render passes, so that the earlier draw keeps the old ones. Mipmaps are made on the
-GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up. The
+GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up; a
+layered texture's go up whole into a scratch texture of their own, whose levels SDL makes so, and
+are then copied into the layer, so that a layer's levels are a texture's on every backend. The
 windows that composite (the menu icons, the party plates) draw into a render target of their own,
 which their quad reads as a texture (`texture_create_target`, `render/render_clients.c`). The screen
 wobble (the player's status 0x108) is a step of the frame: a copy of the screen's picture so far,
@@ -695,28 +720,53 @@ multiples of 4 bytes. The shadow maps are four layers of one R32F array texture.
 the next lower one it does) resolves the screen at the end of each pass on it, and alpha-tested
 draws without blending use alpha to coverage. Direct3D 9 drew flat draws (every vertex the same rhw:
 the UI, sprites) without multisampling, which SDL's GPU API cannot switch off for a draw: in a
-multisampled pass a flat draw's vertices move onto the pixel boundaries that keep the pixels
-Direct3D 9 covered, with the values their triangle has there, so edges along the pixel rows and
-columns come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
+multisampled pass the vertex shader moves a flat draw's corners onto the pixel boundaries that keep
+the pixels Direct3D 9 covered, with the values their triangle has there, as the CPU moved them
+before (`render/shaders/instances.hlsli`, `snapped`), so edges along the pixel rows and columns
+come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
 transparency anti-aliasing was the driver's (`SSAA` or `ATOC`); on NVIDIA its supersampling shaded
 every sample of each alpha-tested draw without blending, which the ground's and the models' are, so
 with multisampling on their textures were read at each sample, where alpha to coverage reads them
 once a pixel.
 
-The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, with the texture stages'
-combinations and the vertex fog, `mesh.hlsl` for the ground and the models with their shadows,
-`caster.hlsl` for the shadow maps, `rows.hlsl` for the screen wobble, and the records they share in
-`records.hlsli`). `tools\shaders\build.bat` compiles each with the Vulkan SDK's `dxc` to SPIR-V for
-Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through SPIRV-Cross's C API with the
-resource indices SDL's Metal driver binds, and writes `<name>.h` beside the source: both as byte
-arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the compilers' versions, and hashes of
-the source with its includes, of the tool's own source (which holds the flags and the binding rules)
-and of the arrays. The tool fails when a resource is not where SDL's binding rules put it. The
-headers are committed, so builds need no shader compiler; `tools/shaders/check.py` (in
-`build.bat check`, and the test `shader_sources`) fails when a source or the tool changed and the
-headers were not made again, or when a header was edited. Run the tool after changing a shader; it
-needs the Vulkan SDK (`VULKAN_SDK`) and Visual Studio's C compiler. The MSL has not been compiled by
-a Metal compiler yet.
+The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, which builds their vertices
+from their records, `instances.hlsli`, and draws the texture stages' combinations and the vertex
+fog, `mesh.hlsl` for the ground and the models with their shadows, `caster.hlsl` for the shadow
+maps, `rows.hlsl` for the screen wobble, `rounding.hlsl` for the device's check of the GPU's
+rounding, and the records they share in `records.hlsli`). A shader that must give the CPU's floats
+bit for bit follows the rules of `exact.hlsli`: `precise` on every operation, assigned to a variable
+first; no fused multiply-add, `mul()` or dot product; division through a correctly rounded helper;
+constants given by their bits. They rest on the GPU rounding an addition, subtraction or
+multiplication to nearest, ties to even: Vulkan promises the rounding correct but leaves its mode to
+the device, unless the shader declares RoundingModeRTE, which shaders for Vulkan 1.0 cannot; every
+GPU they have run on does. The device checks it when it is made (`check_rounding`,
+`render/shaders/rounding.hlsl`: sums, differences, products and quotients that tell the modes apart,
+against the CPU's) and logs where a GPU does not, whose quads then land a pixel apart from Direct3D
+9's now and then. They rest on the C code too: each of its float operations must round once, in the
+order written. MSVC's `/fp:precise` contracts nothing on x64; GCC and Clang contract unless compiled
+with `-ffp-contract=off`, which the CMake builds do not pass (Clang fuses multiply-adds where the
+CPU has them, arm64), so there the CPU's floats, the sort keys and flatness among them, may part
+from the GPU's by a unit now and then. On Metal SDL compiles the MSL with fast math, under which
+`div_rn`'s test for an infinite quotient is not assured. `tests/test_quad_instances.c` checks the
+SPIR-V for an operation the rules forbid (an unmarked one, scalar or vector, a division not
+`div_rn`'s, a fused multiply-add, a matrix or dot product), runs the quad shader's `quad_vertex` on
+the GPU against the CPU code it replaced (`tests/fixtures/quad_reference.c`: the sprites', the
+particles' and the sprite particles' vertices and `snap_flat`) for millions of records and every
+divisor from 1 to 2, the instances made by the client's own functions, and draws scenes through
+`render/gfx_gpu.c` both as instances and as the reference's vertices, pixel for pixel. The quad
+vertex shader is large (256 KB of SPIR-V): its 147 pipelines take about a second to make where the
+driver has none of them cached (980 ms on a GTX 970), 4 ms where it has. `tools\shaders\build.bat`
+compiles each with the Vulkan SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`,
+turns it into MSL through SPIRV-Cross's C API with the resource indices SDL's Metal driver binds,
+and writes `<name>.h` beside the source: both as byte arrays, the resource counts
+`SDL_GPUShaderCreateInfo` needs, the compilers' versions, and hashes of the source with its
+includes, of the tool's own source (which holds the flags and the binding rules) and of the arrays.
+The tool fails when a resource is not where SDL's binding rules put it. The headers are committed,
+so builds need no shader compiler; `tools/shaders/check.py` (in `build.bat check`, and the test
+`shader_sources`) fails when a source or the tool changed and the headers were not made again, or
+when a header was edited. Run the tool after changing a shader; it needs the Vulkan SDK
+(`VULKAN_SDK`) and Visual Studio's C compiler. The MSL has not been compiled by a Metal compiler
+yet.
 
 ### What was verified
 

@@ -6,6 +6,7 @@
 #include "platform/window_handle.h"
 #include "render/gfx_format.h"
 #include "render/draw_modes.h"
+#include "render/quads.h"
 #include <stddef.h>
 
 typedef struct gfx_surface gfx_surface;
@@ -28,20 +29,6 @@ struct gfx_caps {
     float guardLeft, guardTop, guardRight, guardBottom;
 };
 extern struct gfx_caps g_gfxCaps;
-
-#define GFX_VTX_TEX1 1
-#define GFX_VTX_TEX2 2
-/* GFX_VTX_TEX1: x, y, z, rhw, the diffuse colour (a D3DCOLOR) and one pair of texture coordinates,
-   GFX_VTX_TEX1_SIZE bytes; GFX_VTX_TEX2 the same with a second pair. custom: GFX_VTX_WORLD is
-   GFX_VTX_TEX1's layout with x, y and z in world coordinates, which the device takes through the
-   camera's world view (gfx_set_world_camera) to the pixel and depth a pre-transformed vertex would
-   have there; its rhw is the one the CPU's projection gave it, which only the fog reads. */
-#define GFX_VTX_WORLD 3
-#define GFX_VTX_TEX1_SIZE 28
-#define GFX_VTX_TEX2_SIZE 36
-
-#define GFX_PT_TRIANGLELIST  4
-#define GFX_PT_TRIANGLESTRIP 5
 
 #define GFX_CLEAR_TARGET  1
 #define GFX_CLEAR_ZBUFFER 2
@@ -78,6 +65,10 @@ void gfx_set_mipmaps(int on);
 
 gfx_surface *gfx_create_surface(int w, int h);
 gfx_surface *gfx_create_texture(int w, int h, int fmt);
+/* custom: a texture that the device places, when a draw first reads it, as a layer of an array of
+   textures of its size, format and mipmaps, so that the quads of several such textures are drawn
+   as one draw (the sprite atlas's pages, render/rp_atlas.c). Only quads read it. */
+gfx_surface *gfx_create_layer_texture(int w, int h, int fmt);
 int gfx_texture_format_ok(int fmt);
 gfx_surface *gfx_create_render_target(int w, int h);
 void gfx_addref(gfx_surface *s);
@@ -130,10 +121,26 @@ void gfx_set_fog(const struct GfxFog *fog);
 
 /* The texture a stage reads, until another is set; NULL reads opaque white. */
 void gfx_set_texture(int stage, gfx_surface *s);
-void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices);
 
-/* custom: static geometry in world coordinates that the device projects itself, where everything
-   else arrives projected by the CPU (renderer_project_vertex, render/rp_project.c). A mesh keeps
+/* custom: the client's quads and triangles, every one an instance (render/quads.h) whose vertices
+   the device's vertex shader makes exactly as the client's C code made them, in the current mode,
+   textures and target. Consecutive instances drawn with the same mode, effect, fog, textures (or
+   layers of one array, gfx_create_layer_texture) and target, all flat or none, become one draw, in
+   the order given, as Direct3D 9's draws were until a state changed. Direct3D 9 drew flat draws
+   (every vertex the same rhw) without multisampling; in a multisampled pass their corners move
+   onto the pixel boundaries that keep the pixels Direct3D 9 covered.
+   gfx_draw_quad draws one the client made (a sprite, a projected quad); gfx_draw_vertices one
+   of its primitives of n vertices: a strip of 4 (a quad) or a list of triangles. Pre-transformed
+   vertices are drawn as they are, flat when every one has the same rhw; with world set, their x, y
+   and z are world coordinates, which the device takes through the camera's world view
+   (gfx_set_world_camera) to the pixel and depth a pre-transformed vertex would have there, as
+   Direct3D 9 drew them, and their rhw is the CPU's projection's, which only the fog reads. */
+void gfx_draw_quad(const struct GfxQuad *quad);
+void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip, int world);
+
+/* custom: static geometry in world coordinates that the device projects itself, where the quads
+   above arrive on the screen, as instances whose vertices the vertex shader makes as the CPU made
+   them, or in the world for the camera's view (gfx_draw_vertices with world). A mesh keeps
    its vertices and indices; the device copies them to its own buffers on the first draw and again
    after it is recreated. Indices are triangle lists into the mesh's own vertices. Meshes are made,
    drawn and destroyed on the thread that draws. gfx_mesh_create answers NULL only for vertices or
@@ -187,9 +194,9 @@ struct GfxMeshDraw {
 gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices);
 void gfx_mesh_destroy(gfx_mesh *mesh);
 void gfx_set_world_view(const struct GfxWorldView *view);
-/* Draws as gfx_draw would draw the same triangles pre-transformed, in the world view set last. */
+/* Draws as the same triangles pre-transformed would be drawn, in the world view set last. */
 void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw);
-/* custom: the world view GFX_VTX_WORLD vertices are drawn with (the camera's) */
+/* custom: the world view gfx_draw_vertices's world vertices are drawn with (the camera's) */
 void gfx_set_world_camera(const struct GfxWorldView *view);
 
 /* custom: cascaded shadow maps for meshes, each GFX_SHADOW_SIZE texels square. Between

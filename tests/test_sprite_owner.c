@@ -72,6 +72,7 @@ int texture_upload_pixels(struct Texture *base, int x, int y, int width, int hei
     texture->width = width; texture->height = height; ++uploads;
     return 1;
 }
+/* a sprite's own texture (sprite_load_rgba) and an atlas page (render/rp_atlas.c) alike */
 struct Texture *texture_create(int width, int height, int format)
 {
     struct TestTexture *texture;
@@ -84,6 +85,10 @@ struct Texture *texture_create(int width, int height, int format)
     texture->texture.format = format;
     ++textures;
     return &texture->texture;
+}
+struct Texture *texture_create_layer(int width, int height, int format)
+{
+    return texture_create(width, height, format);
 }
 int texture_draw_sprite_frame(struct Texture *texture, int x, int y, int w, int h,
                              const struct SprImg *image, const DWORD *palette)

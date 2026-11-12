@@ -1,6 +1,7 @@
 @echo off
 REM tools\shaders\build.bat - regenerates src\render\shaders\<name>.h from each <name>.hlsl beside
-REM it (tools\shaders\shaders.c says what they hold). Run it after changing a shader source; the
+REM it, and tests\shaders\<name>.h from the tests' own shaders there (tools\shaders\shaders.c says
+REM what they hold). Run it after changing a shader source; the
 REM builds never compile shaders, and tools\shaders\check.py (build.bat check, the test suite)
 REM fails while a source and its header disagree. Needs the Vulkan SDK (VULKAN_SDK, as its
 REM installer sets it: dxc, spirv-val and the SPIRV-Cross C API) and Visual Studio's C compiler.
@@ -19,7 +20,7 @@ cl /nologo /O1 /W4 /WX /I"%VULKAN_SDK%\Include" "%~dp0shaders.c" /Fo:"%WORK%\\" 
 if errorlevel 1 ( echo *** building tools\shaders FAILED & exit /b 1 )
 set "PATH=%VULKAN_SDK%\Bin;%PATH%"
 set "SOURCES="
-for %%f in ("%ROOT%\src\render\shaders\*.hlsl") do call set "SOURCES=%%SOURCES%% "%%~ff""
+for %%f in ("%ROOT%\src\render\shaders\*.hlsl" "%ROOT%\tests\shaders\*.hlsl") do call set "SOURCES=%%SOURCES%% "%%~ff""
 "%WORK%\shaders.exe" "%VULKAN_SDK%\Bin\dxc.exe" "%VULKAN_SDK%\Bin\spirv-val.exe" "%~dp0shaders.c" "%WORK%" "%SDKVERSION%" %SOURCES%
 if errorlevel 1 ( echo *** generating the shaders FAILED & exit /b 1 )
 exit /b 0

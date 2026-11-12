@@ -279,15 +279,9 @@ static int upload(void)
     return 1;
 }
 
-struct ov_vertex {
-    float x, y, z, rhw;
-    DWORD diffuse;
-    float u, v;
-};
-
 static void draw(struct Renderer *r)
 {
-    struct ov_vertex v[4];
+    struct TexDrawVertex v[4];
     float x0 = (float)(g_3dDevice.width - P.usedW - OV_MARGIN) - 0.5f;
     float y0 = (float)(g_3dDevice.height - P.usedH - OV_MARGIN) - 0.5f;
     float x1 = x0 + (float)P.usedW, y1 = y0 + (float)P.usedH;
@@ -305,7 +299,7 @@ static void draw(struct Renderer *r)
     gfx_set_mode(DRAW_PANEL);
     gfx_set_texture(0, P.tex);
     gfx_set_texture(1, NULL);
-    gfx_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1, v, 4, NULL, 0);
+    gfx_draw_vertices(v, 4, 1, 0);
     gfx_set_texture(0, NULL);
     gfx_set_texture(1, NULL);
     r->boundTextures[0] = NULL;

@@ -42,7 +42,7 @@ struct Particle {
     Vec3 second_offset;
     int age;
     unsigned flags;
-    struct TexDrawPrim batch;
+    struct TexDrawPrim batch;  /* custom: the quad it queues, as an instance the device projects */
     float orientation[12];
     float matrix[12];
     struct TexDrawVertex corners[4];
