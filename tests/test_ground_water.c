@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
+#include <xmmintrin.h>
 
 static BYTE input[4096];
 static size_t input_size;
@@ -193,9 +194,9 @@ static void numeric_cases(void)
         assert(ground.waters[0].phase >= -180 && ground.waters[0].phase <= 180);
     }
     assert(isfinite(ground_water_height(ground.waters, INT64_MAX)));
-    assert(sampled_angle > -360 && sampled_angle < 360);
+    assert(sampled_angle == INT_MIN);
     assert(isfinite(ground_water_height(ground.waters, INT64_MIN)));
-    assert(sampled_angle > -360 && sampled_angle < 360);
+    assert(sampled_angle == INT_MIN);
     records[0].waveSpeed = 0; records[0].wavePitch = 30;
     assert(c3d_ground15_load_water(&ground, &resource, NULL));
     assert(ground_water_height(ground.waters, 3) == 10 && sampled_angle == 90);
@@ -232,6 +233,37 @@ static void numeric_cases(void)
     i = picture_queries; c3d_ground15_update_water(&ground);
     assert(picture_queries == i);
     c3d_ground15_clear(&ground);
+}
+
+static void expect_x86_conversion(struct GndWater *water, int64_t diagonal, float pitch, float phase)
+{
+    water->wavePitch = pitch;
+    water->phase = phase;
+    (void)ground_water_height(water, diagonal);
+    assert(sampled_angle == _mm_cvtt_ss2si(_mm_set_ss((float)diagonal * pitch + phase)));
+}
+
+static void angle_conversion_cases(void)
+{
+    const float edges[] = {0.0f, -0.0f, 0.75f, -0.75f, 359.5f, 2147483520.0f, 2147483648.0f,
+        -2147483648.0f, -2147483904.0f, 5e9f, -5e9f, FLT_MAX, -FLT_MAX, INFINITY, -INFINITY, NAN};
+    struct GndWater water = {0};
+    unsigned i, bits;
+    float value;
+    water.level = 4; water.waveHeight = 3;
+    for (i = 0; i < sizeof edges / sizeof *edges; ++i) {
+        expect_x86_conversion(&water, 0, 1, edges[i]);
+        expect_x86_conversion(&water, 5, edges[i], 0);
+    }
+    for (i = 0; i <= 0xffff; ++i) {
+        bits = i * 0x10001u;
+        memcpy(&value, &bits, sizeof value);
+        expect_x86_conversion(&water, 0, 1, value);
+        expect_x86_conversion(&water, 7, value, 1.25f);
+    }
+    water.wavePitch = 1e9f; water.phase = 0;
+    (void)ground_water_height(&water, 5);
+    assert(sampled_angle == INT_MIN);
 }
 
 int main(void)
@@ -301,7 +333,9 @@ int main(void)
     resource_destroy(&resource->res);
     assert(!live_blocks && !buffers);
     numeric_cases();
-    puts("water numeric: atomic settings, a zero frame delay refused, negative delays static, non-finite values kept, phase wrapping and bounded angles passed");
+    angle_conversion_cases();
+    puts("water numeric: atomic settings, a zero frame delay refused, negative delays static, non-finite values kept and phase wrapping passed");
+    puts("water angle: 131,104 angles converted to degrees as x86's cvttss2si converts them, INT_MIN beyond the int range");
     puts("ground water tests passed");
     return 0;
 }

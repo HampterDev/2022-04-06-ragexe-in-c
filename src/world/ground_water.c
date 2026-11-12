@@ -98,12 +98,7 @@ float ground_water_height(const struct GndWater *water, int64_t diagonal)
     if (water->waveHeight == 0.0f)
         return water->level;
     angle = (float)diagonal * water->wavePitch + water->phase;
-    if (isfinite(angle) && (double)angle >= INT_MIN && (double)angle <= INT_MAX) {
-        degrees = (int)angle;
-    } else {
-        double wide = (double)diagonal * water->wavePitch + water->phase;
-        degrees = isfinite(wide) ? (int)fmod(trunc(wide), 360.0) : INT_MIN;
-    }
+    degrees = (double)angle >= INT_MIN && (double)angle <= INT_MAX ? (int)angle : INT_MIN;
     return get_sin_deg(degrees) * water->waveHeight + water->level;
 }
 
