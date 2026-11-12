@@ -1496,7 +1496,6 @@ static void prepare(void)
 
     g_renderer_store.proj[0] = 700.0f;
     g_renderer_store.proj[1] = 700.0f;
-    g_renderer_store.proj[2] = 1.0f;
     g_renderer_store.scaleX = g_renderer_store.scaleY = 1.0f;
     g_renderer_store.width = 640;
     g_renderer_store.height = 480;

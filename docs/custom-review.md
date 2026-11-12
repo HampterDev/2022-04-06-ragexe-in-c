@@ -15182,3 +15182,34 @@ the display language) and on a Chinese one (SimSun, MingLiU by their names in Ch
 `test_font_system` would compare with GDI there; that the quads' fog test fails on the shader that
 divided (it was not run against it); and a game played by hand, in which the effects' presets and
 blend factors other than the scenes' would show.
+
+## The view's culling on odd window sizes, and floats on arm64 (2026-11-12)
+
+Two fixes found while building parts of `plans/gpu-renderer.md`'s phases 5 and 6 ahead of them.
+
+- **The view's culling covers the whole screen at any size.** `view_on_render` culled the scene
+  graph's leaves and the actors against a frustum whose four sides came from one tangent each way
+  (`view_frustum_build`, the renderer's `proj[2]` and `proj[3]`), the screen's half size rounded
+  down over its scale. The projection puts the screen's centre at that rounded half size, so on a
+  window of odd width or height the right or bottom side stopped a pixel short of the edge, and a
+  model or actor that showed only in the last column or row was not drawn (on `prontera` at
+  1025 by 769 a model showing 0.5 pixel there). The original never had an odd size; the window can
+  take one since it resizes. The sides now come from the projection itself (`struct
+  FrustumScreen`: the scale, the centre and the size, a point at view x and depth z landing on the
+  pixel x * scale / z + centre), as `render/static_world.c` builds them for phase 5, and the
+  renderer's `proj[2]` and `proj[3]`, which nothing else read, are gone. `test_frustum` checks the
+  planes and, on a screen of 5 by 3 pixels, that a box seen only in its last column or row is kept
+  and one past an edge is not. On even sizes the frustum decides as before: the scene set, the four
+  sizes of `window_resize` and the 16 shadow views capture the same pixels as phase 3's
+  (`RAGEXE_MSAA=1`, the two harnesses run one after the other, tolerance 0).
+- **arm64 builds round as the Windows client does.** MSVC rounds each multiply and add of the
+  client's float math on its own; GCC and Clang, unless told otherwise, fuse `a * b + c` into one
+  multiply-add where the CPU has it, which rounds once. On arm64 (Android phones, Apple Silicon,
+  arm64 Linux) the client's projection, sprite depth and effects therefore computed other floats
+  than on Windows. The CMake builds compile with `-ffp-contract=off` for GCC and Clang: the NDK's
+  clang emits no fused multiply-add for arm64 in `render/math3d.c`, `render/rp_project.c` and
+  `actor/sprite_quad.c` with it, and 191, 217 and 18 without it; for x86-64 it emits none either
+  way. The arm64 client was not run again after the change (its login screen had drawn the same
+  pixels as the x86_64 client's on the emulator before it, a screen with little float math).
+
+`build.bat check` and the whole suite (`tests\build.bat`: 320 tests, and the 6 oracle tests) pass.

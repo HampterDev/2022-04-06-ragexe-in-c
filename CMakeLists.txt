@@ -17,7 +17,9 @@ if(MSVC)
     add_compile_options(/source-charset:utf-8 /execution-charset:.949)
 else()
     # The client was written for MSVC, whose char is signed; ARM Linux and Android make it unsigned.
-    add_compile_options(-Wall -Wextra -Werror=implicit-function-declaration -fsigned-char)
+    # MSVC rounds every multiply and add on its own; GCC and Clang fuse a * b + c where the CPU has
+    # fused multiply-add (arm64), which rounds once and gives other floats than the Windows client.
+    add_compile_options(-Wall -Wextra -Werror=implicit-function-declaration -fsigned-char -ffp-contract=off)
     if(RAGE_SANITIZERS)
         add_compile_options(-fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer)
         add_link_options(-fsanitize=address,undefined,float-cast-overflow)

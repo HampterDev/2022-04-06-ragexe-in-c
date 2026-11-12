@@ -8,6 +8,8 @@ static struct SceneGraphNode nodes[RSW_TREE_NODE_COUNT];
 static struct SceneGraphNode *leaves[SCENE_GRAPH_MAX_LEAVES];
 static size_t node_count, leaf_count;
 static const float identity[12] = {1,0,0, 0,1,0, 0,0,1, 0,0,0};
+/* a screen of 2 by 2 pixels centred on (1, 1) at a scale of 1: its sides are |x| = z and |y| = z */
+static const struct FrustumScreen square = {{1, 1}, {1, 1}, {2, 2}};
 
 struct GuardedFrustum {
     unsigned before[4];
@@ -57,17 +59,17 @@ static void complete_tree(void)
     size_t i;
     assert(tree(0) == nodes);
     assert(node_count == RSW_TREE_NODE_COUNT && leaf_count == SCENE_GRAPH_MAX_LEAVES);
-    view_frustum_build(frustum, 1, 1, identity, nodes);
+    view_frustum_build(frustum, &square, identity, nodes);
     assert(frustum->inside_count == SCENE_GRAPH_MAX_LEAVES && !frustum->crossing_count);
     for (i = 0; i < leaf_count; ++i) assert(frustum->inside[i] == leaves[i]);
     guards();
     set_all(10, 1);
-    view_frustum_build(frustum, 1, 1, identity, nodes);
+    view_frustum_build(frustum, &square, identity, nodes);
     assert(frustum->crossing_count == SCENE_GRAPH_MAX_LEAVES && !frustum->inside_count);
     for (i = 0; i < leaf_count; ++i) assert(frustum->crossing[i] == leaves[i]);
     guards();
     set_all(-100, 1);
-    view_frustum_build(frustum, 1, 1, identity, nodes);
+    view_frustum_build(frustum, &square, identity, nodes);
     assert(!frustum->inside_count && !frustum->crossing_count);
     guards();
 }
@@ -83,7 +85,7 @@ static void mixed_tree(void)
         if (i / 256 == 2) bounds(leaves[i], i % 3 == 0 ? 100.0f : i % 3 == 1 ? 10.0f : -100.0f, 1);
         else bounds(leaves[i], i / 256 == 1 ? -100.0f : 100.0f, 1);
     }
-    view_frustum_build(frustum, 1, 1, identity, nodes);
+    view_frustum_build(frustum, &square, identity, nodes);
     for (i = 0; i < leaf_count; ++i) {
         if (i / 256 == 1) continue;
         if (i / 256 != 2 || i % 3 == 0) assert(frustum->inside[inside++] == leaves[i]);
@@ -94,14 +96,14 @@ static void mixed_tree(void)
     view_frustum_clear(frustum); view_frustum_clear(frustum);
     assert(!frustum->inside_count && !frustum->crossing_count);
     assert(nodes[0].child[0] && node_count == RSW_TREE_NODE_COUNT);
-    view_frustum_build(frustum, 1, 1, identity, NULL);
+    view_frustum_build(frustum, &square, identity, NULL);
     assert(!frustum->inside_count && !frustum->crossing_count);
     {
         struct SceneGraphNode empty = {0};
-        view_frustum_build(frustum, 1, 1, identity, &empty);
+        view_frustum_build(frustum, &square, identity, &empty);
         assert(!frustum->inside_count && !frustum->crossing_count);
         empty.child[3] = nodes[0].child[3];
-        view_frustum_build(frustum, 1, 1, identity, &empty);
+        view_frustum_build(frustum, &square, identity, &empty);
         assert(frustum->inside_count == 256 && !frustum->crossing_count);
         for (i = 0; i < 256; ++i) assert(frustum->inside[i] == leaves[768+i]);
     }
@@ -131,13 +133,13 @@ static int corners(const struct ViewFrustum *frustum, const struct FrustumObb *b
 }
 static void plane_tests(void)
 {
-    static const float expected[6][4] = {{-1,0,1,0},{1,0,1,0},{0,-1,1,0},{0,1,1,0},{0,0,1,-10},{0,0,-1,RENDER_FAR_Z}};
+    static const float expected[6][4] = {{1,0,1,0},{-1,0,1,0},{0,1,1,0},{0,-1,1,0},{0,0,1,-10},{0,0,-1,RENDER_FAR_Z}};
     static const float depths[] = {-10,0,8,9,10,11,12,100,1500,RENDER_FAR_Z-2,RENDER_FAR_Z-1,RENDER_FAR_Z,RENDER_FAR_Z+1,RENDER_FAR_Z+2};
     struct ViewFrustum *frustum = &guarded.value;
     struct FrustumObb box = {{1,1,1},{0,0,100},{{1,0,0},{0,1,0},{0,0,1}}};
     size_t z;
     int x, y, p, permutation;
-    view_frustum_build(frustum, 1, 1, identity, NULL);
+    view_frustum_build(frustum, &square, identity, NULL);
     assert(memcmp(frustum->plane, expected, sizeof expected) == 0);
     for (p = 0; p < 6; ++p) assert(memcmp(frustum->normal[p], expected[p], 3*sizeof(float)) == 0);
     for (permutation = 0; permutation < 2; ++permutation) {
@@ -157,6 +159,30 @@ static void plane_tests(void)
     }
     guards();
 }
+/* A screen of odd size, 5 by 3 pixels centred on (2, 1), the size rounded down: its pixel columns
+   reach from x / z = -2 to 3 and its rows from y / z = -1 to 2. A box seen only in the last column
+   or row is on screen; one past an edge is not. */
+static void odd_screen(void)
+{
+    static const struct FrustumScreen odd = {{1, 1}, {2, 1}, {5, 3}};
+    static const struct { float x, y; int shown; } at[] = {
+        {2.5f, 0, 1}, {3.5f, 0, 0}, {-1.5f, 0, 1}, {-2.5f, 0, 0},
+        {0, 1.5f, 1}, {0, 2.5f, 0}, {0, -0.5f, 1}, {0, -1.5f, 0},
+    };
+    struct ViewFrustum *frustum = &guarded.value;
+    struct FrustumObb box = {{0.01f, 0.01f, 0.01f}, {0, 0, 100}, {{1,0,0},{0,1,0},{0,0,1}}};
+    size_t i;
+    view_frustum_build(frustum, &odd, identity, NULL);
+    for (i = 0; i < sizeof at / sizeof *at; ++i) {
+        int result;
+        box.centre[0] = at[i].x * 100;
+        box.centre[1] = at[i].y * 100;
+        result = view_frustum_test_obb(frustum, &box);
+        assert(result == corners(frustum, &box));
+        assert((result != FRUSTUM_OUTSIDE) == at[i].shown);
+    }
+    guards();
+}
 int main(void)
 {
     size_t i;
@@ -164,7 +190,7 @@ int main(void)
     memset(&guarded, 0xa5, sizeof guarded);
     assert(view_frustum_construct(&guarded.value) == &guarded.value);
     for (i = 0; i < sizeof guarded.value; ++i) assert(bytes[i] == 0);
-    guards(); plane_tests(); complete_tree(); mixed_tree();
-    puts("frustum: six planes, independent corner classifications, all 1024 hits, depth-first ordering, repeat queries and empty trees passed");
+    guards(); plane_tests(); odd_screen(); complete_tree(); mixed_tree();
+    puts("frustum: six planes, the edges of an odd screen, independent corner classifications, all 1024 hits, depth-first ordering, repeat queries and empty trees passed");
     return 0;
 }

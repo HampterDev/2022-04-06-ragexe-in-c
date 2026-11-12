@@ -21,7 +21,7 @@ void renderer_restore_frame(struct Renderer *self)
 void renderer_set_projection(struct Renderer *self, int width, int height)
 {
     int half_w = width / 2, half_h = height / 2;
-    float aspect, t_half, t_far;
+    float aspect, t_half;
 
     self->height = height;
     self->centreX = half_w;
@@ -30,11 +30,10 @@ void renderer_set_projection(struct Renderer *self, int width, int height)
     aspect = (float)height / (float)width;
     t_half = (float)tan(0.13089966773986816);
     self->proj[1] = (float)half_h / t_half;
-    t_far = (float)tan(1.4398963451385498);
+    /* custom: the original also kept the tangents of its view frustum's sides here; the frustum
+       takes its sides from the projection (world/frustum.h) */
     self->halfH = half_h;
     self->halfW = half_w;
-    self->proj[3] = t_far;
-    self->proj[2] = t_far * aspect;
     self->proj[0] = (float)half_w / t_half * aspect;
     self->scaleX = (float)width / 640.0f;
     self->scaleY = (float)height / 480.0f;

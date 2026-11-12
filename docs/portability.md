@@ -38,6 +38,12 @@ With Visual Studio, add `-A x64` at configure time and use `--config Debug` for 
 32-bit `lua_chunk` that writes the Lua fixture below. Use separate build directories.
 Clang and GCC builds can enable `-DRAGE_SANITIZERS=ON` for ASan, UBSan and
 float-cast-overflow checking. Set `UBSAN_OPTIONS=halt_on_error=1` when running tests.
+GCC and Clang compile everything with `-ffp-contract=off`. MSVC rounds each multiply and add of the
+client's float math on its own; GCC and Clang fuse `a * b + c` into one multiply-add where the CPU
+has one (arm64: Android phones, Apple Silicon, arm64 Linux), which rounds once and gives other
+floats than the Windows client in the projection, the sprites' depth and the effects. With the flag
+the NDK's clang emits no fused multiply-add for arm64 in `render/math3d.c`, `render/rp_project.c`
+and `actor/sprite_quad.c` (191, 217 and 18 without it); x86-64 builds have none either way.
 Test assertions stay enabled even in Release configurations: the tests' directory drops `NDEBUG`
 for the tests and for the client files they link.
 

@@ -371,7 +371,11 @@ void view_on_render(struct View *self)
 
     g_quakeFrameDrawn = 1;
     r = g_renderer;
-    view_frustum_build(&self->frustum, r->proj[2], r->proj[3], view, &self->world->root);
+    {
+        struct FrustumScreen screen = {{r->proj[0], r->proj[1]}, {(float)r->centreX, (float)r->centreY},
+                                       {(float)r->width, (float)r->height}};
+        view_frustum_build(&self->frustum, &screen, view, &self->world->root);
+    }
     /* custom: the meshes' shadows, fitted to what the camera sees of the ground and the models
        (render/renderer.h) */
     view_shadow_boxes(&self->world->root, 0, boxes, &boxCount);

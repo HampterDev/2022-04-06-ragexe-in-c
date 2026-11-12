@@ -28,7 +28,7 @@ struct ShadowBox {
 };
 
 struct Renderer {
-    float proj[4];
+    float proj[2];
     float scaleX, scaleY;
     int halfW, halfH;
     int width, height;
