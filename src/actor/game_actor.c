@@ -213,7 +213,7 @@ void render_object_apply_shrink_scale(struct GameActor *self, float *scale)
     }
     if (deg < 90)
         deg = 90;
-    *scale = ((g_sinTable[deg] + 1.0f) * 0.25f + 0.5f) * *scale;
+    *scale = ((SIN_DEG(deg) + 1.0f) * 0.25f + 0.5f) * *scale;
 }
 
 int game_actor_transform_action_of(int kind)

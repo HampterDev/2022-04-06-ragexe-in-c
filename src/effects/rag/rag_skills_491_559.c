@@ -185,8 +185,8 @@ void rag_soul_light(struct RagEffect *self, const char *tex)
     rand_below(360);
     rand_below(360);
     sq->angle = 0.0f;
-    sq->dist = g_sinTable[90] * -30.0f;
-    sq->y = -(g_sinTable[0] * 20.0f) - 40.0f;
+    sq->dist = SIN_DEG(90) * -30.0f;
+    sq->y = -(SIN_DEG(0) * 20.0f) - 40.0f;
 }
 
 static void letters(struct RagEffect *self, const char *const names[4], int age0, int x0)
@@ -423,8 +423,8 @@ void rag_shield_boomerang_volley(struct RagEffect *self, const char *tex)
     bb->alpha = 25;
     bb->heading = (short)rand_below(360);
     bb->speed = 2.5f;
-    bb->pos.x -= bb->speed * 15.0f * g_cosTable[bb->heading];
-    bb->pos.z -= bb->speed * 15.0f * g_sinTable[bb->heading];
+    bb->pos.x -= bb->speed * 15.0f * COS_DEG(bb->heading);
+    bb->pos.z -= bb->speed * 15.0f * SIN_DEG(bb->heading);
     bb->spin = 0;
     bb->texture = 0;
     bb->color_style = 0;

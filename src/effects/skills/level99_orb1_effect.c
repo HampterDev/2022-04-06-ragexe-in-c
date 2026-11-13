@@ -48,7 +48,6 @@ static const struct EffectOps level99_orb1_effect_ops = {
     .destroy = level99_orb1_effect_destroy,
     .fade_out = effect_fade_out,
 };
-#define SIN_DEG(d) (g_sinTable[d])
 #define MATRIX_BYTES (12 * sizeof(float))
 
 #define PART_EFFECT_TYPE(p) ((p)->effect_type)

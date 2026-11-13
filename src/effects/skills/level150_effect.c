@@ -152,12 +152,12 @@ void level150_effect_shape_bubble(struct Level150Effect *self, struct Particle *
     base_radius = v->radius;
     index = p->index;
     scale = p->scale;
-    radius = g_sinTable[index * 9] * base_radius * 0.15f + base_radius;
+    radius = SIN_DEG(index * 9) * base_radius * 0.15f + base_radius;
     angle = (int)((float)((int)((float)v->sweep / 20.0f) * index) + p->roll) % 360;
-    ct = g_cosTable[v->tilt];
-    st = g_sinTable[v->tilt];
-    c = g_cosTable[angle];
-    s = g_sinTable[angle];
+    ct = COS_DEG(v->tilt);
+    st = SIN_DEG(v->tilt);
+    c = COS_DEG(angle);
+    s = SIN_DEG(angle);
     lean = ct * radius;
 
     p->corners[1].x = lean * c + scale * c;
@@ -317,8 +317,8 @@ void level150_effect_step_bubble(struct Particle *p)
     p->scale = scale;
     v->tilt = tilt;
     base_radius = v->radius;
-    radius = g_sinTable[p->index * 9] * base_radius * 0.15f + base_radius;
-    mat_set_scale(p->matrix, scale * 0.5f, g_sinTable[tilt] * base_radius / radius, scale * 0.5f);
+    radius = SIN_DEG(p->index * 9) * base_radius * 0.15f + base_radius;
+    mat_set_scale(p->matrix, scale * 0.5f, SIN_DEG(tilt) * base_radius / radius, scale * 0.5f);
 }
 
 void level150_effect_step_shock(struct Particle *p)
@@ -336,7 +336,7 @@ void level150_effect_step_shock(struct Particle *p)
     index = p->index;
     v->pulse = pulse;
     size = v->size;
-    scale = size * 0.1f * g_sinTable[pulse] + 1.0f + size * 0.8f;
+    scale = size * 0.1f * SIN_DEG(pulse) + 1.0f + size * 0.8f;
     camera_angle = game_camera_heading();
     mat_set_rotate_x(turn, 1.570796f);
     mat_rotate_y(turn, degrees_to_radians((float)(index * 23)) - 2.7925262f

@@ -272,7 +272,7 @@ void prim_heading_degrees(float x, float z, short *out)
     short deg;
 
     for (deg = 0; deg <= 180; deg++) {
-        if (unit_x >= g_cosTable[deg]) {
+        if (unit_x >= COS_DEG(deg)) {
             unsigned short heading = (unsigned short)deg;
             if (!(unit_z >= 0.0f))
                 heading = (unsigned short)(360 - heading);
@@ -414,13 +414,13 @@ void prim_quad_turn(Vec3 *p0, Vec3 *p1, Vec3 *p2, Vec3 *p3, short yaw, short pit
     p[3] = p3;
     for (i = 0; i < 4; i++) {
         float y = p[i]->y, z = p[i]->z;
-        p[i]->z = g_cosTable[pitch] * z - g_sinTable[pitch] * y;
-        p[i]->y = g_cosTable[pitch] * y + g_sinTable[pitch] * z;
+        p[i]->z = COS_DEG(pitch) * z - SIN_DEG(pitch) * y;
+        p[i]->y = COS_DEG(pitch) * y + SIN_DEG(pitch) * z;
     }
     for (i = 0; i < 4; i++) {
         float x = p[i]->x, z = p[i]->z;
-        p[i]->x = g_cosTable[yaw] * x - z * g_sinTable[yaw];
-        p[i]->z = g_cosTable[yaw] * z + x * g_sinTable[yaw];
+        p[i]->x = COS_DEG(yaw) * x - z * SIN_DEG(yaw);
+        p[i]->z = COS_DEG(yaw) * z + x * SIN_DEG(yaw);
     }
 }
 

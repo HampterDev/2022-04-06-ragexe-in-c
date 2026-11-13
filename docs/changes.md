@@ -121,6 +121,15 @@ Overruns and bad table indexes:
 - Fonts 12 and up pick their character set without reading past the 12-entry charset table.
   They get the values the bytes after it gave them: SCDream `DEFAULT_CHARSET`, the others
   `ANSI_CHARSET`.
+- Effects that read the sine and cosine tables directly read within the six degree tables. They
+  are one block in the original's order, so an index a little outside its own table still reads
+  the neighbouring table as the original does, and an index is wrapped as the original's 32-bit
+  address arithmetic wraps it (only its low 30 bits count, so the INT_MIN a NaN or out-of-range
+  float turns into reads entry 0, as in the original). An index that after that still leaves the
+  whole block reads its own table at that index modulo 360; the original read whatever lay
+  before or after the block. Such indexes come from actors turned by the server (a direction
+  above 7 in an entry packet or in `ZC_CHANGE_DIRECTION`, or the direction 0xb4 the client gives
+  its own skill-unit double) and from negative map effect angles in RSW files.
 - A job, sex, hair style, weapon or shield from the server outside the name tables that build
   sprite, palette and imf file names (the job names, sexes, hair names, weapon and shield names,
   and the monster names) reads the table's entry for 0: the Novice's names, female, hair 2, no

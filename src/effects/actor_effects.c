@@ -52,7 +52,7 @@ void actor_footprints(struct RenderObject *actor, int kind)
 
     heading = 180;
     for (deg = 0; deg <= 180; deg++) {
-        if (dx >= g_cosTable[deg]) {
+        if (dx >= COS_DEG(deg)) {
             heading = dz >= 0.0f ? (unsigned short)deg : (unsigned short)(360 - deg);
             break;
         }

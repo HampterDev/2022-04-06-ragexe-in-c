@@ -188,8 +188,8 @@ void cherry_blossom_effect_step_petal(struct CherryBlossomEffect *self,
             struct CherryBlossomParticle *v = cherry_blossom_particle(p);
             sway_step(&v->sway[0], &v->sway_target[0]);
             sway_step(&v->sway[1], &v->sway_target[1]);
-            offset->x = g_sinTable[(int)v->sway[0]] * speed + offset->x;
-            offset->z = g_sinTable[(int)v->sway[1]] * speed + offset->z;
+            offset->x = SIN_DEG((int)v->sway[0]) * speed + offset->x;
+            offset->z = SIN_DEG((int)v->sway[1]) * speed + offset->z;
             if (-20.0f > offset->y) {
                 int a = p->alpha - 4;
                 p->alpha = a < 0 ? 0 : a;

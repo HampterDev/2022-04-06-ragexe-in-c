@@ -4,9 +4,6 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
-#define COS_DEG(d) g_cosTable[d]
-#define SIN_DEG(d) g_sinTable[d]
-
 #define EFFECT_ID_AIRTEXTURE 0x1a0
 
 #define GAME_MSG_QUAKE 0x7a

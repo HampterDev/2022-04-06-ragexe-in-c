@@ -213,8 +213,8 @@ void new_cloud_kill_effect_respawn_puff(struct Particle *p)
     radius = rand_mod(15) + 2;
     angle = rand_mod(360);
     PARTICLE_OFFSET(p).y = 0;
-    PARTICLE_OFFSET(p).x = g_cosTable[angle] * (float)radius;
-    PARTICLE_OFFSET(p).z = g_sinTable[angle] * (float)radius;
+    PARTICLE_OFFSET(p).x = COS_DEG(angle) * (float)radius;
+    PARTICLE_OFFSET(p).z = SIN_DEG(angle) * (float)radius;
     p->scale = (float)rand_mod(10) * 0.1f + 0.5f;
     new_cloud_kill_particle(p)->rise = (float)rand_mod(30) * 0.01f + 0.05f;
 }
@@ -226,8 +226,8 @@ void new_cloud_kill_effect_respawn_mist(struct Particle *p)
     new_cloud_kill_particle(p)->cell = (signed char)rand_mod(2);
     angle = rand_mod(360);
     PARTICLE_OFFSET(p).y = 0;
-    PARTICLE_OFFSET(p).x = g_cosTable[angle] * 18.0f;
-    PARTICLE_OFFSET(p).z = g_sinTable[angle] * 18.0f;
+    PARTICLE_OFFSET(p).x = COS_DEG(angle) * 18.0f;
+    PARTICLE_OFFSET(p).z = SIN_DEG(angle) * 18.0f;
     p->alpha = 0xff;
     p->scale = (float)rand_mod(31) * 0.1f + 2.0f;
     new_cloud_kill_particle(p)->state = 0;
@@ -265,8 +265,8 @@ void new_cloud_kill_effect_respawn_cloud(struct Particle *p)
     radius = rand_mod(13) + 2;
     angle = rand_mod(360);
     PARTICLE_OFFSET(p).y = p->scale * -0.5f;
-    PARTICLE_OFFSET(p).x = g_cosTable[angle] * (float)radius;
-    PARTICLE_OFFSET(p).z = g_sinTable[angle] * (float)radius;
+    PARTICLE_OFFSET(p).x = COS_DEG(angle) * (float)radius;
+    PARTICLE_OFFSET(p).z = SIN_DEG(angle) * (float)radius;
     new_cloud_kill_particle(p)->cell = (signed char)rand_mod(4);
     new_cloud_kill_particle(p)->alpha_max = rand_mod(151) + 50;
     new_cloud_kill_particle(p)->rise = (float)rand_mod(10) * 0.01f + 0.05f;

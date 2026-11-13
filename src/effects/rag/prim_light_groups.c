@@ -78,18 +78,18 @@ static Vec3 vec3_add(Vec3 a, Vec3 b)
 
 static void facing_quad(struct EffectPrim *self, float s, Vec3 *q)
 {
-    q[0].x = g_cosTable[45] * s;
+    q[0].x = COS_DEG(45) * s;
     q[0].y = 0.0f;
-    q[0].z = g_sinTable[45] * s;
-    q[1].x = g_cosTable[135] * s;
+    q[0].z = SIN_DEG(45) * s;
+    q[1].x = COS_DEG(135) * s;
     q[1].y = 0.0f;
-    q[1].z = g_sinTable[135] * s;
-    q[2].x = g_cosTable[225] * s;
+    q[1].z = SIN_DEG(135) * s;
+    q[2].x = COS_DEG(225) * s;
     q[2].y = 0.0f;
-    q[2].z = g_sinTable[225] * s;
-    q[3].x = g_cosTable[315] * s;
+    q[2].z = SIN_DEG(225) * s;
+    q[3].x = COS_DEG(315) * s;
     q[3].y = 0.0f;
-    q[3].z = g_sinTable[315] * s;
+    q[3].z = SIN_DEG(315) * s;
     prim_quad_turn(&q[0], &q[1], &q[2], &q[3], self->camera_yaw, self->camera_pitch);
 }
 
@@ -115,11 +115,11 @@ static void aura_particle_step(struct PrimAuraGroup *g, int k, int x_up, int z_u
         y = p->y;
         if (y > -40.0f) {
             if (k != 3) {
-                p->x = g_sinTable[ix] * 0.1f + p->x;
-                p->z = p->z - g_sinTable[iz] * 0.1f;
+                p->x = SIN_DEG(ix) * 0.1f + p->x;
+                p->z = p->z - SIN_DEG(iz) * 0.1f;
             } else {
-                p->x = p->x - g_sinTable[ix] * 0.1f;
-                p->z = g_sinTable[iz] * 0.1f + p->z;
+                p->x = p->x - SIN_DEG(ix) * 0.1f;
+                p->z = SIN_DEG(iz) * 0.1f + p->z;
             }
         }
         if (y > 0.0f) {
@@ -140,8 +140,8 @@ static void aura_particle_step(struct PrimAuraGroup *g, int k, int x_up, int z_u
     } else if (g->style == AURA_DRIFT) {
         short c;
 
-        p->x = x_up ? g_sinTable[ix] * 0.1f + p->x : p->x - g_sinTable[ix] * 0.1f;
-        p->z = z_up ? g_sinTable[iz] * 0.1f + p->z : p->z - g_sinTable[iz] * 0.1f;
+        p->x = x_up ? SIN_DEG(ix) * 0.1f + p->x : p->x - SIN_DEG(ix) * 0.1f;
+        p->z = z_up ? SIN_DEG(iz) * 0.1f + p->z : p->z - SIN_DEG(iz) * 0.1f;
         c = (short)(int)p->x;
         if (c < 0)
             c = (short)-c;
@@ -163,8 +163,8 @@ static void aura_particle_step(struct PrimAuraGroup *g, int k, int x_up, int z_u
         if (0.0f > y) {
             float top = (k == 0 && g->style == AURA_GREY_ONE) ? -50.0f : -30.0f;
 
-            p->x = x_up ? g_sinTable[ix] * 0.15f + p->x : p->x - g_sinTable[ix] * 0.15f;
-            p->z = z_up ? g_sinTable[iz] * 0.15f + p->z : p->z - g_sinTable[iz] * 0.15f;
+            p->x = x_up ? SIN_DEG(ix) * 0.15f + p->x : p->x - SIN_DEG(ix) * 0.15f;
+            p->z = z_up ? SIN_DEG(iz) * 0.15f + p->z : p->z - SIN_DEG(iz) * 0.15f;
             if (top > y) {
                 if (g->style == AURA_GREY_ONE) {
                     p->x = (float)(rand_below(15) - 8);
@@ -340,25 +340,25 @@ unsigned char prim_glow_orb_process(struct EffectPrim *self)
     }
 
     if (o->close_orbit == 1.0f) {
-        float x = g_sinTable[(int)o->sway[0].angle] * 0.7f;
-        float z = g_sinTable[(int)o->sway[1].angle] * 0.7f;
+        float x = SIN_DEG((int)o->sway[0].angle) * 0.7f;
+        float z = SIN_DEG((int)o->sway[1].angle) * 0.7f;
         o->point.x = x;
         o->point.z = z;
-        o->point.y = g_sinTable[(int)o->sway[2].angle] * 0.7f;
-        o->point.x = g_sinTable[(int)o->spin] * 5.5f + x;
-        o->point.z = g_cosTable[(int)o->spin] * 5.5f + z;
+        o->point.y = SIN_DEG((int)o->sway[2].angle) * 0.7f;
+        o->point.x = SIN_DEG((int)o->spin) * 5.5f + x;
+        o->point.z = COS_DEG((int)o->spin) * 5.5f + z;
     } else {
         if (o->style != 0 && o->style < ORB_HALO) {
-            o->point.x = g_sinTable[(int)o->sway[0].angle] * 0.5f;
-            o->point.z = g_sinTable[(int)o->sway[1].angle] * 0.5f;
-            o->point.y = g_sinTable[(int)o->sway[2].angle] * 0.5f;
+            o->point.x = SIN_DEG((int)o->sway[0].angle) * 0.5f;
+            o->point.z = SIN_DEG((int)o->sway[1].angle) * 0.5f;
+            o->point.y = SIN_DEG((int)o->sway[2].angle) * 0.5f;
         } else {
-            o->point.x = g_sinTable[(int)o->sway[0].angle];
-            o->point.z = g_sinTable[(int)o->sway[1].angle];
-            o->point.y = g_sinTable[(int)o->sway[2].angle];
+            o->point.x = SIN_DEG((int)o->sway[0].angle);
+            o->point.z = SIN_DEG((int)o->sway[1].angle);
+            o->point.y = SIN_DEG((int)o->sway[2].angle);
         }
-        o->point.x = g_sinTable[(int)o->spin] * 7.0f + o->point.x;
-        o->point.z = g_cosTable[(int)o->spin] * 7.0f + o->point.z;
+        o->point.x = SIN_DEG((int)o->spin) * 7.0f + o->point.x;
+        o->point.z = COS_DEG((int)o->spin) * 7.0f + o->point.z;
     }
     o->point.y = o->height + o->point.y;
 
@@ -375,18 +375,18 @@ static void orb_ring(struct EffectPrim *self, const float *view, int *count, flo
     struct PrimGlowOrb *o = &self->records.glow_orb;
     Vec3 q[4];
 
-    q[0].x = g_cosTable[0] * r;
+    q[0].x = COS_DEG(0) * r;
     q[0].y = 0.0f;
-    q[0].z = g_sinTable[0] * r;
-    q[1].x = g_cosTable[90] * r;
+    q[0].z = SIN_DEG(0) * r;
+    q[1].x = COS_DEG(90) * r;
     q[1].y = 0.0f;
-    q[1].z = g_sinTable[90] * r;
-    q[2].x = g_cosTable[180] * r;
+    q[1].z = SIN_DEG(90) * r;
+    q[2].x = COS_DEG(180) * r;
     q[2].y = 0.0f;
-    q[2].z = g_sinTable[180] * r;
-    q[3].x = g_cosTable[270] * r;
+    q[2].z = SIN_DEG(180) * r;
+    q[3].x = COS_DEG(270) * r;
     q[3].y = 0.0f;
-    q[3].z = g_sinTable[270] * r;
+    q[3].z = SIN_DEG(270) * r;
     prim_quad_turn(&q[0], &q[1], &q[2], &q[3], self->camera_yaw, self->camera_pitch);
     prim_draw_quad(self, count, alpha, vec3_add(o->point, q[0]), vec3_add(o->point, q[1]),
                    vec3_add(o->point, q[2]), vec3_add(o->point, q[3]), view, blend, 0, 0, red, green, blue, 0.0f,
@@ -395,7 +395,7 @@ static void orb_ring(struct EffectPrim *self, const float *view, int *count, flo
 
 static float orb_ring_size(const struct PrimGlowOrb *o, float scale)
 {
-    return g_sinTable[(int)o->shimmer] * o->size * 0.05f + o->size * scale;
+    return SIN_DEG((int)o->shimmer) * o->size * 0.05f + o->size * scale;
 }
 
 void prim_glow_orb_render(struct EffectPrim *self, const float *view)
@@ -507,13 +507,13 @@ void prim_ring_wall_render(struct EffectPrim *self, const float *view)
 
             if (w->span == 360 && column == RING_WALL_STRIPS - 1)
                 degree = w->start;
-            foot_x = g_cosTable[degree] * w->radius;
-            foot_z = w->radius * g_sinTable[degree];
+            foot_x = COS_DEG(degree) * w->radius;
+            foot_z = w->radius * SIN_DEG(degree);
             w->foot.x = foot_x;
             w->foot.y = 0.0f;
             w->foot.z = foot_z;
-            lean_out = g_cosTable[w->tilt] * w->height[column];
-            lean_up = g_sinTable[w->tilt] * w->height[column];
+            lean_out = COS_DEG(w->tilt) * w->height[column];
+            lean_up = SIN_DEG(w->tilt) * w->height[column];
             if (i == 2)
                 lean_dir = 90 - degree;
             else if (i == 1)
@@ -525,8 +525,8 @@ void prim_ring_wall_render(struct EffectPrim *self, const float *view)
             if (lean_dir >= 360)
                 lean_dir -= 360;
             w->top.y = -lean_up;
-            w->top.x = g_cosTable[lean_dir] * lean_out + foot_x;
-            w->top.z = g_sinTable[lean_dir] * lean_out + foot_z;
+            w->top.x = COS_DEG(lean_dir) * lean_out + foot_x;
+            w->top.z = SIN_DEG(lean_dir) * lean_out + foot_z;
 
             ox = (float)w->offset_x;
             oz = (float)w->offset_z;
@@ -579,7 +579,7 @@ void prim_ring_wall_process(struct EffectPrim *self)
             w->alpha += 10;
         }
         for (j = 0; j < RING_WALL_STRIPS; j++)
-            w->height[j] = g_sinTable[w->age] * w->full_height;
+            w->height[j] = SIN_DEG(w->age) * w->full_height;
     }
 }
 
@@ -640,8 +640,8 @@ void prim_spark_groups_render(struct EffectPrim *self, const float *view, float 
         }
         for (k = 0; k < 4; k++) {
             Vec3 *pt = &grp->point[k_light_slot[k]];
-            pt->x = g_cosTable[(int)grp->spark[k].angle] * SPARK_RADIUS;
-            pt->z = g_sinTable[(int)grp->spark[k].angle] * SPARK_RADIUS;
+            pt->x = COS_DEG((int)grp->spark[k].angle) * SPARK_RADIUS;
+            pt->z = SIN_DEG((int)grp->spark[k].angle) * SPARK_RADIUS;
         }
         facing_quad(self, grp->size * scale, q);
 

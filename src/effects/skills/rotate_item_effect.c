@@ -169,9 +169,9 @@ void rotate_item_effect_update_particle(struct RotateItemEffect *self, struct Pa
     }
 
     deg = (int)angle;
-    p->offset.x = g_cosTable[deg] * particle_radius(p);
+    p->offset.x = COS_DEG(deg) * particle_radius(p);
     p->offset.y = ORBIT_HEIGHT;
-    p->offset.z = g_sinTable[deg] * particle_radius(p);
+    p->offset.z = SIN_DEG(deg) * particle_radius(p);
     self->trail_angle = (float)((int)(p->roll - TRAIL_GAP) % 360);
     self->trail_alpha = p->alpha;
 

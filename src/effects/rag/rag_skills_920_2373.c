@@ -650,8 +650,8 @@ void rag_cloud_dash_2(struct RagEffect *self)
             pipe->start.x = (float)rag_rand(100) * 0.3f - 15.0f + self->base.pos.x;
             pipe->start.z = (float)rag_rand(100) * 0.3f - 15.0f + self->base.pos.z;
             pipe->start.y = self->base.pos.y;
-            pipe->start.x = pipe->start.x - g_cosTable[pipe->heading] * 100.0f;
-            pipe->start.z = pipe->start.z - g_sinTable[pipe->heading] * 100.0f;
+            pipe->start.x = pipe->start.x - COS_DEG(pipe->heading) * 100.0f;
+            pipe->start.z = pipe->start.z - SIN_DEG(pipe->heading) * 100.0f;
             pipe->end.x = pipe->start.x;
             pipe->end.z = pipe->start.z;
             pipe->end.y = self->base.pos.y;

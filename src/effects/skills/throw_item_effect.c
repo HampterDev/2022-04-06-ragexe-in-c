@@ -460,12 +460,12 @@ void throw_item_effect_step_item(struct ThrowItemEffect *self, struct Particle *
         float speed = throw_item_particle(p)->item_speed;
         int arc = (int)(t * -180.0f);
         float y = speed / throw_item_particle(p)->item_distance * self->rise + ITEM_POS(p)->y;
-        float z = g_sinTable[throw_item_particle(p)->item_heading] * speed + ITEM_POS(p)->z;
-        float x = g_cosTable[throw_item_particle(p)->item_heading] * speed + ITEM_POS(p)->x;
+        float z = SIN_DEG(throw_item_particle(p)->item_heading) * speed + ITEM_POS(p)->z;
+        float x = COS_DEG(throw_item_particle(p)->item_heading) * speed + ITEM_POS(p)->x;
         ITEM_POS(p)->y = y;
         ITEM_POS(p)->z = z;
         ITEM_POS(p)->x = x;
-        lift = g_sinTable[-arc] * self->arc_height;
+        lift = SIN_DEG(-arc) * self->arc_height;
     }
 
     self->trail_pos = *ITEM_POS(p);

@@ -45,8 +45,6 @@ static const struct EffectOps magic_floor_effect_ops = {
     .destroy = magic_floor_effect_destroy,
     .fade_out = effect_fade_out,
 };
-#define SIN_DEG(d) (g_sinTable[d])
-#define COS_DEG(d) (g_cosTable[d])
 
 #define MAGIC_FLOOR_LIST 5
 #define CLOUD_SEGMENTS 21

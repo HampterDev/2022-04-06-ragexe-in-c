@@ -1,9 +1,6 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
-#define COS_DEG(d) g_cosTable[d]
-#define SIN_DEG(d) g_sinTable[d]
-
 #define BLEND_ALPHA 1
 
 #define RECORD_COUNT 4

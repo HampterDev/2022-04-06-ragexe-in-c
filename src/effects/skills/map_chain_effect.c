@@ -44,8 +44,6 @@ static const struct EffectOps map_chain_effect_ops = {
     .destroy = map_chain_effect_destroy,
     .fade_out = effect_fade_out,
 };
-#define SIN_DEG(d) (g_sinTable[d])
-#define COS_DEG(d) (g_cosTable[d])
 
 #define MAP_CHAIN_LIST 5
 #define CHAIN_SEGMENTS 21

@@ -34,18 +34,18 @@ typedef void(*SpriteQuadFn)(struct RenderObject *self, const struct SpriteQuad *
 
 void prim_camera_square(struct EffectPrim *self, float size, Vec3 q[4])
 {
-    q[0].x = g_cosTable[45] * size;
+    q[0].x = COS_DEG(45) * size;
     q[0].y = 0.0f;
-    q[0].z = g_sinTable[45] * size;
-    q[1].x = g_cosTable[135] * size;
+    q[0].z = SIN_DEG(45) * size;
+    q[1].x = COS_DEG(135) * size;
     q[1].y = 0.0f;
-    q[1].z = g_sinTable[135] * size;
-    q[2].x = g_cosTable[225] * size;
+    q[1].z = SIN_DEG(135) * size;
+    q[2].x = COS_DEG(225) * size;
     q[2].y = 0.0f;
-    q[2].z = g_sinTable[225] * size;
-    q[3].x = g_cosTable[315] * size;
+    q[2].z = SIN_DEG(225) * size;
+    q[3].x = COS_DEG(315) * size;
     q[3].y = 0.0f;
-    q[3].z = g_sinTable[315] * size;
+    q[3].z = SIN_DEG(315) * size;
     prim_quad_turn(&q[0], &q[1], &q[2], &q[3], self->camera_yaw, self->camera_pitch);
 }
 
@@ -122,7 +122,7 @@ void prim_styled_ring_process(struct EffectPrim *self)
         for (j = 0; j < WAVE_RING_POINTS; j++) {
             int phase = i * 45 < 90 ? ring->frame + i * 90 : (ring->frame + i * 45) * 2;
             float base = ring->base_height;
-            ring->heights[j] = g_sinTable[j * 9] * base * 0.3f * g_sinTable[phase % 360] + base;
+            ring->heights[j] = SIN_DEG(j * 9) * base * 0.3f * SIN_DEG(phase % 360) + base;
         }
     }
 }
@@ -152,16 +152,16 @@ void prim_styled_ring_render(struct EffectPrim *self, const float *view)
 
             if ((unsigned short)ring->arc == 360 && point == 20)
                 deg = ring->arc_start;
-            cos_d = g_cosTable[deg];
-            sin_d = g_sinTable[deg];
-            radius = g_sinTable[ring->arc_start] + ring->radius;
+            cos_d = COS_DEG(deg);
+            sin_d = SIN_DEG(deg);
+            radius = SIN_DEG(ring->arc_start) + ring->radius;
             height = ring->heights[point];
-            out = g_cosTable[ring->tilt] * height;
+            out = COS_DEG(ring->tilt) * height;
             low.x = radius * cos_d;
             low.z = radius * sin_d;
             high.x = out * cos_d + low.x;
             high.z = out * sin_d + low.z;
-            high.y = -(g_sinTable[ring->tilt] * height);
+            high.y = -(SIN_DEG(ring->tilt) * height);
 
             if (point > 0) {
                 unsigned short style = (unsigned short)ring->style;
@@ -233,8 +233,8 @@ static void rising_mote(Vec3 *mote, const struct PrimRisingMotes *rec, int drift
                         float sign_z, float size, int narrow)
 {
     if (0.0f > mote->y) {
-        mote->x = sign_x * (g_sinTable[(int)rec->drift[drift_x][0]] * 0.01f) + mote->x;
-        mote->z = sign_z * (g_sinTable[(int)rec->drift[drift_z][0]] * 0.01f) + mote->z;
+        mote->x = sign_x * (SIN_DEG((int)rec->drift[drift_x][0]) * 0.01f) + mote->x;
+        mote->z = sign_z * (SIN_DEG((int)rec->drift[drift_z][0]) * 0.01f) + mote->z;
         if (size * -8.0f > mote->y) {
             float x, y, z, yaw_cos, yaw_sin;
 
@@ -244,8 +244,8 @@ static void rising_mote(Vec3 *mote, const struct PrimRisingMotes *rec, int drift
             x = x * size;
             mote->y = y * size;
             z = z * size;
-            yaw_cos = g_cosTable[rec->yaw];
-            yaw_sin = g_sinTable[rec->yaw];
+            yaw_cos = COS_DEG(rec->yaw);
+            yaw_sin = SIN_DEG(rec->yaw);
             mote->z = z * yaw_cos + yaw_sin * x;
             mote->x = yaw_cos * x - z * yaw_sin;
         }
@@ -337,8 +337,8 @@ unsigned char prim_orbit_launcher_process(struct EffectPrim *self)
             step = 60 - step;
         reach = (float)(int)rec->radius;
         rec->pos.y = -25.0f;
-        rec->pos.x = g_sinTable[step * 6] * reach;
-        rec->pos.z = g_cosTable[step * 6] * reach;
+        rec->pos.x = SIN_DEG(step * 6) * reach;
+        rec->pos.z = COS_DEG(step * 6) * reach;
     }
     return 1;
 }
@@ -427,12 +427,12 @@ unsigned char prim_sprite_ghosts_process(struct EffectPrim *self)
             }
         }
         speed = rec->speed;
-        rec->offsets[2].x = g_cosTable[(int)rec->drift[0]] * speed + rec->offsets[2].x;
-        rec->offsets[2].y = g_sinTable[(int)rec->drift[1]] * speed + rec->offsets[2].y;
-        rec->offsets[0].x = rec->offsets[0].x - g_cosTable[(int)rec->drift[2]] * speed;
-        rec->offsets[0].y = g_sinTable[(int)rec->drift[3]] * speed + rec->offsets[0].y;
-        rec->offsets[3].x = rec->offsets[3].x - g_cosTable[(int)rec->drift[4]] * speed;
-        rec->offsets[3].y = rec->offsets[3].y - g_sinTable[(int)rec->drift[5]] * speed;
+        rec->offsets[2].x = COS_DEG((int)rec->drift[0]) * speed + rec->offsets[2].x;
+        rec->offsets[2].y = SIN_DEG((int)rec->drift[1]) * speed + rec->offsets[2].y;
+        rec->offsets[0].x = rec->offsets[0].x - COS_DEG((int)rec->drift[2]) * speed;
+        rec->offsets[0].y = SIN_DEG((int)rec->drift[3]) * speed + rec->offsets[0].y;
+        rec->offsets[3].x = rec->offsets[3].x - COS_DEG((int)rec->drift[4]) * speed;
+        rec->offsets[3].y = rec->offsets[3].y - SIN_DEG((int)rec->drift[5]) * speed;
     }
     prim_update_alpha(self);
     prim_shift_trail(self);
@@ -662,14 +662,14 @@ void prim_wedge_pair_process(struct EffectPrim *self)
 static void wedge(struct EffectPrim *self, const struct PrimWedgePair *pair, const float *view, int *count, int deg)
 {
     int back = deg - 90;
-    float tip_x = g_cosTable[deg] * pair->reach, tip_z = g_sinTable[deg] * pair->reach;
+    float tip_x = COS_DEG(deg) * pair->reach, tip_z = SIN_DEG(deg) * pair->reach;
     Vec3 centre = {0.0f, -6.0f, 0.0f}, edge, tip;
 
     if (back < 0)
         back = deg + 270;
-    edge.x = g_cosTable[back] * pair->side + tip_x;
+    edge.x = COS_DEG(back) * pair->side + tip_x;
     edge.y = -6.0f;
-    edge.z = g_sinTable[back] * pair->side + tip_z;
+    edge.z = SIN_DEG(back) * pair->side + tip_z;
     tip.x = tip_x;
     tip.y = -6.0f;
     tip.z = tip_z;
@@ -770,12 +770,12 @@ unsigned char prim_twin_wisps_process(struct EffectPrim *self)
             }
         }
         speed = rec->speed;
-        rec->pos0.x = g_cosTable[(int)rec->course[0].yaw] * speed + rec->pos0.x;
-        rec->pos0.z = g_sinTable[(int)rec->course[0].yaw] * speed + rec->pos0.z;
-        rec->pos0.y = rec->pos0.y - g_sinTable[(int)rec->course[0].pitch] * speed;
-        rec->pos1.x = g_cosTable[(int)rec->course[1].yaw] * speed + rec->pos1.x;
-        rec->pos1.z = g_sinTable[(int)rec->course[1].yaw] * speed + rec->pos1.z;
-        rec->pos1.y = g_sinTable[(int)rec->course[1].pitch] * speed + rec->pos1.y;
+        rec->pos0.x = COS_DEG((int)rec->course[0].yaw) * speed + rec->pos0.x;
+        rec->pos0.z = SIN_DEG((int)rec->course[0].yaw) * speed + rec->pos0.z;
+        rec->pos0.y = rec->pos0.y - SIN_DEG((int)rec->course[0].pitch) * speed;
+        rec->pos1.x = COS_DEG((int)rec->course[1].yaw) * speed + rec->pos1.x;
+        rec->pos1.z = SIN_DEG((int)rec->course[1].yaw) * speed + rec->pos1.z;
+        rec->pos1.y = SIN_DEG((int)rec->course[1].pitch) * speed + rec->pos1.y;
     }
     return 1;
 }

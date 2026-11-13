@@ -259,8 +259,8 @@ void prim_screen_ring_render(struct EffectPrim *self)
         return;
     do {
         float b = self->arc_degrees + a;
-        float c0 = g_cosTable[(int)a], s0 = g_sinTable[(int)a];
-        float c1 = g_cosTable[(int)b], s1 = g_sinTable[(int)b];
+        float c0 = COS_DEG((int)a), s0 = SIN_DEG((int)a);
+        float c1 = COS_DEG((int)b), s1 = SIN_DEG((int)b);
         float in_x = c0 * inner;
         float in_y = s0 * inner;
         float u1 = u + 0.25f;

@@ -37,7 +37,7 @@ unsigned short render_object_hover_height(struct RenderObject *self)
     } else if (rise) {
         self->hover_rise = --rise;
     }
-    height = (short)(unsigned short)(int)(g_sinTable[angle] * 4.0f + (float)rise);
+    height = (short)(unsigned short)(int)(SIN_DEG(angle) * 4.0f + (float)rise);
     px = (int)(game_camera_scale() * (float)height);
     return (short)px >= 0 ? (unsigned short)px : 0;
 }
@@ -102,7 +102,7 @@ void render_object_apply_pulse_scale(struct RenderObject *self, float *scale)
         if (deg < 90)
             deg = 90;
         if (deg < 270)
-            *scale = ((g_sinTable[deg] + 1.0f) * 0.25f + 0.5f) * *scale;
+            *scale = ((SIN_DEG(deg) + 1.0f) * 0.25f + 0.5f) * *scale;
         else
             *scale = *scale * 0.5f;
     }
@@ -111,7 +111,7 @@ void render_object_apply_pulse_scale(struct RenderObject *self, float *scale)
         if (deg < 90)
             deg = 90;
         if (deg < 270)
-            *scale = (1.5f - (g_sinTable[deg] + 1.0f) * 0.25f) * *scale;
+            *scale = (1.5f - (SIN_DEG(deg) + 1.0f) * 0.25f) * *scale;
         else
             *scale = *scale * 1.5f;
     }
@@ -125,18 +125,18 @@ void render_object_swing_point(struct RenderObject *self, int kind, int *x, int 
 
     if (!(self->overlay_flags & 0x40))
         return;
-    deg = (int)(180.0f - g_sinTable[90 + (short)self->overlay_step * 5] * 180.0f);
+    deg = (int)(180.0f - SIN_DEG(90 + (short)self->overlay_step * 5) * 180.0f);
     if (deg >= 360)
         deg -= 360;
     if (kind == 1) {
         radius = 40.0f;
-        *x = (int)(g_sinTable[deg] * radius + (float)*x);
-        *y = (int)((float)*y - (g_cosTable[deg] * radius - radius));
+        *x = (int)(SIN_DEG(deg) * radius + (float)*x);
+        *y = (int)((float)*y - (COS_DEG(deg) * radius - radius));
         *out_x = *x;
         *out_y = *y;
     } else if (kind >= 2) {
         radius = 10.0f;
-        *x = (int)(g_sinTable[deg] * radius + (float)*x);
-        *y = (int)((float)*y - (g_cosTable[deg] * radius - radius));
+        *x = (int)(SIN_DEG(deg) * radius + (float)*x);
+        *y = (int)((float)*y - (COS_DEG(deg) * radius - radius));
     }
 }

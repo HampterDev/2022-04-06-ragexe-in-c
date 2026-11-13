@@ -485,8 +485,8 @@ void rag_triple_attack(struct RagEffect *self)
             pipe->start.z = (float)rand_below(100) * 0.06f - 3.0f + self->base.pos.z;
             pipe->start.y = self->base.pos.y;
             back = (float)rand_below(100) * 0.15f;
-            pipe->start.x -= g_cosTable[pipe->heading] * back;
-            pipe->start.z -= g_sinTable[pipe->heading] * back;
+            pipe->start.x -= COS_DEG(pipe->heading) * back;
+            pipe->start.z -= SIN_DEG(pipe->heading) * back;
             pipe->end.x = pipe->start.x;
             pipe->end.z = pipe->start.z;
             pipe->end.y = self->base.pos.y;

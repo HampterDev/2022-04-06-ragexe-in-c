@@ -55,6 +55,49 @@ static void test_quaternions_and_degrees(void)
     near_value(get_cos_deg(450), 0.0f);
 }
 
+static int address_index(int deg)
+{
+    return (int)((unsigned)deg << 2) >> 2;
+}
+
+static int turn(int deg)
+{
+    deg = address_index(deg) % 360;
+    return deg < 0 ? deg + 360 : deg;
+}
+
+static void test_degree_table_reads(void)
+{
+    static const unsigned wraps[] = { 0x40000000u, 0x80000000u, 0xc0000000u };
+    static const int outside[] = { 765, 2209, 8190, 11565, 32767, -1445, -1806, -32768, 0x1fffffff, -0x20000000 };
+    int i, w;
+
+    math_init_degree_tables();
+    for (i = -2 * 361; i < 4 * 361; ++i) {
+        assert(&SIN_DEG(i) == &g_sinTable[i]);
+        for (w = 0; w < 3; ++w)
+            assert(&SIN_DEG((int)((unsigned)i + wraps[w])) == &g_sinTable[i]);
+    }
+    for (i = -4 * 361; i < 2 * 361; ++i) {
+        assert(&COS_DEG(i) == &g_cosTable[i]);
+        for (w = 0; w < 3; ++w)
+            assert(&COS_DEG((int)((unsigned)i + wraps[w])) == &g_cosTable[i]);
+    }
+    assert(&SIN_DEG((int)0x80000000u) == &g_sinTable[0] && &COS_DEG((int)0x80000000u) == &g_cosTable[0]);
+    assert(&SIN_DEG(0x40000000) == &g_sinTable[0] && &COS_DEG(0x7fffffff) == &g_cosTable[-1]);
+    assert(&SIN_DEG(-723) == &g_sinTable[turn(-723)]);
+    assert(&SIN_DEG(1444) == &g_sinTable[turn(1444)]);
+    assert(&COS_DEG(722) == &g_cosTable[2]);
+    assert(&COS_DEG(-1445) == &g_cosTable[turn(-1445)]);
+    for (i = 0; i < (int)(sizeof outside / sizeof *outside); ++i) {
+        assert(&COS_DEG(outside[i]) == &g_cosTable[turn(outside[i])]);
+        if (outside[i] >= 4 * 361 || outside[i] < -2 * 361)
+            assert(&SIN_DEG(outside[i]) == &g_sinTable[turn(outside[i])]);
+        for (w = 0; w < 3; ++w)
+            assert(&COS_DEG((int)((unsigned)outside[i] + wraps[w])) == &g_cosTable[turn(outside[i])]);
+    }
+}
+
 static void test_picking(void)
 {
     struct OrientedBox box = {
@@ -79,7 +122,9 @@ int main(void)
 {
     test_transform_inverse();
     test_quaternions_and_degrees();
+    test_degree_table_reads();
     test_picking();
-    puts("math: rotated/scaled inverse transforms, degree tables, quaternions and picking passed");
+    puts("math: rotated/scaled inverse transforms, degree tables, reads within the degree block, quaternions "
+         "and picking passed");
     return 0;
 }

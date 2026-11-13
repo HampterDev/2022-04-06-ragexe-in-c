@@ -497,30 +497,30 @@ unsigned char prim_light_groups_process(struct EffectPrim *self)
                 g->angle[k] = a + 360.0f;
         }
 
-        x2 = g->point[2].x = g_sinTable[(int)g->angle[0]] * LIGHT_ORBIT_RADIUS;
-        z2 = g->point[2].z = g_cosTable[(int)g->angle[0]] * LIGHT_ORBIT_RADIUS;
-        x0 = g->point[0].x = g_sinTable[(int)g->angle[1]] * LIGHT_ORBIT_RADIUS;
-        z0 = g->point[0].z = g_cosTable[(int)g->angle[1]] * LIGHT_ORBIT_RADIUS;
-        x3 = g->point[3].x = g_sinTable[(int)g->angle[2]] * LIGHT_ORBIT_RADIUS;
-        z3 = g->point[3].z = g_cosTable[(int)g->angle[2]] * LIGHT_ORBIT_RADIUS;
-        x1 = g->point[1].x = g_sinTable[(int)g->angle[3]] * LIGHT_ORBIT_RADIUS;
-        z1 = g->point[1].z = g_cosTable[(int)g->angle[3]] * LIGHT_ORBIT_RADIUS;
+        x2 = g->point[2].x = SIN_DEG((int)g->angle[0]) * LIGHT_ORBIT_RADIUS;
+        z2 = g->point[2].z = COS_DEG((int)g->angle[0]) * LIGHT_ORBIT_RADIUS;
+        x0 = g->point[0].x = SIN_DEG((int)g->angle[1]) * LIGHT_ORBIT_RADIUS;
+        z0 = g->point[0].z = COS_DEG((int)g->angle[1]) * LIGHT_ORBIT_RADIUS;
+        x3 = g->point[3].x = SIN_DEG((int)g->angle[2]) * LIGHT_ORBIT_RADIUS;
+        z3 = g->point[3].z = COS_DEG((int)g->angle[2]) * LIGHT_ORBIT_RADIUS;
+        x1 = g->point[1].x = SIN_DEG((int)g->angle[3]) * LIGHT_ORBIT_RADIUS;
+        z1 = g->point[1].z = COS_DEG((int)g->angle[3]) * LIGHT_ORBIT_RADIUS;
 
         if (0.0f > g->point[2].y) {
-            g->point[2].x = g_sinTable[(int)g->sway[0].angle] * LIGHT_WANDER_PUSH + x2;
-            g->point[2].z = g_sinTable[(int)g->sway[1].angle] * LIGHT_WANDER_PUSH + z2;
+            g->point[2].x = SIN_DEG((int)g->sway[0].angle) * LIGHT_WANDER_PUSH + x2;
+            g->point[2].z = SIN_DEG((int)g->sway[1].angle) * LIGHT_WANDER_PUSH + z2;
         }
         if (0.0f > g->point[0].y) {
-            g->point[0].x = x0 - g_sinTable[(int)g->sway[0].angle] * LIGHT_WANDER_PUSH;
-            g->point[0].z = z0 - g_sinTable[(int)g->sway[1].angle] * LIGHT_WANDER_PUSH;
+            g->point[0].x = x0 - SIN_DEG((int)g->sway[0].angle) * LIGHT_WANDER_PUSH;
+            g->point[0].z = z0 - SIN_DEG((int)g->sway[1].angle) * LIGHT_WANDER_PUSH;
         }
         if (0.0f > g->point[3].y) {
-            g->point[3].x = g_sinTable[(int)g->sway[0].angle] * LIGHT_WANDER_PUSH + x3;
-            g->point[3].z = z3 - g_sinTable[(int)g->sway[1].angle] * LIGHT_WANDER_PUSH;
+            g->point[3].x = SIN_DEG((int)g->sway[0].angle) * LIGHT_WANDER_PUSH + x3;
+            g->point[3].z = z3 - SIN_DEG((int)g->sway[1].angle) * LIGHT_WANDER_PUSH;
         }
         if (0.0f > g->point[1].y) {
-            g->point[1].x = x1 - g_sinTable[(int)g->sway[0].angle] * LIGHT_WANDER_PUSH;
-            g->point[1].z = g_sinTable[(int)g->sway[1].angle] * LIGHT_WANDER_PUSH + z1;
+            g->point[1].x = x1 - SIN_DEG((int)g->sway[0].angle) * LIGHT_WANDER_PUSH;
+            g->point[1].z = SIN_DEG((int)g->sway[1].angle) * LIGHT_WANDER_PUSH + z1;
         }
     }
     return 1;
@@ -539,18 +539,18 @@ void prim_light_groups_render(struct EffectPrim *self, const float *view)
         if (g->active != 1)
             continue;
         s = g->size;
-        q[0].x = g_cosTable[45] * s;
+        q[0].x = COS_DEG(45) * s;
         q[0].y = 0.0f;
-        q[0].z = g_sinTable[45] * s;
-        q[1].x = g_cosTable[135] * s;
+        q[0].z = SIN_DEG(45) * s;
+        q[1].x = COS_DEG(135) * s;
         q[1].y = 0.0f;
-        q[1].z = g_sinTable[135] * s;
-        q[2].x = g_cosTable[225] * s;
+        q[1].z = SIN_DEG(135) * s;
+        q[2].x = COS_DEG(225) * s;
         q[2].y = 0.0f;
-        q[2].z = g_sinTable[225] * s;
-        q[3].x = g_cosTable[315] * s;
+        q[2].z = SIN_DEG(225) * s;
+        q[3].x = COS_DEG(315) * s;
         q[3].y = 0.0f;
-        q[3].z = g_sinTable[315] * s;
+        q[3].z = SIN_DEG(315) * s;
         prim_quad_turn(&q[0], &q[1], &q[2], &q[3], self->camera_yaw, self->camera_pitch);
 
         for (k = 0; k < 4; k++) {

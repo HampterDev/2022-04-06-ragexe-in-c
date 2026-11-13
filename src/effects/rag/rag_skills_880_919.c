@@ -321,8 +321,8 @@ void rag_spr_ring_167(struct RagEffect *self, signed char style)
         fs->offset.x = 0.0f;
         fs->offset.y = -5.0f;
         fs->offset.z = 0.0f;
-        fs->offset.x = g_cosTable[fs->heading] * 5.0f + fs->offset.x;
-        fs->offset.z = g_sinTable[fs->heading] * 5.0f + fs->offset.z;
+        fs->offset.x = COS_DEG(fs->heading) * 5.0f + fs->offset.x;
+        fs->offset.z = SIN_DEG(fs->heading) * 5.0f + fs->offset.z;
         if (style == 9)
             fs->tint = 0;
         else if (style == 10)
@@ -458,10 +458,10 @@ void rag_sphere_motes_159(struct RagEffect *self, const char *tex,
         disc->phase = 0;
         disc->spins = 0;
         disc->tint = style;
-        ring = g_cosTable[disc->yaw] * 70.0f;
-        disc->pos.z = g_sinTable[disc->yaw] * 70.0f;
-        disc->pos.x = g_cosTable[disc->pitch] * ring;
-        disc->pos.y = g_sinTable[disc->pitch] * ring + disc->lift;
+        ring = COS_DEG(disc->yaw) * 70.0f;
+        disc->pos.z = SIN_DEG(disc->yaw) * 70.0f;
+        disc->pos.x = COS_DEG(disc->pitch) * ring;
+        disc->pos.y = SIN_DEG(disc->pitch) * ring + disc->lift;
     }
 }
 
@@ -527,8 +527,8 @@ void rag_cloud_dash_69(struct RagEffect *self)
             pipe->start.z = (float)rag_rand(100) * 0.06f - 3.0f + self->base.pos.z;
             pipe->start.y = self->base.pos.y;
             back = (float)rag_rand(100) * 0.15f;
-            pipe->start.x = pipe->start.x - g_cosTable[pipe->heading] * back;
-            pipe->start.z = pipe->start.z - g_sinTable[pipe->heading] * back;
+            pipe->start.x = pipe->start.x - COS_DEG(pipe->heading) * back;
+            pipe->start.z = pipe->start.z - SIN_DEG(pipe->heading) * back;
             pipe->end.x = pipe->start.x;
             pipe->end.z = pipe->start.z;
             pipe->end.y = self->base.pos.y;

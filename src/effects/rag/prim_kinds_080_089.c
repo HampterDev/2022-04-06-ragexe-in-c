@@ -2,9 +2,6 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
-#define COS_DEG(d) g_cosTable[d]
-#define SIN_DEG(d) g_sinTable[d]
-
 #define BLEND_ALPHA 1
 
 static void draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3,
@@ -208,11 +205,6 @@ void prim_turned_square_render(struct EffectPrim *self, const float *view)
     }
 }
 
-static float table_past_end(const float *table, const float *next, int deg)
-{
-    return deg > 360 ? next[deg - 361] : table[deg];
-}
-
 static void fan_wedge(const struct PrimFanWedge *fw, int lo, int hi, Vec3 p[4])
 {
     int heading = fw->heading, lo_deg, hi_deg;
@@ -221,8 +213,8 @@ static void fan_wedge(const struct PrimFanWedge *fw, int lo, int hi, Vec3 p[4])
     lo_deg = heading + lo;
     if (lo_deg < 0)
         lo_deg += 360;
-    reach = table_past_end(g_cosTable, g_negCosTable, lo_deg) * length;
-    p[0] = vec3(tilt_cos * reach, tilt_sin * reach + height, table_past_end(g_sinTable, g_negSinTable, lo_deg) * length);
+    reach = COS_DEG(lo_deg) * length;
+    p[0] = vec3(tilt_cos * reach, tilt_sin * reach + height, SIN_DEG(lo_deg) * length);
     hi_deg = heading + hi;
     if (hi_deg >= 360)
         hi_deg -= 360;

@@ -181,18 +181,18 @@ void energy_orb_effect_update_orb(struct EnergyOrbEffect *self, struct Particle 
     phase = (int)((float)energy_orb_particle(p)->orb_phase + energy_orb_particle(p)->orb_bob) % 360;
     energy_orb_particle(p)->orb_phase = phase;
     size = p->scale;
-    pulse = size * 0.1f * g_sinTable[phase];
+    pulse = size * 0.1f * SIN_DEG(phase);
     if (self->orbs_per_ring > 1 && p->index == 0)
         pulse = (float)((double)size * 0.1 + (double)pulse);
     memcpy(scale, g_identityMatrix.m, MATRIX_BYTES);
     mat_set_scale(scale, size + pulse, size + pulse, size + pulse);
 
-    lift = g_sinTable[energy_orb_particle(p)->orb_phase] * 0.6f;
+    lift = SIN_DEG(energy_orb_particle(p)->orb_phase) * 0.6f;
     radius = energy_orb_particle(p)->orb_radius + lift;
     y = energy_orb_particle(p)->orb_bob * lift + energy_orb_particle(p)->orb_height;
     a = (int)ORB_ANGLE(p);
     memcpy(move, g_identityMatrix.m, MATRIX_BYTES);
-    mat_set_translation(move, g_cosTable[a] * radius, y, g_sinTable[a] * radius);
+    mat_set_translation(move, COS_DEG(a) * radius, y, SIN_DEG(a) * radius);
 
     mat_multiply(tmp, scale, turn);
     mat_multiply(m, tmp, move);

@@ -67,12 +67,12 @@ void prim_spiral_column_draw(struct EffectPrim *self, const float *view, int *co
         col->shimmer = 0.0f;
         shimmer = 0.0f;
     }
-    square_size = g_sinTable[(int)shimmer] * size * 0.05f + size * scale;
+    square_size = SIN_DEG((int)shimmer) * size * 0.05f + size * scale;
     deg = col->angle;
     for (k = 0; k < 4; k++) {
-        corner[k].x = g_cosTable[deg] * square_size;
+        corner[k].x = COS_DEG(deg) * square_size;
         corner[k].y = 0.0f;
-        corner[k].z = g_sinTable[deg] * square_size;
+        corner[k].z = SIN_DEG(deg) * square_size;
         deg = quarter_turn(deg);
     }
     prim_quad_turn(&corner[0], &corner[1], &corner[2], &corner[3], yaw, pitch);
@@ -85,7 +85,7 @@ void prim_spiral_column_draw(struct EffectPrim *self, const float *view, int *co
     for (level = 0; level < 36; level++) {
         short swing = (short)(level * 45 + (short)col->frame);
         int swing_deg = swing % 360;
-        float dx = g_cosTable[swing_deg] * 10.0f, dz = g_sinTable[swing_deg] * 10.0f;
+        float dx = COS_DEG(swing_deg) * 10.0f, dz = SIN_DEG(swing_deg) * 10.0f;
         float up = (float)(level * 2);
         Vec3 p[4];
 
@@ -211,7 +211,7 @@ void prim_swing_arc_render(struct EffectPrim *self, const float *view)
         for (j = 0; arc->count > (float)j; j++) {
             float deg0 = arc->points[j], deg1 = arc->points[j + 1];
             float size = arc->size, height = arc->height_scale;
-            float head_cos = g_cosTable[arc->heading], head_sin = g_sinTable[arc->heading];
+            float head_cos = COS_DEG(arc->heading), head_sin = SIN_DEG(arc->heading);
             float reach0 = swing_arc_reach(deg0, size), reach1;
             float x0, y0, z0, x1, y1, z1, sin1;
             unsigned short heading;
@@ -220,11 +220,11 @@ void prim_swing_arc_render(struct EffectPrim *self, const float *view)
             y0 = jy[j] - 2.0f;
             z0 = head_sin * reach0 + jz[j];
             x0 = head_cos * reach0 + jx[j];
-            y0 = y0 - g_sinTable[(short)(int)deg0] * size * height;
+            y0 = y0 - SIN_DEG((short)(int)deg0) * size * height;
             reach1 = swing_arc_reach(deg1, size);
             z1 = head_sin * reach1 + jz[j + 1];
             x1 = head_cos * reach1 + jx[j + 1];
-            sin1 = g_sinTable[(short)(int)deg1];
+            sin1 = SIN_DEG((short)(int)deg1);
             heading = (unsigned short)(int)deg1;
             prim_heading_degrees(x0 - x1, z0 - z1, (short *)&heading);
 
@@ -243,8 +243,8 @@ void prim_swing_arc_render(struct EffectPrim *self, const float *view)
                 continue;
             for (k = 0; k < 4; k++) {
                 float width = arc->width;
-                float across = g_cosTable[k * 120] * width, up = g_sinTable[k * 120] * width;
-                float dx = g_cosTable[perp] * across, dz = g_sinTable[perp] * across;
+                float across = COS_DEG(k * 120) * width, up = SIN_DEG(k * 120) * width;
+                float dx = COS_DEG(perp) * across, dz = SIN_DEG(perp) * across;
 
                 qa.x = x0 + dx;
                 qa.y = y0 + up;
@@ -318,7 +318,7 @@ void prim_crown_process(struct EffectPrim *self)
             if (frame < 100)
                 h = 0.0f;
             else if (frame <= 115)
-                h = g_sinTable[(frame - 100) * 6] * crown->base_height;
+                h = SIN_DEG((frame - 100) * 6) * crown->base_height;
             else
                 h = crown->base_height;
             crown->heights[k] = h;
@@ -332,16 +332,16 @@ static void crown_points(const struct PrimCrownRing *crown, int deg, int point, 
                          Vec3 *high)
 {
     float height = crown->heights[point];
-    float lean_out = g_cosTable[crown->tilt] * height;
+    float lean_out = COS_DEG(crown->tilt) * height;
     float y;
 
     low->x = out_x + crown->pos.x + crown->offset.x;
     low->y = crown->pos.y + 0.0f + crown->offset.y;
     low->z = out_z + crown->pos.z + crown->offset.z;
-    high->x = lean_out * g_cosTable[deg] + out_x + crown->pos.x + crown->offset.x;
-    y = crown->pos.y - g_sinTable[crown->tilt] * height;
+    high->x = lean_out * COS_DEG(deg) + out_x + crown->pos.x + crown->offset.x;
+    y = crown->pos.y - SIN_DEG(crown->tilt) * height;
     high->y = y + crown->offset.y;
-    high->z = lean_out * g_sinTable[deg] + out_z + crown->pos.z + crown->offset.z;
+    high->z = lean_out * SIN_DEG(deg) + out_z + crown->pos.z + crown->offset.z;
 }
 
 void prim_crown_render(struct EffectPrim *self, const float *view)
@@ -367,7 +367,7 @@ void prim_crown_render(struct EffectPrim *self, const float *view)
                 if ((unsigned short)crown->arc == 360 && point == 4)
                     deg = crown->arc_start;
                 radius = crown->radius;
-                crown_points(crown, deg, point, radius * g_cosTable[deg], radius * g_sinTable[deg], &low, &high);
+                crown_points(crown, deg, point, radius * COS_DEG(deg), radius * SIN_DEG(deg), &low, &high);
                 if (point > 0)
                     prim_draw_quad(self, &count, (short)(crown->alpha / 5), prev_low, low, prev_high, high, view,
                                    BLEND_ALPHA, 0, 0, 0xff, 0x0a, 0x0a, 0.0f, 1.0f, 0.0f, 1.0f, PRIM_QUAD_PROJECTED);
@@ -387,7 +387,7 @@ void prim_crown_render(struct EffectPrim *self, const float *view)
             if ((unsigned short)crown->arc == 360 && point == 4)
                 deg = crown->arc_start;
             radius = crown->radius;
-            crown_points(crown, deg, point, radius * g_cosTable[deg] * 1.5f, radius * g_sinTable[deg] * 1.5f, &low,
+            crown_points(crown, deg, point, radius * COS_DEG(deg) * 1.5f, radius * SIN_DEG(deg) * 1.5f, &low,
                          &high);
             if (point > 0)
                 prim_draw_strip(self, &count, point - 1, crown->alpha, prev_low,
@@ -445,10 +445,10 @@ void prim_stretch_ray_render(struct EffectPrim *self, const float *view)
         size = ray->size;
         deg = ray->angle;
         near_reach = size - (float)ray->stretch * size / 50.0f;
-        nx = g_cosTable[deg] * near_reach;
-        nz = g_sinTable[deg] * near_reach;
-        fx = g_cosTable[deg] * size;
-        fz = g_sinTable[deg] * size;
+        nx = COS_DEG(deg) * near_reach;
+        nz = SIN_DEG(deg) * near_reach;
+        fx = COS_DEG(deg) * size;
+        fz = SIN_DEG(deg) * size;
 
         side = deg - 90;
         if (side < 0)
@@ -459,14 +459,14 @@ void prim_stretch_ray_render(struct EffectPrim *self, const float *view)
         if (far_back < 0)
             far_back = far_side + 180;
 
-        c[0].x = g_cosTable[side] * size * 0.5f + nx;
-        c[0].z = g_sinTable[side] * size * 0.5f + nz;
-        c[1].x = g_cosTable[side_back] * size * 0.5f + nx;
-        c[1].z = g_sinTable[side_back] * size * 0.5f + nz;
-        c[3].x = g_cosTable[far_side] * size * 0.5f + fx;
-        c[3].z = g_sinTable[far_side] * size * 0.5f + fz;
-        c[2].x = g_cosTable[far_back] * size * 0.5f + fx;
-        c[2].z = g_sinTable[far_back] * size * 0.5f + fz;
+        c[0].x = COS_DEG(side) * size * 0.5f + nx;
+        c[0].z = SIN_DEG(side) * size * 0.5f + nz;
+        c[1].x = COS_DEG(side_back) * size * 0.5f + nx;
+        c[1].z = SIN_DEG(side_back) * size * 0.5f + nz;
+        c[3].x = COS_DEG(far_side) * size * 0.5f + fx;
+        c[3].z = SIN_DEG(far_side) * size * 0.5f + fz;
+        c[2].x = COS_DEG(far_back) * size * 0.5f + fx;
+        c[2].z = SIN_DEG(far_back) * size * 0.5f + fz;
         for (k = 0; k < 4; k++)
             c[k].y = 0.0f;
         prim_quad_turn(&c[0], &c[1], &c[2], &c[3], yaw, pitch);
@@ -513,8 +513,8 @@ void prim_animated_panel_render(struct EffectPrim *self, const float *view)
         if (panel->active != 1 || panel->alpha <= 0)
             continue;
         tex = (unsigned char)(panel->frame % 30);
-        cos_t = g_cosTable[panel->angle];
-        sin_t = g_sinTable[panel->angle];
+        cos_t = COS_DEG(panel->angle);
+        sin_t = SIN_DEG(panel->angle);
 
         size = panel->size;
         left = size * -0.5f;

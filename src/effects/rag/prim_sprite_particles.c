@@ -307,14 +307,14 @@ unsigned char prim_ghost_process(struct EffectPrim *self)
 
         ghost->pos = ghost->centre;
         deg = ghost->angle;
-        ghost->pos.x = g_cosTable[deg] * ghost->radius + ghost->centre.x;
+        ghost->pos.x = COS_DEG(deg) * ghost->radius + ghost->centre.x;
         if (ghost->mode == 2) {
             int twice = deg + deg;
 
             deg = twice < 360 ? twice : twice - 360;
         }
-        ghost->pos.z = g_sinTable[deg] * ghost->radius + ghost->pos.z;
-        ghost->pos.y = g_sinTable[ghost->bob] * ghost->speed + ghost->pos.y;
+        ghost->pos.z = SIN_DEG(deg) * ghost->radius + ghost->pos.z;
+        ghost->pos.y = SIN_DEG(ghost->bob) * ghost->speed + ghost->pos.y;
         self->delta = ghost->pos;
 
         facing = ghost->angle + (int)game_camera_heading();
@@ -354,8 +354,8 @@ unsigned char prim_petal_process(struct EffectPrim *self)
         self->alpha = alpha;
         if (3.0f > alpha)
             self->alpha = 0.0f;
-        petal->pos.x = g_sinTable[(int)petal->sway[0][0]] * 0.15f + petal->pos.x;
-        petal->pos.z = g_sinTable[(int)petal->sway[1][0]] * 0.15f + petal->pos.z;
+        petal->pos.x = SIN_DEG((int)petal->sway[0][0]) * 0.15f + petal->pos.x;
+        petal->pos.z = SIN_DEG((int)petal->sway[1][0]) * 0.15f + petal->pos.z;
         self->delta = petal->pos;
     }
     self->base.pos = self->delta;
@@ -376,11 +376,11 @@ unsigned char prim_leaf_process(struct EffectPrim *self)
         height = leaf->speed + leaf->pos.y;
         leaf->pos.y = height;
         if (leaf->style == 0) {
-            leaf->pos.x = g_sinTable[(int)leaf->sway[0][0]] * 0.24f + leaf->pos.x;
-            leaf->pos.z = g_sinTable[(int)leaf->sway[1][0]] * 0.3f + leaf->pos.z;
+            leaf->pos.x = SIN_DEG((int)leaf->sway[0][0]) * 0.24f + leaf->pos.x;
+            leaf->pos.z = SIN_DEG((int)leaf->sway[1][0]) * 0.3f + leaf->pos.z;
         } else {
-            leaf->pos.x = g_sinTable[(int)leaf->sway[0][0]] * 0.12f + leaf->pos.x;
-            leaf->pos.z = g_sinTable[(int)leaf->sway[1][0]] * 0.15f + leaf->pos.z;
+            leaf->pos.x = SIN_DEG((int)leaf->sway[0][0]) * 0.12f + leaf->pos.x;
+            leaf->pos.z = SIN_DEG((int)leaf->sway[1][0]) * 0.15f + leaf->pos.z;
         }
         if (height > self->base.pos.y) {
             leaf->pos.x = (float)rand_below(300) + self->base.pos.x - 150.0f;

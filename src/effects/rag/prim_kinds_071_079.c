@@ -2,9 +2,6 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
-#define COS_DEG(d) g_cosTable[d]
-#define SIN_DEG(d) g_sinTable[d]
-
 #define BLEND_ALPHA 1
 
 static void draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3,

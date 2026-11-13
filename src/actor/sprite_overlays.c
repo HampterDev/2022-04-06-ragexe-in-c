@@ -32,7 +32,7 @@ void render_object_draw_pulse_outline(struct RenderObject *self, const struct Sp
         self->pulse_phase = 0;
         phase = 0;
     }
-    k = g_sinTable[phase] * 1.5f + 5.0f;
+    k = SIN_DEG(phase) * 1.5f + 5.0f;
     k = ov_unit() * k;
     quad.top = (float)rect[1] - k;
     quad.bottom = (float)rect[3] + k;
@@ -295,7 +295,7 @@ void pc_draw_layer_overlays(struct Pc *pc, struct SqQuad *quad, struct SprClip *
         if (++pc->pulse_phase > 0xb4)
             pc->pulse_phase = 0;
         for (pass = 0; pass < 2; pass++) {
-            float sine = g_sinTable[pc->pulse_phase];
+            float sine = SIN_DEG(pc->pulse_phase);
 
             k = pass == 0 ? game_camera_scale() * (sine + 3.0f)
                           : game_camera_scale() * (sine + sine + 5.0f);

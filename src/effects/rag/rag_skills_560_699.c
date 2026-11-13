@@ -279,8 +279,8 @@ void rag_sakura_petals(struct RagEffect *self)
     p->scale = (float)(rand_below(6) + 22) / 70.0f;
     mv->pos.y = self->base.pos.y;
     a = (short)rand_below(360);
-    mv->pos.x = g_cosTable[a] * 8.0f + self->base.pos.x;
-    mv->pos.z = g_sinTable[a] * 8.0f + self->base.pos.z;
+    mv->pos.x = COS_DEG(a) * 8.0f + self->base.pos.x;
+    mv->pos.z = SIN_DEG(a) * 8.0f + self->base.pos.z;
     mv->sway[0][0] = (float)rand_below(360);
     mv->sway[0][1] = (float)rand_below(360);
     mv->sway[1][0] = (float)rand_below(360);

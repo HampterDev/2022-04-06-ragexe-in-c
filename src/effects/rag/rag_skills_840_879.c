@@ -251,8 +251,8 @@ void rag_whitelight_151(struct RagEffect *self, const char *tex, unsigned char s
     rag_rand(360);
     rag_rand(360);
     rec->radius = 5.0f;
-    rec->pos.x = g_sinTable[90] * -30.0f;
-    rec->pos.y = -(g_sinTable[0] * 20.0f) - 40.0f;
+    rec->pos.x = SIN_DEG(90) * -30.0f;
+    rec->pos.y = -(SIN_DEG(0) * 20.0f) - 40.0f;
     rec->pos.z = 0.0f;
     rec->style = style;
 }
@@ -403,8 +403,8 @@ void rag_summoned_monsters(struct RagEffect *self, signed char style)
     }
     p = self->last_prim;
     p->base.pos = p->master->base.pos;
-    p->base.pos.x += g_sinTable[deg] * dist;
-    p->base.pos.z += g_cosTable[deg] * dist;
+    p->base.pos.x += SIN_DEG(deg) * dist;
+    p->base.pos.z += COS_DEG(deg) * dist;
     p->base.pos.y = c3d_attr_get_height(attr, p->base.pos.x, p->base.pos.z);
     halo = p->records.sprite_halos;
     halo[0].additive = style == 15;
@@ -493,8 +493,8 @@ static void scale_and_turn(Vec3 *v, float k, short h)
     v->x *= k;
     v->z *= k;
     v->y *= k;
-    c = g_cosTable[h];
-    s = g_sinTable[h];
+    c = COS_DEG(h);
+    s = SIN_DEG(h);
     x = v->x;
     z = v->z;
     v->x = c * x - s * z;

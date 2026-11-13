@@ -182,15 +182,15 @@ void rotate_line_effect_shape(struct RotateLineEffect *self, struct Particle *p)
     if (span == 360 && column == 20)
         deg = (int)p->roll;
     tilt = particle_tilt(p);
-    s = g_sinTable[deg];
-    c = g_cosTable[deg];
+    s = SIN_DEG(deg);
+    c = COS_DEG(deg);
 
     low_x = c * p->scale;
     low_y = -particle_height(p);
     low_z = s * p->scale;
-    high_x = g_cosTable[tilt] * c + low_x;
-    high_y = (particle_band(p) - g_sinTable[tilt]) + low_y;
-    high_z = g_cosTable[tilt] * s + low_z;
+    high_x = COS_DEG(tilt) * c + low_x;
+    high_y = (particle_band(p) - SIN_DEG(tilt)) + low_y;
+    high_z = COS_DEG(tilt) * s + low_z;
     p->corners[1].x = high_x;
     p->corners[1].y = high_y;
     p->corners[1].z = high_z;

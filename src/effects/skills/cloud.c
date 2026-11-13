@@ -188,8 +188,8 @@ void cloud_drift(struct Cloud *self)
     drift_step(&self->drift_z, &self->drift_z_goal);
     p = self->puff;
     off = p->offset;
-    off.x = g_sinTable[self->drift_x] * 0.05f + off.x;
-    off.z = g_sinTable[self->drift_z] * 0.05f + off.z;
+    off.x = SIN_DEG(self->drift_x) * 0.05f + off.x;
+    off.z = SIN_DEG(self->drift_z) * 0.05f + off.z;
     p->offset = off;
     here = self->base.pos;
     p->pos.x = off.x + here.x;
@@ -200,7 +200,7 @@ void cloud_drift(struct Cloud *self)
 void cloud_pulse(struct Cloud *self)
 {
     self->pulse_phase = (self->pulse_phase + 1) % 360;
-    self->puff->scale = self->pulse * self->size * g_sinTable[self->pulse_phase] + self->size;
+    self->puff->scale = self->pulse * self->size * SIN_DEG(self->pulse_phase) + self->size;
 }
 
 void cloud_orient(struct Cloud *self)

@@ -225,17 +225,17 @@ void star_emperor_effect_update_ring(struct StarEmperorEffect *self, struct Part
     if (outer > 12.0f)
         inner = outer - 12.0f;
 
-    p->corners[0].x = g_cosTable[from] * outer;
+    p->corners[0].x = COS_DEG(from) * outer;
     p->corners[0].z = 0.0f;
-    p->corners[0].y = g_sinTable[from] * outer;
-    p->corners[1].x = g_cosTable[to] * outer;
-    p->corners[1].y = g_sinTable[to] * outer;
+    p->corners[0].y = SIN_DEG(from) * outer;
+    p->corners[1].x = COS_DEG(to) * outer;
+    p->corners[1].y = SIN_DEG(to) * outer;
     p->corners[1].z = 0.0f;
-    p->corners[2].x = g_cosTable[from] * inner;
-    p->corners[2].y = g_sinTable[from] * inner;
+    p->corners[2].x = COS_DEG(from) * inner;
+    p->corners[2].y = SIN_DEG(from) * inner;
     p->corners[2].z = 0.0f;
-    p->corners[3].x = g_cosTable[to] * inner;
-    p->corners[3].y = g_sinTable[to] * inner;
+    p->corners[3].x = COS_DEG(to) * inner;
+    p->corners[3].y = SIN_DEG(to) * inner;
     p->corners[3].z = 0.0f;
     {
         float m[12];

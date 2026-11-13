@@ -40,7 +40,7 @@ void prim_wave_ring_process(struct EffectPrim *self)
         for (j = 0; j < WAVE_RING_POINTS; j++) {
             int phase = i * 45 < 90 ? ring->frame + i * 90 : (ring->frame + i * 45) * 2;
             float base = ring->base_height;
-            ring->heights[j] = g_sinTable[j * 9] * base * 0.3f * g_sinTable[phase % 360] + base;
+            ring->heights[j] = SIN_DEG(j * 9) * base * 0.3f * SIN_DEG(phase % 360) + base;
         }
     }
 }
@@ -68,15 +68,15 @@ void prim_wave_ring_render(struct EffectPrim *self, const float *view)
 
             if ((unsigned short)ring->arc == 360 && point == 20)
                 deg = ring->arc_start;
-            cos_d = g_cosTable[deg];
-            low.z = ring->radius * g_sinTable[deg];
+            cos_d = COS_DEG(deg);
+            low.z = ring->radius * SIN_DEG(deg);
             low.x = ring->radius * cos_d;
             low.y = ring->base_height == 6.001f ? -2.0f : ring->base_height == 24.001f ? -1.0f : 0.0f;
 
             height = ring->heights[point];
-            out = g_cosTable[ring->tilt] * height;
-            up = g_sinTable[ring->tilt] * height;
-            high.z = out * g_sinTable[deg] + low.z;
+            out = COS_DEG(ring->tilt) * height;
+            up = SIN_DEG(ring->tilt) * height;
+            high.z = out * SIN_DEG(deg) + low.z;
             high.x = out * cos_d + low.x;
             if (ring->base_height == 6.001f)
                 up = up + 2.0f;
@@ -135,23 +135,23 @@ unsigned char prim_spin_square_process(struct EffectPrim *self)
 
 void prim_spin_square_corners(struct PrimSpinSquare *sq)
 {
-    double radius = (double)((g_sinTable[sq->pulse] + 1.0f) * (sq->size * 0.1f)) + (double)sq->size * 0.8;
+    double radius = (double)((SIN_DEG(sq->pulse) + 1.0f) * (sq->size * 0.1f)) + (double)sq->size * 0.8;
     int deg0 = sq->angle;
     int deg1 = quarter_turn(deg0);
     int deg2 = quarter_turn(deg1);
     int deg3 = quarter_turn(deg2);
 
-    sq->corners[2].x = (float)((double)g_cosTable[deg0] * radius);
-    sq->corners[2].z = (float)((double)g_sinTable[deg0] * radius);
+    sq->corners[2].x = (float)((double)COS_DEG(deg0) * radius);
+    sq->corners[2].z = (float)((double)SIN_DEG(deg0) * radius);
     sq->corners[2].y = sq->y;
-    sq->corners[0].x = (float)((double)g_cosTable[deg1] * radius);
-    sq->corners[0].z = (float)((double)g_sinTable[deg1] * radius);
+    sq->corners[0].x = (float)((double)COS_DEG(deg1) * radius);
+    sq->corners[0].z = (float)((double)SIN_DEG(deg1) * radius);
     sq->corners[0].y = sq->y;
     sq->corners[1].y = sq->y;
-    sq->corners[1].x = (float)((double)g_cosTable[deg2] * radius);
-    sq->corners[1].z = (float)((double)g_sinTable[deg2] * radius);
-    sq->corners[3].x = (float)((double)g_cosTable[deg3] * radius);
-    sq->corners[3].z = (float)((double)g_sinTable[deg3] * radius);
+    sq->corners[1].x = (float)((double)COS_DEG(deg2) * radius);
+    sq->corners[1].z = (float)((double)SIN_DEG(deg2) * radius);
+    sq->corners[3].x = (float)((double)COS_DEG(deg3) * radius);
+    sq->corners[3].z = (float)((double)SIN_DEG(deg3) * radius);
     sq->corners[3].y = sq->y;
 }
 
@@ -245,8 +245,8 @@ void prim_drift_angles(float (*pairs)[2], int count)
 
 static void drift_orb_circle(struct PrimDriftOrb *orb, float radius)
 {
-    orb->offset.x = g_sinTable[(int)orb->spin] * radius + orb->offset.x;
-    orb->offset.z = g_cosTable[(int)orb->spin] * radius + orb->offset.z;
+    orb->offset.x = SIN_DEG((int)orb->spin) * radius + orb->offset.x;
+    orb->offset.z = COS_DEG((int)orb->spin) * radius + orb->offset.z;
 }
 
 static void drift_orb_offset(struct PrimDriftOrb *orb, signed char style)
@@ -254,13 +254,13 @@ static void drift_orb_offset(struct PrimDriftOrb *orb, signed char style)
     float y;
 
     if (style == 0) {
-        orb->offset.x = g_sinTable[(int)orb->drift[0][0]];
-        orb->offset.z = g_sinTable[(int)orb->drift[1][0]];
-        y = g_sinTable[(int)orb->drift[2][0]];
+        orb->offset.x = SIN_DEG((int)orb->drift[0][0]);
+        orb->offset.z = SIN_DEG((int)orb->drift[1][0]);
+        y = SIN_DEG((int)orb->drift[2][0]);
     } else {
-        orb->offset.x = g_sinTable[(int)orb->drift[0][0]] * 0.5f;
-        orb->offset.z = g_sinTable[(int)orb->drift[1][0]] * 0.5f;
-        y = g_sinTable[(int)orb->drift[2][0]] * 0.5f;
+        orb->offset.x = SIN_DEG((int)orb->drift[0][0]) * 0.5f;
+        orb->offset.z = SIN_DEG((int)orb->drift[1][0]) * 0.5f;
+        y = SIN_DEG((int)orb->drift[2][0]) * 0.5f;
     }
     orb->offset.y = y;
     drift_orb_circle(orb, 7.0f);
@@ -307,9 +307,9 @@ unsigned char prim_drift_orb_process(struct EffectPrim *self)
         drift_orb_spin(orb);
 
     if (orb->wide == 1.0f) {
-        orb->offset.x = g_sinTable[(int)orb->drift[0][0]] * 0.7f;
-        orb->offset.z = g_sinTable[(int)orb->drift[1][0]] * 0.7f;
-        orb->offset.y = g_sinTable[(int)orb->drift[2][0]] * 0.7f;
+        orb->offset.x = SIN_DEG((int)orb->drift[0][0]) * 0.7f;
+        orb->offset.z = SIN_DEG((int)orb->drift[1][0]) * 0.7f;
+        orb->offset.y = SIN_DEG((int)orb->drift[2][0]) * 0.7f;
         drift_orb_circle(orb, 5.5f);
     } else {
         drift_orb_offset(orb, style);
@@ -325,9 +325,9 @@ static void square_corners(Vec3 corner[4], int deg, float size)
 
     deg %= 360;
     for (i = 0; i < 4; i++) {
-        corner[i].x = g_cosTable[deg] * size;
+        corner[i].x = COS_DEG(deg) * size;
         corner[i].y = 0.0f;
-        corner[i].z = g_sinTable[deg] * size;
+        corner[i].z = SIN_DEG(deg) * size;
         deg = (deg + 90) % 360;
     }
 }
@@ -367,13 +367,13 @@ void prim_drift_orb_render(struct EffectPrim *self, const float *view)
     for (halo = 0; halo < 2; halo++) {
         Vec3 corner[4];
         float size = orb->size;
-        float shimmer = g_sinTable[(int)orb->shimmer] * size * 0.05f;
+        float shimmer = SIN_DEG((int)orb->shimmer) * size * 0.05f;
         unsigned char r, g, b;
 
         if (!halo) {
             square_corners(corner, orb->frame * 2, shimmer + size);
         } else {
-            float pulse = g_sinTable[orb->frame * 5 % 90];
+            float pulse = SIN_DEG(orb->frame * 5 % 90);
             square_corners(corner, orb->frame * 2, shimmer + (pulse + pulse + 1.0f) * size);
         }
         prim_quad_turn(&corner[0], &corner[1], &corner[2], &corner[3], self->camera_yaw, pitch);
@@ -437,7 +437,7 @@ unsigned char prim_orb_blades_process(struct EffectPrim *self)
                 blade->blade_alpha = 200;
             }
         }
-        height = g_sinTable[sway] * grow * 0.1f;
+        height = SIN_DEG(sway) * grow * 0.1f;
         height = blade->grow * 0.9f + height;
         blade->height = height;
         if (0.0f > height)
@@ -471,10 +471,10 @@ void prim_orb_blades_render(struct EffectPrim *self, const float *view)
     if (orb->active != 1 || orb->alpha <= 0)
         return;
 
-    orb_square(self, orb, g_sinTable[(int)orb->shimmer] * orb->size * 0.05f + orb->size, corner);
+    orb_square(self, orb, SIN_DEG((int)orb->shimmer) * orb->size * 0.05f + orb->size, corner);
     prim_draw_quad(self, &count, orb->alpha, corner[0], corner[1], corner[2], corner[3], view, PRIM_BLEND_ADDITIVE,
                    0, 0, 0x44, 0x2a, 0xff, 0.0f, 1.0f, 0.0f, 1.0f, PRIM_QUAD_PROJECTED);
-    orb_square(self, orb, g_sinTable[(int)orb->shimmer] * orb->size * 0.05f + orb->size * 0.5f, corner);
+    orb_square(self, orb, SIN_DEG((int)orb->shimmer) * orb->size * 0.05f + orb->size * 0.5f, corner);
     prim_draw_quad(self, &count, orb->alpha, corner[0], corner[1], corner[2], corner[3], view, PRIM_BLEND_ADDITIVE,
                    0, 0, 0x9b, 0x9b, 0xff, 0.0f, 1.0f, 0.0f, 1.0f, PRIM_QUAD_PROJECTED);
 
@@ -485,14 +485,14 @@ void prim_orb_blades_render(struct EffectPrim *self, const float *view)
         int deg = blade->angle, back_deg;
         Vec3 top_near, top_far;
 
-        blade->foot_near.x = g_cosTable[deg] * half - g_sinTable[deg] * 0.0f;
-        blade->foot_near.z = g_sinTable[deg] * half + g_cosTable[deg] * 0.0f;
+        blade->foot_near.x = COS_DEG(deg) * half - SIN_DEG(deg) * 0.0f;
+        blade->foot_near.z = SIN_DEG(deg) * half + COS_DEG(deg) * 0.0f;
         blade->foot_near.y = blade->height * 0.5f;
         back_deg = deg + 180;
         if (deg >= 180)
             back_deg = deg - 180;
-        blade->foot_far.x = g_cosTable[back_deg] * half - g_sinTable[back_deg] * 0.0f;
-        blade->foot_far.z = g_sinTable[back_deg] * half + g_cosTable[back_deg] * 0.0f;
+        blade->foot_far.x = COS_DEG(back_deg) * half - SIN_DEG(back_deg) * 0.0f;
+        blade->foot_far.z = SIN_DEG(back_deg) * half + COS_DEG(back_deg) * 0.0f;
         blade->foot_far.y = blade->height * 0.5f;
 
         blade->foot_near.x = orb->offset.x + blade->foot_near.x;
@@ -539,8 +539,8 @@ unsigned char prim_walking_ring_process(struct EffectPrim *self)
         dir = (short)(heading + 345);
         if (dir >= 360)
             dir = (short)(dir - 360);
-        ring->walked.x = g_cosTable[dir] + ring->walked.x;
-        ring->walked.z = g_sinTable[dir] + ring->walked.z;
+        ring->walked.x = COS_DEG(dir) + ring->walked.x;
+        ring->walked.z = SIN_DEG(dir) + ring->walked.z;
         if ((short)heading >= 360)
             ring->arc_start = (short)(heading - 360);
 
@@ -569,7 +569,7 @@ unsigned char prim_walking_ring_process(struct EffectPrim *self)
             float height = ring->base_height * walking_ring_taper[j];
             ring->heights[j] = height;
             if (ring->frame <= 15) {
-                height = height * g_sinTable[ring->frame * 6];
+                height = height * SIN_DEG(ring->frame * 6);
                 ring->heights[j] = height;
             }
             if (0.0f > height)
@@ -606,15 +606,15 @@ void prim_walking_ring_render(struct EffectPrim *self, const float *view)
 
             if ((unsigned short)ring->arc == 360 && point == 20)
                 deg = ring->arc_start;
-            cos_d = g_cosTable[deg];
-            ring_z = ring->radius * g_sinTable[deg];
+            cos_d = COS_DEG(deg);
+            ring_z = ring->radius * SIN_DEG(deg);
             height = ring->heights[point];
-            out = g_cosTable[ring->tilt] * height;
-            high.y = -(g_sinTable[ring->tilt] * height);
+            out = COS_DEG(ring->tilt) * height;
+            high.y = -(SIN_DEG(ring->tilt) * height);
             ring_x = ring->radius * cos_d;
             low.x = ring_x - first->walked.x * 0.75f;
             low.z = ring_z - first->walked.z * 0.75f;
-            sin_d = g_sinTable[deg];
+            sin_d = SIN_DEG(deg);
             high.z = out * sin_d + ring_z - first->walked.z;
             high.x = out * cos_d + ring_x - first->walked.x;
             if (point > 0) {

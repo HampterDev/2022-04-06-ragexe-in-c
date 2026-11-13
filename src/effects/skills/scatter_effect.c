@@ -159,8 +159,8 @@ void scatter_update_petal(struct SpriteParticle *p)
     p->base.alpha = alpha < 0 ? 0 : alpha;
     heading = petal_heading(p);
     fall = p->frame_delay + petal_fall(p);
-    x = g_cosTable[heading] * DRIFT_SPEED + petal_drift_x(p);
-    z = g_sinTable[heading] * DRIFT_SPEED + petal_drift_z(p);
+    x = COS_DEG(heading) * DRIFT_SPEED + petal_drift_x(p);
+    z = SIN_DEG(heading) * DRIFT_SPEED + petal_drift_z(p);
     petal_fall(p) = fall;
     petal_drift_x(p) = x;
     petal_drift_z(p) = z;

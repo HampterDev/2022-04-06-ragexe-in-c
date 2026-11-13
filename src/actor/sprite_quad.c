@@ -54,7 +54,7 @@ unsigned char render_object_clip_to_quad(struct RenderObject *self, int index, i
         float k, d;
 
         if (t <= 0x12)
-            k = g_sinTable[t * 5] * 0.3f;
+            k = SIN_DEG(t * 5) * 0.3f;
         else if (t <= 0x14)
             k = 0.3f;
         else if (t <= 0x17)
@@ -163,7 +163,7 @@ unsigned char render_object_clip_to_quad(struct RenderObject *self, int index, i
         short t = (short)self->overlay_step;
 
         if (t <= 0x24) {
-            float angle = 180.0f - g_sinTable[90 + t * 5] * 180.0f;
+            float angle = 180.0f - SIN_DEG(90 + t * 5) * 180.0f;
 
             quad->angle = angle;
             if (angle >= 360.0f)

@@ -38,6 +38,26 @@ extern float g_degreeTables[6 * 361];
 #define g_negSinTable (g_degreeTables + 3 * 361)
 #define g_cosTable (g_degreeTables + 4 * 361)
 #define g_negCosTable (g_degreeTables + 5 * 361)
+
+static __inline int index32(int i)
+{
+    return (int)(((unsigned)i & 0x3fffffffu) ^ 0x20000000u) - 0x20000000;
+}
+
+static __inline int degree_block_index(int table, int deg)
+{
+    deg = index32(deg);
+    if (deg < -table || deg >= 6 * 361 - table) {
+        deg %= 360;
+        if (deg < 0)
+            deg += 360;
+    }
+    return table + deg;
+}
+
+#define SIN_DEG(d) (g_degreeTables[degree_block_index(2 * 361, (d))])
+#define COS_DEG(d) (g_degreeTables[degree_block_index(4 * 361, (d))])
+
 extern const float g_halfTurnDegrees;
 extern const float g_pi;
 

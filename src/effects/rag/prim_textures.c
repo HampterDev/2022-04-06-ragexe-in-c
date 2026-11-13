@@ -190,9 +190,9 @@ static Vec3 ground_corner(int deg, double radius, float y)
 {
     Vec3 corner;
 
-    corner.x = (float)((double)g_cosTable[deg] * radius);
+    corner.x = (float)((double)COS_DEG(deg) * radius);
     corner.y = y;
-    corner.z = (float)((double)g_sinTable[deg] * radius);
+    corner.z = (float)((double)SIN_DEG(deg) * radius);
     return corner;
 }
 
@@ -216,7 +216,7 @@ void prim_ground_squares_render(struct EffectPrim *self, const float *view)
         else
             deg = slot_deg;
         size = rec->size;
-        radius = (double)((g_sinTable[rec->bob] + 1.0f) * (size * 0.1f)) + (double)size * 0.8;
+        radius = (double)((SIN_DEG(rec->bob) + 1.0f) * (size * 0.1f)) + (double)size * 0.8;
         *p0 = ground_corner(deg, radius, rec->y);
         deg = next_quarter(deg);
         *p1 = ground_corner(deg, radius, rec->y);
@@ -288,10 +288,10 @@ void prim_texture_quads_render(struct EffectPrim *self, const float *view)
         if (rec->alpha <= 0)
             continue;
         spin = rec->spin;
-        radius = g_sinTable[(int)rec->pulse] * rec->size * 0.05f + rec->size;
+        radius = SIN_DEG((int)rec->pulse) * rec->size * 0.05f + rec->size;
         a.y = 0.0f;
-        a.x = g_cosTable[spin] * radius;
-        a.z = g_sinTable[spin] * radius;
+        a.x = COS_DEG(spin) * radius;
+        a.z = SIN_DEG(spin) * radius;
         shape = rec->shape;
         deg = spin;
         if (shape == 0.0f)
@@ -301,8 +301,8 @@ void prim_texture_quads_render(struct EffectPrim *self, const float *view)
         else if (shape == 2.0f)
             deg = back_by(spin, 130);
         b.y = 0.0f;
-        b.x = g_cosTable[deg] * radius;
-        b.z = g_sinTable[deg] * radius;
+        b.x = COS_DEG(deg) * radius;
+        b.z = SIN_DEG(deg) * radius;
         if (shape == 0.0f)
             deg = back_by(deg, 90);
         else if (shape == 1.0f)
@@ -310,8 +310,8 @@ void prim_texture_quads_render(struct EffectPrim *self, const float *view)
         else if (shape == 2.0f)
             deg = back_by(deg, 50);
         c.y = 0.0f;
-        c.x = g_cosTable[deg] * radius;
-        c.z = g_sinTable[deg] * radius;
+        c.x = COS_DEG(deg) * radius;
+        c.z = SIN_DEG(deg) * radius;
         if (shape == 0.0f)
             deg = back_by(deg, 90);
         else if (shape == 1.0f)
@@ -319,8 +319,8 @@ void prim_texture_quads_render(struct EffectPrim *self, const float *view)
         else if (shape == 2.0f)
             deg = back_by(deg, 130);
         d.y = 0.0f;
-        d.x = g_cosTable[deg] * radius;
-        d.z = g_sinTable[deg] * radius;
+        d.x = COS_DEG(deg) * radius;
+        d.z = SIN_DEG(deg) * radius;
 
         look = rec->look;
         if (look == 3) {

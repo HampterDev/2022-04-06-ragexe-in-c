@@ -197,7 +197,7 @@ static void rect_up_effect_tint(struct RectUpEffect *self, struct Particle *p)
     phase = next_degree(rect_up_particle(p)->tint_phase);
     rect_up_particle(p)->tint_phase = phase;
     particle_set_color(p, 255, 255,
-                        (short)(int)(g_sinTable[phase] * 100.0f + (float)rect_up_particle(p)->tint_base));
+                        (short)(int)(SIN_DEG(phase) * 100.0f + (float)rect_up_particle(p)->tint_base));
 }
 
 void rect_up_effect_animate(struct RectUpEffect *self, struct Particle *p)
@@ -215,9 +215,9 @@ void rect_up_effect_animate(struct RectUpEffect *self, struct Particle *p)
         p->alpha = alpha < 0 ? 0 : alpha;
     }
     max_height = rect_up_particle(p)->max_height;
-    height = g_sinTable[phase] * max_height * 0.35f + max_height * 0.65f;
+    height = SIN_DEG(phase) * max_height * 0.35f + max_height * 0.65f;
     if (age < 90)
-        height *= g_sinTable[age];
+        height *= SIN_DEG(age);
     rect_up_particle(p)->height = height;
     rect_up_effect_tint(self, p);
     memcpy(m, g_identityMatrix.m, sizeof(m));
@@ -250,8 +250,8 @@ void rect_up_effect_render_corner(struct RectUpEffect *self, struct Particle *p)
     deg = (int)p->roll % 360;
     index = P_INDEX(p);
     top = -rect_up_particle(p)->height;
-    x = g_cosTable[deg] * p->scale;
-    z = g_sinTable[deg] * p->scale;
+    x = COS_DEG(deg) * p->scale;
+    z = SIN_DEG(deg) * p->scale;
     p->corners[1].y = top;
     p->corners[1].x = x;
     p->corners[1].z = z;

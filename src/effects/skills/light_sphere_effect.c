@@ -52,8 +52,6 @@ static const struct EffectOps light_sphere_effect_ops = {
     .destroy = light_sphere_effect_destroy,
     .fade_out = effect_fade_out,
 };
-#define SIN_DEG(d) (g_sinTable[d])
-#define COS_DEG(d) (g_cosTable[d])
 #define MATRIX_BYTES (12 * sizeof(float))
 
 #define PART_EFFECT_TYPE(p) ((p)->effect_type)

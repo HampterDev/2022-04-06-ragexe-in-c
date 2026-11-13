@@ -6,9 +6,9 @@ static Vec3 on_circle(int deg, float radius)
 {
     Vec3 p;
 
-    p.x = g_cosTable[deg] * radius;
+    p.x = COS_DEG(deg) * radius;
     p.y = 0.0f;
-    p.z = g_sinTable[deg] * radius;
+    p.z = SIN_DEG(deg) * radius;
     return p;
 }
 
@@ -46,7 +46,7 @@ void prim_jitter_quad_process(struct EffectPrim *self)
     q->pos.z = self->base.pos.z;
     base = self->base.pos.y - 6.0f;
     q->base_y = base;
-    q->pos.y = g_sinTable[q->bob] * 3.0f + base;
+    q->pos.y = SIN_DEG(q->bob) * 3.0f + base;
 }
 
 static int jitter_step(int deg)
@@ -78,7 +78,7 @@ void prim_jitter_quad_render(struct EffectPrim *self, const float *view)
         if (q->spin >= 360.0f || 0.0f > q->spin)
             q->spin = 0.0f;
         deg0 = q->angle;
-        radius = g_sinTable[(int)q->spin] * q->size * 0.05f + q->size;
+        radius = SIN_DEG((int)q->spin) * q->size * 0.05f + q->size;
         p[0] = on_circle(deg0, radius);
         deg1 = jitter_step(deg0);
         p[1] = on_circle(deg1, radius);
@@ -143,8 +143,8 @@ unsigned char prim_drop_square_process(struct EffectPrim *self)
             sq->pos.y = sq->fall + sq->pos.y;
         }
         angle = sq->angle;
-        sq->pos.x = g_cosTable[angle] * sq->radius;
-        sq->pos.z = g_sinTable[angle] * sq->radius;
+        sq->pos.x = COS_DEG(angle) * sq->radius;
+        sq->pos.z = SIN_DEG(angle) * sq->radius;
         if ((short)alpha < 0) {
             sq->alpha = 0;
             sq->active = 0;
@@ -224,7 +224,7 @@ void prim_lean_ring_process(struct EffectPrim *self)
         for (j = 0; j < WAVE_RING_POINTS; j++) {
             int phase = i * 45 < 90 ? ring->frame + i * 90 : (ring->frame + i * 45) * 2;
             float base = ring->base_height;
-            ring->heights[j] = base * g_sinTable[j * 9] * 0.15f * g_sinTable[phase % 360] + base;
+            ring->heights[j] = base * SIN_DEG(j * 9) * 0.15f * SIN_DEG(phase % 360) + base;
         }
     }
 }
@@ -253,14 +253,14 @@ void prim_lean_ring_render(struct EffectPrim *self, const float *view)
 
             if ((unsigned short)ring->arc == 360 && point == 20)
                 deg = ring->arc_start;
-            cos_d = g_cosTable[deg];
-            sin_d = g_sinTable[deg];
+            cos_d = COS_DEG(deg);
+            sin_d = SIN_DEG(deg);
             low.x = ring->radius * cos_d;
             low.z = ring->radius * sin_d;
-            out = g_cosTable[ring->tilt] * ring->heights[point];
+            out = COS_DEG(ring->tilt) * ring->heights[point];
             high.x = out * cos_d + low.x;
             high.z = out * sin_d + low.z;
-            high.y = 5.0f - g_sinTable[ring->tilt] * ring->heights[point];
+            high.y = 5.0f - SIN_DEG(ring->tilt) * ring->heights[point];
             if (point > 0)
                 prim_draw_strip(self, &count, point - 1, ring->alpha, prev_low, low, high, prev_high,
                                 view, (char)(ring->frame % self->motion_count));
@@ -334,28 +334,28 @@ void prim_whirl_disc_process(struct EffectPrim *self)
                     disc->alpha = 0;
             }
         }
-        along = g_cosTable[disc->yaw] * disc->speed;
-        disc->pos.x = disc->pos.x - g_cosTable[disc->pitch] * along;
-        disc->pos.y = disc->pos.y - (g_sinTable[disc->pitch] * along + 0.0f);
-        disc->pos.z = disc->pos.z - g_sinTable[disc->yaw] * disc->speed;
+        along = COS_DEG(disc->yaw) * disc->speed;
+        disc->pos.x = disc->pos.x - COS_DEG(disc->pitch) * along;
+        disc->pos.y = disc->pos.y - (SIN_DEG(disc->pitch) * along + 0.0f);
+        disc->pos.z = disc->pos.z - SIN_DEG(disc->yaw) * disc->speed;
     }
 }
 
 static Vec3 disc_point(const struct PrimWhirlDisc *disc, int deg, float pitch_cos, float pitch_sin)
 {
-    float along = g_cosTable[deg] * disc->size;
+    float along = COS_DEG(deg) * disc->size;
     Vec3 p;
 
     p.x = pitch_cos * along + disc->pos.x;
     p.y = pitch_sin * along + disc->lift + disc->pos.y;
-    p.z = disc->size * g_sinTable[deg] + disc->pos.z;
+    p.z = disc->size * SIN_DEG(deg) + disc->pos.z;
     return p;
 }
 
 static void disc_blade(const struct PrimWhirlDisc *disc, int half, Vec3 p[4])
 {
     int yaw = disc->yaw;
-    float pitch_cos = g_cosTable[disc->pitch], pitch_sin = g_sinTable[disc->pitch];
+    float pitch_cos = COS_DEG(disc->pitch), pitch_sin = SIN_DEG(disc->pitch);
 
     p[0] = disc_point(disc, yaw + (yaw >= half ? -half : 360 - half), pitch_cos, pitch_sin);
     p[1] = disc_point(disc, yaw + (yaw < 360 - half ? half : half - 360), pitch_cos, pitch_sin);
@@ -492,7 +492,7 @@ void prim_pulse_fan_render(struct EffectPrim *self, const float *view)
             fan_draw(self, q, view, &count, c, 1, BLEND_ALPHA, 225, 255, 225);
             break;
         }
-        fan_corners(self, q, g_sinTable[(int)q->spin] * q->size * 0.05f + q->size, c);
+        fan_corners(self, q, SIN_DEG((int)q->spin) * q->size * 0.05f + q->size, c);
         switch (q->fan_style) {
         case 0:
         case 3:
@@ -511,12 +511,12 @@ void prim_pulse_fan_render(struct EffectPrim *self, const float *view)
 
 static Vec3 line_point(int deg, float len, float pitch_cos, float pitch_sin, float y)
 {
-    float along = g_cosTable[deg] * len;
+    float along = COS_DEG(deg) * len;
     Vec3 p;
 
     p.x = along * pitch_cos;
     p.y = along * pitch_sin + y;
-    p.z = g_sinTable[deg] * len;
+    p.z = SIN_DEG(deg) * len;
     return p;
 }
 
@@ -552,8 +552,8 @@ void prim_blue_wedge_render(struct EffectPrim *self, const float *view)
         if (line->active != 1 || (short)line->alpha <= 0)
             continue;
         yaw = line->yaw;
-        pitch_cos = g_cosTable[line->pitch];
-        pitch_sin = g_sinTable[line->pitch];
+        pitch_cos = COS_DEG(line->pitch);
+        pitch_sin = SIN_DEG(line->pitch);
         p0 = line_point(yaw + (yaw >= 5 ? -5 : 355), line->reach, pitch_cos, pitch_sin, line->y);
         p1 = line_point(yaw + (yaw < 355 ? 5 : -355), line->reach, pitch_cos, pitch_sin, line->y);
         foot.x = 0.0f;
@@ -592,8 +592,8 @@ void prim_blue_blade_render(struct EffectPrim *self, const float *view)
         if (line->active != 1 || (short)line->alpha <= 0)
             continue;
         yaw = line->yaw;
-        pitch_cos = g_cosTable[line->pitch];
-        pitch_sin = g_sinTable[line->pitch];
+        pitch_cos = COS_DEG(line->pitch);
+        pitch_sin = SIN_DEG(line->pitch);
         p0 = line_point(yaw + (yaw >= 90 ? -90 : 270), 7.0f, pitch_cos, pitch_sin, line->y);
         p1 = line_point(yaw + (yaw >= 7 ? -7 : 353), line->reach, pitch_cos, pitch_sin, line->y);
         p2 = line_point(yaw + (yaw < 353 ? 7 : -353), line->reach, pitch_cos, pitch_sin, line->y);
@@ -645,9 +645,9 @@ void prim_dash_line_render(struct EffectPrim *self, const float *view)
 
         if (line->active != 1 || (short)line->alpha <= 0)
             continue;
-        dash_corners(line->yaw, 20, line->length, g_cosTable[line->pitch], g_sinTable[line->pitch], line->y, c);
-        yaw_cos = g_cosTable[line->yaw];
-        yaw_sin = g_sinTable[line->yaw];
+        dash_corners(line->yaw, 20, line->length, COS_DEG(line->pitch), SIN_DEG(line->pitch), line->y, c);
+        yaw_cos = COS_DEG(line->yaw);
+        yaw_sin = SIN_DEG(line->yaw);
         for (n = 0; n < 6; n++) {
             float dist = (float)n * line->length + line->reach;
             float dx = dist * yaw_cos, dz = dist * yaw_sin;
@@ -700,7 +700,7 @@ static void bent_dashes(struct EffectPrim *self, const struct PrimDashLine *line
                         float start, int half, unsigned char rg)
 {
     static const float piece[6] = {20.0f, 13.0f, 13.0f, 13.0f, 12.0f, 13.0f};
-    float pitch_cos = g_cosTable[line->pitch], pitch_sin = g_sinTable[line->pitch];
+    float pitch_cos = COS_DEG(line->pitch), pitch_sin = SIN_DEG(line->pitch);
     short n;
 
     for (n = 0; n < 7; n++) {
@@ -723,8 +723,8 @@ static void bent_dashes(struct EffectPrim *self, const struct PrimDashLine *line
             if (dist > bend_at[j]) {
                 if (j > 0)
                     deg = deg + (deg < 355 ? 5 : -355);
-                seg[j].x = g_cosTable[deg] * piece[j];
-                seg[j].z = g_sinTable[deg] * piece[j];
+                seg[j].x = COS_DEG(deg) * piece[j];
+                seg[j].z = SIN_DEG(deg) * piece[j];
                 rest = dist - bend_at[j];
             }
         }
@@ -742,9 +742,9 @@ static void bent_dashes(struct EffectPrim *self, const struct PrimDashLine *line
                 p[k].y = p[k].y + seg[j].y;
                 p[k].z = p[k].z + seg[j].z;
             }
-            p[k].x = p[k].x + g_cosTable[deg] * rest;
+            p[k].x = p[k].x + COS_DEG(deg) * rest;
             p[k].y = p[k].y + 0.0f;
-            p[k].z = p[k].z + g_sinTable[deg] * rest;
+            p[k].z = p[k].z + SIN_DEG(deg) * rest;
         }
         if (dist > 100.0f)
             break;

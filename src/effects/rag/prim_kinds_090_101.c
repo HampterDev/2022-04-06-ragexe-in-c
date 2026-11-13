@@ -3,8 +3,8 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
-#define COS(deg) g_cosTable[deg]
-#define SIN(deg) g_sinTable[deg]
+#define COS(deg) COS_DEG(deg)
+#define SIN(deg) SIN_DEG(deg)
 
 static int rand_below(int n)
 {

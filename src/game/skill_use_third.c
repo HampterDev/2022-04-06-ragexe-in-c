@@ -135,8 +135,8 @@ void skill_use_jack_frost_ring_look(const struct SkillCast *cast)
         if (step < 0)
             step = 0;
         k = (short)(step + i * 36);
-        at.x = g_cosTable[k] * 80.0f + at.x;
-        at.z = g_sinTable[k] * 80.0f + at.z;
+        at.x = COS_DEG(k) * 80.0f + at.x;
+        at.z = SIN_DEG(k) * 80.0f + at.z;
         effect_set_pos(effect, &at);
     }
     play_skill_wave(WAVE_JACK_FROST);

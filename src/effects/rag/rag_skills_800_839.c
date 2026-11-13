@@ -580,8 +580,8 @@ void rag_ring_scatter_137(struct RagEffect *self, const char *tex, signed char s
                 dist = 5.0f;
         }
         deg = (short)rag_rand(360);
-        crown->pos.x = g_cosTable[deg] * dist;
-        crown->pos.z = g_sinTable[deg] * dist;
+        crown->pos.x = COS_DEG(deg) * dist;
+        crown->pos.z = SIN_DEG(deg) * dist;
         crown->radius = (float)(rand() % 11) * 0.015f + 0.15f;
         crown->tilt = 90;
         crown->offset.x = self->offset.x - self->base.pos.x;

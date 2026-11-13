@@ -188,8 +188,8 @@ void prim_ring_render(struct EffectPrim *self, const float *view)
         do {
             struct PrimTriangle *tri = &self->triangles[count];
             float b = self->arc_degrees + a;
-            float c0 = g_cosTable[(int)a], s0 = g_sinTable[(int)a];
-            float c1 = g_cosTable[(int)b], s1 = g_sinTable[(int)b];
+            float c0 = COS_DEG((int)a), s0 = SIN_DEG((int)a);
+            float c1 = COS_DEG((int)b), s1 = SIN_DEG((int)b);
             Vec3 in_a = shape_point(self->matrix, c0 * inner, s0 * inner, 0.0f, &part->pos);
             Vec3 in_b = shape_point(self->matrix, c1 * inner, s1 * inner, 0.0f, &part->pos);
             Vec3 out_a = shape_point(self->matrix, outer * c0, outer * s0, 0.0f, &part->pos);
@@ -264,8 +264,8 @@ void prim_band_render(struct EffectPrim *self, const float *view)
         return;
     do {
         float b = self->arc_degrees + a;
-        float c0 = g_cosTable[(int)a], s0 = g_sinTable[(int)a];
-        float c1 = g_cosTable[(int)b], s1 = g_sinTable[(int)b];
+        float c0 = COS_DEG((int)a), s0 = SIN_DEG((int)a);
+        float c1 = COS_DEG((int)b), s1 = SIN_DEG((int)b);
         float r0 = self->radius[0];
         float r1 = self->radius[1];
         float top = -self->size[2].value;

@@ -727,8 +727,8 @@ void rag_ring_burst(struct RagEffect *self, const char *tex, signed char style)
                 scatter = 5.0f;
         }
         deg = (short)rag_rand(360);
-        crown->pos.x = g_cosTable[deg] * scatter;
-        crown->pos.z = g_sinTable[deg] * scatter;
+        crown->pos.x = COS_DEG(deg) * scatter;
+        crown->pos.z = SIN_DEG(deg) * scatter;
         crown->radius = (float)(rand() % 11) * 0.015f + 0.15f;
         crown->tilt = 90;
         crown->offset.x = 0.0f;
@@ -770,8 +770,8 @@ void rag_snowfall(struct RagEffect *self, unsigned char style)
         deg = (short)rag_rand(360);
         bb->pos.x = self->base.pos.x;
         bb->pos.z = self->base.pos.z;
-        bb->pos.x = g_cosTable[deg] * scatter + bb->pos.x;
-        bb->pos.z = g_sinTable[deg] * scatter + bb->pos.z;
+        bb->pos.x = COS_DEG(deg) * scatter + bb->pos.x;
+        bb->pos.z = SIN_DEG(deg) * scatter + bb->pos.z;
         bb->pos.y = self->base.pos.y - 6.0f - (float)rag_rand(31);
         bb->heading = 0;
         bb->speed = 0.0f;

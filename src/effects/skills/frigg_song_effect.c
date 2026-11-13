@@ -128,14 +128,14 @@ void frigg_song_effect_shape_segment(struct FriggSongEffect *self, struct Partic
         angle = (int)p->roll;
     elevation = particle_elevation(p);
     radius = p->scale;
-    cos_a = g_cosTable[angle];
-    sin_a = g_sinTable[angle];
-    lean = g_cosTable[elevation] * wall;
+    cos_a = COS_DEG(angle);
+    sin_a = SIN_DEG(angle);
+    lean = COS_DEG(elevation) * wall;
     foot.x = radius * cos_a;
     foot.y = 0;
     foot.z = radius * sin_a;
     top.x = lean * cos_a + foot.x;
-    top.y = 0.0f - g_sinTable[elevation] * wall;
+    top.y = 0.0f - SIN_DEG(elevation) * wall;
     top.z = lean * sin_a + foot.z;
     if (segment > 0 && segment < SEGMENTS) {
         p->corners[1].x = top.x;  p->corners[1].y = top.y;  p->corners[1].z = top.z;
@@ -212,7 +212,7 @@ void frigg_song_raise_wall(struct Particle *p)
     if (age < 20) {
         rise = 1.0f;
     } else if (age <= 140) {
-        float v = g_sinTable[age - 20] * particle_wall(p);
+        float v = SIN_DEG(age - 20) * particle_wall(p);
         rise = 0.0f > v ? 0.0f : v;
     } else {
         float wall = particle_wall(p);

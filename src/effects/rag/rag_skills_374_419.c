@@ -307,8 +307,8 @@ static void dashes_to_offset(struct RagEffect *self, int wide)
         pipe->start.z = (float)rand_below(100) * 0.08f - 4.0f + self->base.pos.z;
         pipe->start.y = self->base.pos.y;
         back = (float)rand_below(100) * 0.15f;
-        pipe->start.x -= g_cosTable[pipe->heading] * back;
-        pipe->start.z -= g_sinTable[pipe->heading] * back;
+        pipe->start.x -= COS_DEG(pipe->heading) * back;
+        pipe->start.z -= SIN_DEG(pipe->heading) * back;
         pipe->end.x = pipe->start.x;
         pipe->end.z = pipe->start.z;
         pipe->end.y = self->base.pos.y;
@@ -496,8 +496,8 @@ void rag_spray_at_angle(struct RagEffect *self, const char *tex, short angle, in
         heading = (short)(rand_below(90) + angle);
         if (heading >= 360)
             heading = (short)(heading - 360);
-        c = g_cosTable[heading];
-        s = g_sinTable[heading];
+        c = COS_DEG(heading);
+        s = SIN_DEG(heading);
         sq->frame = -rand_below(11);
         sq->heading = heading;
         sq->fall = 0.03f;
@@ -534,8 +534,8 @@ void rag_popping_bits(struct RagEffect *self, const char *tex, int mode)
         sq->alpha = 0;
         sq->centre.y = (float)-rand_below(8);
         a = rand_below(360);
-        sq->centre.x = g_cosTable[a] * 2.5f;
-        sq->centre.z = g_sinTable[a] * 2.5f;
+        sq->centre.x = COS_DEG(a) * 2.5f;
+        sq->centre.z = SIN_DEG(a) * 2.5f;
         sq->drift_x = (float)rand_below(360);
         sq->drift_x_to = (float)rand_below(360);
         sq->drift_z = (float)rand_below(360);
@@ -554,8 +554,8 @@ void rag_popping_bits(struct RagEffect *self, const char *tex, int mode)
         sq->alpha = 0;
         sq->centre.y = (float)-rand_below(8);
         a = rand_below(360);
-        sq->centre.x = g_cosTable[a] * 3.5f;
-        sq->centre.z = g_sinTable[a] * 3.5f;
+        sq->centre.x = COS_DEG(a) * 3.5f;
+        sq->centre.z = SIN_DEG(a) * 3.5f;
         sq->drift_x = (float)rand_below(360);
         sq->drift_x_to = (float)rand_below(360);
         sq->drift_z = (float)rand_below(360);

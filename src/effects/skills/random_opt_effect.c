@@ -108,18 +108,18 @@ void random_opt_effect_build_segment(struct RandomOptEffect *self, struct Partic
     if (!p)
         return;
     segment = PARTICLE_SEGMENT(p);
-    arch = g_sinTable[segment * 9] * random_opt_particle(p)->height;
+    arch = SIN_DEG(segment * 9) * random_opt_particle(p)->height;
     angle = (int)((float)((int)((float)random_opt_particle(p)->turn / 20.0f) * segment) + p->roll) % 360;
     elevation = random_opt_particle(p)->elevation;
-    reach = g_cosTable[elevation] * arch;
-    rise = g_sinTable[elevation] * arch;
+    reach = COS_DEG(elevation) * arch;
+    rise = SIN_DEG(elevation) * arch;
 
-    bottom.x = p->scale * g_cosTable[angle];
+    bottom.x = p->scale * COS_DEG(angle);
     bottom.y = 0;
-    bottom.z = p->scale * g_sinTable[angle];
-    top.x = reach * g_cosTable[angle] + bottom.x;
+    bottom.z = p->scale * SIN_DEG(angle);
+    top.x = reach * COS_DEG(angle) + bottom.x;
     top.y = 0.0f - rise;
-    top.z = reach * g_sinTable[angle] + bottom.z;
+    top.z = reach * SIN_DEG(angle) + bottom.z;
 
     p->corners[1].x = top.x;
     p->corners[1].y = top.y;

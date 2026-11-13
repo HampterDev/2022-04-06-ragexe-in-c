@@ -66,8 +66,6 @@ static const struct EffectOps heal_effect_ops = {
     .destroy = heal_effect_destroy,
     .fade_out = effect_fade_out,
 };
-#define SIN_DEG(d) (g_sinTable[d])
-#define COS_DEG(d) (g_cosTable[d])
 
 #define PART_EFFECT_TYPE(p) ((p)->effect_type)
 struct HealParticle {
