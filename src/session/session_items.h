@@ -206,5 +206,6 @@ void session_take_out_switch_equip(struct Session *self, const struct ItemInfo *
 struct PartyMember *party_member_info_copy(struct PartyMember *self,
                                                     const struct PartyMember *src);
 void names_resize(struct Vec *v, size_t count, const char *fill);
+const char *names_at(const struct Vec *names, int index);
 
 #endif

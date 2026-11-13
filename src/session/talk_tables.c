@@ -1,6 +1,7 @@
 #include "ui/window_manager_state.h"
 #include "game/context.h"
 #include "session/csession.h"
+#include "session/session_items.h"
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "ui/ui_std.h"
@@ -102,7 +103,7 @@ struct String *session_get_monster_sprite_name(struct Session *self,
                                                          struct String *out, int job)
 {
     string_init(out);
-    string_format(out, "몬스터\\%s.spr", ((const char **)self->reqJobNames.first)[job]);
+    string_format(out, "몬스터\\%s.spr", names_at(&self->reqJobNames, job));
     if (!res_mgr_is_available(g_resMgr(), string_cstr(out)))
         string_clear(out);
     return out;

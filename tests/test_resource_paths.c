@@ -98,9 +98,12 @@ int main(void)
     for (i = 0; i < 4096; ++i) body_names[i] = "novice";
     g_session1.maleHairNames.first = g_session1.femaleHairNames.first = hair_names;
     g_session1.doramHairNamesMale.first = g_session1.doramHairNamesFemale.first = hair_names;
+    g_session1.maleHairNames.last = g_session1.femaleHairNames.last = hair_names + 43;
+    g_session1.doramHairNamesMale.last = g_session1.doramHairNamesFemale.last = hair_names + 43;
     g_session1.jobBodyNames.first = body_names;
     g_session1.jobSpritePaths.first = body_names;
     g_session1.pcNames.first = body_names;
+    g_session1.jobBodyNames.last = g_session1.jobSpritePaths.last = g_session1.pcNames.last = body_names + 4096;
 
     resource_path_accessory(&out, 0, 1, 1, 2, 0); check(&out, "");
     resource_path_accessory(&out, 0, 1, 1, 2, 2); check(&out, "");

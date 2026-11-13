@@ -137,7 +137,7 @@ struct String *session_get_imf_name(struct String *out, int a, int b)
 struct String *session_get_job_imf_name(struct Session *self,
                                                    struct String *out, int i)
 {
-    const char *text = ((const char **)self->jobImfNames.first)[i];
+    const char *text = names_at(&self->jobImfNames, i);
     string_init(out);
     string_assign_cstr(out, text);
     return out;

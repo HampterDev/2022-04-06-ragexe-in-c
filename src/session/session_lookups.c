@@ -2,6 +2,7 @@
 #include "ui/resource/resource_paths.h"
 #include "session/state.h"
 #include "session/csession.h"
+#include "session/session_items.h"
 #include "game/context.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
@@ -158,7 +159,7 @@ struct String *session_get_monster_act_name(struct Session *self,
                                                         struct String *out, int job)
 {
     string_init(out);
-    string_format(out, "몬스터\\%s.act", ((const char **)self->reqJobNames.first)[job]);
+    string_format(out, "몬스터\\%s.act", names_at(&self->reqJobNames, job));
     if (!res_mgr_is_available(g_resMgr(), string_cstr(out)))
         string_clear(out);
     return out;

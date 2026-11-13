@@ -1,6 +1,7 @@
 #include "ui/resource/resource_paths.h"
 #include "game/context.h"
 #include "session/csession.h"
+#include "session/session_items.h"
 #include "session/session_lua.h"
 #include "session/session_names.h"
 
@@ -23,7 +24,7 @@ struct String *session_get_job_sprite_name(struct Session *self,
                                                      struct String *out, int job)
 {
     string_init(out);
-    string_assign_cstr(out, ((const char **)self->jobSpriteNames.first)[job]);
+    string_assign_cstr(out, names_at(&self->jobSpriteNames, job));
     return out;
 }
 
@@ -31,7 +32,7 @@ struct String *session_get_sex_sprite_name(struct Session *self,
                                                      struct String *out, int sex)
 {
     string_init(out);
-    string_assign_cstr(out, ((const char **)self->sexSpriteNames.first)[sex]);
+    string_assign_cstr(out, names_at(&self->sexSpriteNames, sex));
     return out;
 }
 
@@ -41,7 +42,7 @@ struct String *session_get_weapon_sprite_name(struct Session *self,
     int real = session_get_real_weapon_id(weapon);
 
     string_init(out);
-    string_assign_cstr(out, ((const char **)self->weaponSpriteNames.first)[real]);
+    string_assign_cstr(out, names_at(&self->weaponSpriteNames, real));
     return out;
 }
 
@@ -82,7 +83,7 @@ struct String *session_get_shield_sprite_name(struct Session *self,
                                                         struct String *out, int shield)
 {
     string_init(out);
-    string_assign_cstr(out, ((const char **)self->shieldSpriteNames.first)[shield]);
+    string_assign_cstr(out, names_at(&self->shieldSpriteNames, shield));
     return out;
 }
 

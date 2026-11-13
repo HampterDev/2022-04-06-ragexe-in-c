@@ -251,6 +251,8 @@ call "%~dp0build_graffiti_text.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_camera_info.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_sprite_name_tables.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_text_viewer_links.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_item_collection_toggle.bat"
@@ -629,7 +631,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_display_devices.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_resource_paths.c" "%ROOT%\src\ui\resource\resource_paths.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\text_util.c" "%ROOT%\tests\resource_paths_support.c" /Fe:test_resource_paths.exe /link /OPT:REF oleaut32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_resource_paths.c" "%ROOT%\src\ui\resource\resource_paths.c" "%ROOT%\src\session\session_std.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\text_util.c" "%ROOT%\tests\resource_paths_support.c" /Fe:test_resource_paths.exe /link /OPT:REF oleaut32.lib
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_resource_paths.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )

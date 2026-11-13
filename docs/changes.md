@@ -121,6 +121,12 @@ Overruns and bad table indexes:
 - Fonts 12 and up pick their character set without reading past the 12-entry charset table.
   They get the values the bytes after it gave them: SCDream `DEFAULT_CHARSET`, the others
   `ANSI_CHARSET`.
+- A job, sex, hair style, weapon or shield from the server outside the name tables that build
+  sprite, palette and imf file names (the job names, sexes, hair names, weapon and shield names,
+  and the monster names) reads the table's entry for 0: the Novice's names, female, hair 2, no
+  weapon or shield. The original indexed the tables
+  unchecked, so a negative job, a job of 28,051 or more (32,001 or more for most tables), or a
+  sex other than 0 and 1 read past the table.
 - Text copied into a fixed buffer stops at the buffer: the name sent by GM `/shift` and
   `/recall` (a 24-byte field), the job name in the Star Gladiator notice, pet and monster
   talk lines from `PetTalkTable.xml` and `MonsterTalkTable.xml`, monster skill actions from

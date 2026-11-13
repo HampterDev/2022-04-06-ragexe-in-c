@@ -1,6 +1,7 @@
 #include "contents/client_lua_calls.h"
 #include "ui/resource/resource_paths.h"
 #include "session/session_names.h"
+#include "session/session_items.h"
 #include "session/session_jobs.h"
 #include "session/session_lua.h"
 #include "session/session_state.h"
@@ -35,11 +36,6 @@ static const char *ext_name(int ext)
     return resource_extensions[ext];
 }
 
-static const char *name_at(const struct Vec *names, int i)
-{
-    return ((const char *const *)names->first)[i];
-}
-
 static int job_base(int job)
 {
     return job > JOB_ALT_BASE ? job - JOB_ALT_BASE : job;
@@ -64,7 +60,7 @@ static void race_prefixed(struct String *out, int job, struct String *tail)
 static const char *hair_name(int male, int style)
 {
     const struct Vec *names = male ? &g_session1.maleHairNames : &g_session1.femaleHairNames;
-    return name_at(names, style);
+    return names_at(names, style);
 }
 
 static void madogear_names(struct String *path)
@@ -155,7 +151,7 @@ struct String *resource_path_body_palette(struct String *out, int job, int sex, 
     index = session_remap_job(&g_session1, job);
     if (index > JOB_ALT_BASE)
         index -= JOB_ALT_BASE;
-    body = name_at(&g_session1.jobBodyNames, index);
+    body = names_at(&g_session1.jobBodyNames, index);
     session_get_sex_sprite_name(&g_session1, &sex_name, sex);
     if (is_doram(job) == 1) {
         race_folder(&race, job);
@@ -242,9 +238,9 @@ struct String *resource_path_head_palette(struct String *out, int hair, int job,
         if (hair < 1 || hair >= 0xb)
             hair = 10;
         if (sex == 1)
-            string_assign_cstr(&hair_text, name_at(&g_session1.doramHairNamesMale, hair));
+            string_assign_cstr(&hair_text, names_at(&g_session1.doramHairNamesMale, hair));
         else if (sex == 0)
-            string_assign_cstr(&hair_text, name_at(&g_session1.doramHairNamesFemale, hair));
+            string_assign_cstr(&hair_text, names_at(&g_session1.doramHairNamesFemale, hair));
         if (!res_mgr_is_available(g_resMgr(), string_cstr(&path))) {
             string_free(&sex_name);
             session_get_sex_sprite_name(&g_session1, &sex_name, sex);
@@ -287,7 +283,7 @@ struct String *resource_path_head_sprite(struct String *out, int ext, int job, i
     if (is_doram(job) == 1) {
         if (style < 1 || style >= 0xb)
             *hair = style = 10;
-        string_assign_cstr(&hair_text, name_at(male ? &g_session1.doramHairNamesMale : &g_session1.doramHairNamesFemale, style));
+        string_assign_cstr(&hair_text, names_at(male ? &g_session1.doramHairNamesMale : &g_session1.doramHairNamesFemale, style));
     } else {
         if (style < 0 || style >= 0x2b)
             *hair = style = 0xd;
@@ -358,7 +354,7 @@ struct String *resource_path_robe(struct String *out, int ext, int job, int sex,
 struct String *resource_path_shield(struct String *out, int ext, int job, int sex, int shield)
 {
     struct String path, sex_name, kind_name;
-    const char *job_name = name_at(&g_session1.jobSpritePaths, job_base(job));
+    const char *job_name = names_at(&g_session1.jobSpritePaths, job_base(job));
     int kind = session_get_item_view_id(shield);
 
     string_init(out);
@@ -397,7 +393,7 @@ struct String *resource_path_weapon_glow(struct String *out, int ext, int job, i
     int weapon, int view, int glow)
 {
     struct String sex_name, weapon_name, tail;
-    const char *job_name = name_at(&g_session1.pcNames, job);
+    const char *job_name = names_at(&g_session1.pcNames, job);
 
     string_init(out);
     session_get_sex_sprite_name(&g_session1, &sex_name, sex);
@@ -416,7 +412,7 @@ struct String *resource_path_weapon(struct String *out, int ext, int job, int se
     int view)
 {
     struct String sex_name, weapon_name, tail;
-    const char *job_name = name_at(&g_session1.pcNames, job);
+    const char *job_name = names_at(&g_session1.pcNames, job);
 
     string_init(out);
     session_get_sex_sprite_name(&g_session1, &sex_name, sex);

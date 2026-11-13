@@ -44,3 +44,10 @@ void names_resize(struct Vec *v, size_t count, const char *fill)
     for (; i < count; i++)
         ((const char **)v->first)[i] = fill;
 }
+
+const char *names_at(const struct Vec *names, int index)
+{
+    if (index < 0 || (size_t)index >= VEC_COUNT(names, const char *))
+        index = 0;
+    return ((const char *const *)names->first)[index];
+}
