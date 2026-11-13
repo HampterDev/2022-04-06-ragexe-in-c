@@ -59,8 +59,4 @@ struct GameMode;
 
 #include "effects/effect_mgr.h"
 
-void actor_index_clear(void);
-void actor_index_drop_node(const struct ListNode *node);
-extern DWORD actor_list_generation;
-
 #endif

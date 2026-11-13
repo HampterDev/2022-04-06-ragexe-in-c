@@ -11,6 +11,16 @@ struct Surface {
     gfx_surface *surface;
 };
 
+/* custom: what a texture's last upload put into its surface (texture_upload_pixels), so that one of
+   the same pixels into the same surface, unchanged since, is skipped; surface NULL before any */
+struct TextureUpload {
+    gfx_surface *surface;
+    unsigned version;
+    DWORD hash[4];
+    int x, y, w, h, pitch;
+    BYTE colorKeyed;
+};
+
 struct Texture {
     struct Surface base;
     int format;
@@ -21,6 +31,7 @@ struct Texture {
     DWORD lastUse;
     BYTE fullSize;
     unsigned serial;
+    struct TextureUpload lastUpload;
 };
 
 #endif

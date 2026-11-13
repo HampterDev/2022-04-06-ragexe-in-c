@@ -160,24 +160,20 @@ static void initialize_quad(void *item) { rp_quad_construct(item); }
 static void initialize_primitive(void *item) { rp_quad_batch_construct(item); }
 static void initialize_multitexture_quad(void *item) { rp_instance_construct(item); }
 
-static void queue_clear(struct RenderQueue *queue)
+/* custom: empties the queues and lets go the holds on the surfaces their draws named
+   (queue_append) */
+static void clear_queues(struct Renderer *renderer)
 {
     size_t i;
-    for (i = 0; i < queue->count; ++i) {
-        unsigned stage;
-        for (stage = 0; stage < 2; ++stage) {
-            gfx_surface *surface = queue->items[i].textures[stage].surface;
-            if (surface) gfx_release(surface);
-        }
-    }
-    queue->count = 0;
+    for (i = 0; i < RENDER_PASS_COUNT; ++i) renderer->queues[i].count = 0;
+    gfx_release_holds();
 }
 
 static void renderer_storage_free(struct Renderer *renderer)
 {
     struct RenderStorage *storage = renderer->storage;
     size_t i;
-    for (i = 0; i < RENDER_PASS_COUNT; ++i) queue_clear(&renderer->queues[i]);
+    clear_queues(renderer);
     renderer->boundTextures[0] = renderer->boundTextures[1] = NULL;
     if (storage) {
         pool_free(&storage->quads);
@@ -296,18 +292,21 @@ struct TexDrawVertex *renderer_new_tex_draw_vertices(struct Renderer *renderer, 
     return vertices;
 }
 
-static struct RenderTexture retain_texture(const struct Texture *texture)
+/* custom: the surface is held until the queues are cleared (gfx_hold): one reference for all the
+   draws that name it, where main takes one for each entry; the original takes none */
+static struct RenderTexture entry_texture(const struct Texture *texture)
 {
-    struct RenderTexture retained;
-    retained.surface = texture ? texture->base.surface : NULL;
-    retained.sort_key = texture ? texture->serial : 0;
-    if (retained.surface) gfx_addref(retained.surface);
-    return retained;
+    struct RenderTexture named;
+    named.surface = texture ? texture->base.surface : NULL;
+    named.sort_key = texture ? texture->serial : 0;
+    gfx_hold(named.surface);
+    return named;
 }
 
-static void queue_append(struct RenderQueue *queue, void *primitive, float key,
+static void queue_append(struct Renderer *renderer, int list, void *primitive, float key,
     const struct Texture *texture0, const struct Texture *texture1)
 {
+    struct RenderQueue *queue = &renderer->queues[list];
     struct RenderEntry *items;
     if (queue->count == queue->capacity) {
         size_t capacity = queue->capacity ? queue->capacity * 2 : 64;
@@ -320,15 +319,15 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     queue->items[queue->count].primitive = primitive;
     queue->items[queue->count].key = key;
     queue->items[queue->count].order = (unsigned)queue->count;
-    queue->items[queue->count].textures[0] = retain_texture(texture0);
-    queue->items[queue->count].textures[1] = retain_texture(texture1);
+    queue->items[queue->count].textures[0] = entry_texture(texture0);
+    queue->items[queue->count].textures[1] = entry_texture(texture1);
     queue->items[queue->count].world = 0;
     ++queue->count;
 }
 
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPQuad *prim, struct Texture *texture1)
 {
-    queue_append(&self->queues[RENDER_MULTITEXTURE], prim, 0.0f, prim->texture, texture1);
+    queue_append(self, RENDER_MULTITEXTURE, prim, 0.0f, prim->texture, texture1);
 }
 
 static float edge_key(const float *rhw)
@@ -348,56 +347,56 @@ void renderer_add_prim(struct Renderer *r, struct RPQuad *p, int flags)
 
     if (!(flags & 1)) {
         if (flags & 0x20)
-            queue_append(&r->queues[RENDER_OPAQUE_WRAP], q, 0.0f, q->texture, NULL);
+            queue_append(r, RENDER_OPAQUE_WRAP, q, 0.0f, q->texture, NULL);
         else
-            queue_append(&r->queues[RENDER_OPAQUE_CLAMP], q, 0.0f, q->texture, NULL);
+            queue_append(r, RENDER_OPAQUE_CLAMP, q, 0.0f, q->texture, NULL);
         return;
     }
     if (flags & 4) {
         if (flags & 8)
-            queue_append(&r->queues[RENDER_BLENDED_NO_DEPTH], q, 0.0f, q->texture, NULL);
+            queue_append(r, RENDER_BLENDED_NO_DEPTH, q, 0.0f, q->texture, NULL);
         else if (flags & 0x200)
-            queue_append(&r->queues[RENDER_BLENDED_OVERLAY], q, edge_key(v), q->texture, NULL);
+            queue_append(r, RENDER_BLENDED_OVERLAY, q, edge_key(v), q->texture, NULL);
         else
-            queue_append(&r->queues[RENDER_BLENDED_WRAP], q, 0.0f, q->texture, NULL);
+            queue_append(r, RENDER_BLENDED_WRAP, q, 0.0f, q->texture, NULL);
         return;
     }
     if (flags & 2) {
         if (flags & 0x100)
-            queue_append(&r->queues[RENDER_ADDITIVE_FOG], q, edge_key(v), q->texture, NULL);
+            queue_append(r, RENDER_ADDITIVE_FOG, q, edge_key(v), q->texture, NULL);
         else if (flags & 0x200)
-            queue_append(&r->queues[RENDER_ADDITIVE_OVERLAY], q, edge_key(v), q->texture, NULL);
+            queue_append(r, RENDER_ADDITIVE_OVERLAY, q, edge_key(v), q->texture, NULL);
         else
-            queue_append(&r->queues[RENDER_ADDITIVE], q, edge_key(v), q->texture, NULL);
+            queue_append(r, RENDER_ADDITIVE, q, edge_key(v), q->texture, NULL);
         return;
     }
     if (flags & 0x10) {
-        queue_append(&r->queues[RENDER_ALPHA_CUTOUT], q, edge_key(v), q->texture, NULL);
+        queue_append(r, RENDER_ALPHA_CUTOUT, q, edge_key(v), q->texture, NULL);
         return;
     }
     if (flags & 0x100) {
-        queue_append(&r->queues[RENDER_ALPHA_DEPTH], q, edge_key(v), q->texture, NULL);
+        queue_append(r, RENDER_ALPHA_DEPTH, q, edge_key(v), q->texture, NULL);
         return;
     }
     if (flags & 0x200) {
         if (flags & 8)
-            queue_append(&r->queues[RENDER_ALPHA_NO_DEPTH], q, edge_key(v), q->texture, NULL);
+            queue_append(r, RENDER_ALPHA_NO_DEPTH, q, edge_key(v), q->texture, NULL);
         else
-            queue_append(&r->queues[RENDER_OVERLAY_ORDERED], q, edge_key(v), q->texture, NULL);
+            queue_append(r, RENDER_OVERLAY_ORDERED, q, edge_key(v), q->texture, NULL);
         return;
     }
     if (flags & 0x20) {
-        queue_append(&r->queues[RENDER_ALPHA_WRAP], q, v[0], q->texture, NULL);
+        queue_append(r, RENDER_ALPHA_WRAP, q, v[0], q->texture, NULL);
         return;
     }
     if (q->alpha_mode == 1) {
         if (flags & 0x8000)
-            queue_append(&r->queues[RENDER_ALPHA_WRITE_DEPTH], q, v[0], q->texture, NULL);
+            queue_append(r, RENDER_ALPHA_WRITE_DEPTH, q, v[0], q->texture, NULL);
         else
-            queue_append(&r->queues[RENDER_ALPHA_CLAMP], q, v[0], q->texture, NULL);
+            queue_append(r, RENDER_ALPHA_CLAMP, q, v[0], q->texture, NULL);
         return;
     }
-    queue_append(&r->queues[RENDER_ALPHA_REMAINDER], q, v[0], q->texture, NULL);
+    queue_append(r, RENDER_ALPHA_REMAINDER, q, v[0], q->texture, NULL);
 }
 
 void renderer_add_triangle(struct Renderer *r, struct PrimTriangle *tri, int list_flags)
@@ -438,7 +437,7 @@ void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWo
     copy = pool_take(&self->storage->world_draws, 1);
     *copy = *draw;
     q = &self->queues[queue];
-    queue_append(q, copy, key, texture, NULL);
+    queue_append(self, queue, copy, key, texture, NULL);
     q->items[q->count - 1].world = 1;
 }
 
@@ -455,10 +454,9 @@ void rp_quad_set_vertex_pos(struct RPQuad *self, int i, const struct TexDrawVert
 void renderer_destroy_all_rp_list(struct Renderer *self)
 {
     struct RenderStorage *storage = self->storage;
-    size_t i;
     if (g_renderBeforeClearLists)
         g_renderBeforeClearLists();
-    for (i = 0; i < RENDER_PASS_COUNT; ++i) queue_clear(&self->queues[i]);
+    clear_queues(self);
     self->boundTextures[0] = self->boundTextures[1] = NULL;
     if (storage) {
         pool_rewind(&storage->quads);

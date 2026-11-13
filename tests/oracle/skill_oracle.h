@@ -288,7 +288,7 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
 { event("chat %x %s %s %d", skill_id, who(caster), who(target), quiet); }
 struct GroundScope *ground_scope_new(void)
 { memset(lift_scope, 0, sizeof lift_scope); *(const struct RenderObjectOps **)lift_scope = &lift_scope_ops; return (struct GroundScope *)lift_scope; }
-void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size) { (void)list; (void)where; (void)size; return (void *)value; }
+int world_add_object(struct World *self, void *object) { (void)self; (void)object; return 1; }
 unsigned char skill_info_is_good_skill_for_actor(int skill_id) { (void)skill_id; return 1; }
 void render_object_set_motion_delay(struct RenderObject *self, float delay) { event("mdelay %s %.2f", who(self), delay); }
 struct SkillActionAnswer *skill_action_mgr_cast_action(struct SkillActionMgr *self, struct SkillActionAnswer *out, int skill_id)

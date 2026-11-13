@@ -103,12 +103,6 @@ void entry_unit_value(struct GameActor *actor, short accessory2, short accessory
     game_actor_set_guild(actor, value, shield);
 }
 
-void world_add_actor(struct GameMode *self, struct GameActor *actor)
-{
-    list_push_back(&self->world->gameObjects, &actor, sizeof actor);
-    actor_list_push_back(&self->world->actors, actor);
-}
-
 static struct GameActor *entry_make_actor(struct GameMode *self, short job, unsigned aid,
                                            int forbid_pc, int *sex, int *made_by_new)
 {
@@ -183,7 +177,7 @@ void game_mode_zc_notify_newentry(struct GameMode *self, const struct PacketNewE
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, 2);
         if (job_is_unit(game_actor_get_job(actor), 45))
             entry_unit_value(actor, pkt->accessory2, pkt->accessory3, pkt->shield, 0);
@@ -237,7 +231,7 @@ void game_mode_zc_notify_newentry2(struct GameMode *self, const struct PacketNew
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 2);
         if (made_by_new)
             entry_new_pc_effect(actor, pkt->aid, pkt->effect_state);
@@ -301,7 +295,7 @@ static void newentry4(struct GameMode *self, const struct PacketNewEntry4 *pkt, 
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 2);
         actor->level = pkt->clevel;
         if (made_by_new) {
@@ -374,7 +368,7 @@ void game_mode_zc_notify_standentry(struct GameMode *self, const struct PacketSt
         if (actor && pkt->object_type == ENTRY_OBJ_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
         actor->object_type = pkt->object_type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, 0);
         entry_siege_emblem(self, actor, pkt->object_type == ENTRY_OBJ_PET, pkt->guild_id, pkt->emblem_version);
         if (job_is_unit(game_actor_get_job(actor), 46))
@@ -422,7 +416,7 @@ void game_mode_zc_notify_standentry_npc(struct GameMode *self, const struct Pack
     actor = game_mode_new_actor_for_job(self, pkt->job);
     info.sex = 0;
     actor->object_type = pkt->object_type;
-    world_add_actor(self, actor);
+    world_add_actor(self->world, actor);
     actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, 1);
     if (job_is_unit(game_actor_get_job(actor), 46))
         entry_unit_value(actor, pkt->accessory2, pkt->accessory3, pkt->shield, 0);
@@ -472,7 +466,7 @@ void game_mode_zc_notify_standentry2(struct GameMode *self, const struct PacketS
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (actor) {
             actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 0);
             entry_siege_emblem(self, actor, info.head == ENTRY_HEAD_PET, pkt->guild_id, pkt->emblem_version);
@@ -528,7 +522,7 @@ static void standentry4(struct GameMode *self, const struct PacketStandEntry4 *p
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (actor) {
             actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 0);
             entry_siege_emblem(self, actor, info.head == ENTRY_HEAD_PET, pkt->guild_id, pkt->emblem_version);
@@ -637,7 +631,7 @@ void game_mode_zc_notify_standentry5(struct GameMode *self, const struct PacketS
         entry_unit_value(actor, pkt->accessory2, pkt->accessory3, pkt->emblem_version, !made);
     }
     if (made)
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
     game_mode_game_mode_show_efst(self, pkt->aid, pkt->effect_state, pkt->clevel, pkt->virtue);
 }
 
@@ -711,8 +705,7 @@ void game_mode_zc_notify_newentry5(struct GameMode *self, const struct PacketNew
             actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 2);
             if (entry_aid_listed(self, &pkt->aid))
                 game_actor_set_mark_listed(actor, 1);
-            list_push_back(&self->world->gameObjects, &actor, sizeof actor);
-            actor_list_push_back(&self->world->actors, actor);
+            world_add_actor(self->world, actor);
         } else {
             actor_send(actor, ACTOR_MSG_ENTRY, (intptr_t)&info, 0);
         }
@@ -728,8 +721,7 @@ void game_mode_zc_notify_newentry5(struct GameMode *self, const struct PacketNew
                 g_session1.mercPresent = 1;
         }
         if (made) {
-            list_push_back(&self->world->gameObjects, &actor, sizeof actor);
-            actor_list_push_back(&self->world->actors, actor);
+            world_add_actor(self->world, actor);
             actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, 1);
         } else {
             actor_send(actor, ACTOR_MSG_ENTRY_OLD, (intptr_t)&info, 0);
@@ -826,7 +818,7 @@ void game_mode_zc_notify_moveentry(struct GameMode *self, const struct PacketMov
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY_OLD, (intptr_t)&info, 0);
         if (actor_is_unit(actor))
             entry_unit_value(actor, pkt->accessory2, pkt->accessory3, pkt->shield, 1);
@@ -877,7 +869,7 @@ void game_mode_zc_notify_moveentry2(struct GameMode *self, const struct PacketMo
         actor = entry_make_actor(self, pkt->job, pkt->aid, 0, &info.sex, &made_by_new);
         if (actor && info.head == ENTRY_HEAD_PET)
             entry_note_pet(actor, pkt->aid, info.accessory);
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY, (intptr_t)&info, 0);
         entry_siege_emblem(self, actor, info.head == ENTRY_HEAD_PET, pkt->guild_id, pkt->emblem_version);
         if (entry_aid_listed(self, &info.aid))
@@ -932,7 +924,7 @@ void game_mode_zc_notify_moveentry3(struct GameMode *self, const struct PacketMo
             entry_note_pet(actor, pkt->aid, info.accessory);
         actor->level = pkt->clevel;
         actor->object_type = pkt->object_type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY, (intptr_t)&info, 0);
         entry_siege_emblem(self, actor, pkt->object_type != ENTRY_OBJ_PET, pkt->guild_id, pkt->emblem_version);
         if (entry_aid_listed(self, &info.aid))
@@ -989,7 +981,7 @@ void game_mode_zc_notify_moveentry6(struct GameMode *self, const struct PacketMo
         if (actor && pkt->object_type != ENTRY_OBJ_PC)
             entry_note_pet(actor, pkt->aid, info.accessory);
         actor->object_type = pkt->object_type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY, (intptr_t)&info, 0);
         actor->balloon_font = pkt->font;
         actor->level = pkt->clevel;

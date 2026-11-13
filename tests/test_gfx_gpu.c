@@ -365,6 +365,33 @@ static void check_release_in_frame(struct C3dDevice *d)
     assert(screen_pixel(d, 4, 4) == 0x0000ff);
 }
 
+/* A texture held twice (as the renderer's queues hold the textures their draws name,
+   render/rp_pool.c) and released by its owner is still drawn after its release, and goes when the
+   holds are let go; a texture released while another is held goes at once, after its draw. */
+static void check_release_while_held(struct C3dDevice *d)
+{
+    static const DWORD green[4] = { 0xff00ff00, 0xff00ff00, 0xff00ff00, 0xff00ff00 };
+    static const DWORD white[4] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
+    gfx_surface *t = texture_2x2(GFX_FMT_8888, green), *u;
+    gfx_clear(GFX_CLEAR_TARGET, 0, 1.0f, NULL);
+    gfx_hold(t);
+    gfx_hold(t);
+    gfx_release(t);
+    gfx_set_mode(TEXTURE);
+    gfx_set_texture(0, t);
+    draw_quad(0, 0, 8, 8, 0xffffffff);
+    gfx_set_texture(0, NULL);
+    u = texture_2x2(GFX_FMT_8888, white);
+    gfx_set_texture(0, u);
+    draw_quad(16, 0, 24, 8, 0xffffffff);
+    gfx_set_texture(0, NULL);
+    gfx_release(u);
+    gfx_release_holds();
+    gfx_end_scene();
+    assert(screen_pixel(d, 4, 4) == 0x00ff00);
+    assert(screen_pixel(d, 20, 4) == 0xffffff);
+}
+
 /* Copies between targets stay on the GPU: a render target's rectangle into the screen, a copy into
    a texture refused, rectangles outside their surfaces copying nothing, and the frame saved into a
    render target and put back, under the draws after it (c3d_device_save_frame and
@@ -2189,6 +2216,7 @@ int main(int argc, char **argv)
     check_culling(d);
     check_texture_changed_in_frame(d);
     check_release_in_frame(d);
+    check_release_while_held(d);
 
     {
         static const DWORD keyed[4] = { 0x00ff0000, 0xff00ff00, 0xff00ff00, 0x00ff0000 };

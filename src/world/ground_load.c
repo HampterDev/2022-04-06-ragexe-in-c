@@ -1,4 +1,5 @@
 #include "render/texture_cache.h"
+#include "render/texture_types.h"
 #include "world/ground.h"
 #include <stdlib.h>
 #include <stdint.h>
@@ -428,10 +429,20 @@ void c3d_ground15_build_vertex_colours(struct C3dGround15 *self)
    colours, texture coordinates and lightmap coordinates, and scales the colours by the weather
    colour as the original did. */
 
+/* A block's surface with what its run is: the serials of its texture and its lightmap page (0 for
+   none), which follow the order the textures were made in; its place among the block's surfaces
+   orders the surfaces of a run, so that the mesh, its runs and their order do not hang on where the
+   heap put the textures. */
 struct BlockSurface {
     struct GndSurface *surface;
-    uintptr_t key[2];
+    unsigned key[2];
+    int order;
 };
+
+static int same_run(const struct BlockSurface *x, const struct BlockSurface *y)
+{
+    return x->key[0] == y->key[0] && x->key[1] == y->key[1];
+}
 
 static int block_surface_less(const void *a, const void *b)
 {
@@ -441,7 +452,7 @@ static int block_surface_less(const void *a, const void *b)
     for (i = 0; i < 2; i++)
         if (x->key[i] != y->key[i])
             return x->key[i] < y->key[i] ? -1 : 1;
-    return 0;
+    return (x->order > y->order) - (x->order < y->order);
 }
 
 static int block_add(struct BlockSurface *list, int n, struct GndSurface *s)
@@ -449,8 +460,9 @@ static int block_add(struct BlockSurface *list, int n, struct GndSurface *s)
     if (!s)
         return n;
     list[n].surface = s;
-    list[n].key[0] = (uintptr_t)s->texture;
-    list[n].key[1] = (uintptr_t)s->lightmapPage;
+    list[n].key[0] = s->texture ? s->texture->serial : 0;
+    list[n].key[1] = s->lightmapPage ? s->lightmapPage->serial : 0;
+    list[n].order = n;
     return n + 1;
 }
 
@@ -505,7 +517,7 @@ int c3d_ground15_block_mesh(const struct C3dGround15 *self, int bx, int by, stru
         indices[i * 6 + 3] = (WORD)(i * 4 + 2);
         indices[i * 6 + 4] = (WORD)(i * 4 + 1);
         indices[i * 6 + 5] = (WORD)(i * 4 + 3);
-        if (i == 0 || block_surface_less(&list[i - 1], &list[i])) {
+        if (i == 0 || !same_run(&list[i - 1], &list[i])) {
             struct GndBlockRun *r = &runs[count++];
 
             r->texture = s->texture;

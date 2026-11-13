@@ -2,6 +2,7 @@
 #include "core/abstract_method.h"
 #include "core/fatal.h"
 #include "core/memory.h"
+#include "diag/perf.h"
 #include "world/world.h"
 #include "effects/effect_mgr.h"
 #include "effects/skills/dummy_effect_launcher.h"
@@ -20,9 +21,10 @@ struct TestObject {
 };
 
 struct EffectMgr *g_effectMgr;
+struct perf_counters g_perf;
 static struct World world;
-static int allocations, releases, forgotten_cell, forgotten_list, actor_nodes;
-static int model_passes, index_clears, effects_clears, tree_clears;
+static int allocations, releases, forgotten_cell, forgotten_list;
+static int model_passes, effects_clears, tree_clears;
 static struct GameObject *root_allocation;
 static jmp_buf fatal_jump;
 static int expect_fatal;
@@ -107,8 +109,6 @@ void world_forget_id_in_list_ec(struct World *w, int id, BYTE notify)
     assert(w == &world && id == 42 && notify == 1);
     ++forgotten_list;
 }
-void actor_index_drop_node(const struct ListNode *node) { (void)node; ++actor_nodes; }
-void actor_index_clear(void) { ++index_clears; }
 void effect_mgr_reset(struct EffectMgr *mgr) { assert(mgr == g_effectMgr); ++effects_clears; }
 void cell_ids_destroy(void *value)
 {
@@ -121,7 +121,7 @@ static int cell_less(const void *a, const void *b)
 {
     return *(const float *)a < *(const float *)b;
 }
-BYTE game_actor_has_pending_hits(void *skill) { (void)skill; abort(); }
+unsigned char game_actor_has_pending_hits(struct GameActor *skill) { (void)skill; abort(); }
 
 static unsigned char process_object(struct GameObject *base)
 {
@@ -133,8 +133,8 @@ static unsigned char process_object(struct GameObject *base)
 static void destroy_object(struct GameObject *base)
 {
     struct TestObject *object = (struct TestObject *)base;
-    if (object->actor.aid == 42)
-        assert(forgotten_cell == 1 && forgotten_list == 1 && actor_nodes == 1);
+    if (object->actor.aid == 42) /* off the actors, by its node there, before it is destroyed */
+        assert(forgotten_cell == 1 && forgotten_list == 1 && !world.actors.size && !object->actor.actor_node);
     assert(object->destroyed == 0);
     ++object->destroyed;
 }
@@ -152,12 +152,12 @@ static void world_lifetime(void)
 {
     struct TestObject actor = {0}, expired = {0}, survivor = {0};
     struct CellIds cell;
-    struct List *lists[] = { &world.gameObjects, &world.actors, &world.items,
-        &world.skills, &world.pendingSkills, &world.idsNowhere };
+    struct List *lists[] = { &world.gameObjects, &world.items, &world.idsNowhere };
     unsigned i;
 
     for (i = 0; i < sizeof lists / sizeof lists[0]; ++i)
         list_init(lists[i]);
+    world_init_aid_lists(&world);
     tree_init(&world.idsByCell);
     cell.cell = 7.0f;
     list_init(&cell.ids);
@@ -165,10 +165,10 @@ static void world_lifetime(void)
     actor.actor.ops = expired.actor.ops = survivor.actor.ops = &test_ops;
     actor.actor.aid = 42;
     survivor.alive = 1;
-    append(&world.gameObjects, &actor);
-    append(&world.gameObjects, &expired);
-    append(&world.gameObjects, &survivor);
-    append(&world.actors, &actor);
+    world_add_actor(&world, &actor.actor);
+    world_add_object(&world, &expired);
+    world_add_object(&world, &survivor);
+    assert(world_get_game_actor_by_aid(&world, 42) == &actor.actor);
 
     world_process_actors(&world);
     assert(model_passes == 1 && world.gameObjects.size == 1 && world.actors.size == 0);
@@ -181,20 +181,25 @@ static void world_lifetime(void)
     world_remove_object(&world, &survivor);
     assert(expired.destroyed == 1 && survivor.destroyed == 1 && world.gameObjects.size == 0);
 
+    assert(!expired.actor.world_node && !survivor.actor.world_node);
+
     survivor.destroyed = 0;
-    append(&world.gameObjects, NULL);
-    append(&world.gameObjects, &survivor);
+    world_add_object(&world, NULL);
+    world_add_object(&world, &survivor);
     append(&world.items, &survivor);
     world.player = (struct Player *)&survivor;
     world_clear_objects(&world);
     assert(survivor.destroyed == 1 && !world.player);
-    assert(index_clears == 1 && effects_clears == 1 && tree_clears == 1 && !world.idsByCell.size);
+    assert(effects_clears == 1 && tree_clears == 1 && !world.idsByCell.size);
+    assert(!world.actors.size && !world.skills.size && !world.pendingSkills.size);
+    assert(!world.actorIndex.ids && !world.skillIndex.ids && !world_get_game_actor_by_aid(&world, 42));
     tree_free(&world.idsByCell, NULL);
     for (i = 0; i < sizeof lists / sizeof lists[0]; ++i) {
         assert(lists[i]->size == 0 && lists[i]->head->next == lists[i]->head);
         assert(lists[i]->head->prev == lists[i]->head);
         list_free(lists[i], NULL);
     }
+    world_free_aid_lists(&world);
 }
 
 static void defaults(void)

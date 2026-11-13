@@ -122,7 +122,8 @@ static inline void c3d_ground15_corner(const struct C3dGround15 *self, int x, in
     pos[2] = (float)(y - self->height / 2) * self->zoom;
 }
 /* custom: block (bx, by)'s surfaces as one mesh of the static world: four vertices and two
-   triangles a surface (a strip, 0 1 2 then 2 1 3), sorted by texture and lightmap page, into verts
+   triangles a surface (a strip, 0 1 2 then 2 1 3), sorted by the serials of their texture and
+   lightmap page and, within one run, in the block's order of cells (top, front, right), into verts
    (4 * GND_BLOCK_SURFACES) and indices (6 * GND_BLOCK_SURFACES), their runs into runs
    (GND_BLOCK_SURFACES). Answers the number of runs, 0 for a block without surfaces; *indexCount the
    indices. */

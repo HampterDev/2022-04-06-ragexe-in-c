@@ -2,8 +2,9 @@
 struct Renderer *g_renderer;
 struct TexCache g_textureCache;
 struct EffectMgr *g_effectMgr;
-void gfx_addref(gfx_surface *surface) { abort(); }
 void gfx_release(gfx_surface *surface) { abort(); }
+void gfx_hold(gfx_surface *surface) { abort(); }
+void gfx_release_holds(void) { abort(); }
 struct C3dDevice g_3dDevice;
 void abstract_method_called(void) { abort(); }
 struct C3dDevice;

@@ -50,19 +50,19 @@ struct Player *player_create(const float position[3], int cell_x, int cell_y)
     return fail_creation ? NULL : (struct Player *)&player_storage;
 }
 
-void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size)
+/* the world's list of objects (world/object_list.c), as the one node this test gives it */
+int world_add_object(struct World *owner, void *object)
 {
-    assert(list == &world.gameObjects && where == &head && head.prev == &head);
-    assert(size == sizeof node.value && *(void *const *)value == &player_storage);
-    assert(world.player == (struct Player *)&old_player);
-    node.links.next = where;
-    node.links.prev = where->prev;
-    where->prev->next = &node.links;
-    where->prev = &node.links;
-    list->size++;
-    node.value = *(void *const *)value;
+    assert(owner == &world && world.gameObjects.head == &head && head.prev == &head);
+    assert(object == &player_storage && world.player == (struct Player *)&old_player);
+    node.links.next = &head;
+    node.links.prev = head.prev;
+    head.prev->next = &node.links;
+    head.prev = &node.links;
+    world.gameObjects.size++;
+    node.value = object;
     ++allocations;
-    return &node.value;
+    return 1;
 }
 
 int main(void)

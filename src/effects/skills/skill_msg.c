@@ -6,6 +6,7 @@
 #include "ui/window.h"
 #include "world/model_types.h"
 #include "world/object_lookup.h"
+#include "world/world.h"
 #include "resources/attr_queries.h"
 #include "contents/sound.h"
 #include "session/state.h"
@@ -238,7 +239,7 @@ static void appear(struct Skill *self, const struct SkillUnitEntry *entry)
     struct RenderObject *me = (struct RenderObject *)&self->base;
 
     self->range = entry->range;
-    self->unit_aid = entry->aid;
+    world_set_skill_aid(game_current_world(), self, entry->aid);
     me->aid = entry->aid;
     game_actor_set_job((struct GameActor *)me, entry->job);
     if (entry->visible)

@@ -3,10 +3,10 @@
 #include "actor/types.h"
 #include "effects/skills/skill_entry.h"
 
-struct SkillCell {
-    int x, y;
-};
-
+/* custom: unit_node is the unit's node on its world's skill units (struct World, skills, of struct
+   SkillEntry; world/aid_index.h), NULL while it is not on it; unit_aid changes only through
+   world_set_skill_aid once the unit may be on it. The original's vector of cells after `range`
+   (0x410) was never filled, only walked in its release (CSkill::Release, 0x89bdc0), and is gone. */
 struct Skill {
     struct GameActor base;
     int creator_aid;
@@ -17,7 +17,7 @@ struct Skill {
     int effect_id;
     unsigned char launched;
     int range;
-    struct Vec cells;
+    struct ListNode *unit_node;
 };
 
 struct Skill *skill_construct(struct Skill *self, int unit_aid);

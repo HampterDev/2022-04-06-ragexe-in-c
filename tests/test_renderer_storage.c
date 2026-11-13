@@ -69,18 +69,17 @@ void c3d_device_save_frame(struct C3dDevice *device) { (void)device; abort(); }
 void perf_frame_end(struct Renderer *renderer) { (void)renderer; abort(); }
 void perf_overlay_draw(struct Renderer *renderer) { (void)renderer; abort(); }
 
+/* held: holds a reference of the holds, which the renderer's queues take for the surfaces their
+   draws name (render/gfx.h, gfx_hold) */
 struct gfx_surface {
     unsigned id, refs;
-    int allocated, width, height, format;
+    int allocated, held, width, height, format;
     DWORD pixels[16 * 16];
 };
-static unsigned live_surfaces, retained_surfaces, released_surfaces;
+static unsigned live_surfaces, released_surfaces, holds;
 static gfx_surface *bound_surfaces[2];
-void gfx_addref(gfx_surface *surface)
-{
-    assert(surface && (!surface->allocated || surface->refs));
-    ++surface->refs; ++retained_surfaces;
-}
+static gfx_surface *held_surfaces[16];
+static unsigned held_count;
 void gfx_release(gfx_surface *surface)
 {
     assert(surface && surface->refs);
@@ -90,6 +89,29 @@ void gfx_release(gfx_surface *surface)
         for (i = 0; i < 2; ++i) if (bound_surfaces[i] == surface) bound_surfaces[i] = NULL;
         assert(live_surfaces); --live_surfaces; checked_free(surface);
     }
+}
+void gfx_hold(gfx_surface *surface)
+{
+    if (!surface || surface->held)
+        return;
+    assert(!surface->allocated || surface->refs);
+    assert(held_count < 16);
+    surface->held = 1; ++surface->refs; ++holds;
+    held_surfaces[held_count++] = surface;
+}
+void gfx_release_holds(void)
+{
+    unsigned i, n = held_count;
+    held_count = 0;
+    for (i = 0; i < n; ++i) {
+        held_surfaces[i]->held = 0;
+        gfx_release(held_surfaces[i]);
+    }
+}
+/* a surface drawn is alive: the owner's reference or the queues' hold */
+static int alive(const gfx_surface *surface)
+{
+    return !surface || !surface->allocated || surface->refs;
 }
 static int capture_draws;
 static unsigned sampled_count;
@@ -104,7 +126,7 @@ static void sample_textures(void)
     assert(sampled_count < 64);
     for (i = 0; i < 2; ++i) {
         gfx_surface *surface = bound_surfaces[i];
-        assert(!surface || surface->refs);
+        assert(alive(surface));
         sampled[sampled_count].id[i] = surface ? surface->id : 0;
         sampled[sampled_count].pixel[i] = surface ? surface->pixels[0] : 0;
     }
@@ -130,7 +152,7 @@ void gfx_set_fog(const struct GfxFog *fog)
 { word(4); word((unsigned)fog->on); word(fog->colour); bytes(&fog->start, sizeof fog->start); bytes(&fog->end, sizeof fog->end); }
 void gfx_set_texture(int stage, gfx_surface *surface)
 {
-    assert(stage >= 0 && stage < 2 && (!surface || !surface->allocated || surface->refs));
+    assert(stage >= 0 && stage < 2 && alive(surface));
     bound_surfaces[stage] = surface;
     word(3); word(stage); word(surface ? surface->id : 0);
 }
@@ -308,7 +330,7 @@ static void render_trace(void)
     struct TexDrawPrim pairs[8];
     struct Texture textures[4] = {0};
     struct gfx_surface surfaces[4] = {{1},{2},{3},{4}};
-    unsigned scenario, i, j;
+    unsigned scenario, i, j, holds_before = holds;
     assert(renderer_construct(&renderer));
     for (i = 0; i < 4; ++i) textures[i].base.surface = &surfaces[i];
     g_fogNear = 0.2f; g_fogFar = 0.8f;
@@ -339,11 +361,16 @@ static void render_trace(void)
             renderer_add_multi_tex_batch(&renderer, &pairs[i].base, textures + ((i + 1) % 4));
         }
         current_mode = -1; trace = UINT64_C(1469598103934665603); draws = 0;
+        /* the queued draws, 104 of them, hold each of the four surfaces once */
+        assert(held_count == 4);
+        for (i = 0; i < 4; ++i) assert(surfaces[i].held && surfaces[i].refs == 1);
         renderer_draw_lists(&renderer);
         printf("render %u %u %016llx\n", scenario, draws, (unsigned long long)trace);
         renderer_destroy_all_rp_list(&renderer);
+        assert(!held_count);
     }
-    renderer_destruct(&renderer); assert(!outstanding);
+    for (i = 0; i < 4; ++i) assert(!surfaces[i].refs && !surfaces[i].held);
+    renderer_destruct(&renderer); assert(!outstanding && !held_count && holds - holds_before == 8 * 4);
 }
 
 static int ground_available = 1, view_available = 1, cell_available = 1;

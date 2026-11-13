@@ -27,12 +27,6 @@ int game_copy_camera_position(float position[3])
     return 1;
 }
 
-struct List *game_current_object_list(void)
-{
-    struct World *world = game_current_world();
-    return world ? &world->gameObjects : 0;
-}
-
 struct SceneGraphNode *game_current_scene_root(void)
 {
     struct World *world = game_current_world();

@@ -113,6 +113,7 @@ struct gfx_surface {
     int mips;               /* the lower levels are to be made again */
     unsigned pinned;        /* the frame whose recorded commands use it */
     int dead;               /* released while pinned: freed after that frame */
+    int held;               /* holds a reference of the holds (gfx_hold) */
     struct gfx_surface *prev, *next;
     unsigned version;
     /* gfx_create_layer_texture's: placed, when a draw first reads it, as a layer of an array */
@@ -310,6 +311,9 @@ static struct {
     struct bytes quadData, quadOffsets;
     struct gfx_surface **pins;
     size_t npins, pinCapacity;
+    /* the surfaces held, one reference each, until gfx_release_holds (gfx_hold) */
+    struct gfx_surface **holds;
+    size_t nholds, holdCapacity;
     int cameraView;
     int fogTable;     /* the fog's table (render/vertex_fog.h) in this frame's, or -1 */
     float fogBase, fogDirection, fogCount;
@@ -604,16 +608,35 @@ static void free_handle(struct gfx_surface *s)
         destroy_handle(s);
 }
 
-void gfx_addref(gfx_surface *s)
-{
-    if (s)
-        s->refs++;
-}
-
 void gfx_release(gfx_surface *s)
 {
     if (s && --s->refs <= 0)
         free_handle(s);
+}
+
+/* A hold is a reference, taken and let go by the thread that draws (render/rp_pool.c). */
+void gfx_hold(gfx_surface *s)
+{
+    if (!s || s->held)
+        return;
+    if (!grow((void **)&G.holds, &G.holdCapacity, G.nholds + 1, sizeof *G.holds))
+        abort(); /* not held, it could go before it is drawn */
+    s->held = 1;
+    s->refs++;
+    G.holds[G.nholds++] = s;
+}
+
+void gfx_release_holds(void)
+{
+    size_t i, n = G.nholds;
+
+    G.nholds = 0;
+    for (i = 0; i < n; i++) {
+        struct gfx_surface *s = G.holds[i];
+
+        s->held = 0;
+        gfx_release(s);
+    }
 }
 
 static void pin(struct gfx_surface *s)
@@ -1994,7 +2017,7 @@ int gfx_world_texture(gfx_surface *texture, uint8_t array, uint16_t layer)
         return 0;
     /* the texture's pixels go up with the next stream, straight from the surface, which stays
        until then */
-    gfx_addref(texture);
+    texture->refs++;
     u = &W.textureUploads[W.ntextureUploads++];
     memset(u, 0, sizeof *u);
     u->surface = texture;

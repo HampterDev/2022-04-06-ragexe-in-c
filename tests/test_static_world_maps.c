@@ -307,8 +307,9 @@ void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip, int worl
 }
 int gfx_begin_scene(void) { return 0; }
 void gfx_end_scene(void) {}
-void gfx_addref(gfx_surface *s) { (void)s; }
 void gfx_release(gfx_surface *s) { (void)s; }
+void gfx_hold(gfx_surface *s) { (void)s; }
+void gfx_release_holds(void) {}
 int gfx_shadows_supported(void) { return 1; }
 int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; return 1; }
 int gfx_shadow_cascade(int cascade) { (void)cascade; return 1; }

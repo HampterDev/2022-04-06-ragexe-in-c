@@ -62,8 +62,12 @@ gfx_surface *gfx_create_texture(int w, int h, int fmt);
 gfx_surface *gfx_create_layer_texture(int w, int h, int fmt);
 int gfx_texture_format_ok(int fmt);
 gfx_surface *gfx_create_render_target(int w, int h);
-void gfx_addref(gfx_surface *s);
 void gfx_release(gfx_surface *s);
+/* custom: holds the surface until gfx_release_holds: its first hold since then takes one
+   reference, which gfx_release_holds lets go, and later holds take none. The renderer holds the
+   surfaces its queued draws name, which take no reference each (render/rp_pool.c). */
+void gfx_hold(gfx_surface *s);
+void gfx_release_holds(void);
 int gfx_get_size(gfx_surface *s, int *w, int *h);
 /* custom: the CPU's pixels of a texture or a system surface, a rectangle of them or all; a render
    target has none (-1), its pixels stay on the GPU. */

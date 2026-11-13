@@ -472,7 +472,6 @@ void entry_siege_emblem(struct GameMode *self, struct GameActor *actor, int is_p
 int entry_aid_listed(struct GameMode *self, const unsigned *aid);
 void entry_unit_value(struct GameActor *actor, short accessory2, short accessory3, int shield,
                       int keep_existing);
-void world_add_actor(struct GameMode *self, struct GameActor *actor);
 
 int game_mode_job_sex(struct GameMode *self, int job, int sex);
 

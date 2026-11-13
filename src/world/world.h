@@ -3,6 +3,7 @@
 
 #include "platform/error_message.h"
 #include "world/actor_lookup.h"
+#include "world/aid_index.h"
 #include "world/lifecycle.h"
 #include "world/object_lookup.h"
 #include "world/ground_api.h"
@@ -42,14 +43,41 @@ struct C3dActorV2;
 
 void *world_get_actor_or_player(struct World *self, int aid);
 BYTE world_actor_matches_global(struct World *self, int aid);
+/* custom: puts the object at the end of the world's list of objects and keeps its node there
+   (struct GameObject, world_node); 0, with nothing added, once the world's lists are freed
+   (world/object_list.c) */
+int world_add_object(struct World *self, void *object);
+/* Destroys an object on the world's list and takes it off; nothing for NULL or an object that is
+   not on it. custom: the object must be alive: it is read for its node (world_node), where the
+   original searched the list for its address, so a destroyed one is a use after free. Each caller
+   says why its object is alive: one just found on a list of the world that holds only live
+   objects, or one whose holder is told when it goes. */
 void world_remove_object(struct World *self, void *object);
 BYTE world_remove_item(struct World *self, int aid);
+
+/* custom: the world's actors and skill units as they join and leave their lists, each with an
+   index by aid (world/aid_index.h, world/aid_lists.c). An object added goes on the world's list of
+   objects and at the end of its list, indexed by its aid. world_erase_actor takes an actor's node
+   off the actors without reading the actor, which may be destroyed already; a live actor's
+   actor_node is its caller's to clear. A unit's aid changes only through world_set_skill_aid once
+   it may be on the units, with the world of that list (any world, NULL too, for a unit on none). */
+void world_add_actor(struct World *self, struct GameActor *actor);
+void world_erase_actor(struct World *self, struct ListNode *node);
+void world_add_skill(struct World *self, struct Skill *skill);
+void world_set_skill_aid(struct World *self, struct Skill *skill, int aid);
+/* The first unit with the aid leaves: destroyed and taken off, 1; or, where it still plays hits,
+   kept until they end (world_process_leaving_skills), 0, as is 0 for an aid of no unit. */
 BYTE world_remove_skill(struct World *self, int aid);
+/* custom: a unit kept to end its hits that the server shows again stays (the original removed it
+   when its hits ended). */
+void world_keep_skill(struct World *self, struct Skill *skill);
+/* The units kept for their hits, in the order they left: each is told it leaves (0x35) and goes
+   once its hits have ended. */
+void world_process_leaving_skills(struct World *self);
+
 void world_place_id_at_cell(struct World *self, int id, const float *cell);
 void world_place_id_at_client_cell(struct World *self, int id, const int *cell);
 void world_place_id_nowhere(struct World *self, int id, const float *pos);
-void world_send_msg_to_object(struct World *self, void *sender, int key1, int key2,
-                                       int a, int b, int c, int d, int e);
 
 void world_load_effects_and_sounds(struct World *self);
 

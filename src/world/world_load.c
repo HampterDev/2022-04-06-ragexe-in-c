@@ -194,7 +194,7 @@ void world_load_effects_and_sounds(struct World *self)
         } else {
             void *obj = effect_maker_new();
             render_object_send(obj, NULL, 0xe, (intptr_t)e, 0, 0, 0);
-            list_push_back(&self->gameObjects, &obj, sizeof obj);
+            world_add_object(self, obj);
         }
     }
     effect_mgr_load_effect_tool(g_effectMgr);
@@ -204,7 +204,7 @@ void world_load_effects_and_sounds(struct World *self)
             void *p = mem_alloc(sizeof(struct SoundMaker));
             void *obj = p ? world_sound_construct(p) : NULL;
             render_object_send(obj, NULL, 0xe, (intptr_t)src, 0, 0, 0);
-            list_push_back(&self->gameObjects, &obj, sizeof obj);
+            world_add_object(self, obj);
         }
     }
     string_free(&name);

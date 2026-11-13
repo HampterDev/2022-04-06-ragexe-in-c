@@ -13,19 +13,13 @@
 #include "session/session_names.h"
 #include "std/list.h"
 
+/* custom: the actors are found by their aid through the world's index (world/aid_lists.c), the
+   first with the aid as the original's walks of the list found it */
 BYTE world_actor_matches_global(struct World *self, int aid)
 {
-    struct ListNode *head = self->actors.head, *n;
+    void *actor = world_get_game_actor_by_aid(self, (unsigned)aid);
 
-    for (n = head->next; n != head; n = n->next) {
-        void *actor = *LIST_VALUE(n, void *);
-        if (((struct GameActor *)actor)->aid == aid) {
-            if (actor && g_guildInfo.master_gid == actor_get_char_id(actor))
-                return 1;
-            return 0;
-        }
-    }
-    return 0;
+    return actor && g_guildInfo.master_gid == actor_get_char_id(actor);
 }
 
 static void world_update_near_flag(struct World *self, BYTE nearby)
@@ -76,7 +70,7 @@ static BYTE world_any_id_at_cell(struct World *self, const float *cell)
 
 BYTE world_any_matching_actor_near(struct World *self, const float *x, const float *y)
 {
-    struct ListNode *head, *n, *a;
+    struct ListNode *head, *n;
     float cell[2], range;
     void *actor, *info;
     int id, cx, cy;
@@ -95,12 +89,7 @@ BYTE world_any_matching_actor_near(struct World *self, const float *x, const flo
     head = self->idsNowhere.head;
     for (n = head->next; n != head; n = n->next) {
         id = *LIST_VALUE(n, int);
-        for (a = self->actors.head->next; a != self->actors.head; a = a->next)
-            if ((*LIST_VALUE(a, struct GameActor *))->aid == id)
-                break;
-        if (a == self->actors.head)
-            continue;
-        actor = *LIST_VALUE(a, void *);
+        actor = world_get_game_actor_by_aid(self, (unsigned)id);
         if (!actor || g_guildInfo.master_gid != actor_get_char_id(actor))
             continue;
 

@@ -262,7 +262,7 @@ static unsigned char step_float_follower(struct MsgEffect *self)
 
     if (self->moving && self->owner) {
         struct RenderObject *owner = self->owner;
-        float roty, drift_x;
+        float roty;
 
         render_object_turn_toward(me, owner->pos.x, owner->pos.z);
         roty = me->roty - 180.0f;
@@ -272,12 +272,10 @@ static unsigned char step_float_follower(struct MsgEffect *self)
             me->roty = roty;
         }
         me->action = render_object_camera_dir(roty, 1) + 8;
-        drift_x = self->drift.x;
-        me->pos.x = drift_x + me->pos.x;
+        me->pos.x = self->drift.x + me->pos.x;
         n = self->steps;
         if (n <= 10 || n >= 25)
             me->pos.y = self->drift.y + me->pos.y;
-        self->last_drift_x = drift_x;
         me->pos.z = self->drift.z + me->pos.z;
         if (n >= 25) {
             self->drift.y = self->drift.y * -1.9f;

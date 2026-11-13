@@ -150,7 +150,7 @@ unsigned long long game_mode_launch_dummy_effect(struct GameMode *self, const Ve
     able_to_make_effect_construct(launcher);
     launcher->ops = &dummy_effect_launcher_ops.base;
     render_object_send(launcher, NULL, DUMMY_LAUNCHER_MSG_START, (intptr_t)at, effect_id, frames, value);
-    list_push_back(&self->world->gameObjects, &launcher, sizeof launcher);
+    world_add_object(self->world, launcher);
     return launcher->serial;
 }
 
@@ -159,11 +159,6 @@ void game_mode_on_change_state(struct Mode *mode, int state)
     struct GameMode *self = (struct GameMode *)mode;
     (void)self;
     (void)state;
-}
-
-void game_mode_add_world_object(struct GameMode *self, void *object)
-{
-    list_push_back(&self->world->gameObjects, &object, sizeof object);
 }
 
 void name_buffers_atexit(void)
