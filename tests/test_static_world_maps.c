@@ -47,17 +47,23 @@
    is built again without the dead records, as it was; the world is built again after the device
    made its own again, and from the textures' new surfaces after a reload; the costs of a model
    appearing and of the records sent are measured. On this machine's GPU, where there is one, with
-   the device's own packing (render/world_layout.h): the transform pass (world_transform.hlsl) gives
-   every slot the C's chain to the bit, view and clip space and place in the world; the cull and
-   compaction passes (world_cull.hlsl, world_compact.hlsl) put into each of the view's runs exactly
-   the indices of the records sw_record_in_view keeps, in their order, and into each casters' run of
-   each of four shadow cascades' boxes (nested about the view's reach for casters) those
-   sw_cull_cascade keeps, each in its section of the frame's index buffer, and do the same with
-   their dispatches split into rows of a few groups, as a dispatch of more groups than one row takes
-   is, and the two are timed on the map's first view, the view's and the cascades'; the water's
-   quads (water.hlsli, through tests/shaders/water_probe.hlsl) are the reference's to the bit in
-   heights, rhw, screen points and whether drawn, for every cell of the map; and the SPIR-V of those
-   passes has no operation that may part from the C.
+   the device's own packing (render/world_layout.h), within the tolerance plans/gpu-renderer.md
+   sets for the GPU's floats: the transform pass (world_transform.hlsl) gives every slot the C's
+   chain, every vertex of its records through the slot's clip space within 1/16 of a pixel of the
+   C's, its rhw within 1e-5 relative and its depth within 1e-5 relative (absolute nearer than 0.5),
+   through its view space and its place in the world within 1e-5 of its coordinates
+   (gpu_transforms); the cull and compaction passes
+   (world_cull.hlsl, world_compact.hlsl) keep the records sw_record_in_view keeps, and in each
+   casters' run of each of four shadow cascades' boxes (nested about the view's reach for casters)
+   those sw_cull_cascade keeps, but where a box lies within the rounding of a plane (cull_border),
+   and put into each run exactly the indices of the records the GPU kept, in their order, each in
+   its section of the frame's index buffer, and do the same with their dispatches split into rows
+   of a few groups, as a dispatch of more groups than one row takes is, and the two are timed on the
+   map's first view, the view's and the cascades'; the water's quads (water.hlsli, through
+   tests/shaders/water_probe.hlsl) are the reference's in heights within 1e-5 of the wave, rhw and
+   screen points within the vertices' tolerance and whether drawn, but where the wave's degree, the
+   cell's ground against the wave or the first triangle's facing lies within the rounding of a
+   boundary, for every cell of the map.
 
    With `--survey` after the folder it surveys the sizes of every map's textures and lightmap pages
    instead (all the .rsw files in data.grf and data\), and the texture arrays a map needs with one
@@ -2184,18 +2190,104 @@ static void matrix_4x3(float *out, const float *m)
     }
 }
 
+/* The tolerance the GPU's floats are held to (plans/gpu-renderer.md, Decisions) and the guard band
+   within which a vertex's place is held to pixels */
+#define PIXEL_TOLERANCE (1.0 / 16)
+#define RELATIVE_TOLERANCE 1e-5
+#define GUARD_BAND 8192.0
+
+/* What the GPU's passes gave against the C: counts, those beyond the tolerance, and the largest
+   differences */
 struct GpuStats {
-    size_t slots, slotsDiffer, draws, drawsDiffer, runs, runsDiffer, records, kept, cells, cellsDiffer, cellsDrawn;
-    size_t casterRuns, casterKept;
+    size_t slots, slotsDiffer, vertices, verticesDiffer, runs, runsDiffer, records, kept, cells, cellsDiffer, cellsDrawn;
+    size_t casterRuns, casterKept, cullBorder, cellBorder;
+    double pixel, rhw, depth, nearDepth, inView, inWorld, cullMargin, height;
 };
 
 static struct GpuStats g_gpuStats;
 /* the GPU's cull of the map's first view is to be timed */
 static int g_cullTimeDue;
 
-/* the slots' views and places, packed as the device packs them (render/world_layout.h): the C's to
-   the bit, and each reference draw's view its record's slot's; returns the GPU's places, which the
-   cull takes */
+static double relative_to(double got, double want, double scale)
+{
+    return fabs(got - want) / (scale > 1e-30 ? scale : 1e-30);
+}
+
+static void most_of(double *into, double d)
+{
+    if (d > *into || d != d)
+        *into = d;
+}
+
+/* p through a row-vector 4x4 matrix (16 floats), in double */
+static void through44(const float *m, const float *p, double *out)
+{
+    int c;
+    for (c = 0; c < 4; c++)
+        out[c] = (double)p[0] * m[c] + (double)p[1] * m[4 + c] + (double)p[2] * m[8 + c] + m[12 + c];
+}
+
+/* p through the client's 4x3 (render/gfx.h), in double */
+static void through43(const float *m, const float *p, double *out)
+{
+    int c;
+    for (c = 0; c < 3; c++)
+        out[c] = (double)p[0] * m[c] + (double)p[1] * m[3 + c] + (double)p[2] * m[6 + c] + m[9 + c];
+}
+
+/* A vertex through the C's and the GPU's matrices of its slot: the pixel, rhw and depth of its clip
+   space where the C's lies in front of the eye and within the depth range; its point in view space
+   and in the world. Answers whether it is within the tolerance. */
+static int compare_vertex(const float *p, const float *clipC, const float *clipG, const float *viewC, const float *viewG,
+                          const float *placeC, const float *placeG)
+{
+    double c[4], g[4], a[3], b[3], scale = 0.0, d;
+    int k, ok = 1;
+    through44(clipC, p, c);
+    through44(clipG, p, g);
+    if (c[3] > 0.0 && c[2] >= 0.0 && c[2] <= c[3]) {
+        double w = g_renderer->width, h = g_renderer->height;
+        double cx = (c[0] / c[3] + 1.0) * w / 2, cy = (1.0 - c[1] / c[3]) * h / 2;
+        double gx = (g[0] / g[3] + 1.0) * w / 2, gy = (1.0 - g[1] / g[3]) * h / 2;
+        double depthC = c[2] / c[3], depthG = g[2] / g[3];
+        d = fmax(fabs(gx - cx), fabs(gy - cy));
+        if (fabs(cx) <= GUARD_BAND && fabs(cy) <= GUARD_BAND) {
+            most_of(&g_gpuStats.pixel, d);
+            ok = ok && d <= PIXEL_TOLERANCE;
+        } else {
+            ok = ok && d <= RELATIVE_TOLERANCE * fmax(fabs(cx), fabs(cy));
+        }
+        most_of(&g_gpuStats.rhw, relative_to(1.0 / g[3], 1.0 / c[3], 1.0 / c[3]));
+        ok = ok && relative_to(1.0 / g[3], 1.0 / c[3], 1.0 / c[3]) <= RELATIVE_TOLERANCE;
+        if (depthC >= 0.5) {
+            most_of(&g_gpuStats.depth, relative_to(depthG, depthC, depthC));
+            ok = ok && relative_to(depthG, depthC, depthC) <= RELATIVE_TOLERANCE;
+        } else {
+            most_of(&g_gpuStats.nearDepth, fabs(depthG - depthC));
+            ok = ok && fabs(depthG - depthC) <= RELATIVE_TOLERANCE;
+        }
+    }
+    through44(viewC, p, c);
+    through44(viewG, p, g);
+    for (k = 0; k < 3; k++)
+        scale = fmax(scale, fabs(c[k]));
+    for (k = 0, d = 0.0; k < 3; k++)
+        d = fmax(d, fabs(g[k] - c[k]));
+    most_of(&g_gpuStats.inView, relative_to(d, 0.0, fmax(scale, 1.0)));
+    ok = ok && d <= RELATIVE_TOLERANCE * fmax(scale, 1.0);
+    through43(placeC, p, a);
+    through43(placeG, p, b);
+    for (k = 0, scale = 0.0, d = 0.0; k < 3; k++) {
+        scale = fmax(scale, fabs(a[k]));
+        d = fmax(d, fabs(b[k] - a[k]));
+    }
+    most_of(&g_gpuStats.inWorld, relative_to(d, 0.0, fmax(scale, 1.0)));
+    return ok && d <= RELATIVE_TOLERANCE * fmax(scale, 1.0);
+}
+
+/* The slots' views and places, packed as the device packs them (render/world_layout.h), against the
+   C's chain: every vertex of every record through its slot (compare_vertex); returns the GPU's
+   places, which the cull takes */
 static float (*gpu_transforms(struct Map *map, const float *view))[12]
 {
     static struct WlSlot *slots;
@@ -2204,12 +2296,14 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
         float toView[16];
     } *views;
     static float (*placed)[12];
-    static size_t capacity;
+    static uint32_t *seen;
+    static size_t capacity, seenCapacity;
+    static uint32_t stamp;
     struct WlTransformFrame u;
     const void *in[2];
     void *out[2];
     uint32_t inSize[2], outSize[2], s;
-    size_t i;
+    size_t r;
     float proj[16];
 
     (void)view;
@@ -2221,6 +2315,15 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
         if (!slots || !views || !placed)
             abort();
     }
+    if (seenCapacity < D.vertexCount + 1) {
+        free(seen);
+        seenCapacity = D.vertexCount + 1;
+        seen = calloc(seenCapacity, sizeof *seen);
+        if (!seen)
+            abort();
+        stamp = 0;
+    }
+    stamp++;
     for (s = 0; s < D.slotCount; s++)
         wl_slot(D.slots[s].local, D.slots[s].parent, D.slots[s].animated, s == 0, &slots[s]);
     wl_projection(proj, D.camera.proj, D.camera.centre, D.camera.nearZ, D.camera.depthScale, g_renderer->width,
@@ -2235,34 +2338,29 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
     out[1] = placed;
     outSize[1] = (uint32_t)(D.slotCount * sizeof *placed);
     gpu_dispatch(g_transformPass, in, inSize, 2, out, outSize, 2, &u, sizeof u, (uint32_t)(D.slotCount + 63) / 64, 1);
-    for (s = 0; s < D.slotCount; s++) {
+    g_gpuStats.slots += D.slotCount;
+    for (r = 0; r < map->recordCount; r++) {
+        const struct SwRecord *x = &map->records[r];
         float toView[16], toClip[16];
+        uint32_t k, wrong = 0;
 
+        s = x->transform;
         matrix_4x3(toView, map->views[s]);
         wl_view_clip(toClip, map->views[s], proj);
-        g_gpuStats.slots++;
-        if (memcmp(toView, views[s].toView, sizeof toView) || memcmp(toClip, views[s].toClip, sizeof toClip)
-            || memcmp(placed[s], map->transforms[s], sizeof placed[s])) {
-            if (g_gpuStats.slotsDiffer++ < 5)
-                FAIL("%s: the GPU's slot %u is not the C's", map->name, s);
+        for (k = 0; k < x->indexCount; k++) {
+            uint32_t v = D.indices[x->firstIndex + k] + x->baseVertex;
+            if (v >= D.vertexCount || seen[v] == stamp)
+                continue;
+            seen[v] = stamp;
+            g_gpuStats.vertices++;
+            if (!compare_vertex(&D.vertices[v].x, toClip, views[s].toClip, toView, views[s].toView, map->transforms[s],
+                                placed[s]))
+                wrong++;
         }
-    }
-    for (i = 0; i < g_drawCount; i++) {
-        const struct DeviceDraw *d = &g_draws[i];
-        const struct Source *src = mesh_source(map, d->mesh);
-        long rec = src ? record_at(map, src->place.firstIndex + (uint32_t)d->draw.first) : -1;
-        float toView[16], toClip[16];
-
-        if (rec < 0)
-            continue;
-        matrix_4x3(toView, d->view);
-        wl_view_clip(toClip, d->view, proj);
-        g_gpuStats.draws++;
-        if (memcmp(toClip, views[map->records[rec].transform].toClip, sizeof toClip)
-            || memcmp(toView, views[map->records[rec].transform].toView, sizeof toView)) {
-            if (g_gpuStats.drawsDiffer++ < 5)
-                FAIL("%s: a draw's clip space is not the reference's", map->name);
-        }
+        g_gpuStats.verticesDiffer += wrong;
+        if (wrong && g_gpuStats.slotsDiffer++ < 5)
+            FAIL("%s: %u vertices of record %zu through the GPU's slot %u beyond the tolerance of the C's", map->name,
+                 wrong, r, s);
     }
     return placed;
 }
@@ -2511,6 +2609,59 @@ static double gpu_cull_time(const struct CullData *cd, size_t records, float (*p
     return (double)(took[2] - took[0]) / REPS / 1e6;
 }
 
+/* Whether a record whose box the C's test and the GPU's decided apart lies within the rounding of a
+   plane of the view: the plane on which the box's nearest corner lies closest, in double, of the
+   C's bounds (an animated record's moved by the C's place of its slot), is within RELATIVE_TOLERANCE
+   of the magnitudes the test sums; records the largest such margin found */
+static int cull_border(const struct Map *map, const struct SwRecord *x, const struct SwFrustum *f)
+{
+    double c[3], h[3], margin = 1e300, scale = 1.0;
+    int i, k;
+    if (x->flags & SW_ANIMATED) {
+        const float *m = map->transforms[x->transform];
+        through43(m, x->centre, c);
+        for (k = 0; k < 3; k++)
+            h[k] = fabs(m[k]) * x->half[0] + fabs(m[3 + k]) * x->half[1] + fabs(m[6 + k]) * x->half[2];
+    } else {
+        for (k = 0; k < 3; k++) {
+            c[k] = x->centre[k];
+            h[k] = x->half[k];
+        }
+    }
+    for (i = 0; i < 6; i++) {
+        const float *n = f->plane[i];
+        double reach = fabs(h[0] * n[0]) + fabs(h[1] * n[1]) + fabs(h[2] * n[2]);
+        double dist = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] + n[3];
+        double size = fabs(c[0] * n[0]) + fabs(c[1] * n[1]) + fabs(c[2] * n[2]) + fabs(n[3]) + reach;
+        if (fabs(dist + reach) / size < margin) {
+            margin = fabs(dist + reach) / size;
+            scale = size;
+        }
+    }
+    (void)scale;
+    most_of(&g_gpuStats.cullMargin, margin);
+    return margin <= RELATIVE_TOLERANCE;
+}
+
+/* The records the GPU's cull kept of a view's section of the places (keep[r] != 0), against the C's
+   (want[r] != 0): the same but where a box lies within the rounding of a plane (cull_border);
+   answers how many differ beyond that */
+static size_t cull_differ(const struct Map *map, const uint32_t *places, unsigned char *keep, const unsigned char *want,
+                          const struct SwFrustum *f)
+{
+    size_t r, differ = 0;
+    for (r = 0; r < map->recordCount; r++) {
+        keep[r] = places[r] != 0xffffffffu;
+        if (keep[r] == want[r])
+            continue;
+        if (cull_border(map, &map->records[r], f))
+            g_gpuStats.cullBorder++;
+        else
+            differ++;
+    }
+    return differ;
+}
+
 /* One run's command and indices, its records `rec` (count of them, the record's place in draw order
    each, the kept ones keep[rec] != 0): the kept records' indices, base vertex added, one after the
    other in the run's order from `start`, and a command that draws them. Answers whether they are. */
@@ -2532,16 +2683,18 @@ static int run_drawn(const struct Map *map, const uint32_t *recs, uint32_t count
     return command[0] == at - start && command[1] == 1 && command[2] == start && command[3] == 0 && command[4] == 0;
 }
 
-/* The cull, packed as the device packs it (render/world_layout.h): each of the view's runs holds
-   exactly the indices of the records sw_record_in_view keeps, their base vertex added, one after
-   the other in the records' order, and its command draws them; with the cascades' boxes, each
-   casters' run of each cascade those of the records sw_cull_cascade keeps, in its order, in the
-   cascade's section; and so it does with the dispatches split into rows of 3 and of 7 groups. */
+/* The cull, packed as the device packs it (render/world_layout.h): the GPU keeps the records
+   sw_record_in_view keeps but where a box lies within the rounding of a plane (cull_differ), and
+   each of the view's runs holds exactly the indices of the records it kept, their base vertex
+   added, one after the other in the records' order, and its command draws them; with the
+   cascades' boxes, likewise against sw_cull_cascade, each casters' run of each cascade in its
+   order, in the cascade's section; and so it does with the dispatches split into rows of 3 and of
+   7 groups. */
 static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, const struct SwCascade *cascades)
 {
     static struct CullData cd;
     static uint32_t *indices, *draws, *drawn, *draws2, *drawn2, *recs, *cast;
-    static unsigned char *keep;
+    static unsigned char *keep, *want;
     static size_t indexCapacity, drawsCapacity, drawnCapacity, recCapacity;
     static struct ShadowFitGpuCascades boxes;
     size_t i, records = map->recordCount, k;
@@ -2565,8 +2718,9 @@ static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, co
         recs = realloc(recs, recCapacity * sizeof *recs);
         cast = realloc(cast, recCapacity * sizeof *cast);
         keep = realloc(keep, recCapacity);
+        want = realloc(want, recCapacity);
     }
-    if (!draws2 || !drawn || !drawn2 || !recs || !cast || !keep)
+    if (!draws2 || !drawn || !drawn2 || !recs || !cast || !keep || !want)
         abort();
     for (c = 0; cascades && c < GFX_SHADOW_CASCADES; c++) {
         struct SwFrustum box;
@@ -2589,8 +2743,13 @@ static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, co
                    records, cd.nchunks);
         }
         if (!kind) {
+            size_t differ;
             for (i = 0; i < records; i++)
-                keep[i] = keptAt[i] >= 0;
+                want[i] = keptAt[i] >= 0;
+            differ = cull_differ(map, draws + cd.draws.places, keep, want, &D.frustum);
+            if (differ && g_gpuStats.runsDiffer++ < 5)
+                FAIL("%s: the GPU's cull of the view keeps %zu records otherwise than sw_record_in_view", map->name,
+                     differ);
             for (i = 0; i < cd.m; i++) {
                 const struct WlRun *r = &cd.runs[i];
 
@@ -2602,16 +2761,22 @@ static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, co
                     g_gpuStats.kept += keep[r->first + k];
                 if (!run_drawn(map, recs, r->count, keep, r->start, &draws[wl_view_command((uint32_t)i) * 5], drawn)
                     && g_gpuStats.runsDiffer++ < 5)
-                    FAIL("%s: the GPU's cull of the view's run %zu is not sw_record_in_view's", map->name, i);
+                    FAIL("%s: the GPU's view's run %zu does not draw the records its cull kept", map->name, i);
             }
         } else {
             for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
                 size_t n = sw_cull_cascade(map->records, records, (const float (*)[12])map->transforms, &cascades[c],
-                                           cast);
+                                           cast), differ;
+                struct SwFrustum box;
 
-                memset(keep, 0, records);
+                memset(want, 0, records);
                 for (i = 0; i < n; i++)
-                    keep[cast[i]] = 1;
+                    want[cast[i]] = 1;
+                sw_cascade_planes(&cascades[c], &box);
+                differ = cull_differ(map, draws + cd.draws.places + (size_t)(c + 1) * records, keep, want, &box);
+                if (differ && g_gpuStats.runsDiffer++ < 5)
+                    FAIL("%s: the GPU's cull of cascade %d keeps %zu records otherwise than sw_cull_cascade",
+                         map->name, c, differ);
                 for (i = 0; i < cd.ncasters; i++) {
                     const struct WlRun *r = &cd.casters[i];
 
@@ -2621,8 +2786,8 @@ static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, co
                     if (!run_drawn(map, cd.order + r->first, r->count, keep, (uint32_t)(c + 1) * cd.section + r->start,
                                    &draws[wl_caster_command(cd.m, cd.ncasters, c, (uint32_t)i) * 5], drawn)
                         && g_gpuStats.runsDiffer++ < 5)
-                        FAIL("%s: the GPU's cull of cascade %d's casters' run %zu is not sw_cull_cascade's", map->name, c,
-                             i);
+                        FAIL("%s: the GPU's cascade %d's casters' run %zu does not draw the records its cull kept",
+                             map->name, c, i);
                 }
             }
         }
@@ -2651,7 +2816,12 @@ static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, co
     g_cullTimeDue = 0;
 }
 
-/* the water's quads over every cell of the map: the reference's to the bit */
+/* The water's quads over every cell of the map against the reference's: the heights within
+   RELATIVE_TOLERANCE of the wave's size (its height and level), the rhw and the corners on the screen
+   within the vertices' tolerance, and whether drawn the same; but for a cell where the reference's
+   angle of a wave lies within the rounding of a whole degree (the GPU may take the next), its
+   ground's lowest corner within the rounding of the wave, or its first triangle within the rounding
+   of facing neither way, counted apart */
 static void gpu_water(struct Map *map, const float *view)
 {
     static struct GpuWaterCell *cells;
@@ -2737,59 +2907,41 @@ static void gpu_water(struct Map *map, const float *view)
         }
         g_gpuStats.cells++;
         g_gpuStats.cellsDrawn += drawn;
-        if (memcmp(want, results[i * 4], sizeof want)) {
-            if (g_gpuStats.cellsDiffer++ < 5) {
-                FAIL("%s: the GPU's water quad over cell %d, %d is not the reference's", map->name, c->x, c->y);
+        {
+            const float *got = results[i * 4];
+            double size = fabs(w->waveHeight) + fabs(w->level) + 1.0, turnA, turnB, a;
+            int border = 0, wrong = 0, j;
+            /* the reference's angles, turns and test, in double */
+            for (j = -1; j <= 1 && !border; j++) {
+                double angle = (double)(diagonal + j) * w->wavePitch + w->phase;
+                border = fabs(angle - floor(angle + 0.5)) <= RELATIVE_TOLERANCE * (fabs(angle) + 1.0);
+            }
+            turnA = ((double)v[2].x - v[0].x) * ((double)v[1].y - v[0].y);
+            turnB = ((double)v[1].x - v[0].x) * ((double)v[2].y - v[0].y);
+            border = border || fabs(turnA - turnB) <= RELATIVE_TOLERANCE * (fabs(turnA) + fabs(turnB))
+                     || fabs((double)c->top - heights[1]) <= RELATIVE_TOLERANCE * size;
+            for (k = 0; k < 3; k++) {
+                most_of(&g_gpuStats.height, fabs((double)got[k] - want[k]) / size);
+                wrong = wrong || fabs((double)got[k] - want[k]) > RELATIVE_TOLERANCE * size;
+            }
+            wrong = wrong || (got[3] != 0.0f) != drawn;
+            for (k = 0; k < 4 && drawn; k++) {
+                a = fabs((double)got[4 + k] - want[4 + k]) / fabs(want[4 + k]);
+                wrong = wrong || !(a <= RELATIVE_TOLERANCE);
+                if (fabs(want[8 + k * 2]) <= GUARD_BAND && fabs(want[9 + k * 2]) <= GUARD_BAND)
+                    wrong = wrong || !(fabs((double)got[8 + k * 2] - want[8 + k * 2]) <= PIXEL_TOLERANCE
+                                       && fabs((double)got[9 + k * 2] - want[9 + k * 2]) <= PIXEL_TOLERANCE);
+            }
+            if (wrong && border) {
+                g_gpuStats.cellBorder++;
+            } else if (wrong && g_gpuStats.cellsDiffer++ < 5) {
+                FAIL("%s: the GPU's water quad over cell %d, %d is not within the tolerance of the reference's",
+                     map->name, c->x, c->y);
                 for (k = 0; k < 16; k++)
-                    if (memcmp(&want[k], &results[i * 4][k], sizeof want[k]))
-                        fprintf(stderr, "    value %d: %.9g, the GPU %.9g\n", k, want[k], results[i * 4][k]);
+                    fprintf(stderr, "    value %d: %.9g, the GPU %.9g\n", k, want[k], got[k]);
             }
         }
     }
-}
-
-/* The operations of a shader that may part from the C's results now and then: scalar float
-   additions, subtractions, multiplications and divisions without NoContraction (HLSL's precise),
-   which the GPU may fuse, reorder or factor; fused multiply-adds (mad()), which Vulkan does not
-   promise to fuse; matrix and dot products (mul()), which leave the order of their sums to the
-   GPU. */
-static int bare_operations(const char *name, const unsigned char *code, size_t size)
-{
-    const uint32_t *w = (const uint32_t *)code;
-    size_t n = size / 4, i;
-    uint32_t bound, floatType = 0, *decorated;
-    int bare = 0;
-
-    if (n < 5 || w[0] != 0x07230203u)
-        return 1;
-    bound = w[3];
-    decorated = calloc(bound, sizeof *decorated);
-    if (!decorated)
-        abort();
-    for (i = 5; i < n; i += w[i] >> 16) {
-        uint32_t op = w[i] & 0xffff;
-
-        if ((w[i] >> 16) == 0)
-            break;
-        if (op == 22 && w[i + 2] == 32)
-            floatType = w[i + 1];
-        if (op == 71 && w[i + 2] == 42 && w[i + 1] < bound)
-            decorated[w[i + 1]] = 1;
-    }
-    for (i = 5; i < n; i += w[i] >> 16) {
-        uint32_t op = w[i] & 0xffff;
-        int arithmetic = op == 129 || op == 131 || op == 133 || op == 136;
-
-        if ((w[i] >> 16) == 0)
-            break;
-        if (arithmetic && w[i + 1] == floatType && w[i + 2] < bound && !decorated[w[i + 2]])
-            bare++;
-        if ((op == 12 && w[i + 4] == 50) || op == 144 || op == 145 || op == 146 || op == 148)
-            bare++;
-    }
-    free(decorated);
-    printf("static_world_maps: %s: %d operations that may part from the C\n", name, bare);
-    return bare;
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -4369,12 +4521,7 @@ int main(int argc, char **argv)
     renderer_set_projection(&renderer, 1024, 768);
     if (argc > 2 && !strcmp(argv[2], "--survey"))
         return survey();
-    if (open_gpu()) {
-        if (bare_operations("world_transform.hlsl", world_transform_cs.code.spirv, world_transform_cs.code.spirvSize)
-            || bare_operations("world_cull.hlsl", world_cull_cs.code.spirv, world_cull_cs.code.spirvSize)
-            || bare_operations("water.hlsli (water_probe.hlsl)", water_probe_cs.code.spirv, water_probe_cs.code.spirvSize))
-            FAIL("a pass that must match the C has operations that may part from it");
-    } else {
+    if (!open_gpu()) {
         printf("static_world_maps: the GPU's passes skipped, no GPU device (%s)\n", SDL_GetError());
         g_dev = NULL;
     }
@@ -4391,12 +4538,17 @@ int main(int argc, char **argv)
         check_map("prontera");
     }
     if (g_dev)
-        printf("static_world_maps: on the GPU, slots %zu (not the C's %zu), draws %zu (clip space not the reference's "
-               "%zu), runs culled %zu of %zu records, %zu kept, casters' runs culled %zu, %zu kept (runs not as "
-               "sw_record_in_view or sw_cull_cascade %zu), cells of water %zu (drawn %zu; not the reference's %zu)\n",
-               g_gpuStats.slots, g_gpuStats.slotsDiffer, g_gpuStats.draws, g_gpuStats.drawsDiffer, g_gpuStats.runs,
-               g_gpuStats.records, g_gpuStats.kept, g_gpuStats.casterRuns, g_gpuStats.casterKept,
-               g_gpuStats.runsDiffer, g_gpuStats.cells, g_gpuStats.cellsDrawn, g_gpuStats.cellsDiffer);
+        printf("static_world_maps: on the GPU, slots %zu, their records' vertices %zu (beyond the tolerance %zu; "
+               "largest differences: pixel %.3g, rhw %.3g, depth %.3g relative, nearer than 0.5 %.3g, in view space "
+               "%.3g and in the world %.3g of their coordinates); runs culled %zu of %zu records, %zu kept, casters' "
+               "runs culled %zu, %zu kept (records decided otherwise than the C's at a plane's rounding %zu, the "
+               "largest margin %.3g; runs or decisions beyond %zu); cells of water %zu (drawn %zu; heights within %.3g "
+               "of the wave; at a boundary's rounding %zu; beyond the tolerance %zu)\n",
+               g_gpuStats.slots, g_gpuStats.vertices, g_gpuStats.verticesDiffer, g_gpuStats.pixel, g_gpuStats.rhw,
+               g_gpuStats.depth, g_gpuStats.nearDepth, g_gpuStats.inView, g_gpuStats.inWorld, g_gpuStats.runs,
+               g_gpuStats.records, g_gpuStats.kept, g_gpuStats.casterRuns, g_gpuStats.casterKept, g_gpuStats.cullBorder,
+               g_gpuStats.cullMargin, g_gpuStats.runsDiffer, g_gpuStats.cells, g_gpuStats.cellsDrawn,
+               g_gpuStats.height, g_gpuStats.cellBorder, g_gpuStats.cellsDiffer);
     close_gpu();
     if (g_failures)
         printf("static_world_maps: %d failures\n", g_failures);

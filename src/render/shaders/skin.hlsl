@@ -4,7 +4,7 @@
 // quad_pixel), as Granny's triangles were drawn through the quad shader before.
 #include "quad.hlsli"
 
-StructuredBuffer<uint4> quads : register(t2, space0);
+StructuredBuffer<uint4> quads : register(t1, space0);
 
 #include "skin.hlsli"
 
@@ -38,7 +38,7 @@ Varyings vs_main(SkinIn i)
     float q = 1 / o.position.w;
     o.diffuse = s.colour * q;
     o.uv = float4(s.uv, s.uv) * q;
-    o.fogQ = float2(d.mode.z != 0 ? vertex_fog(q, d.fog, d.stages.w) * q : q, q);
+    o.fogQ = float2(d.mode.z != 0 ? vertex_fog(q, d.fog) * q : q, q);
     o.draw = h.y;
     o.layer = 0;
     return o;

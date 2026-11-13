@@ -97,14 +97,16 @@ void gfx_set_effect(int srcBlend, int destBlend, int combine);
 /* custom: the fog of the modes that fog, while on, computed for each vertex and interpolated across
    the triangle, as Direct3D 9 did with the vertex fog: the vertex keeps f of its colour and takes
    1 - f of `colour`'s (a D3DCOLOR). For the quads f is the original's vertex fog, which it computed
-   on the CPU into a vertex's specular alpha, to the bit: 1 - t in 1/255 steps rounded down,
+   on the CPU into a vertex's specular alpha: 1 - t in 1/255 steps rounded down,
    t = ((1 / rhw - origin) / span - start) / (end - start) clamped to 0..1, without the division
-   where end equals start, in single precision (render/vertex_fog.h; a vertex whose rhw is not
-   positive as at the smallest normal one). Granny's meshes (gfx_draw_skin) take the same steps by
-   the rhw the GPU computes of their view depth, within a step of the CPU's. For the static world's
-   meshes f is (b - vz) / (b - a) clamped to 0..1 for the view depth vz, a and b the view depths
-   start * span + origin and end * span + origin (origin and origin + span where end equals start),
-   as the Direct3D 9 client's mesh shader computed it. The device starts without fog. */
+   where end equals start (a vertex whose rhw is not positive as at the smallest normal one), which
+   the vertex shader computes within a step of the CPU's (render/shaders/quad.hlsli, vertex_fog);
+   Granny's meshes (gfx_draw_skin) take the same steps by the rhw the GPU computes of their view
+   depth, the water's by the rhw of its corners (render/shaders/water.hlsl).
+   For the static world's meshes f is (b - vz) / (b - a) clamped to 0..1 for the view depth vz, a
+   and b the view depths start * span + origin and end * span + origin (origin and origin + span
+   where end equals start), as the Direct3D 9 client's mesh shader computed it. The device starts
+   without fog. */
 struct GfxFog {
     int on;
     DWORD colour;
@@ -117,10 +119,11 @@ void gfx_set_fog(const struct GfxFog *fog);
 void gfx_set_texture(int stage, gfx_surface *s);
 
 /* custom: the client's quads and triangles, every one an instance (render/quads.h) whose vertices
-   the device's vertex shader makes exactly as the client's C code made them, in the current mode,
-   textures and target. Consecutive instances drawn with the same mode, effect, fog, textures (or
-   layers of one array, gfx_create_layer_texture) and target, all flat or none, become one draw, in
-   the order given, as Direct3D 9's draws were until a state changed. Direct3D 9 drew flat draws
+   the device's vertex shader makes as the client's C code made them (within the tolerance of
+   plans/gpu-renderer.md), in the current mode, textures and target. Consecutive instances drawn
+   with the same mode, effect, fog, textures (or layers of one array, gfx_create_layer_texture) and
+   target, all flat or none, become one draw, in the order given, as Direct3D 9's draws were until a
+   state changed. Direct3D 9 drew flat draws
    (every vertex the same rhw) without multisampling; in a multisampled pass their corners move
    onto the pixel boundaries that keep the pixels Direct3D 9 covered.
    gfx_draw_quad draws one the client made (a sprite, a projected quad, a triangle of a set of

@@ -31,9 +31,10 @@ void multi_tex_particle_reset(struct MultiTexParticle *self)
 }
 
 /* custom: the cell's half quad as an instance whose corners the device projects as
-   renderer_project_vertex did them through the view (render/gfx.h, GFX_QUAD_WORLD), z nudged
-   towards the camera, with each stage's texture coordinates; the CPU finds the corners' rhw alone,
-   which say whether the quad lies flat on the screen. */
+   renderer_project_vertex did them through the view (render/gfx.h, GFX_QUAD_WORLD), with each
+   stage's texture coordinates; the CPU finds the corners' rhw, which say whether the quad lies flat
+   on the screen, and their z, nudged towards the camera, which the depth test compares with what
+   lies on the cell by its bits (GFX_DEPTH_CORNERS). */
 void multi_tex_particle_render_on_cell(struct MultiTexParticle *self, int cell_x, int cell_y)
 {
     struct C3dGround15 *ground = game_current_ground();
@@ -67,8 +68,10 @@ void multi_tex_particle_render_on_cell(struct MultiTexParticle *self, int cell_x
     q->world.centre[0] = (float)g_renderer->centreX;
     q->world.centre[1] = (float)g_renderer->centreY;
     q->world.rhw = GFX_RHW_PROJECTED;
-    q->world.depth = GFX_DEPTH_ADD;
-    q->world.depthValue = -k_multitexDepthNudge;
+    q->world.depth = GFX_DEPTH_CORNERS;
+    q->world.depthValue = 0.0f;
+    for (i = 0; i < 4; i++)
+        q->world.z[i] = renderer_project_depth(rhw[i]) + -k_multitexDepthNudge;
     q->world.colour = 0xffffffff;
     q->world.stage2 = 1;
     q->world.flat = quad_rhw_flat(rhw, 4);

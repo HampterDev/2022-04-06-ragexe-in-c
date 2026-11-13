@@ -1,9 +1,10 @@
 // The client's quads and triangles as instances (render/gfx.h, gfx_draw_quad and
 // gfx_draw_vertices): the record of each in the frame's quads, as render/quads.c makes it, and the
-// vertex it stands for at each corner, made from it exactly as the client's C code made it
-// (exact.hlsli): quad_vertex, which quad.hlsl draws and tests/shaders/quad_probe.hlsl hands back
-// to tests/test_quad_instances.c. The file that includes this one declares the frame's quads
-// (StructuredBuffer<uint4> quads) and includes exact.hlsli first.
+// vertex it stands for at each corner, made from it as the client's C code made it, in plain
+// arithmetic (projection.hlsli): quad_vertex, which quad.hlsl draws and
+// tests/shaders/quad_probe.hlsl hands back to tests/test_quad_instances.c, which holds it to a
+// tolerance of that code. The file that includes this one declares the frame's quads
+// (StructuredBuffer<uint4> quads) and includes projection.hlsli first.
 //
 // The frame's quads hold the records and what they name: the matrices of QUAD_WORLD records and of
 // corner sets, the corner sets of QUAD_CORNERS records and the vertices of QUAD_SCREEN ones, each
@@ -13,7 +14,8 @@
 // and (bits 16 to 31) the layer of the atlas array its stage 0 reads; y the draw's record; z the
 // colour (a D3DCOLOR) where the kind has one; w a value of the kind.
 #define QUAD_SPRITE 1   // render_object_submit_spr_quad's: (x0, x1, top, bottom); (the bottom row's
-                        // rhw, the top row's, the flipped screen's x and y); (cosine, sine); uv
+                        // rhw, the top row's, the flipped screen's x and y); (cosine, sine, the
+                        // bottom row's z, the top row's); uv
 #define QUAD_RECT 2     // a rectangle: (x0, x1, top, bottom); (the top row's z, the bottom row's);
                         // uv; w: the rhw
 #define QUAD_SCREEN 3   // pre-transformed vertices, w the word of the first of them (7 words each:
@@ -22,7 +24,7 @@
                         // matrix whose first row is w (four rows: its view, then proj[0], proj[1],
                         // centreX, centreY): (x, y, z, the rhw value), (x, y, z, the z value),
                         // (x, y, z), (x, y, z); u and v of each corner, then the second stage's
-                        // where QUAD_STAGE2
+                        // where QUAD_STAGE2, then each corner's z where QUAD_Z_CORNERS
 #define QUAD_CORNERS 5  // a triangle of three corners of the set whose first row is z (render/quads.c,
                         // quad_corner_words: x the rules' flags, y the colour, z the row of its
                         // matrix, as QUAD_WORLD's, w the word of its first corner after the set's
@@ -39,6 +41,7 @@
 #define QUAD_RHW_VALUE 512 //   or the value; otherwise the projection's
 #define QUAD_Z_VALUE 1024  // QUAD_WORLD, a corner set: z is the value
 #define QUAD_Z_ADD 2048    //   or the depth of the rhw plus the value; otherwise the depth of the rhw
+#define QUAD_Z_CORNERS 3072 // QUAD_WORLD: each corner's z is given, in a row after the coordinates
 #define QUAD_Z 3072
 #define QUAD_VIEW 4096     // QUAD_WORLD: the points are in view space already; the matrix gives the
                            // projection alone
@@ -101,18 +104,19 @@ Projected set_point(uint set, uint4 s, uint k)
 }
 
 // A projected point's rhw and depth by the rules of `flags` (QUAD_RHW_*, QUAD_Z_*) with their values
+// (a corner whose z is given, QUAD_Z_CORNERS, takes it after)
 void apply_rules(inout Corner o, Projected pr, uint flags, float rhwValue, float zValue)
 {
-    precise float rhw = pr.rhw;
+    float rhw = pr.rhw;
     if ((flags & QUAD_RHW_ADD) != 0)
         rhw = pr.rhw + rhwValue;
     else if ((flags & QUAD_RHW_VALUE) != 0)
         rhw = rhwValue;
     uint zmode = flags & QUAD_Z;
-    precise float z = zValue;
+    float z = zValue;
     if (zmode == QUAD_Z_ADD)
         z = project_depth(rhw) + zValue;
-    else if (zmode != QUAD_Z_VALUE)
+    else if (zmode == 0)
         z = project_depth(rhw);
     o.x = pr.x;
     o.y = pr.y;
@@ -122,8 +126,6 @@ void apply_rules(inout Corner o, Projected pr, uint flags, float rhwValue, float
 
 // What an upright triangle's corners stand on (QUAD_UPRIGHT): its set's upright point's projected x
 // and half the distance between its corners 0's and 1's projected x; zeros for any other record.
-// Plain arithmetic: the products by 0.5 and by a side are exact, so a multiply-add the GPU may fuse
-// of them rounds as the two operations do.
 struct Upright
 {
     float x, half;
@@ -156,16 +158,16 @@ Corner corner_of(uint at, uint4 h, uint corner, Upright u)
     if (kind == QUAD_SPRITE) {
         float4 a = quad_float4(at + 1), b = quad_float4(at + 2), turn = quad_float4(at + 3), uv = quad_float4(at + 4);
         float x0 = a.x, x1 = a.y, top = a.z, bottom = a.w;
-        precise float zb = project_depth(b.y);
-        precise float za = project_depth(b.x);
+        float zb = turn.w;
+        float za = turn.z;
         if ((h.x & QUAD_TURNED) != 0) {
             float c = turn.x, sn = turn.y;
-            precise float hy = (bottom - top) * 0.5;
-            precise float hx = (x1 - x0) * 0.5;
-            precise float cy = (top + hy) + b.w;
-            precise float cx = (x0 + hx) + b.z;
-            precise float hy_s = hy * sn, hx_c = hx * c, hx_s = hx * sn, hy_c = hy * c;
-            precise float x, y;
+            float hy = (bottom - top) * 0.5;
+            float hx = (x1 - x0) * 0.5;
+            float cy = (top + hy) + b.w;
+            float cx = (x0 + hx) + b.z;
+            float hy_s = hy * sn, hx_c = hx * c, hx_s = hx * sn, hy_c = hy * c;
+            float x, y;
             if (corner == 0) {
                 x = ((-hx_c - -hy_s) + cx) + 0.5;
                 y = ((-hy_c + -hx_s) + cy) + 0.5;
@@ -182,8 +184,8 @@ Corner corner_of(uint at, uint4 h, uint corner, Upright u)
             o.x = x;
             o.y = y;
         } else {
-            precise float x = (right ? x1 : x0) + 0.5;
-            precise float y = (low ? bottom : top) + 0.5;
+            float x = (right ? x1 : x0) + 0.5;
+            float y = (low ? bottom : top) + 0.5;
             o.x = x;
             o.y = y;
         }
@@ -251,19 +253,42 @@ Corner corner_of(uint at, uint4 h, uint corner, Upright u)
             o.u1 = o.u0;
             o.v1 = o.v0;
         }
+        if (kind == QUAD_WORLD && (flags & QUAD_Z) == QUAD_Z_CORNERS)
+            o.z = quad_float4(at + ((flags & QUAD_STAGE2) != 0 ? 9 : 7))[corner];
     }
     return o;
+}
+
+// The pixel boundary before the first pixel centre at or after v, v snapped to 1/256 of a pixel
+// rounding halves up: where a multisampled pass moves an edge of a flat draw's vertex (snapped), as
+// the C code computed it in double. scaled + 0.5 may round in float, so the half is compared with
+// what lies above the floor. From 2^23 / 256 on, v is a whole number of 256ths already (and v * 256
+// may not be a float), so it is its own snap. Each step is exact, whatever the GPU fuses.
+float pixel_boundary(float v)
+{
+    float scaled = v * 256.0;
+    float below = floor(scaled);
+    float whole = scaled - below >= 0.5 ? below + 1.0 : below;
+    float snap = abs(scaled) >= 8388608.0 ? v : whole * (1.0 / 256.0);
+    return ceil(snap) - 0.5;
+}
+
+// The value at (ox, oy) from a triangle's first vertex on the plane through its values a, b and
+// c, the triangle's edges from that vertex being (dx1, dy1) and (dx2, dy2) and det their cross
+// product
+float plane_value(float a, float b, float c, float dx1, float dy1, float dx2, float dy2, float det, float ox, float oy)
+{
+    float d1 = b - a, d2 = c - a;
+    return a + (d1 * dy2 - d2 * dy1) / det * ox + (d2 * dx1 - d1 * dx2) / det * oy;
 }
 
 // A colour byte at (ox, oy) on its triangle's plane, rounded and clamped to a byte (not a number
 // gives 0)
 float plane_byte(float a, float b, float c, float dx1, float dy1, float dx2, float dy2, float det, float ox, float oy)
 {
-    precise float v = plane_value(a, b, c, dx1, dy1, dx2, dy2, det, ox, oy);
-    precise float r = floor(v + 0.5);
+    float r = floor(plane_value(a, b, c, dx1, dy1, dx2, dy2, det, ox, oy) + 0.5);
     r = r > 255.0 ? 255.0 : r;
-    r = r >= 0.0 ? r : 0.0;
-    return r;
+    return r >= 0.0 ? r : 0.0;
 }
 
 // Direct3D 9 drew flat draws without multisampling: every sample of a pixel was covered when its
@@ -271,33 +296,48 @@ float plane_byte(float a, float b, float c, float dx1, float dy1, float dx2, flo
 // that coverage (pixel_boundary) and takes the values its triangle's plane has there (a flat
 // triangle's values are affine on the screen), so each pixel centre reads what it read before. A
 // quad's triangles are (0, 1, 2) and (2, 1, 3); a vertex takes the plane of the first that has it,
-// unless that one has no area.
-Corner snapped(uint at, uint4 h, uint corner, Upright u)
+// unless that one has no area: a cross product of its edges below 1e-6, as the C code tested it,
+// or no larger than the rounding of the corners and of the product itself may make it (the corners'
+// largest coordinate times the edges and the products, by 2^-20), where its plane would be noise.
+bool no_area(Corner a, Corner b, Corner c, out float dx1, out float dy1, out float dx2, out float dy2, out float det)
 {
-    Corner mine = corner_of(at, h, corner, u);
-    Corner a = corner_of(at, h, corner == 3 ? 2 : 0, u);
-    Corner b = corner_of(at, h, 1, u);
-    Corner c = corner_of(at, h, corner == 3 ? 3 : 2, u);
-    precise float dx1 = b.x - a.x, dy1 = b.y - a.y, dx2 = c.x - a.x, dy2 = c.y - a.y;
-    precise float det = dx1 * dy2 - dx2 * dy1;
-    if (det > -F_FLAT_DET && det < F_FLAT_DET) {
-        if (corner == 0 || corner == 3 || (h.x & QUAD_TRIANGLE) != 0)
+    dx1 = b.x - a.x;
+    dy1 = b.y - a.y;
+    dx2 = c.x - a.x;
+    dy2 = c.y - a.y;
+    det = dx1 * dy2 - dx2 * dy1;
+    float most = max(max(max(abs(a.x), abs(a.y)), max(abs(b.x), abs(b.y))), max(abs(c.x), abs(c.y)));
+    float noise = abs(dx1 * dy2) + abs(dx2 * dy1) + most * (abs(dx1) + abs(dy1) + abs(dx2) + abs(dy2));
+    return abs(det) < max(1e-6, noise * (1.0 / 1048576.0)) || det != det;
+}
+
+// k0 to k3: the quad's corners (a triangle's k3 is its k2)
+Corner snapped(Corner k0, Corner k1, Corner k2, Corner k3, uint corner, bool threeCorners)
+{
+    Corner mine = k0, a = k0, b = k1, c = k2;
+    float dx1, dy1, dx2, dy2, det;
+    if (corner == 1)
+        mine = k1;
+    else if (corner == 2)
+        mine = k2;
+    else if (corner == 3) {
+        mine = k3;
+        a = k2;
+        c = k3;
+    }
+    if (no_area(a, b, c, dx1, dy1, dx2, dy2, det)) {
+        if (corner == 0 || corner == 3 || threeCorners)
             return mine;
         // the first triangle has no area: the second moves 1 and 2
-        a = corner_of(at, h, 2, u);
-        c = corner_of(at, h, 3, u);
-        dx1 = b.x - a.x;
-        dy1 = b.y - a.y;
-        dx2 = c.x - a.x;
-        dy2 = c.y - a.y;
-        det = dx1 * dy2 - dx2 * dy1;
-        if (det > -F_FLAT_DET && det < F_FLAT_DET)
+        a = k2;
+        c = k3;
+        if (no_area(a, b, c, dx1, dy1, dx2, dy2, det))
             return mine;
     }
-    precise float sx = pixel_boundary(mine.x), sy = pixel_boundary(mine.y);
+    float sx = pixel_boundary(mine.x), sy = pixel_boundary(mine.y);
     if (sx == mine.x && sy == mine.y)
         return mine;
-    precise float ox = sx - a.x, oy = sy - a.y;
+    float ox = sx - a.x, oy = sy - a.y;
     mine.x = sx;
     mine.y = sy;
     mine.z = plane_value(a.z, b.z, c.z, dx1, dy1, dx2, dy2, det, ox, oy);
@@ -327,20 +367,44 @@ struct QuadVertex
 QuadVertex quad_vertex(uint at, uint corner)
 {
     uint4 h = quads[at];
-    uint c = (h.x & QUAD_TRIANGLE) != 0 && corner == 3 ? 2 : corner;
+    bool threeCorners = (h.x & QUAD_TRIANGLE) != 0;
+    uint c = threeCorners && corner == 3 ? 2 : corner;
     Upright u = upright_of(h);
-    Corner v;
-    if ((h.x & QUAD_SNAP) != 0)
-        v = snapped(at, h, c, u);
-    else
-        v = corner_of(at, h, c, u);
+    Corner v, k[4];
+    // the corners the vertex needs, its own or, snapped, every corner of its quad: one loop, so that
+    // the shader holds one copy of corner_of
+    bool snap = (h.x & QUAD_SNAP) != 0;
+    uint last = snap ? (threeCorners ? 2 : 3) : c;
+    [loop] for (uint i = snap ? 0 : c; i <= last; i++) {
+        Corner one = corner_of(at, h, i, u);
+        if (i == 0)
+            k[0] = one;
+        else if (i == 1)
+            k[1] = one;
+        else if (i == 2)
+            k[2] = one;
+        else
+            k[3] = one;
+    }
+    if (snap) {
+        if (threeCorners)
+            k[3] = k[2];
+        v = snapped(k[0], k[1], k[2], k[3], c, threeCorners);
+    } else if (c == 0) {
+        v = k[0];
+    } else if (c == 1) {
+        v = k[1];
+    } else if (c == 2) {
+        v = k[2];
+    } else {
+        v = k[3];
+    }
     QuadVertex o;
     o.x = v.x;
     o.y = v.y;
     o.z = v.z;
     o.rhw = v.rhw;
-    o.colour = float4(div_rn(v.bytes.z, 255.0), div_rn(v.bytes.y, 255.0), div_rn(v.bytes.x, 255.0),
-                      div_rn(v.bytes.w, 255.0));
+    o.colour = v.bytes.zyxw / 255.0;
     o.uv = float4(v.u0, v.v0, v.u1, v.v1);
     return o;
 }

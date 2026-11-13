@@ -8,8 +8,8 @@
 
 // the cells (struct GpuWaterCell, three uint4 each), then the table of sines by whole degree,
 // render/math3d.c's g_sinTable, four floats a uint4
-StructuredBuffer<uint4> cells : register(t2, space0);
-StructuredBuffer<Water> waters : register(t3, space0);
+StructuredBuffer<uint4> cells : register(t1, space0);
+StructuredBuffer<Water> waters : register(t2, space0);
 
 cbuffer WaterFrame : register(b0, space1)
 {
@@ -66,14 +66,11 @@ Varyings vs_main(WaterIn i, uint vertex : SV_VertexID)
     o.position = transform(q.p[corner], toClip);
     float q1 = 1 / o.position.w;
     // the original's quarters of the texture: ((float)(x % 4) + 1.0f) * 0.25f and so on
-    precise float u = (float)(c.cell.x % 4) + ((corner & 1) != 0 ? 1.0 : 0.0);
-    precise float v = (float)(c.cell.y % 4) + ((corner & 2) != 0 ? 1.0 : 0.0);
-    precise float uq = u * 0.25;
-    precise float vq = v * 0.25;
-    float2 uv = float2(uq, vq);
+    float2 side = float2((corner & 1) != 0 ? 1.0 : 0.0, (corner & 2) != 0 ? 1.0 : 0.0);
+    float2 uv = (float2(c.cell.xy % 4) + side) * 0.25;
     o.diffuse = i.diffuse.zyxw * q1;
     o.uv = float4(uv, uv) * q1;
-    o.fogQ = float2(d.mode.z != 0 ? vertex_fog(q.rhw[corner], d.fog, d.stages.w) * q1 : q1, q1);
+    o.fogQ = float2(d.mode.z != 0 ? vertex_fog(q.rhw[corner], d.fog) * q1 : q1, q1);
     return o;
 }
 

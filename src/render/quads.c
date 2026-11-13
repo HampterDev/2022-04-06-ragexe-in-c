@@ -14,6 +14,7 @@
 #define QUAD_RHW_VALUE 512u
 #define QUAD_Z_VALUE 1024u
 #define QUAD_Z_ADD 2048u
+#define QUAD_Z_CORNERS 3072u
 #define QUAD_VIEW 4096u
 #define QUAD_UPRIGHT 8192u
 #define QUAD_RIGHT 16384u
@@ -47,7 +48,8 @@ static void row(uint32_t *w, float a, float b, float c, float d)
 static uint32_t rule_flags(int rhw, int depth)
 {
     return (rhw == GFX_RHW_ADD ? QUAD_RHW_ADD : rhw == GFX_RHW_VALUE ? QUAD_RHW_VALUE : 0)
-         | (depth == GFX_DEPTH_VALUE ? QUAD_Z_VALUE : depth == GFX_DEPTH_ADD ? QUAD_Z_ADD : 0);
+         | (depth == GFX_DEPTH_VALUE ? QUAD_Z_VALUE : depth == GFX_DEPTH_ADD ? QUAD_Z_ADD
+            : depth == GFX_DEPTH_CORNERS ? QUAD_Z_CORNERS : 0);
 }
 
 int quad_corner_words(const struct GfxCorners *c, uint32_t matrix, uint32_t *w)
@@ -93,12 +95,14 @@ int quad_words(const struct GfxQuad *q, const struct QuadHeader *h, uint32_t *w)
         header(w, QUAD_SPRITE, q->sprite.turned ? QUAD_TURNED : 0, h, q->sprite.colour, 0);
         row(w + 4, q->sprite.x0, q->sprite.x1, q->sprite.top, q->sprite.bottom);
         row(w + 8, q->sprite.rhwBottom, q->sprite.rhwTop, q->sprite.offsetX, q->sprite.offsetY);
-        row(w + 12, q->sprite.cosine, q->sprite.sine, 0.0f, 0.0f);
+        row(w + 12, q->sprite.cosine, q->sprite.sine, q->sprite.zBottom, q->sprite.zTop);
         row(w + 16, q->sprite.u0, q->sprite.v0, q->sprite.u1, q->sprite.v1);
         return 20;
     }
     if (q->kind == GFX_QUAD_WORLD) {
         int n = q->world.stage2 ? 36 : 28;
+        if (q->world.depth == GFX_DEPTH_CORNERS)
+            n += 4;
         uint32_t flags = rule_flags(q->world.rhw, q->world.depth) | (q->world.stage2 ? QUAD_STAGE2 : 0)
                        | (q->world.viewSpace ? QUAD_VIEW : 0);
         header(w, QUAD_WORLD, flags, h, q->world.colour, h->matrix);
@@ -112,6 +116,8 @@ int quad_words(const struct GfxQuad *q, const struct QuadHeader *h, uint32_t *w)
             row(w + 28, q->world.u1[0], q->world.u1[1], q->world.u1[2], q->world.u1[3]);
             row(w + 32, q->world.v1[0], q->world.v1[1], q->world.v1[2], q->world.v1[3]);
         }
+        if (q->world.depth == GFX_DEPTH_CORNERS)
+            row(w + n - 4, q->world.z[0], q->world.z[1], q->world.z[2], q->world.z[3]);
         return n;
     }
     return 0;

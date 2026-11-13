@@ -116,14 +116,14 @@ static void check_sprite(void)
     q.kind = GFX_QUAD_SPRITE;
     q.sprite.x0 = 1; q.sprite.x1 = 2; q.sprite.top = 3; q.sprite.bottom = 4;
     q.sprite.rhwBottom = 5; q.sprite.rhwTop = 6; q.sprite.offsetX = 7; q.sprite.offsetY = 8;
-    q.sprite.cosine = 9; q.sprite.sine = 10;
+    q.sprite.cosine = 9; q.sprite.sine = 10; q.sprite.zBottom = 15; q.sprite.zTop = 16;
     q.sprite.u0 = 11; q.sprite.v0 = 12; q.sprite.u1 = 13; q.sprite.v1 = 14;
     q.sprite.colour = 0xdeadbeefu;
     assert(quad_words(&q, &h, words) == 20);
     assert(words[0] == (1u | 32u | 0xffffu << 16) && words[1] == 5 && words[2] == 0xdeadbeefu);
     assert(words[4] == bits(1) && words[5] == bits(2) && words[6] == bits(3) && words[7] == bits(4));
     assert(words[8] == bits(5) && words[9] == bits(6) && words[10] == bits(7) && words[11] == bits(8));
-    assert(words[12] == bits(9) && words[13] == bits(10) && !words[14] && !words[15]);
+    assert(words[12] == bits(9) && words[13] == bits(10) && words[14] == bits(15) && words[15] == bits(16));
     assert(words[16] == bits(11) && words[17] == bits(12) && words[18] == bits(13) && words[19] == bits(14));
     q.sprite.turned = 1;
     h.snap = 0;
@@ -173,6 +173,15 @@ static void check_world(void)
     q.world.stage2 = 0;
     q.world.rhw = GFX_RHW_VALUE;
     assert(quad_words(&q, &h, words) == 28 && words[0] == (4u | 512u | 1024u) && words[7] == bits(0.5f));
+    /* each corner's z given: a row of them after the coordinates, the second stage's too */
+    q.world.depth = GFX_DEPTH_CORNERS;
+    for (i = 0; i < 4; i++)
+        q.world.z[i] = (float)(500 + i);
+    assert(quad_words(&q, &h, words) == 32 && words[0] == (4u | 512u | 3072u));
+    assert(words[28] == bits(500) && words[29] == bits(501) && words[30] == bits(502) && words[31] == bits(503));
+    q.world.stage2 = 1;
+    assert(quad_words(&q, &h, words) == 40 && words[32] == bits(400) && words[36] == bits(500)
+           && words[39] == bits(503));
     /* a kind that is none */
     q.kind = 0;
     assert(!quad_words(&q, &h, words));

@@ -503,13 +503,18 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
         || x < 0 || y < 0 || x > self->base.width || y > self->base.height
         || w > self->base.width - x || h > self->base.height - y)
         return 0;
-    if (gfx_lock(self->base.surface, NULL, &lk) < 0)
+    /* custom: the cell alone, so that the device sends up what was written and not the page */
+    r.left = x;
+    r.top = y;
+    r.right = x + w;
+    r.bottom = y + h;
+    if (gfx_lock(self->base.surface, &r, &lk) < 0)
         return 0;
     if (lk.bpp != 16) {
         gfx_unlock(self->base.surface);
         return 0;
     }
-    dst = (BYTE *)lk.bits + y * lk.pitch + x * 2;
+    dst = (BYTE *)lk.bits;
     src = spr->pixels;
     for (row = 0; row < spr->height; row++) {
         int col = 0;
@@ -540,10 +545,6 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
     perf_count_shared(&g_perf.textureBytes, (unsigned)w * h * 2);
     if (gfx_unlock(self->base.surface) < 0)
         return 0;
-    r.left = x;
-    r.top = y;
-    r.right = x + w;
-    r.bottom = y + h;
     ok = texture_update_mip_chain(self, &r);
     g_perf.atlasNs += platform_stopwatch_ns() - start;
     return ok;

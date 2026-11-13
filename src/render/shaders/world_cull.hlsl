@@ -1,6 +1,6 @@
 // The cull of the static world's draw records for the frame's views, run by run
 // (render/world_layout.h): the camera's view by its frustum (render/static_world.c,
-// sw_record_in_view, to the bit, exact.hlsli), the shadow cascades' by the boxes the shadow fit
+// sw_record_in_view), the shadow cascades' by the boxes the shadow fit
 // left on the GPU (cascades.hlsli, the rule of sw_cull_cascade). A group of 64 threads takes one
 // run's records of one view in their order, keeps those whose bounds, an animated record's moved by
 // its slot's place in the world (world_transform.hlsl), are not wholly outside one of the view's
@@ -10,7 +10,7 @@
 // command, with no indices where it keeps none). world_compact.hlsl then copies the kept records'
 // indices to their places, a group to each 64 of them, where this group would copy a long run's one
 // chunk after the other.
-#include "exact.hlsli"
+#include "projection.hlsli"
 #include "world.hlsli"
 #include "cascades.hlsli"
 
@@ -36,34 +36,13 @@ cbuffer Frame : register(b0, space2)
     uint4 sections;    // the first view's section, the indices a section holds, the records
 };
 
-// static_world.c, place_point and world_box
-float3 place_point(Matrix43 m, float3 p)
+// static_world.c, world_box: a box's centre through a slot's place, and its half size through the
+// magnitudes of its turn
+void place_box(Matrix43 place, inout float3 centre, inout float3 half)
 {
-    float3 moved;
-    [unroll] for (uint k = 0; k < 3; k++) {
-        precise float a = p.x * m43(m, k);
-        precise float b = p.y * m43(m, 3 + k);
-        precise float c = p.z * m43(m, 6 + k);
-        precise float ab = a + b;
-        precise float abc = ab + c;
-        precise float r = abc + m43(m, 9 + k);
-        moved[k] = r;
-    }
-    return moved;
-}
-
-float3 moved_half(Matrix43 m, float3 h)
-{
-    float3 moved;
-    [unroll] for (uint k = 0; k < 3; k++) {
-        precise float a = abs(m43(m, k)) * h.x;
-        precise float b = abs(m43(m, 3 + k)) * h.y;
-        precise float c = abs(m43(m, 6 + k)) * h.z;
-        precise float ab = a + b;
-        precise float r = ab + c;
-        moved[k] = r;
-    }
-    return moved;
+    float4x4 m = m44(place);
+    centre = mul(float4(centre, 1.0), m).xyz;
+    half = mul(half, abs((float3x3)m));
 }
 
 // the view's plane i: the camera's, or cascade v's box
@@ -72,26 +51,12 @@ float4 plane(uint v, uint i)
     return counts.w != 0 ? fit[0].planes[v * 6 + i] : planes[i];
 }
 
-// static_world.c, outside_frustum
+// static_world.c, outside_frustum: the box lies wholly behind one of the planes
 bool outside(float3 c, float3 h, uint v)
 {
     [unroll] for (uint i = 0; i < 6; i++) {
         float4 n = plane(v, i);
-        precise float r0 = h.x * n.x;
-        precise float r1 = n.y * h.y;
-        precise float r2 = h.z * n.z;
-        precise float ra = abs(r0) + abs(r1);
-        precise float reach = ra + abs(r2);
-        precise float d0 = c.x * n.x;
-        precise float d1 = n.y * c.y;
-        precise float d2 = c.z * n.z;
-        precise float d01 = d0 + d1;
-        precise float d012 = d01 + d2;
-        precise float dist = d012 + n.w;
-        precise float below = -reach;
-        if (dist > reach)
-            continue;
-        if (!(dist > below))
+        if (!(dot(c, n.xyz) + n.w > -dot(h, abs(n.xyz))))
             return true;
     }
     return false;
@@ -104,11 +69,8 @@ uint kept(uint at, uint v)
     float3 centre = asfloat(uint3(cullData[base], cullData[base + 1], cullData[base + 2]));
     float3 half = asfloat(uint3(cullData[base + 4], cullData[base + 5], cullData[base + 6]));
     uint slot = cullData[base + 3] & 0xffff, flags = cullData[base + 3] >> 16;
-    if ((flags & SW_ANIMATED) != 0) {
-        Matrix43 m = placed[slot];
-        centre = place_point(m, centre);
-        half = moved_half(m, half);
-    }
+    if ((flags & SW_ANIMATED) != 0)
+        place_box(placed[slot], centre, half);
     return outside(centre, half, v) ? 0 : cullData[base + 8];
 }
 

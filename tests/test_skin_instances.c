@@ -45,6 +45,7 @@
 #include "render/shaders/shader_code.h"
 #include "shaders/skin_probe.h"
 #include "fixtures/granny_reference.h"
+#include "picture_budget.h"
 #include "fileio/file_api.h"
 #include "platform/system.h"
 #include "diag/perf.h"
@@ -736,7 +737,7 @@ struct Expect {
 };
 
 struct Tally {
-    long corners, behind, outside, wrong, poisoned, notNumber;
+    long corners, behind, clipped, outside, wrong, poisoned, notNumber;
     double pixel, rhw, depth, nearDepth, uv, inView;
     int colour;
 };
@@ -780,6 +781,10 @@ static void compare(struct Tally *t, const float *gpu, const struct Expect *e, c
     } else if (!(w > 0.0) || !(e->v.rhw > 0.0f)) {
         /* behind the eye, where neither the CPU's projection nor a GPU's draws anything */
         t->behind++;
+    } else if (!(e->v.z >= 0.0f && e->v.z <= 1.0f)) {
+        /* outside the depth range, which clips it: nearer than the near plane, its depth the
+           difference of large terms (as test_quad_instances counts such corners) */
+        t->clipped++;
     } else {
         x = (gpu[0] / w + 1.0) * e->width / 2;
         y = (1.0 - gpu[1] / w) * e->height / 2;
@@ -906,13 +911,13 @@ static int test_vertices(int placements)
     }
     flush_batch(&t);
     ok = !t.wrong && t.corners > 0;
-    printf("vertices: %ld corners of %d models (%ld behind the eye, %ld off the screen's guard band, %ld not a "
-           "number); largest "
+    printf("vertices: %ld corners of %d models (%ld behind the eye, %ld outside the depth range, %ld off the "
+           "screen's guard band, %ld not a number); largest "
            "differences: pixel %.3g, rhw %.3g and depth %.3g relative (nearer than twice the near plane: %.3g of "
            "the depth range), texture coordinates %.3g, "
            "colour %d step%s, point in view space %.3g relative; %ld beyond the tolerance; %ld with a weight "
            "of 0 on a bone that is not a number\n",
-           t.corners, g_nmodels, t.behind, t.outside, t.notNumber, t.pixel, t.rhw, t.depth, t.nearDepth, t.uv, t.colour,
+           t.corners, g_nmodels, t.behind, t.clipped, t.outside, t.notNumber, t.pixel, t.rhw, t.depth, t.nearDepth, t.uv, t.colour,
            t.colour == 1 ? "" : "s", t.inView, t.wrong, t.poisoned);
     return ok;
 }
@@ -921,48 +926,6 @@ static int test_vertices(int placements)
 
 #define PICTURE_W 1280
 #define PICTURE_H 720
-
-/* the pixels that differ by more than a step, and the largest group of them that touch */
-static void picture_differences(const uint32_t *a, const uint32_t *b, long *over, long *largest)
-{
-    static unsigned char mark[PICTURE_W * PICTURE_H];
-    static int stack[PICTURE_W * PICTURE_H];
-    int i;
-    *over = 0;
-    for (i = 0; i < PICTURE_W * PICTURE_H; i++) {
-        int c, d = 0;
-        for (c = 0; c < 24; c += 8) {
-            int e = abs((int)(a[i] >> c & 255) - (int)(b[i] >> c & 255));
-            if (e > d)
-                d = e;
-        }
-        mark[i] = d > 1;
-        *over += mark[i];
-    }
-    *largest = 0;
-    for (i = 0; i < PICTURE_W * PICTURE_H; i++) {
-        long n = 0;
-        int top = 0;
-        if (mark[i] != 1)
-            continue;
-        stack[top++] = i;
-        mark[i] = 2;
-        while (top) {
-            int at = stack[--top], x = at % PICTURE_W, y = at / PICTURE_W, dx, dy;
-            n++;
-            for (dy = -1; dy <= 1; dy++)
-                for (dx = -1; dx <= 1; dx++) {
-                    int xx = x + dx, yy = y + dy;
-                    if (xx >= 0 && xx < PICTURE_W && yy >= 0 && yy < PICTURE_H && mark[yy * PICTURE_W + xx] == 1) {
-                        mark[yy * PICTURE_W + xx] = 2;
-                        stack[top++] = yy * PICTURE_W + xx;
-                    }
-                }
-        }
-        if (n > *largest)
-            *largest = n;
-    }
-}
 
 static void save_picture(uint32_t *pixels, int scene, const char *side)
 {
@@ -1007,7 +970,7 @@ static int test_pictures(int scenes)
         struct Actor actors[8];
         struct GfxFog fog;
         int n = irange(1, 8);
-        long o, l;
+        struct PictureDifference diff;
         make_view(&s, PICTURE_W, PICTURE_H);
         for (i = 0; i < n; i++) {
             struct Model *m = &g_models[irange(0, g_nmodels - 1)];
@@ -1054,15 +1017,15 @@ static int test_pictures(int scenes)
             gfx_end_scene();
             need(gfx_read_frame(NULL, side ? c : a, PICTURE_W * 4) == 0, "gfx_read_frame");
         }
-        picture_differences(a, c, &o, &l);
+        picture_difference(a, c, PICTURE_W, PICTURE_H, &diff);
         for (i = 0; i < PICTURE_W * PICTURE_H; i++)
             covered += (a[i] & 0xffffff) != 0x203040u;
-        over += o;
-        if (o > worst)
-            worst = o;
-        if (l > largest)
-            largest = l;
-        if (o * 2000 > PICTURE_W * PICTURE_H || l > 16) {
+        over += diff.over;
+        if (diff.over > worst)
+            worst = diff.over;
+        if (diff.largest > largest)
+            largest = diff.largest;
+        if (!picture_within_budget(&diff, PICTURE_W, PICTURE_H)) {
             ok = 0;
             save_picture(a, scene, "device");
             save_picture(c, scene, "cpu");

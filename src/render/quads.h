@@ -6,8 +6,9 @@
    frame's quads, the words the quad shader reads (render/shaders/instances.hlsli), made from an
    instance or from one of the client's primitives of vertices. The frame's quads hold the records
    and, each on rows of four words of its own, the matrices and vertices they name. The shader
-   makes from a record the vertices the client's C code made before, bit for bit;
-   tests/test_quad_instances.c compares them. Uses nothing else of the client. */
+   makes from a record the vertices the client's C code made before, within the tolerance of
+   plans/gpu-renderer.md; tests/test_quad_instances.c compares them. Uses nothing else of the
+   client. */
 #include <stdint.h>
 
 /* A vertex as the client makes one, pre-transformed: x and y in Direct3D 9's pixel coordinates,
@@ -23,15 +24,18 @@ struct TexDrawVertex {
    - GFX_QUAD_SPRITE: render_object_submit_spr_quad's (actor/sprite_quad.c). The corners are
      (x0, top), (x1, top), (x0, bottom) and (x1, bottom), each moved by half a pixel; a turned one
      turns them by cosine and sine about the quad's centre moved by offsetX and offsetY. Every
-     corner has rhwTop as its rhw, the top row renderer_project_depth(rhwTop) as its z and the
-     bottom row renderer_project_depth(rhwBottom); u0 and v0 go with the top left corner, u1 and v1
-     with the bottom right. It lies flat on the screen.
+     corner has rhwTop as its rhw, the top row zTop as its z and the bottom row zBottom, which the
+     client computes (renderer_project_depth of rhwTop and rhwBottom): the layers of a figure lie at
+     depths that may tie, and the depth test decides between them by the z's bits. u0 and v0 go
+     with the top left corner, u1 and v1 with the bottom right. It lies flat on the screen.
    - GFX_QUAD_WORLD: points through the client's 4x3 view matrix as renderer_project_vertex
      (render/rp_project.c) projects them with the renderer's proj[0], proj[1], centreX and
      centreY (points already in view space, viewSpace, are projected alone); the rhw is the
      projection's (GFX_RHW_PROJECTED), that plus rhwValue (GFX_RHW_ADD) or rhwValue
      (GFX_RHW_VALUE); z is renderer_project_depth of that rhw (GFX_DEPTH_PROJECTED), depthValue
-     (GFX_DEPTH_VALUE) or that depth plus depthValue (GFX_DEPTH_ADD). Each corner has its texture
+     (GFX_DEPTH_VALUE), that depth plus depthValue (GFX_DEPTH_ADD), or z[i] as the client computed
+     it (GFX_DEPTH_CORNERS: what lies where a figure stands ties with its depth, and the depth test
+     decides by the bits). Each corner has its texture
      coordinates, and with stage2 the second stage's of its own; flat when every corner's rhw is the
      same, bit for bit, as the client found it.
    - GFX_QUAD_CORNERS: a triangle of three of a set's corners (struct GfxCornerSet), corner[0] to
@@ -48,6 +52,7 @@ struct TexDrawVertex {
 #define GFX_DEPTH_PROJECTED 0
 #define GFX_DEPTH_VALUE 1
 #define GFX_DEPTH_ADD 2
+#define GFX_DEPTH_CORNERS 3
 
 /* Up to twelve points in the world with their texture coordinates, in one colour, which the
    triangles that name them share (the effect primitives' quads and triangles, so that they share
@@ -86,6 +91,7 @@ struct GfxQuad {
         struct {
             float x0, x1, top, bottom;
             float rhwBottom, rhwTop;
+            float zBottom, zTop;
             float offsetX, offsetY;
             int turned;
             float cosine, sine;
@@ -98,6 +104,7 @@ struct GfxQuad {
             float proj[2], centre[2];
             int viewSpace, rhw, depth;
             float rhwValue, depthValue;
+            float z[4];
             uint32_t colour;
             float u[4], v[4];
             int stage2, flat;
@@ -121,7 +128,7 @@ struct QuadHeader {
 };
 
 /* The most words (32 bits each) a record takes; records are a whole number of 16-byte rows. */
-#define QUAD_WORDS_MAX 36
+#define QUAD_WORDS_MAX 40
 
 /* An instance's record into words; answers how many it took. */
 int quad_words(const struct GfxQuad *quad, const struct QuadHeader *header, uint32_t *words);

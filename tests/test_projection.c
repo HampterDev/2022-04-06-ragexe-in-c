@@ -112,7 +112,7 @@ static void test_vertices(struct Renderer *renderer)
             assert(single.before == 0xa5a5a5a5 && single.after == 0xa5a5a5a5);
 
             /* the rhw alone, and the point in view space, from which the rest follows to the bit
-               (what render/shaders/exact.hlsli's project_view computes of it) */
+               (what render/shaders/projection.hlsli's project_view computes of it) */
             same_float(renderer_project_rhw(&point, view), old_single.rhw);
             renderer_project_view(&point, view, in_view);
             rhw = 1.0f / in_view[2];

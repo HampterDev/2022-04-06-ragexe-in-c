@@ -1,10 +1,9 @@
 // Granny's actors skinned, lit and projected (render/gfx.h, gfx_draw_skin) as the CPU did each
 // vertex before: what skin.hlsl draws and tests/shaders/skin_probe.hlsl hands back to
-// tests/test_skin_instances.c, which compares it with that CPU code within a tolerance; plain
-// arithmetic, not the exact rules of exact.hlsli. The file that includes this one declares the
-// frame's quads (StructuredBuffer<uint4> quads), among which an actor's pose lies as
-// render/skin_layout.c packs it (skin_pose_rows): a header, its meshes' space in the view, its
-// light, the projection, and its bones' matrices.
+// tests/test_skin_instances.c, which compares it with that CPU code within a tolerance. The file
+// that includes this one declares the frame's quads (StructuredBuffer<uint4> quads), among which
+// an actor's pose lies as render/skin_layout.c packs it (skin_pose_rows): a header, its meshes'
+// space in the view, its light, the projection, and its bones' matrices.
 
 #define SKIN_RIGID 1u        // render/skin_layout.h: a vertex of a rigid mesh
 #define SKIN_POSE_HEADER 7u  // the rows before a pose's bones

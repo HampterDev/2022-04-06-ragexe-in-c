@@ -38,10 +38,10 @@
    never sees the cascades. */
 #include "render/gfx.h"
 #include "render/device.h"
+#include "render/dirty_rects.h"
 #include "render/present_fit.h"
 #include "render/screen_wobble.h"
 #include "render/texel_convert.h"
-#include "render/vertex_fog.h"
 #include "render/world_layout.h"
 #include "render/skin_layout.h"
 #include "render/shaders/shader_code.h"
@@ -58,7 +58,6 @@
 #include "render/shaders/water.h"
 #include "render/shaders/skin.h"
 #include "render/shaders/rows.h"
-#include "render/shaders/rounding.h"
 #include "diag/perf.h"
 #include "platform/clock.h"
 #include <SDL3/SDL.h>
@@ -117,8 +116,10 @@ struct gfx_surface {
     unsigned char *pixels;  /* level 0 in fmt's layout; a target has none */
     SDL_GPUTexture *tex;    /* B8G8R8A8 */
     DWORD key;
-    int dirty;              /* the CPU's pixels are newer than tex, in dirtyRect */
-    RECT dirtyRect, lockRect;
+    struct DirtyRects dirty;  /* where the CPU's pixels are newer than tex, each to go up alone */
+    int fresh;              /* a texture not yet sent: its pixels are zero but where dirty says, and
+                               its GPU texture is cleared to that before they go up (clear_texels) */
+    RECT lockRect;
     int mips;               /* the lower levels are to be made again */
     unsigned pinned;        /* the frame whose recorded commands use it */
     int dead;               /* released while pinned: freed after that frame */
@@ -220,6 +221,7 @@ struct gpu_upload {
     struct gpu_array *array;  /* the layered texture's array, of which it is layer `layer` */
     uint32_t layer;
     int scratch;       /* tex is the layer's scratch texture */
+    int fromLayer;     /* copies the layer's top level into its scratch texture, not texels */
     uint32_t x, y, w, h;
     uint32_t offset;   /* into the staging texels */
     int mips;
@@ -309,8 +311,8 @@ static struct {
     SDL_GPUTexture *white;
     SDL_GPUTexture *frameCopy;  /* the screen's picture as the wobble found it (gfx_wobble) */
     int frameCopyW, frameCopyH;
-    SDL_GPUBuffer *records, *fogs, *rows, *quads, *offsets, *instances;
-    uint32_t recordsSize, fogsSize, rowsSize, quadsSize, offsetsSize, instanceCount;
+    SDL_GPUBuffer *records, *rows, *quads, *offsets, *instances;
+    uint32_t recordsSize, rowsSize, quadsSize, offsetsSize, instanceCount;
     SDL_GPUBuffer *corners, *triangles;  /* quad_corners and quad_triangles, uploaded once */
     struct gpu_array *arrays;  /* every array of layered textures */
     SDL_GPUTexture *noAtlas;   /* the array a quad draw binds where stage 0 reads no layer */
@@ -363,15 +365,16 @@ static struct {
     size_t ndraws, drawCapacity;
     struct gpu_upload *uploads;
     size_t nuploads, uploadCapacity, frameUploads;  /* frameUploads: those of the first copy pass */
-    struct bytes drawRecords, viewRecords, fogTables, rowTables, texels;
+    struct bytes drawRecords, viewRecords, rowTables, texels;
     /* the instances' records with the matrices and vertices they name (render/quads.h), and the row
        each record starts at */
     struct bytes quadData, quadOffsets;
     struct gfx_surface **pins;
     size_t npins, pinCapacity;
+    /* blocks of CLEAR_TEXELS like texels among this frame's staged ones (clear_texels): the texel
+       and the block's offset plus one, 0 for none */
+    struct { uint32_t texel; long at; } clearBlocks[2];
     int cameraView;
-    int fogTable;     /* the fog's table (render/vertex_fog.h) in this frame's, or -1 */
-    float fogBase, fogDirection, fogCount;
     int unresolving;  /* the draw being recorded puts the resolved screen back into the multisampled one */
     int viewsTargetW, viewsTargetH;
 } G;
@@ -716,26 +719,23 @@ static void whole_rect(RECT *r, const struct gfx_surface *s)
     r->bottom = s->height;
 }
 
-static void union_rect(RECT *into, const RECT *r)
+/* The rectangle r of s (the whole of it for NULL) newer on the CPU than on the GPU. Called with
+   the handles locked. */
+static void dirty_locked(struct gfx_surface *s, const RECT *r)
 {
-    if (r->left < into->left) into->left = r->left;
-    if (r->top < into->top) into->top = r->top;
-    if (r->right > into->right) into->right = r->right;
-    if (r->bottom > into->bottom) into->bottom = r->bottom;
+    RECT all;
+    if (!r) {
+        whole_rect(&all, s);
+        s->dirty.count = 0;
+        r = &all;
+    }
+    dirty_rects_add(&s->dirty, r);
 }
 
 static void mark_dirty(struct gfx_surface *s, const RECT *r)
 {
-    RECT all;
-    whole_rect(&all, s);
-    if (!r)
-        r = &all;
     lock_handles();
-    if (s->dirty)
-        union_rect(&s->dirtyRect, r);
-    else
-        s->dirtyRect = *r;
-    s->dirty = 1;
+    dirty_locked(s, r);
     unlock_handles();
 }
 
@@ -891,8 +891,8 @@ static struct gpu_array *place_layer(struct gfx_surface *s)
     a->used++;
     s->array = a;
     s->layer = i;
-    s->dirty = 1;
-    whole_rect(&s->dirtyRect, s);
+    if (!s->fresh)
+        dirty_locked(s, NULL);
     unlock_handles();
     return a;
 }
@@ -912,8 +912,8 @@ static SDL_GPUTexture *ensure_texture(struct gfx_surface *s)
         s->failed = 1;
         return NULL;
     }
-    s->dirty = 1;
-    whole_rect(&s->dirtyRect, s);
+    if (!s->fresh)
+        mark_dirty(s, NULL);
     return s->tex;
 }
 
@@ -951,15 +951,15 @@ static int clip_rect(RECT *r, const struct gfx_surface *s)
 }
 
 /* Records an upload of the given texels; one used earlier in the frame takes its new pixels where
-   the frame has got to, in a copy pass of its own between the render passes. Answers 0 without
-   memory for it. */
-static int add_upload(struct gfx_surface *s, SDL_GPUTexture *tex, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
-                      uint32_t offset, int mips)
+   the frame has got to, in a copy pass of its own between the render passes. Answers the record,
+   or NULL without memory for it. */
+static struct gpu_upload *add_upload(struct gfx_surface *s, SDL_GPUTexture *tex, uint32_t x, uint32_t y, uint32_t w,
+                                     uint32_t h, uint32_t offset, int mips)
 {
     struct gpu_upload *u;
     int late = s->pinned == G.frame;
     if (!grow((void **)&G.uploads, &G.uploadCapacity, G.nuploads + 1, sizeof *G.uploads))
-        return 0;
+        return NULL;
     if (!late) {
         /* the first copy pass's uploads stay at the front of the list */
         memmove(G.uploads + G.frameUploads + 1, G.uploads + G.frameUploads,
@@ -977,7 +977,7 @@ static int add_upload(struct gfx_surface *s, SDL_GPUTexture *tex, uint32_t x, ui
         if (!step || step->kind != STEP_UPLOADS) {
             step = add_step(STEP_UPLOADS);
             if (!step)
-                return 0;
+                return NULL;
             step->first = (uint32_t)G.nuploads;
         }
         step->count++;
@@ -988,40 +988,114 @@ static int add_upload(struct gfx_surface *s, SDL_GPUTexture *tex, uint32_t x, ui
     u->array = s->layered ? s->array : NULL;
     u->layer = s->layered ? (uint32_t)s->layer : 0;
     u->scratch = s->layered && tex != s->array->tex;
+    u->fromLayer = 0;
     u->x = x;
     u->y = y;
     u->w = w;
     u->h = h;
     u->offset = offset;
     u->mips = mips;
+    return u;
+}
+
+/* The texels of the rectangle r of s, clipped to it, staged and recorded for tex at r's place;
+   answers 0 where they could not be (no memory) and 1 where they were or r lies outside s. */
+static int upload_rect(struct gfx_surface *s, SDL_GPUTexture *tex, RECT r)
+{
+    uint32_t offset;
+    if (!clip_rect(&r, s))
+        return 1;
+    return stage_texels(s, &r, &offset)
+           && add_upload(s, tex, (uint32_t)r.left, (uint32_t)r.top, (uint32_t)(r.right - r.left),
+                         (uint32_t)(r.bottom - r.top), offset, 0);
+}
+
+#define CLEAR_TEXELS 65536
+
+/* Uploads that set every texel of tex's top level (s's size) to the one s's pixels widen to where
+   they are zero, from one block of CLEAR_TEXELS such texels among the frame's staged ones, a band
+   of whole rows at a time: what a texture not yet sent holds but where it was written. Answers 0
+   without memory for them. */
+static int clear_texels(struct gfx_surface *s, SDL_GPUTexture *tex)
+{
+    uint32_t texel = texel_unpack(s->fmt, 0), rows, y;
+    long at;
+    int i;
+    if (s->width > CLEAR_TEXELS)
+        return 0;
+    for (i = 0; i < 2 && !(G.clearBlocks[i].at && G.clearBlocks[i].texel == texel); i++)
+        ;
+    if (i == 2) {
+        uint32_t *block;
+        long k;
+        i = G.clearBlocks[0].at ? 1 : 0;
+        at = bytes_add(&G.texels, CLEAR_TEXELS * 4, 16);
+        if (at < 0)
+            return 0;
+        block = (uint32_t *)(G.texels.data + at);
+        for (k = 0; k < CLEAR_TEXELS; k++)
+            block[k] = texel;
+        G.clearBlocks[i].texel = texel;
+        G.clearBlocks[i].at = at + 1;
+    }
+    at = G.clearBlocks[i].at - 1;
+    rows = CLEAR_TEXELS / (uint32_t)s->width;
+    for (y = 0; y < (uint32_t)s->height; y += rows) {
+        uint32_t h = (uint32_t)s->height - y < rows ? (uint32_t)s->height - y : rows;
+        if (!add_upload(s, tex, 0, y, (uint32_t)s->width, h, (uint32_t)at, 0))
+            return 0;
+    }
     return 1;
 }
 
-/* A layered texture's levels made anew: the whole of its top level staged for a scratch texture
-   (struct gpu_upload), which goes once the frame is drawn. Answers 0 without memory for it. */
-static int layer_mipmaps(struct gfx_surface *s)
+/* Whether one of the n rectangles covers all of s */
+static int covers(const struct gfx_surface *s, const RECT *rects, int n)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (rects[i].left <= 0 && rects[i].top <= 0 && rects[i].right >= s->width && rects[i].bottom >= s->height)
+            return 1;
+    return 0;
+}
+
+/* A layered texture's levels made anew from its top level, in a scratch texture of its size and
+   levels that goes once the frame is drawn (struct gpu_upload): unless one of the n rectangles
+   covers all of it, the layer's top level copied into it on the GPU, or for a texture not yet sent
+   the texels it holds unwritten (clear_texels); the rectangles' texels over that; then its levels
+   made and each copied into the layer (make_mipmaps). Answers 0 without memory for it. */
+static int layer_mipmaps(struct gfx_surface *s, const RECT *rects, int n, int fresh)
 {
     SDL_GPUTexture *scratch;
-    uint32_t offset;
-    RECT r;
-    int ok;
-    whole_rect(&r, s);
+    struct gpu_upload *copy;
+    int i, ok = 1;
     scratch = new_texture(s->width, s->height, s->levels, SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET);
     if (!scratch)
         return 0;
-    ok = stage_texels(s, &r, &offset)
-         && add_upload(s, scratch, 0, 0, (uint32_t)s->width, (uint32_t)s->height, offset, 1);
+    if (!covers(s, rects, n)) {
+        if (fresh) {
+            ok = clear_texels(s, scratch);
+        } else {
+            copy = add_upload(s, scratch, 0, 0, (uint32_t)s->width, (uint32_t)s->height, 0, 0);
+            if (copy)
+                copy->fromLayer = 1;
+            ok = copy != NULL;
+        }
+    }
+    for (i = 0; i < n && ok; i++)
+        ok = upload_rect(s, scratch, rects[i]);
+    ok = ok && add_upload(s, scratch, 0, 0, 0, 0, 0, 1);
     retire_texture(scratch);
     return ok;
 }
 
 /* The GPU texture a draw samples for a surface (a layered texture's array), with the CPU's changes
-   since its last upload staged; the surface stays alive until the frame is drawn. */
+   since its last upload staged, each of its dirty rectangles alone (a texture not yet sent cleared
+   first, clear_texels), and its levels made again where it has them; the surface stays alive until
+   the frame is drawn. */
 static SDL_GPUTexture *texture_for_draw(struct gfx_surface *s)
 {
-    int dirty, mips;
-    RECT r;
-    uint32_t offset;
+    struct DirtyRects dirty;
+    int mips, fresh, i;
     SDL_GPUTexture *tex;
     if (!s)
         return NULL;
@@ -1033,14 +1107,19 @@ static SDL_GPUTexture *texture_for_draw(struct gfx_surface *s)
         return NULL;
     lock_handles();
     dirty = s->dirty;
-    mips = s->mips || (dirty && s->levels > 1);
-    r = s->dirtyRect;
-    s->dirty = 0;
+    fresh = s->fresh;
+    mips = s->levels > 1 && (s->mips || dirty.count > 0 || fresh);
+    s->dirty.count = 0;
+    s->fresh = 0;
     s->mips = 0;
     unlock_handles();
-    if (s->layered && mips && s->levels > 1) {
-        if (!layer_mipmaps(s)) {
-            mark_dirty(s, NULL);
+    if (s->layered && mips) {
+        if (!layer_mipmaps(s, dirty.rect, dirty.count, fresh)) {
+            /* staged by a later draw, all of it where the texture was not sent yet */
+            if (fresh)
+                mark_dirty(s, NULL);
+            for (i = 0; i < dirty.count; i++)
+                mark_dirty(s, &dirty.rect[i]);
             lock_handles();
             s->mips = 1;
             unlock_handles();
@@ -1048,15 +1127,15 @@ static SDL_GPUTexture *texture_for_draw(struct gfx_surface *s)
         pin(s);
         return tex;
     }
-    if (dirty && clip_rect(&r, s)) {
-        if (stage_texels(s, &r, &offset)
-            && add_upload(s, tex, (uint32_t)r.left, (uint32_t)r.top, (uint32_t)(r.right - r.left),
-                          (uint32_t)(r.bottom - r.top), offset, mips && s->levels > 1))
-            mips = 0;
-        else
-            mark_dirty(s, &r);  /* staged by a later draw */
+    if (fresh && !covers(s, dirty.rect, dirty.count) && !clear_texels(s, tex)) {
+        /* no room for the block: the texture's texels go up, all of them */
+        dirty.count = 1;
+        whole_rect(&dirty.rect[0], s);
     }
-    if (mips && s->levels > 1 && !add_upload(s, tex, 0, 0, 0, 0, 0, 1)) {
+    for (i = 0; i < dirty.count; i++)
+        if (!upload_rect(s, tex, dirty.rect[i]))
+            mark_dirty(s, &dirty.rect[i]);  /* staged by a later draw */
+    if (mips && !add_upload(s, tex, 0, 0, 0, 0, 0, 1)) {
         lock_handles();
         s->mips = 1;
         unlock_handles();
@@ -1408,20 +1487,23 @@ static void resolve_state(struct draw_state *s, int mode, int src, int dst, int 
     s->into = m->into;
 }
 
-/* The draws batched so far are made with what they were batched with when that changes. */
+/* The draws batched so far are made with what they were batched with when that changes. A call
+   that gives what is set already changes nothing (most of the effect lists' calls). */
 static void change_state(int mode, int src, int dst, int combine, const struct GfxFog *fog)
 {
     struct draw_state s;
     int changed;
+    if (mode == G.mode && src == G.effectSrc && dst == G.effectDst && combine == G.effectCombine && fog == &G.fog) {
+        perf_count_mode(0);
+        return;
+    }
     resolve_state(&s, mode, src, dst, combine, fog->on);
     changed = memcmp(&s, &G.state, sizeof s) || memcmp(fog, &G.fog, sizeof *fog);
     perf_count_mode(changed);
     if (changed)
         batch_flush();
-    if (memcmp(fog, &G.fog, sizeof *fog)) {
+    if (memcmp(fog, &G.fog, sizeof *fog))
         G.cameraView = -1;
-        G.fogTable = -1;
-    }
     G.mode = mode;
     G.effectSrc = src;
     G.effectDst = dst;
@@ -1475,28 +1557,9 @@ static void stage_scale(float *scale, float *limit, const struct gfx_surface *s,
     limit[1] = g && clamped ? ((float)g->height - 0.5f) / (float)(g->height + MARGIN) : 3.0e38f;
 }
 
-/* The fog's table of the rhw at which its steps begin (render/vertex_fog.h) in this frame's, made
-   once a frame for each fog the quads are drawn in: its number, -1 without memory. */
-static int fog_table(void)
-{
-    struct VertexFogTable table;
-    long at;
-    if (G.fogTable >= 0)
-        return G.fogTable;
-    at = bytes_add(&G.fogTables, sizeof table.rhw, 16);
-    if (at < 0)
-        return -1;
-    vertex_fog_table(G.fog.start, G.fog.end, G.fog.origin, G.fog.span, &table);
-    memcpy(G.fogTables.data + at, table.rhw, sizeof table.rhw);
-    G.fogBase = table.base;
-    G.fogDirection = table.direction;
-    G.fogCount = table.count;
-    G.fogTable = (int)(at / (long)sizeof table.rhw);
-    return G.fogTable;
-}
-
 /* What a draw record holds of the state it is made with, its stages' textures and its pass; the
-   fog's table where the draw is of quads, whose fog is the vertices'. */
+   fog itself where the draw is of quads, whose fog is the vertices' (render/shaders/quad.hlsli,
+   vertex_fog). */
 static void fill_state(struct GpuDraw *r, const struct gpu_step *pass, const struct draw_state *s,
                        struct gfx_surface *const *tex, int quads, int a2c)
 {
@@ -1521,12 +1584,10 @@ static void fill_state(struct GpuDraw *r, const struct gpu_step *pass, const str
     }
     r->stages[2] = s->lightmap;
     if (s->fog && quads) {
-        int table = fog_table();
-        r->mode[2] = table >= 0;
-        r->stages[3] = table >= 0 ? (uint32_t)table : 0;
-        r->fog[0] = G.fogBase;
-        r->fog[1] = G.fogDirection;
-        r->fog[2] = G.fogCount;
+        r->fog[0] = G.fog.start;
+        r->fog[1] = G.fog.end;
+        r->fog[2] = G.fog.origin;
+        r->fog[3] = G.fog.span;
     }
     colour_floats(r->fogColour, G.fog.colour);
 }
@@ -3870,6 +3931,16 @@ static int run_uploads(SDL_GPUCopyPass *copy, size_t first, size_t count, uint32
         struct gpu_upload *u = &G.uploads[i];
         SDL_GPUTextureTransferInfo src;
         SDL_GPUTextureRegion dst;
+        if (u->fromLayer) {
+            SDL_GPUTextureLocation from, to;
+            SDL_zero(from);
+            SDL_zero(to);
+            from.texture = u->array->tex;
+            from.layer = u->layer;
+            to.texture = u->tex;
+            SDL_CopyGPUTextureToTexture(copy, &from, &to, u->w, u->h, 1, false);
+            continue;
+        }
         if (!u->w || !u->h) {
             mips |= u->mips;
             continue;
@@ -3894,8 +3965,9 @@ static int run_uploads(SDL_GPUCopyPass *copy, size_t first, size_t count, uint32
 }
 
 /* A layer of an array with mipmaps takes its levels as a texture of its own makes them, on every
-   backend: its top level goes into a scratch texture of its size and levels, SDL makes that one's
-   levels (SDL_GenerateMipmapsForGPUTexture), and every level is copied into the layer. The sprite
+   backend: its top level goes into a scratch texture of its size and levels (the layer's own, with
+   the texels written over it: layer_mipmaps), SDL makes that one's levels
+   (SDL_GenerateMipmapsForGPUTexture), and every level is copied into the layer. The sprite
    atlas's pages and the static world's textures alike; blits into the layer level by level made
    other mipmaps than a texture's own on Mesa's lavapipe. */
 static void copy_levels(SDL_GPUCopyPass *copy, SDL_GPUTexture *scratch, SDL_GPUTexture *array, uint32_t layer,
@@ -3917,7 +3989,8 @@ static void copy_levels(SDL_GPUCopyPass *copy, SDL_GPUTexture *scratch, SDL_GPUT
 }
 
 /* The lower levels of each texture uploaded that wants them, made from the top one by SDL; then a
-   layer's scratch texture, every level of it, into the layer (copy_levels). */
+   layer's scratch texture, every level of it, into the layer (copy_levels), once, for the record
+   that asked for its levels. */
 static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
 {
     SDL_GPUCopyPass *copy = NULL;
@@ -3927,7 +4000,7 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
             SDL_GenerateMipmapsForGPUTexture(cmd, G.uploads[i].tex);
     for (i = first; i < first + count; i++) {
         const struct gpu_upload *u = &G.uploads[i];
-        if (!u->scratch)
+        if (!u->scratch || !u->mips)
             continue;
         if (!copy && !(copy = SDL_BeginGPUCopyPass(cmd)))
             return;
@@ -3940,13 +4013,13 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
 
 /* The storage buffers the programs read (src/render/shaders), in the order they declare them, at
    most STORAGE_BUFFERS_MAX a stage (make_shader), and their vertex and index buffers: the quads'
-   the draw records, fog tables and the frame's quads, a quad's corners and, per instance, where its
-   record starts among the quads, and the corners' two triangles; Granny's models the same three
-   buffers, and per instance where its pose's header lies among the quads, the model's vertices and
-   indices bound by run_pass by the draw; the world's records the records by id, the slots' views,
+   the draw records and the frame's quads, a quad's corners and, per instance, where its record
+   starts among the quads, and the corners' two triangles; Granny's models the same two buffers,
+   and per instance where its pose's header lies among the quads, the model's vertices and indices
+   bound by run_pass by the draw; the world's records the records by id, the slots' views,
    the shadow fit's result and the texture-coordinate matrices, and the shared buffers, whose index
    buffer run_pass binds by the draw (the shared indices, or the frame's compacted ones); the water
-   the draw records, fog tables, its cells with the sines and its waves, and its cells' instances;
+   the draw records, its cells with the sines and its waves, and its cells' instances;
    the wobble the records and its rows, and the records' instances. (The depth pass and the shadow
    pass bind their own: depth_pass, caster_pass.) */
 static void bind_program(SDL_GPURenderPass *pass, int program)
@@ -3959,7 +4032,6 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
     switch (program) {
     case PROG_QUAD:
         vertex[nv++] = G.records;
-        vertex[nv++] = G.fogs;
         vertex[nv++] = G.quads;
         binding[0].buffer = G.corners;
         binding[1].buffer = G.offsets;
@@ -3979,7 +4051,6 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
         break;
     case PROG_WATER:
         vertex[nv++] = G.records;
-        vertex[nv++] = G.fogs;
         vertex[nv++] = W.cellBuffer;
         vertex[nv++] = W.waveBuffer;
         binding[0].buffer = W.instanceBuffer;
@@ -3987,7 +4058,6 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
         break;
     case PROG_SKIN:
         vertex[nv++] = G.records;
-        vertex[nv++] = G.fogs;
         vertex[nv++] = G.quads;
         break;
     default:
@@ -4281,11 +4351,12 @@ static void frame_reset(void)
     }
     G.npins = 0;
     G.nsteps = G.ndraws = G.nuploads = G.frameUploads = 0;
-    G.drawRecords.size = G.viewRecords.size = G.fogTables.size = G.rowTables.size = 0;
+    G.drawRecords.size = G.viewRecords.size = G.rowTables.size = 0;
     G.texels.size = G.quadData.size = G.quadOffsets.size = 0;
+    memset(G.clearBlocks, 0, sizeof G.clearBlocks);
     G.nskinUploads = G.skinBytes = 0;
     G.batch.open = G.skinBatch.open = 0;
-    G.cameraView = G.fogTable = G.matrixIndex[0] = G.matrixIndex[1] = -1;
+    G.cameraView = G.matrixIndex[0] = G.matrixIndex[1] = -1;
     W.instances.size = 0;
     W.computeDue = W.frameDue = W.computed = 0;
     G.frame++;
@@ -4330,7 +4401,7 @@ static void requeue_uploads(long instances)
     for (i = 0; i < G.nuploads; i++) {
         const struct gpu_upload *u = &G.uploads[i];
         struct gfx_surface *s = u->surface;
-        if (u->w && u->h) {
+        if (u->w && u->h && !u->fromLayer) {
             RECT r;
             r.left = (LONG)u->x;
             r.top = (LONG)u->y;
@@ -4363,7 +4434,7 @@ static int flush(const struct flush_extra *extra)
     SDL_GPUCommandBuffer *cmd;
     SDL_GPUCopyPass *copy;
     SDL_GPUFence *fence;
-    uint32_t oRecords, oFogs, oRows, oQuads, oOffsets, oTexels, oSkins, total;
+    uint32_t oRecords, oRows, oQuads, oOffsets, oTexels, oSkins, total;
     long instances;
     unsigned char *mapped;
     size_t i;
@@ -4397,16 +4468,13 @@ static int flush(const struct flush_extra *extra)
     /* every storage buffer holds one record at least */
     if (!G.drawRecords.size)
         bytes_add(&G.drawRecords, sizeof(struct GpuDraw), 16);
-    if (!G.fogTables.size)
-        bytes_add(&G.fogTables, 16, 16);
     if (!G.quadData.size)
         bytes_add(&G.quadData, 16, 16);
     if (!G.quadOffsets.size)
         bytes_add(&G.quadOffsets, 4, 4);
     instances = instances_needed((uint32_t)(G.drawRecords.size / sizeof(struct GpuDraw)));
     oRecords = 0;
-    oFogs = align16(oRecords + (uint32_t)G.drawRecords.size);
-    oRows = align16(oFogs + (uint32_t)G.fogTables.size);
+    oRows = align16(oRecords + (uint32_t)G.drawRecords.size);
     oQuads = align16(oRows + (uint32_t)G.rowTables.size);
     oOffsets = align16(oQuads + (uint32_t)G.quadData.size);
     oTexels = align16(oOffsets + (uint32_t)G.quadOffsets.size);
@@ -4427,7 +4495,6 @@ static int flush(const struct flush_extra *extra)
     }
     if (instances == -2
         || !ensure_buffer(&G.records, &G.recordsSize, (uint32_t)G.drawRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
-        || !ensure_buffer(&G.fogs, &G.fogsSize, (uint32_t)G.fogTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || (G.rowTables.size
             && !ensure_buffer(&G.rows, &G.rowsSize, (uint32_t)G.rowTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
         || !ensure_buffer(&G.quads, &G.quadsSize, (uint32_t)G.quadData.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
@@ -4456,7 +4523,6 @@ static int flush(const struct flush_extra *extra)
     if (!mapped)
         goto failed;
     memcpy(mapped + oRecords, G.drawRecords.data, G.drawRecords.size);
-    memcpy(mapped + oFogs, G.fogTables.data, G.fogTables.size);
     if (G.rowTables.size)
         memcpy(mapped + oRows, G.rowTables.data, G.rowTables.size);
     memcpy(mapped + oQuads, G.quadData.data, G.quadData.size);
@@ -4473,7 +4539,6 @@ static int flush(const struct flush_extra *extra)
     }
     copy = SDL_BeginGPUCopyPass(cmd);
     copy_into(copy, oRecords, G.records, (uint32_t)G.drawRecords.size);
-    copy_into(copy, oFogs, G.fogs, (uint32_t)G.fogTables.size);
     copy_into(copy, oRows, G.rows, (uint32_t)G.rowTables.size);
     copy_into(copy, oQuads, G.quads, (uint32_t)G.quadData.size);
     copy_into(copy, oOffsets, G.offsets, (uint32_t)G.quadOffsets.size);
@@ -4778,157 +4843,6 @@ static SDL_GPUComputePipeline *make_compute(const struct GpuComputeCode *c)
     return SDL_CreateGPUComputePipeline(G.dev, &info);
 }
 
-/* custom: whether the GPU rounds floats as render/shaders/exact.hlsli assumes, to nearest, ties to
-   even, which Vulkan leaves to the device: sums, differences, products and div_rn's quotients of
-   pairs that tell the rounding modes apart (ties, and three quarters of a unit, of either sign),
-   drawn as points into a row of float pixels (render/shaders/rounding.hlsl) and compared with the
-   CPU's. A GPU that rounds otherwise draws all the same, the client's quads and the static world
-   now and then a pixel apart from where Direct3D 9 put them: it is said once, when the device is
-   made. */
-#define CHECK_WIDTH 64
-
-static void check_rounding(void)
-{
-    static const uint32_t pairs[][2] = {
-        { 0x3f800000u, 0x33800000u }, { 0x3f800001u, 0x33800000u }, { 0x3f800000u, 0x33c00000u },
-        { 0xbf800000u, 0xb3c00000u }, { 0x3f800800u, 0x3f800800u }, { 0x3f800001u, 0x3f800001u },
-        { 0xbf800001u, 0x3f800001u }, { 0x3f800000u, 0x40400000u }, { 0x40000000u, 0x40400000u },
-        { 0x3f800000u, 0x41200000u }, { 0x3f800000u, 0x3f8ccccdu }, { 0x40a00000u, 0x3fb504f3u },
-        { 0x3a83126fu, 0x40e00000u }, { 0x47f1206cu, 0x3a83126fu }, { 0xc2f6e979u, 0x3f9d70a4u },
-        { 0x3f7fffffu, 0x3f800001u },
-    };
-    enum { N = sizeof pairs / sizeof pairs[0] };
-    float in[N][4], want[N][4];
-    SDL_GPUShader *vs = make_shader(&rounding_vs), *fs = make_shader(&rounding_fs);
-    SDL_GPUGraphicsPipeline *pipe = NULL;
-    SDL_GPUBuffer *cases = NULL;
-    SDL_GPUTexture *row = NULL;
-    SDL_GPUTransferBuffer *up = NULL, *down = NULL;
-    SDL_GPUFence *fence = NULL;
-    int i, k, ok = 0, differ = 0;
-    for (i = 0; i < N; i++) {
-        float a, b;
-        memcpy(&a, &pairs[i][0], 4);
-        memcpy(&b, &pairs[i][1], 4);
-        in[i][0] = a;
-        in[i][1] = b;
-        in[i][2] = in[i][3] = 0.0f;
-        want[i][0] = a + b;
-        want[i][1] = a - b;
-        want[i][2] = a * b;
-        want[i][3] = a / b;
-    }
-    if (vs && fs) {
-        SDL_GPUGraphicsPipelineCreateInfo info;
-        SDL_GPUColorTargetDescription colour;
-        SDL_zero(info);
-        SDL_zero(colour);
-        colour.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
-        info.vertex_shader = vs;
-        info.fragment_shader = fs;
-        info.primitive_type = SDL_GPU_PRIMITIVETYPE_POINTLIST;
-        info.rasterizer_state.enable_depth_clip = true;
-        info.target_info.color_target_descriptions = &colour;
-        info.target_info.num_color_targets = 1;
-        pipe = SDL_CreateGPUGraphicsPipeline(G.dev, &info);
-    }
-    {
-        SDL_GPUBufferCreateInfo binfo;
-        SDL_GPUTextureCreateInfo tinfo;
-        SDL_GPUTransferBufferCreateInfo xinfo;
-        SDL_zero(binfo);
-        binfo.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
-        binfo.size = sizeof in;
-        cases = SDL_CreateGPUBuffer(G.dev, &binfo);
-        SDL_zero(tinfo);
-        tinfo.type = SDL_GPU_TEXTURETYPE_2D;
-        tinfo.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
-        tinfo.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
-        tinfo.width = CHECK_WIDTH;
-        tinfo.height = 1;
-        tinfo.layer_count_or_depth = 1;
-        tinfo.num_levels = 1;
-        row = SDL_CreateGPUTexture(G.dev, &tinfo);
-        SDL_zero(xinfo);
-        xinfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-        xinfo.size = sizeof in;
-        up = SDL_CreateGPUTransferBuffer(G.dev, &xinfo);
-        xinfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-        xinfo.size = CHECK_WIDTH * 16;
-        down = SDL_CreateGPUTransferBuffer(G.dev, &xinfo);
-    }
-    if (pipe && cases && row && up && down) {
-        SDL_GPUCommandBuffer *cmd;
-        void *mapped = SDL_MapGPUTransferBuffer(G.dev, up, false);
-        if (mapped) {
-            memcpy(mapped, in, sizeof in);
-            SDL_UnmapGPUTransferBuffer(G.dev, up);
-        }
-        cmd = mapped ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
-        if (cmd) {
-            SDL_GPUTransferBufferLocation src;
-            SDL_GPUBufferRegion dst;
-            SDL_GPUColorTargetInfo target;
-            SDL_GPUTextureRegion from;
-            SDL_GPUTextureTransferInfo to;
-            SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
-            SDL_GPURenderPass *pass;
-            src.transfer_buffer = up;
-            src.offset = 0;
-            dst.buffer = cases;
-            dst.offset = 0;
-            dst.size = sizeof in;
-            SDL_UploadToGPUBuffer(copy, &src, &dst, false);
-            SDL_EndGPUCopyPass(copy);
-            SDL_zero(target);
-            target.texture = row;
-            target.load_op = SDL_GPU_LOADOP_CLEAR;
-            target.store_op = SDL_GPU_STOREOP_STORE;
-            pass = SDL_BeginGPURenderPass(cmd, &target, 1, NULL);
-            SDL_BindGPUGraphicsPipeline(pass, pipe);
-            SDL_BindGPUVertexStorageBuffers(pass, 0, &cases, 1);
-            SDL_DrawGPUPrimitives(pass, N, 1, 0, 0);
-            SDL_EndGPURenderPass(pass);
-            copy = SDL_BeginGPUCopyPass(cmd);
-            SDL_zero(from);
-            SDL_zero(to);
-            from.texture = row;
-            from.w = CHECK_WIDTH;
-            from.h = 1;
-            from.d = 1;
-            to.transfer_buffer = down;
-            SDL_DownloadFromGPUTexture(copy, &from, &to);
-            SDL_EndGPUCopyPass(copy);
-            fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
-        }
-    }
-    if (fence && SDL_WaitForGPUFences(G.dev, true, &fence, 1)) {
-        const float *got = SDL_MapGPUTransferBuffer(G.dev, down, false);
-        if (got) {
-            ok = 1;
-            for (i = 0; i < N; i++)
-                for (k = 0; k < 4; k++)
-                    differ += memcmp(&got[i * 4 + k], &want[i][k], 4) != 0;
-            SDL_UnmapGPUTransferBuffer(G.dev, down);
-        }
-    }
-    if (!ok)
-        SDL_Log("gfx: the GPU's rounding could not be checked: %s", SDL_GetError());
-    else if (differ)
-        SDL_Log("gfx: this GPU does not round floats as the CPU does (%d of %d results differ): sprites, effects, "
-                "the interface and the world may land a pixel apart from where Direct3D 9 put them", differ, N * 4);
-    if (fence)
-        SDL_ReleaseGPUFence(G.dev, fence);
-    if (down) SDL_ReleaseGPUTransferBuffer(G.dev, down);
-    if (up) SDL_ReleaseGPUTransferBuffer(G.dev, up);
-    if (row) SDL_ReleaseGPUTexture(G.dev, row);
-    if (cases) SDL_ReleaseGPUBuffer(G.dev, cases);
-    if (pipe) SDL_ReleaseGPUGraphicsPipeline(G.dev, pipe);
-    if (vs) SDL_ReleaseGPUShader(G.dev, vs);
-    if (fs) SDL_ReleaseGPUShader(G.dev, fs);
-}
-
-/* What the device starts drawing with (render/gfx.h, gfx_set_mode). */
 static void reset_state(void)
 {
     G.mode = DRAW_OVERLAY;
@@ -5124,9 +5038,8 @@ static int create_device(void)
         return 0;
     }
     G.frame = 1;
-    G.cameraView = G.fogTable = G.matrixIndex[0] = G.matrixIndex[1] = -1;
+    G.cameraView = G.matrixIndex[0] = G.matrixIndex[1] = -1;
     W.generation++;
-    check_rounding();
     return 1;
 }
 
@@ -5277,8 +5190,7 @@ int gfx_close(struct C3dDevice *d)
             s->tex = NULL;
             s->array = NULL;
             s->failed = 0;
-            s->dirty = 1;
-            whole_rect(&s->dirtyRect, s);
+            dirty_locked(s, NULL);
         }
         while (G.arrays) {
             struct gpu_array *a = G.arrays;
@@ -5353,7 +5265,6 @@ int gfx_close(struct C3dDevice *d)
         if (G.depth) SDL_ReleaseGPUTexture(G.dev, G.depth);
         if (G.msaa) SDL_ReleaseGPUTexture(G.dev, G.msaa);
         if (G.records) SDL_ReleaseGPUBuffer(G.dev, G.records);
-        if (G.fogs) SDL_ReleaseGPUBuffer(G.dev, G.fogs);
         if (G.rows) SDL_ReleaseGPUBuffer(G.dev, G.rows);
         if (G.frameCopy) SDL_ReleaseGPUTexture(G.dev, G.frameCopy);
         if (G.quads) SDL_ReleaseGPUBuffer(G.dev, G.quads);
@@ -5386,10 +5297,10 @@ int gfx_close(struct C3dDevice *d)
     G.frameCopyW = G.frameCopyH = 0;
     G.fitFront = G.fitBack = G.fitDepth = NULL;
     G.fitW = G.fitH = G.fitFailedW = G.fitFailedH = 0;
-    G.records = G.fogs = G.rows = G.quads = G.offsets = NULL;
+    G.records = G.rows = G.quads = G.offsets = NULL;
     G.instances = NULL;
     G.corners = G.triangles = NULL;
-    G.recordsSize = G.fogsSize = G.rowsSize = G.quadsSize = G.offsetsSize = 0;
+    G.recordsSize = G.rowsSize = G.quadsSize = G.offsetsSize = 0;
     G.instanceCount = 0;
     G.upload = G.download = NULL;
     G.uploadSize = G.downloadSize = 0;
@@ -5522,7 +5433,9 @@ gfx_surface *gfx_create_texture(int w, int h, int fmt)
         gfx_release(s);
         return NULL;
     }
-    mark_dirty(s, NULL);
+    lock_handles();
+    s->fresh = 1;
+    unlock_handles();
     return s;
 }
 

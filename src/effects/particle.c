@@ -133,10 +133,11 @@ static void billboard_rotation(float turn[12])
 
 /* custom: the quad of the particle's corners, painted, as an instance whose vertices the device
    projects as renderer_project_vertex did them (render/gfx.h, GFX_QUAD_WORLD), the particle's depth
-   bias added to their rhw, and z of that rhw or 0. The CPU takes the corners through the particle's
-   matrix and the view into view space, as renderer_project_vertex did, and their rhw, which the
-   lists sort by and which say whether the quad lies flat on the screen; the device divides and
-   moves them onto the screen. */
+   bias added to their rhw. The CPU takes the corners through the particle's matrix and the view
+   into view space, as renderer_project_vertex did, and finds their rhw, which the lists sort by and
+   which say whether the quad lies flat on the screen, and z of that rhw or 0, which the depth test
+   compares with the figure the particle is drawn on by its bits (GFX_DEPTH_CORNERS); the device
+   divides and moves them onto the screen. */
 void particle_render(struct Particle *self, unsigned char facing_fixed,
                                   float v_top, float v_bottom, float u_left, float u_right, unsigned char with_depth)
 {
@@ -183,8 +184,10 @@ void particle_render(struct Particle *self, unsigned char facing_fixed,
     q->world.centre[1] = (float)g_renderer->centreY;
     q->world.rhw = GFX_RHW_ADD;
     q->world.rhwValue = self->depth_bias;
-    q->world.depth = with_depth ? GFX_DEPTH_PROJECTED : GFX_DEPTH_VALUE;
+    q->world.depth = with_depth ? GFX_DEPTH_CORNERS : GFX_DEPTH_VALUE;
     q->world.depthValue = 0.0f;
+    for (i = 0; i < 4; i++)
+        q->world.z[i] = renderer_project_depth(rhw[i]);
     q->world.colour = self->corners[0].diffuse;
     q->world.stage2 = 0;
     q->world.flat = quad_rhw_flat(rhw, 4);

@@ -178,8 +178,8 @@ int sw_record_bounds(const struct SwRecord *record, const float (*transforms)[12
 /* Whether the view draws a record: whether the frustum leaves its bounds not wholly outside one of
    its planes, an animated record's moved by its transform (transforms[slot], 4x3; a static record's
    transform is not read, and transforms may be NULL where no record is animated, which an animated
-   record then fails). The device's cull (render/shaders/world_cull.hlsl) decides as this does, to
-   the bit. */
+   record then fails). The device's cull (render/shaders/world_cull.hlsl) decides as this does but
+   for a box that lies within the rounding of a plane, which the GPU's floats may put either side. */
 int sw_record_in_view(const struct SwRecord *record, const float (*transforms)[12], const struct SwFrustum *frustum);
 /* A cascade's box as six planes, as sw_frustum gives the view's: inside where n . p + n[3] >= 0;
    across the light at lo and hi along axes 0 and 1, then along it at depth[0] and depth[1], each
@@ -189,7 +189,7 @@ void sw_cascade_planes(const struct SwCascade *cascade, struct SwFrustum *out);
 /* The records that cast into a cascade, out[0..n) in record order: those whose bounds are not
    wholly outside one of its box's planes, an animated record's moved by its transform, as
    sw_record_in_view tests the view's. The device culls each cascade's casters by this rule
-   (render/shaders/world_cull.hlsl), to the bit. */
+   (render/shaders/world_cull.hlsl), but for a box within the rounding of a plane. */
 size_t sw_cull_cascade(const struct SwRecord *records, size_t count, const float (*transforms)[12],
                        const struct SwCascade *cascade, uint32_t *out);
 

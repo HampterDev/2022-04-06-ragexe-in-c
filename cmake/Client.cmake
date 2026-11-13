@@ -119,8 +119,8 @@ endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
     # The GPU backend on this machine's GPU (tests/CMakeLists.txt declares it for Windows).
-    add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/quads.c
-        src/render/texel_convert.c src/render/draw_modes.c src/render/vertex_fog.c src/render/shadow_fit.c
+    add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/dirty_rects.c
+        src/render/quads.c src/render/texel_convert.c src/render/draw_modes.c src/render/shadow_fit.c
         src/render/shadow_fit_gpu.c src/render/static_world.c src/render/world_layout.c src/render/skin_layout.c
         src/platform/clock_posix.c src/platform/thread_posix.c)
     target_include_directories(test_gfx_gpu PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -132,9 +132,10 @@ if(BUILD_TESTING AND NOT ANDROID)
     add_test(NAME gfx_gpu_present COMMAND test_gfx_gpu 1)
     # The client's quads as instances against the CPU's (tests/CMakeLists.txt says more).
     add_executable(test_quad_instances tests/test_quad_instances.c tests/fixtures/quad_reference.c
-        src/render/gfx_gpu.c src/render/quads.c src/render/texel_convert.c src/render/draw_modes.c
-        src/render/vertex_fog.c src/render/shadow_fit.c src/render/shadow_fit_gpu.c src/render/static_world.c
-        src/render/world_layout.c src/render/skin_layout.c src/platform/clock_posix.c src/platform/thread_posix.c
+        tests/picture_budget.c src/render/gfx_gpu.c src/render/dirty_rects.c src/render/quads.c
+        src/render/texel_convert.c src/render/draw_modes.c src/render/shadow_fit.c src/render/shadow_fit_gpu.c
+        src/render/static_world.c src/render/world_layout.c src/render/skin_layout.c src/platform/clock_posix.c
+        src/platform/thread_posix.c
         src/actor/sprite_quad.c src/effects/particle.c src/effects/sprite_particle.c
         src/effects/rag/effect_prim_draw.c src/world/ground_draw.c src/render/rp_project.c src/render/rp_screen.c
         src/render/math3d.c)
@@ -142,8 +143,8 @@ if(BUILD_TESTING AND NOT ANDROID)
     target_compile_definitions(test_quad_instances PRIVATE _DEFAULT_SOURCE)
     target_link_libraries(test_quad_instances PRIVATE SDL3::SDL3 Threads::Threads m)
     rage_enable_assertions(test_quad_instances)
-    add_test(NAME quad_instances COMMAND test_quad_instances 1 20261112 300000 17000000 30)
-    add_test(NAME quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 0 30)
+    add_test(NAME quad_instances COMMAND test_quad_instances 1 20261112 300000 30)
+    add_test(NAME quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 30)
     # The shadow fit's compute passes against render/shadow_fit.c (tests/CMakeLists.txt says more).
     add_executable(test_shadow_fit_gpu tests/test_shadow_fit_gpu.c tests/shadow_fit_scenes.c
         src/render/shadow_fit.c src/render/shadow_fit_gpu.c)
@@ -183,11 +184,11 @@ if(BUILD_TESTING AND NOT ANDROID)
         # Granny's actors skinned by the device against the CPU code they replaced, on the game
         # folder's converted models (tests/CMakeLists.txt says more).
         add_executable(test_skin_instances tests/test_skin_instances.c tests/fixtures/granny_reference.c
-            src/render/gfx_gpu.c src/render/quads.c src/render/texel_convert.c src/render/draw_modes.c
-            src/render/vertex_fog.c src/render/shadow_fit.c src/render/shadow_fit_gpu.c src/render/static_world.c
-            src/render/world_layout.c src/render/skin_layout.c src/render/rp_project.c src/render/rp_screen.c
-            src/render/math3d.c src/resources/granny_gltf.c src/resources/granny_mesh.c src/platform/clock_posix.c
-            src/platform/thread_posix.c)
+            tests/picture_budget.c src/render/gfx_gpu.c src/render/dirty_rects.c src/render/quads.c
+            src/render/texel_convert.c src/render/draw_modes.c src/render/shadow_fit.c src/render/shadow_fit_gpu.c
+            src/render/static_world.c src/render/world_layout.c src/render/skin_layout.c src/render/rp_project.c
+            src/render/rp_screen.c src/render/math3d.c src/resources/granny_gltf.c src/resources/granny_mesh.c
+            src/platform/clock_posix.c src/platform/thread_posix.c)
         target_include_directories(test_skin_instances PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests)
         target_compile_definitions(test_skin_instances PRIVATE _DEFAULT_SOURCE)
         target_link_libraries(test_skin_instances PRIVATE SDL3::SDL3 rage_cgltf rage_stb rage_zlib Threads::Threads m)

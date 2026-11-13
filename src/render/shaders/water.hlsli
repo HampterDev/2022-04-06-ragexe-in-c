@@ -1,7 +1,7 @@
-// The water's quads as the original built them on the CPU each frame, to the bit (exact.hlsli):
-// water.hlsl draws them, and tests/test_static_world_maps.c checks them against that code, which it
+// The water's quads as the original built them on the CPU each frame (projection.hlsli): water.hlsl
+// draws them, and tests/test_static_world_maps.c holds them to a tolerance of that code, which it
 // keeps (ref_water), through tests/shaders/water_probe.hlsl.
-#include "exact.hlsli"
+#include "projection.hlsli"
 
 // A cell of the map's water (struct GpuWaterCell): its x and y, its water's block, and the bits of
 // the greatest y of its ground's corners, the lowest, y growing downward (-infinity where none is a
@@ -21,7 +21,7 @@ struct Water
 };
 
 // The view the CPU projected the quads with: the camera's 4x3 view (render/gfx.h), then
-// Renderer.proj[0], proj[1], (float)centreX, (float)centreY (exact.hlsli, project_point).
+// Renderer.proj[0], proj[1], (float)centreX, (float)centreY (projection.hlsli, project_point).
 struct WaterCamera
 {
     Matrix43 view;
@@ -33,9 +33,7 @@ struct WaterCamera
 // range is INT_MIN degrees, as x86's conversion makes it.
 int wave_degrees(Water w, int diagonal)
 {
-    precise float fd = (float)diagonal;
-    precise float along = fd * w.wave.y;
-    precise float angle = along + w.wave.x;
+    float angle = (float)diagonal * w.wave.y + w.wave.x;
     uint degrees = 0x80000000u;
     if (angle >= -2147483648.0 && angle < 2147483648.0)
         degrees = (uint)(int)angle;
@@ -52,9 +50,7 @@ float wave_height(Water w, float sine)
 {
     if (w.wave.z == 0.0)
         return w.wave.w;
-    precise float s = sine * w.wave.z;
-    precise float h = s + w.wave.w;
-    return h;
+    return sine * w.wave.z + w.wave.w;
 }
 
 // A cell's quad as the original built it: its corners in the world, raised by the wave at
@@ -82,12 +78,8 @@ WaterQuad water_quad(WaterCell c, WaterCamera camera, float3 heights)
     Projected s1 = project_point(q.p[1], camera.view, camera.screen);
     Projected s2 = project_point(q.p[2], camera.view, camera.screen);
     Projected s3 = project_point(q.p[3], camera.view, camera.screen);
-    precise float ax = s2.x - s0.x;
-    precise float ay = s1.y - s0.y;
-    precise float bx = s1.x - s0.x;
-    precise float by = s2.y - s0.y;
-    precise float turnA = ax * ay;
-    precise float turnB = bx * by;
+    float turnA = (s2.x - s0.x) * (s1.y - s0.y);
+    float turnB = (s1.x - s0.x) * (s2.y - s0.y);
     q.rhw[0] = s0.rhw;
     q.rhw[1] = s1.rhw;
     q.rhw[2] = s2.rhw;

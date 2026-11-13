@@ -80,10 +80,11 @@ void c3d_ground15_leaf(struct C3dGround15 *self, const float *view, const int *c
 
 /* custom: a quad over the ground's cells, its corners in the world (x, y and z of each in `quad`),
    as an instance whose corners the device projects through the view as renderer_project_vertex
-   projected them (render/gfx.h, GFX_QUAD_WORLD), z less `bias`, with the texture coordinates of
-   each corner in uv, in `colour`, blended (5, 6) among the alpha-blended quads (the flags 1 of
-   renderer_add_prim) and keyed by the rhw of its corners, as its vertices were. The CPU finds the
-   rhw alone, for the key and whether the quad lies flat on the screen. */
+   projected them (render/gfx.h, GFX_QUAD_WORLD), with the texture coordinates of each corner in
+   uv, in `colour`, blended (5, 6) among the alpha-blended quads (the flags 1 of renderer_add_prim)
+   and keyed by the rhw of its corners, as its vertices were. The CPU finds the rhw, for the key and
+   whether the quad lies flat on the screen, and the z of each corner less `bias`, which the depth
+   test compares with the ground by its bits (GFX_DEPTH_CORNERS). */
 static void queue_cell_quad(const float *quad, const float *view, DWORD colour, struct Texture *texture,
                             const float *uv, float bias)
 {
@@ -110,8 +111,10 @@ static void queue_cell_quad(const float *quad, const float *view, DWORD colour, 
     q->world.centre[0] = (float)g_renderer->centreX;
     q->world.centre[1] = (float)g_renderer->centreY;
     q->world.rhw = GFX_RHW_PROJECTED;
-    q->world.depth = bias != 0.0f ? GFX_DEPTH_ADD : GFX_DEPTH_PROJECTED;
-    q->world.depthValue = -bias;
+    q->world.depth = GFX_DEPTH_CORNERS;
+    q->world.depthValue = 0.0f;
+    for (i = 0; i < 4; i++)
+        q->world.z[i] = bias != 0.0f ? renderer_project_depth(rhw[i]) + -bias : renderer_project_depth(rhw[i]);
     q->world.colour = colour;
     q->world.flat = quad_rhw_flat(rhw, 4);
     prim->base.srcBlend = 5;

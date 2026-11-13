@@ -1,5 +1,6 @@
 #include "actor/render_ops.h"
 #include "render/math3d.h"
+#include "render/projection.h"
 #include "render/rp_pool.h"
 #include "render/sprite_atlas.h"
 #include "render/texture_types.h"
@@ -186,7 +187,8 @@ unsigned char render_object_clip_to_quad(struct RenderObject *self, int index, i
 /* custom: the quad as an instance whose vertices the device's vertex shader makes as this function
    made them on the CPU (render/gfx.h, GFX_QUAD_SPRITE): (x0, top), (x1, top), (x0, bottom) and
    (x1, bottom) moved by half a pixel, or turned by the angle about the quad's centre moved by x and
-   y; the rows' z from their rhw (renderer_project_depth); every corner with the top row's rhw, which
+   y; the rows' z from their rhw (renderer_project_depth), computed here, since the depth test
+   between a figure's layers decides by their bits; every corner with the top row's rhw, which
    the original's first corner carried and the lists sort by, so a shadow still draws before the
    figure standing on it; the GPU interpolates the texture by rhw, so a top and bottom rhw that
    differed (more so the steeper the camera tilts) would warp the flat sprite. */
@@ -222,6 +224,8 @@ void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *qua
     q->sprite.bottom = quad->bottom;
     q->sprite.rhwBottom = quad->depth_a;
     q->sprite.rhwTop = quad->depth_b;
+    q->sprite.zBottom = renderer_project_depth(quad->depth_a);
+    q->sprite.zTop = renderer_project_depth(quad->depth_b);
     q->sprite.turned = quad->angle != 0.0f;
     q->sprite.cosine = q->sprite.turned ? get_cos_deg((int)quad->angle) : 1.0f;
     q->sprite.sine = q->sprite.turned ? get_sin_deg((int)quad->angle) : 0.0f;

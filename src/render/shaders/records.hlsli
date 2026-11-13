@@ -14,9 +14,10 @@ struct Draw
                       // to coverage
     uint4 stages;     // the combination (render/draw_modes.h, enum DrawCombine), the stages that read
                       // opaque black outside 0 to 1 (bit 0 stage 0, bit 1 stage 1) and whether stage
-                      // 0 reads a layer of an atlas array (bit 2, quad.hlsli), the ground's lightmap,
-                      // the quads' fog table (64 float4 each, render/vertex_fog.h)
-    float4 fog;       // the quads' fog: its table's base, direction and count
+                      // 0 reads a layer of an atlas array (bit 2, quad.hlsli), the ground's lightmap, -
+    float4 fog;       // the fog (render/gfx.h, GfxFog): the quads' start, end, origin and span
+                      // (quad.hlsli, vertex_fog); the world's start and end as view depths and
+                      // 1 / (end - start) (render/gfx_gpu.c, view_fog)
     float4 fogColour;
     float4 colour;    // a world draw's colour (render/gfx.h, GfxWorldDraw)
     float4 uvScale;   // each stage's texture coordinates times this, and then at most uvLimit: a
@@ -38,15 +39,10 @@ float4 bordered(float4 sampled, float2 uv, bool border)
     return border && any(abs(uv - 0.5) > 0.5) ? float4(0, 0, 0, 1) : sampled;
 }
 
-// A point times a row-major matrix in the order Direct3D 9's shader compiler multiplied it in (fxc,
-// vs_2_0 and vs_3_0: y, then x, then z, then the translation), so that a vertex lands on the
-// pixel the Direct3D 9 client put it on, to the last bit as far as the GPU allows.
+// A point times a row-major matrix, the point a row with w 1.
 float4 transform(float3 p, float4x4 m)
 {
-    float4 r = m[1] * p.y;
-    r = mad(p.x, m[0], r);
-    r = mad(p.z, m[2], r);
-    return r + m[3];
+    return mul(float4(p, 1), m);
 }
 
 // Clip space for a pre-transformed vertex at `window`, Direct3D 9's window coordinates (pixel

@@ -6,7 +6,6 @@
 #include "render/gfx.h"
 #include "render/device.h"
 #include "render/screen_wobble.h"
-#include "render/vertex_fog.h"
 #include "render/skin_layout.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
@@ -682,6 +681,173 @@ static void check_layers(struct C3dDevice *d)
     }
 }
 
+#define PART 64
+
+/* Texel (x, y) of a texture of PART by PART texels, as the device holds level 0 of it */
+static DWORD *texel_at(DWORD *level, int x, int y)
+{
+    return &level[y * PART + x];
+}
+
+#define BEHIND 0xff123456u
+
+/* The cell r of t locked and filled with texels of `salt`, and likewise in cpu, the texture's
+   texels as the CPU holds them; with `behind`, texel (0, 0) and row 30 changed too, outside the
+   lock, where the device is not told of them. */
+static void write_cell(gfx_surface *t, DWORD *cpu, LONG left, LONG top, LONG right, LONG bottom, unsigned salt,
+                       int behind)
+{
+    RECT r;
+    struct gfx_lock lk;
+    BYTE *base;
+    int x, y;
+    r.left = left;
+    r.top = top;
+    r.right = right;
+    r.bottom = bottom;
+    assert(gfx_lock(t, &r, &lk) == 0 && lk.pitch == PART * 4);
+    base = (BYTE *)lk.bits - (size_t)top * lk.pitch - (size_t)left * 4;
+    for (y = top; y < bottom; y++)
+        for (x = left; x < right; x++) {
+            *texel_at(cpu, x, y) = 0xff000000u | (DWORD)(x * 2654435761u ^ y * 40503u ^ salt * 83492791u) >> 8;
+            memcpy(base + (size_t)y * lk.pitch + (size_t)x * 4, texel_at(cpu, x, y), 4);
+        }
+    if (behind) {
+        *texel_at(cpu, 0, 0) = BEHIND;
+        for (x = 0; x < PART; x++)
+            *texel_at(cpu, x, 30) = BEHIND;
+        memcpy(base, texel_at(cpu, 0, 0), 4);
+        memcpy(base + 30 * (size_t)lk.pitch, texel_at(cpu, 0, 30), PART * 4);
+    }
+    gfx_unlock(t);
+}
+
+/* t drawn and the frame sent, so that what it holds goes up */
+static void send_texture(struct C3dDevice *d, gfx_surface *t)
+{
+    static DWORD screen[W * H];
+    gfx_set_mode(TEXTURE);
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    texture_quad(t, 0.0f, 0.0f, 8.0f, 8.0f);
+    gfx_end_scene();
+    read_screen(d, screen);
+    gfx_set_texture(0, NULL);
+}
+
+/* t's lower levels as the device holds them are those of a plain texture of its size and levels
+   whose top level is `top`, made whole */
+static void same_levels(struct C3dDevice *d, gfx_surface *t, const DWORD *top)
+{
+    static DWORD level[2][PART * PART];
+    struct gfx_lock lk;
+    gfx_surface *twin;
+    int k;
+    if (gfx_get_levels(t) <= 1)
+        return;
+    gfx_set_mipmaps(1);
+    twin = gfx_create_texture(PART, PART, GFX_FMT_8888);
+    gfx_set_mipmaps(0);
+    assert(twin && gfx_get_levels(twin) == gfx_get_levels(t) && gfx_lock(twin, NULL, &lk) == 0);
+    memcpy(lk.bits, top, PART * PART * 4);
+    gfx_unlock(twin);
+    send_texture(d, twin);
+    for (k = 1; k < gfx_get_levels(t); k++) {
+        assert(gfx_read_texture_level(t, k, level[0]) == 0 && gfx_read_texture_level(twin, k, level[1]) == 0);
+        assert(!memcmp(level[0], level[1], (size_t)(PART >> k) * (size_t)(PART >> k) * 4));
+    }
+    gfx_release(twin);
+}
+
+/* Only the texels written go up: a texture sent once, then two cells far apart written through
+   locks of their own while texels outside them change behind the device's back, keeps those
+   texels as they were on the GPU and takes the cells' new ones; plain and layered, with and
+   without mipmaps, whose lower levels are those a plain texture made whole from the same top level
+   gets. Nine cells written apart, more rectangles than the device keeps, all go up too. */
+static void check_partial_uploads(struct C3dDevice *d)
+{
+    static DWORD before[PART * PART], after[PART * PART], cpu[PART * PART], level[PART * PART];
+    int layered, mipmaps, i, x, y;
+    for (layered = 0; layered < 2; layered++)
+        for (mipmaps = 0; mipmaps < 2; mipmaps++) {
+            gfx_surface *t;
+            gfx_set_mipmaps(mipmaps);
+            t = pattern_texture(layered, PART, PART, 7, 0);
+            gfx_set_mipmaps(0);
+            assert((gfx_get_levels(t) > 1) == mipmaps);
+            send_texture(d, t);
+            assert(gfx_read_texture_level(t, 0, before) == 0);
+            memcpy(cpu, before, sizeof cpu);
+            write_cell(t, cpu, 4, 4, 12, 12, 1, 1);
+            write_cell(t, cpu, 40, 44, 56, 60, 2, 0);
+            send_texture(d, t);
+            assert(gfx_read_texture_level(t, 0, after) == 0);
+            for (y = 0; y < PART; y++)
+                for (x = 0; x < PART; x++) {
+                    int cell = (x >= 4 && x < 12 && y >= 4 && y < 12) || (x >= 40 && x < 56 && y >= 44 && y < 60);
+                    assert(*texel_at(after, x, y) == *texel_at(cell ? cpu : before, x, y));
+                }
+            assert(*texel_at(cpu, 0, 0) != *texel_at(after, 0, 0) && *texel_at(cpu, 5, 30) != *texel_at(after, 5, 30));
+            same_levels(d, t, after);
+            /* nine cells apart, one more than the rectangles the device keeps apart: all go up; the
+               texels changed behind its back stay as they were but where a cell or the rectangle
+               two cells became takes them in */
+            for (i = 0; i < 9; i++)
+                write_cell(t, cpu, i % 3 * 24, i / 3 * 24, i % 3 * 24 + 4, i / 3 * 24 + 4, 10 + (unsigned)i, 0);
+            send_texture(d, t);
+            assert(gfx_read_texture_level(t, 0, level) == 0);
+            for (y = 0; y < PART; y++)
+                for (x = 0; x < PART; x++)
+                    assert(*texel_at(level, x, y) == *texel_at(cpu, x, y)
+                           || (y == 30 && *texel_at(level, x, y) == *texel_at(after, x, y)));
+            gfx_release(t);
+        }
+}
+
+/* A texture not yet sent goes up as what was written on it, its other texels cleared on the GPU to
+   the texel its zero pixels widen to: a cell written through a lock of its own, texels changed
+   outside it behind the device's back staying cleared; plain and layered, with and without
+   mipmaps, whose lower levels are a plain texture's made whole from the same top level; and a 565
+   texture, whose zero pixels widen to opaque black. */
+static void check_fresh_uploads(struct C3dDevice *d)
+{
+    static DWORD gpu[PART * PART], cpu[PART * PART];
+    struct gfx_lock lk;
+    gfx_surface *t;
+    RECT r;
+    int layered, mipmaps, x, y;
+    for (layered = 0; layered < 2; layered++)
+        for (mipmaps = 0; mipmaps < 2; mipmaps++) {
+            gfx_set_mipmaps(mipmaps);
+            t = layered ? gfx_create_layer_texture(PART, PART, GFX_FMT_8888)
+                        : gfx_create_texture(PART, PART, GFX_FMT_8888);
+            gfx_set_mipmaps(0);
+            assert(t);
+            memset(cpu, 0, sizeof cpu);
+            write_cell(t, cpu, 20, 8, 36, 24, 3, 1);
+            send_texture(d, t);
+            assert(gfx_read_texture_level(t, 0, gpu) == 0);
+            for (y = 0; y < PART; y++)
+                for (x = 0; x < PART; x++)
+                    assert(*texel_at(gpu, x, y) == (x >= 20 && x < 36 && y >= 8 && y < 24 ? *texel_at(cpu, x, y) : 0u));
+            same_levels(d, t, gpu);
+            gfx_release(t);
+        }
+    t = gfx_create_texture(PART, PART, GFX_FMT_565);
+    r.left = r.top = 8;
+    r.right = r.bottom = 16;
+    assert(t && gfx_lock(t, &r, &lk) == 0 && lk.bpp == 16);
+    for (y = 0; y < 8; y++)
+        for (x = 0; x < 8; x++)
+            ((WORD *)((BYTE *)lk.bits + (size_t)y * lk.pitch))[x] = 0xf800;
+    gfx_unlock(t);
+    send_texture(d, t);
+    assert(gfx_read_texture_level(t, 0, gpu) == 0);
+    for (y = 0; y < PART; y++)
+        for (x = 0; x < PART; x++)
+            assert(*texel_at(gpu, x, y) == (x >= 8 && x < 16 && y >= 8 && y < 16 ? 0xffff0000u : 0xff000000u));
+    gfx_release(t);
+}
+
 /* A list of triangles draws each of them, flat or not, and nothing of the quad they would close. */
 static void check_triangles(struct C3dDevice *d)
 {
@@ -1214,18 +1380,57 @@ static float next_float(float value, int by)
     return value;
 }
 
-/* The quads' fog to the bit: white quads fogged into black keep the original's step in their red,
-   at every step's first rhw and the rhw before it, for the maps' fog (0.2 to 0.8) and for an end
-   before the start. Granny's meshes take theirs by the GPU's own rhw of their view depth: white
-   squares of one mesh at those depths, one instanced draw, within a step of it. */
+/* The original's vertex fog as the client computed it on the CPU before the fog went into the
+   shaders (render/rp_pool.c, rp_vertex_fog_alpha), for a fog of any start and end: the step, from
+   0 (all fog) to 255 (none), of a vertex of reciprocal view depth rhw. */
+static int original_fog_step(float rhw, const struct GfxFog *fog)
+{
+    float range = fog->end - fog->start;
+    float t = (1.0f / rhw - fog->origin) / fog->span;
+    if (range != 0.0f)
+        t = (t - fog->start) / range;
+    t = 0.0f > t ? 0.0f : t;
+    t = 1.0f < t ? 1.0f : t;
+    t = (1.0f - t) * 255.0f;
+    return (int)t;
+}
+
+/* The rhw at which each step of the fog begins, from the nearest view depth's on (the steps are
+   monotonic in rhw, as each operation of the original's is): the first float rhw whose step is
+   `levels` past the smallest normal rhw's, found by its bits. Answers how many steps it found. */
+static int fog_step_starts(const struct GfxFog *fog, float *starts, int most)
+{
+    int base = original_fog_step(1.17549435e-38f, fog), last = original_fog_step(1e30f, fog);
+    int direction = last >= base ? 1 : -1, count = (last - base) * direction, levels;
+    for (levels = 1; levels <= count && levels <= most; levels++) {
+        uint32_t low = 0x00800000u, high = 0x7f800000u;
+        while (low < high) {
+            uint32_t middle = low + (high - low) / 2;
+            float rhw;
+            memcpy(&rhw, &middle, sizeof rhw);
+            if ((original_fog_step(rhw, fog) - base) * direction >= levels)
+                high = middle;
+            else
+                low = middle + 1;
+        }
+        memcpy(&starts[levels - 1], &low, sizeof low);
+    }
+    return levels - 1;
+}
+
+/* The fog of the quads and Granny's meshes within a step of the original's: white quads fogged
+   into black keep the original's step in their red, but for a step where the GPU's division of
+   the rhw lands on the other side of a step's start, at every step's first rhw and the rhw before
+   it, for the maps' fog (0.2 to 0.8) and for an end before the start; white squares of one skinned
+   mesh at those depths, one instanced draw, likewise; it says how many were a step off. */
 static void check_fog_steps(struct C3dDevice *d)
 {
     static const float ranges[2][2] = { { 0.2f, 0.8f }, { 0.7f, 0.3f } };
-    struct VertexFogTable table;
+    static float starts[256];
     struct GfxFog fog;
     gfx_skin *square = fog_square();
     unsigned draws;
-    int r, i, wrong = 0, skinWrong = 0;
+    int r, i, wrong = 0, skinWrong = 0, steps = 0, skinSteps = 0;
     assert(square);
     for (r = 0; r < 2; r++) {
         int count;
@@ -1236,8 +1441,7 @@ static void check_fog_steps(struct C3dDevice *d)
         fog.end = ranges[r][1];
         fog.origin = 10.0f;
         fog.span = 1490.0f;
-        vertex_fog_table(fog.start, fog.end, fog.origin, fog.span, &table);
-        count = (int)table.count;
+        count = fog_step_starts(&fog, starts, 256);
         assert(count > 200);
         gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
         gfx_set_mode(DRAW_OPAQUE_CLAMP);
@@ -1246,14 +1450,15 @@ static void check_fog_steps(struct C3dDevice *d)
         /* two pixels square each, 31 to a row off the first row and column (of which the
            viewport holds half): a step's first rhw, then the one before */
         for (i = 0; i < 2 * count; i++)
-            fog_quad((float)(1 + i % 31 * 2), (float)(1 + i / 31 * 2), 2.0f, next_float(table.rhw[i / 2], -(i & 1)));
+            fog_quad((float)(1 + i % 31 * 2), (float)(1 + i / 31 * 2), 2.0f, next_float(starts[i / 2], -(i & 1)));
         gfx_end_scene();
         gfx_set_fog(NULL);
         for (i = 0; i < 2 * count; i++) {
-            float rhw = next_float(table.rhw[i / 2], -(i & 1));
-            int want = vertex_fog_step(rhw, fog.start, fog.end, fog.origin, fog.span);
+            float rhw = next_float(starts[i / 2], -(i & 1));
+            int want = original_fog_step(rhw, &fog);
             int got = (int)(screen_pixel(d, 1 + i % 31 * 2, 1 + i / 31 * 2) >> 16 & 0xff);
-            if (got != want && wrong++ < 8)
+            steps += got != want;
+            if ((got < want - 1 || got > want + 1) && wrong++ < 8)
                 fprintf(stderr, "fog %g..%g, rhw %.9g: %d, the original %d\n", fog.start, fog.end, rhw, got, want);
         }
         gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
@@ -1261,7 +1466,7 @@ static void check_fog_steps(struct C3dDevice *d)
         draws = g_perf.draws;
         for (i = 0; i < 2 * count; i++) {
             int pose = fog_square_pose((float)(1 + i % 31 * 2), (float)(1 + i / 31 * 2),
-                                       1.0f / next_float(table.rhw[i / 2], -(i & 1)));
+                                       1.0f / next_float(starts[i / 2], -(i & 1)));
             assert(pose >= 0);
             gfx_draw_skin(square, 0, 6, pose);
         }
@@ -1269,15 +1474,18 @@ static void check_fog_steps(struct C3dDevice *d)
         gfx_set_fog(NULL);
         assert(g_perf.draws == draws + 1);
         for (i = 0; i < 2 * count; i++) {
-            float rhw = next_float(table.rhw[i / 2], -(i & 1));
-            int want = vertex_fog_step(rhw, fog.start, fog.end, fog.origin, fog.span);
+            float rhw = next_float(starts[i / 2], -(i & 1));
+            int want = original_fog_step(rhw, &fog);
             int got = (int)(screen_pixel(d, 1 + i % 31 * 2, 1 + i / 31 * 2) >> 16 & 0xff);
+            skinSteps += got != want;
             if ((got < want - 1 || got > want + 1) && skinWrong++ < 8)
                 fprintf(stderr, "skinned fog %g..%g, rhw %.9g: %d, the original %d\n", fog.start, fog.end, rhw, got,
                         want);
         }
     }
     gfx_skin_release(square);
+    printf("gfx_gpu: the fog at each step's first rhw and the one before: %d of the quads' a step off the original's, "
+           "%d of the skinned squares'\n", steps, skinSteps);
     assert(!wrong && !skinWrong);
 }
 
@@ -1342,7 +1550,7 @@ static void check_fog(struct C3dDevice *d)
     gfx_set_fog(NULL);
     fog_quad(40, 0, 8, 1.0f / 150);
     gfx_end_scene();
-    /* the quads' steps exactly: 127 of red and 128 of the fog's green */
+    /* the quads' steps, their rhw away from a step's start: 127 of red and 128 of the fog's green */
     assert(screen_pixel(d, 4, 4) == 0x7f8000);
     assert(screen_pixel(d, 12, 4) == 0x00ff00);
     assert(screen_pixel(d, 20, 4) == 0xfc0300);
@@ -2562,6 +2770,8 @@ int main(int argc, char **argv)
 
     check_mipmaps(d);
     check_layers(d);
+    check_partial_uploads(d);
+    check_fresh_uploads(d);
     check_triangles(d);
     check_target_copies(d);
     check_read_frame(d);
@@ -2586,11 +2796,14 @@ int main(int argc, char **argv)
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     printf("gfx gpu (RAGEXE_MSAA=%s): clears, edges and flat quads, 8888/565/1555/4444 textures, texel centres, "
-           "culling, textures changed and released in a frame, alpha test, fog (the quads' at every step), blending, "
-           "the effect modes' blending, the 16 presets against Direct3D 9's stages, two textures, the ground's records, "
+           "culling, textures changed and released in a frame, alpha test, fog (the quads' within a step at every "
+           "step's start), blending, the effect modes' blending, the 16 presets against Direct3D 9's stages, two "
+           "textures, the ground's records, "
            "two-pass alpha, effects behind depth, composites, clears inside a pass, the overlays batched, mipmaps, "
            "layered textures read as plain ones (filtered and mipmapped, one draw of several layers, a full "
-           "array and a second, a layer given up and taken, arrays of 16 MB), lists of triangles, "
+           "array and a second, a layer given up and taken, arrays of 16 MB), only the texels written going up "
+           "(plain and layered, with and without mipmaps, more cells than rectangles kept; a texture not yet "
+           "sent cleared on the GPU but where it was written), lists of triangles, "
            "render targets and their edges, a window's target read 1:1 (%s), the wobble in a frame, modes kept from targets "
            "they do not draw into, modes counted, system surface blits, copies between targets and out of "
            "bounds, frames read whole and in part, Granny's models skinned and batched, the world's records, transform "

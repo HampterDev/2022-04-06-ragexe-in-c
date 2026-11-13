@@ -16635,3 +16635,365 @@ Validation: the regular scene set's captures are the same to the pixel as those 
 before these changes, the 35 that client can make (it crashes on `broadcast` and
 `potion_pitcher`, and has no `scene.measure` for `measure_frames`). `build.bat check` passes, and
 so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 331 tests and the oracle's 7.
+
+## The shaders within a tolerance, and what the GPU phases left (2026-11-13)
+
+Phase 7 of `plans/gpu-renderer.md`. Phases 5 and 6 made the quads', the static world's and the
+water's shaders give the CPU's floats to the bit, by rules that kept the GPU from rounding otherwise
+than the CPU; on 2026-11-12 that was given up for a tolerance, which the Granny skinning of phase 6
+already had (the plan's *Decisions*). This entry removes the rules and what served them, settles
+what the phases left, measures the result against the line before it (e83fd345) and the Direct3D 9
+client, and the plan takes its next GPU phases from the numbers.
+
+- **The decision.** Every shader is plain arithmetic, and its tests hold it to the CPU code it
+  replaced: a vertex within 1/16 of a pixel, its rhw and its depth within 1e-5 relative (nearer
+  than twice the near plane, the depth within 1e-5 of the depth range), texture coordinates within
+  1/4096, colours within a step. Every capture is held to the captures' budget against the one
+  before: the pixels more than a colour step apart at most 0.05 % of the screen (720 of 1,600 by
+  900), each group of such pixels that touch at most 16, and every capture that differs looked at.
+  Exactness stays where it is cheap and decides something discrete: the C code compiled without
+  contraction, the lists' sort keys and flatness, which the CPU computes from its own floats, the
+  depths the depth test decides a figure's layers by, which the CPU computes and hands over (below),
+  and the shadow fit's squares and snapped texels (`shadow_cascades.hlsl` and
+  `shadow_fit.hlsli` keep their `precise`, which makes them their C reference's by construction,
+  and `test_shadow_fit_gpu` still holds them to the bit).
+- **Removed.** `render/shaders/exact.hlsli` (every operation `precise`, `div_rn`'s correctly rounded
+  division, exact sums and products emulated (Knuth's two-sum, Dekker's product), the C code's
+  double expressions computed exactly and rounded once, constants given by their bits) and its use
+  in the quad, water, world transform and world cull shaders; the device's check of the GPU's
+  rounding when it is made (`rounding.hlsl` and `check_rounding` in `render/gfx_gpu.c`); the checks
+  of the shaders' SPIR-V for an operation the rules forbade in `test_quad_instances` and
+  `test_static_world_maps`, and the former's test of the exact operations over every divisor; and
+  the vertex fog's table of the rhw at which each step begins (`render/vertex_fog.c`, the library
+  `vertex-fog`, `test_vertex_fog`, the frame's buffer of tables and the draw record's table base):
+  the quad, skin and water shaders compute the original's step from the rhw with the formula the CPU
+  used (`render/shaders/quad.hlsli`, `vertex_fog`), the draw record carrying the fog's start, end,
+  origin and span. The table gave the step to the bit, which the GPU's division cannot; computed,
+  the step lies within one of the original's (the tests' colour tolerance), and the table's buffer,
+  its lookup in every vertex and its library go. `records.hlsli`'s `transform()` no longer
+  multiplies in Direct3D 9's order: that order gave Direct3D 9's bits only from the CPU's exact
+  views, which the GPU no longer computes.
+- **The shaders now.** `render/shaders/projection.hlsli` holds the client's 4x3 matrices and its
+  projection of a point (`renderer_project_vertex`'s depth and rhw), which the quads, the water and
+  the world transform share; matrices multiply with `mul()`. `instances.hlsli`'s quad vertex makes
+  the four corners of a record once, in a loop, and moves a flat draw's corner onto its pixel
+  boundary with the values its triangle's plane has there, as the CPU did, but where the GPU finds
+  the triangle without area within the rounding of its corners (`no_area`: the cross product of
+  its edges no larger than the rounding of the corners and of the products may make it, or below
+  the CPU's 1e-6), where a plane computed in plain floats is noise; such a corner stays where it
+  was made. Sizes, SPIR-V and MSL bytes, before and after:
+
+  | shader | SPIR-V | MSL |
+  |---|---|---|
+  | `quad` vertex | 288,308 / 34,356 | 451,025 / 45,160 |
+  | `water` vertex | 26,064 / 11,620 | 28,311 / 11,579 |
+  | `world_transform` | 13,560 / 5,796 | 12,711 / 5,587 |
+  | `world` vertex | 12,196 / 10,720 | 8,200 / 7,486 |
+  | `skin` vertex | 10,084 / 9,696 | 7,570 / 7,504 |
+  | `world_cull` | 9,960 / 8,488 | 10,862 / 8,156 |
+  | `world_depth` vertex | 3,448 / 3,128 | 2,097 / 1,927 |
+  | `rounding` (gone) | 4,684 / 0 | 5,695 / 0 |
+  | the client's shaders | 502,944 / 218,444 | 658,378 / 219,306 |
+
+  The test probes: `quad_probe` 301,772 / 32,924 bytes of SPIR-V, `water_probe` 22,736 / 8,484. A
+  run of the scene harness that starts the client and captures the login screen took 2.67 s with
+  an empty NVIDIA shader cache (`__GL_SHADER_DISK_CACHE_PATH` a new folder each run, five runs by
+  turns, medians) and takes 2.01 s; with the cache filled 1.59 s before and after (seven runs).
+- **A texture's changed rectangles go up alone** (`render/dirty_rects.c`, the library
+  `dirty-rects`, pure). A texture kept one rectangle of changed texels, the union of every lock, so
+  that two cells written on a sprite atlas's page sent the whole 256 by 256 page, widened to 32
+  bits; and `texture_draw_sprite_frame` (`render/csurface.c`) locked the whole page to write a
+  cell. Now it locks the cell, and a texture keeps up to eight rectangles apart, each taking in the
+  kept ones it touches, and with no room left the one whose union with it wastes least; each goes
+  up alone. A texture not yet sent, whose pixels are zero but where it was written, went up whole:
+  now its GPU texture (or layer) is set to the texel a zero pixel widens to from one block of such
+  texels in the frame's upload, a band of rows at a time (`clear_texels`; zero for the formats with
+  alpha, opaque black for 565), and only the rectangles written go up over it, so that a new
+  atlas page drawn for its first cell sends that cell. A layered texture with mipmaps (the atlas's
+  pages with trilinear filtering on) made its levels from its whole top level staged into a
+  scratch texture; now the layer's top level is copied into the scratch texture on the GPU (or
+  cleared, for a texture not yet sent), the changed rectangles go up over it, and its levels are
+  made and copied into the layer as before. The widening of texels takes 0.27 ms a frame in the
+  Emperium room where the line took 1.23 (load scenes, below); the clearing of textures not yet
+  sent, measured on its own against the build before it (three rounds by turns), takes the first
+  frame of the arrival in Prontera from 21.9 ms of widening to 12.6 and in the castle from 19.0 to
+  16.4, and the steady frames' from 0.84 ms to 0.54 in the castle and from 0.27 to 0.22 in the
+  Emperium room.
+- **16-bit textures stay widened.** Uploading the atlas's 1555 and 4444 texels as
+  `B5G5R5A1`/`B4G4R4A4` would halve their bytes and skip the widening, but SDL's Metal driver takes
+  those formats only on Apple's own GPUs (`SDL_gpu_metal.m`), and the plan's floor holds Intel Macs
+  of the Mac2 family, so they would need the widening kept as a second path; with only the written
+  cells going up the widening costs 0.2 to 0.5 ms a frame in the crowds, and the first frame of
+  an arrival 13 to 16 ms (below).
+- **The per-frame path.** A mode, effect or fog call that sets what is set already returns before
+  resolving the state (most of the effect lists' calls). The copy of the frame's instances into the
+  transfer buffer when it is presented stays: its bytes are the frame's quads, most of them the
+  effect primitives' and the sprites' records, which the plan's next phase writes once into the
+  memory the GPU reads.
+- **Depths that tie stay the client's.** With every vertex in plain arithmetic, the load scenes'
+  pictures broke the budget where the scene set's had kept it: in the busy Prontera a 445-pixel
+  block of a figure showed the layer behind its cloak, and arriving there a figure was striped
+  row by row with two of its layers. A figure's sprite layers lie at depths the depth test must
+  decide by their bits (layers on the same rows tie, and the original's own rounding picks the
+  winner), and so do the particles and ground tiles drawn where it stands; the GPU's own
+  `project_depth`, a few units in the last place from the CPU's, turned whole overlaps of two
+  layers about (a whole-page upload of the atlas, tried in their place, changed nothing). The
+  client now computes those depths from the rhw it has for the lists' keys anyway
+  (`renderer_project_depth`) and hands them over: a sprite's two rows' z in its record's free
+  words (`zBottom`, `zTop`), and a projected quad's four corners' z in a row of their own
+  (`GFX_DEPTH_CORNERS`, 16 bytes more a particle, a sprite particle, a multi-texture particle and a
+  ground tile), which the shader takes as they are. The effect primitives' triangles, whose
+  corners the CPU does not project, keep the shader's depth.
+- **Found and fixed.** `test_quad_instances` wrote its pictures (`quad_<scene>_<kind>_*.bmp`) into
+  the working directory whenever a scene had a group of more than 16 differing pixels, which it
+  allows along edges, so every multisampled run left eight files; it keeps them now only for a
+  picture beyond the budget. Comments that still promised the CPU's floats to the bit
+  (`render/gfx.h`, `render/quads.h`, `render/static_world.h`, the shaders) say what holds now.
+
+Tests, against the same CPU fixtures as before, now to the tolerance. `test_quad_instances` reads
+300,000 records of each kind (realistic, at the edges and fuzzed, made by the client's own
+functions) on the GPU's vertex stage, as made and as snapped in a multisampled pass. The CPU's own
+floats are rounded, so a corner the device projects that is not within the tolerance of the CPU's
+is held to the exact value of the same arithmetic (in double) instead: within the tolerance, or
+the CPU's own distance from it, and the rounding any float computation of it may carry (for a
+point near the eye seen from a camera thousands of units away the view depth is the small sum of
+large terms, so the CPU's own corner is pixels from the exact one). A snapped corner's values come
+from its triangle's plane, which moves with the GPU's corners; where that plane is ill-conditioned
+(the longest edge squared more than 64 times the area, or a move longer than the shortest edge) or
+where the corner it moves from lies within reach of the snap's threshold, the corner is counted, not
+compared. Largest differences (pixel and texture coordinates in pixels and texels of 1, depth
+relative, nearer than twice the near plane of the depth range; seed 20261112, `RAGEXE_MSAA=1`):
+
+| kind, case | vertices | as made: pixel, rhw, depth (nearer) | held to the exact value | snapped: depth, uv, colour | held to the exact value | ill-conditioned planes | across the threshold | beyond |
+|---|---|---|---|---|---|---|---|---|
+| sprites, realistic | 1,200,000 | 0, 0, 0 (0) | 0 | 1.14e-07 (0), 5.07e-07, 0 | 0 | 19,064 | 0 | 0 |
+| sprites, edges | 1,200,000 | 0, 0, 0 (0) | 0 | 1.19e-07 (7.86e-10), 5.96e-07, 0 | 0 | 9,289 | 0 | 0 |
+| sprites, fuzz | 1,200,000 | 0, 0, 0 (0) | 0 | 2.17e-05 (4.44e-06), 4.17e-07, 0 | 5 | 4,991 | 0 | 0 |
+| screen vertices, realistic | 1,200,000 | 0, 0, 0 (0) | 0 | 6.01e-06 (4.05e-06), 2.53e-05, 1 | 0 | 134,142 | 0 | 0 |
+| screen vertices, edges | 1,200,000 | 0, 0, 0 (0) | 0 | 7.12e-06 (4.4e-06), 1.62e-05, 0 | 0 | 243,696 | 0 | 0 |
+| screen vertices, fuzz | 1,200,000 | 0, 0, 0 (0) | 0 | 1.61e-05 (3.88e-05), 1.08e-05, 0 | 38 | 42,512 | 0 | 0 |
+| projected points, realistic | 1,200,000 | 0.0338, 7.75e-06, 3.58e-06 (0) | 0 | 7.17e-05 (0), 0.0352, 0 | 0 | 11,636 | 71 | 0 |
+| projected points, edges | 1,200,000 | 2.45, 0.00143, 5.16e-05 (6.93e-05) | 116 | 0.00135 (0.00236), 0.389, 0 | 69 | 9,398 | 62 | 0 |
+| projected points, fuzz | 1,200,000 | 137, 0.00769, 0.000158 (8.74e-05) | 429 | 0.000158 (0.000355), 0.0815, 0 | 147 | 92 | 196 | 0 |
+| particles, realistic | 1,200,000 | 0.00146, 2.38e-07, 0 (0) | 0 | 0.000102 (3.02e-05), 0.00168, 0 | 4 | 54,452 | 30 | 0 |
+| particles, edges | 1,200,000 | 0.000977, 0.000601, 0 (0) | 40 | 7.55e-06 (8.64e-07), 0.00803, 0 | 35 | 143,513 | 28 | 0 |
+| particles, fuzz | 1,200,000 | 0.00146, 0.000186, 0 (0) | 3 | 1.14e-05 (3.87e-07), 0.00284, 0 | 4 | 48,804 | 30 | 0 |
+| sprite particles, realistic | 1,200,008 | 0.12, 2.26e-05, 0 (0) | 61 | 0.000112 (0.000154), 0.000835, 0 | 50 | 86,649 | 210 | 0 |
+| sprite particles, edges | 1,200,000 | 0.177, 2.16e-05, 0 (0) | 12 | 9.71e-05 (2.71e-05), 0.00554, 0 | 10 | 352,538 | 55 | 0 |
+| sprite particles, fuzz | 1,200,004 | 0.355, 0.000227, 0 (0) | 302 | 5.34e-05 (5.69e-05), 0.000764, 0 | 194 | 129,035 | 157 | 0 |
+| effect primitives' triangles, realistic | 1,200,000 | 0.931, 2.27e-05, 1.13e-05 (2.12e-05) | 308 | 3.43e-05 (1.38e-05), 0.00679, 0 | 37 | 313,649 | 293 | 0 |
+| effect primitives' triangles, edges | 1,200,000 | 0.427, 1.98e-05, 5.54e-06 (1.62e-05) | 693 | 4.51e-05 (0.000186), 0.0486, 0 | 91 | 370,837 | 365 | 0 |
+| effect primitives' triangles, fuzz | 1,200,000 | 2.06, 0.000128, 9.61e-05 (9.34e-05) | 2178 | 6.43e-05 (0.000101), 0.0156, 0 | 395 | 318,625 | 1140 | 0 |
+| ground cell tiles, realistic | 1,200,000 | 0.0306, 2.2e-05, 0 (0) | 24 | 4.79e-05 (1.79e-06), 0.00743, 0 | 4 | 82,515 | 485 | 0 |
+| ground cell tiles, edges | 1,200,000 | 0.0591, 2.19e-05, 0 (0) | 19 | 2.23e-05 (4.3e-05), 0.0166, 0 | 13 | 641,191 | 156 | 0 |
+| ground cell tiles, fuzz | 1,200,000 | 0.255, 0.000149, 0 (0) | 175 | 3.77e-05 (2.54e-05), 0.0161, 0 | 112 | 107,866 | 205 | 0 |
+
+No corner is beyond, and the rhw the lists sort by and whether a quad is flat are the CPU's to the
+bit in every record; so is the depth of every corner the client hands it over for (the sprites',
+the particles', the sprite particles' and the tiles' as made), the "projected points" being records
+the test makes with each depth rule. The corners held to the exact value are those the CPU itself
+computes imprecisely: the realistic effect primitives' worst corner lies 0.93 pixels from the CPU's
+and within its rounding of the exact one. The test's pictures through `render/gfx_gpu.c` (30 scenes
+of 1,280 by 720, textures of gentle gradients) are within the budget: the sprites' are the
+reference's to the pixel with 1 and 4 samples, and the projected quads' few groups of more than 16
+pixels a step apart lie along a quad's edge or where two quads cross in depth, as the test requires
+of such a group (with 4 samples the largest is 109 pixels along an additive quad's long edge, 1,977
+pixels differing in all, 190 by more than a step).
+
+`test_static_world_maps` runs the transform, cull and compaction passes and the water's vertices on
+its nine maps (Prontera again on a screen of 1,025 by 769) against the C: 56,445,672 vertices
+through 414,348 slots, none beyond the tolerance (pixel 0.0081, rhw 7.5e-6, depth 3.0e-6, nearer
+7.4e-6, in view space 7.0e-7 and in the world 2.0e-7 of their coordinates); every cull decision the
+C's (none within a plane's rounding); 551,760 water cells, none beyond, 238 at a boundary's rounding
+(a wave's degree, the cell's ground against the wave, a triangle's facing), the heights within
+8.5e-8 of the wave. `test_skin_instances` is as phase 6 left it (pixel 0.0027, and 0.0135 with 4
+samples). `test_gfx_gpu` draws the fog at each step's first rhw and at the float before it, for the
+maps' fog and for one that ends before it starts, 1,020 squares each: 297 of the quads' and 281 of
+the skinned squares' are a step off the original's, none more. `test_dirty_rects` (new, pure) checks
+the merging rules by case and 200,000 fuzzed sequences of writes against a map of the texels
+written: every texel written kept, at most eight rectangles, none touching, none past the box of
+what was written, and writes that never touch kept as written. `test_gfx_gpu` checks that only what
+was written goes up: a texture sent once, two cells far apart then written through locks of their
+own while texels outside them change behind the device's back, keeps those texels as they were on
+the GPU and takes the cells', plain and layered, with and without mipmaps, whose lower levels equal
+those of a plain texture made whole from the same top level; nine cells written apart, one more than
+the device keeps, all go up; and a texture not yet sent, a cell written into it and texels outside
+it changed behind the device's back, holds the cell and zero texels elsewhere, plain and layered,
+with and without mipmaps, and a 565 texture opaque black elsewhere. `test_quads` checks the records'
+new words (a sprite's rows' z, a projected quad's corners' z after its coordinates) and
+`test_renderer_storage` the multi-texture particle's corners' z.
+
+Captures: the line's scene client (e83fd345) and this one, one right after the other, with
+`RAGEXE_VSYNC=0` and SDL's dummy audio, over the 20 scene scripts (40 captures): three rounds with
+`RAGEXE_MSAA=1`, which gave the same pictures, then `RAGEXE_MSAA=4`, and both again with
+`RAGEXE_SHADOWS=0`. Every capture keeps the budget; 28 are the same to the pixel in every set, and
+the 12 that differ (pixels that differ, those more than a step apart, the largest group of those,
+the largest difference; 0 where none differs):
+
+| capture | 1 sample | 4 samples | 1 sample, no shadows | 4 samples, no shadows |
+|---|---|---|---|---|
+| `camera_level_view` | 16, 6, 2, 4 | 23, 6, 2, 4 | 10, 0, 0, 1 | 17, 0, 0, 1 |
+| `camera_level_view_moving` | 1, 0, 0, 1 | 6, 1, 1, 2 | 1, 0, 0, 1 | 5, 0, 0, 1 |
+| `canvas_navigation_monster` | 0 | 2, 0, 0, 1 | 0 | 2, 0, 0, 1 |
+| `canvas_navigation_npc` | 0 | 2, 0, 0, 1 | 0 | 2, 0, 0, 1 |
+| `canvas_navigation_target` | 0 | 1, 0, 0, 1 | 0 | 1, 0, 0, 1 |
+| `effects_flipped` | 2, 0, 0, 1 | 6, 0, 0, 1 | 2, 0, 0, 1 | 7, 0, 0, 1 |
+| `effects_instances` | 7, 0, 0, 1 | 9, 0, 0, 1 | 7, 0, 0, 1 | 9, 0, 0, 1 |
+| `hangul_text` | 3, 0, 0, 1 | 4, 1, 1, 2 | 3, 0, 0, 1 | 4, 1, 1, 2 |
+| `hunter_traps` | 2, 2, 1, 2 | 5, 2, 1, 2 | 0 | 3, 0, 0, 1 |
+| `prontera_crowd` | 0 | 10, 0, 0, 1 | 0 | 10, 0, 0, 1 |
+| `two_pass_alpha` | 128, 24, 1, 5 | 163, 38, 3, 34 | 129, 0, 0, 1 | 154, 13, 3, 32 |
+| `two_pass_alpha_fewer` | 131, 24, 1, 5 | 162, 38, 3, 34 | 132, 0, 0, 1 | 153, 13, 3, 32 |
+
+Every differing capture was looked at in crops around its pixels. They fall in three kinds:
+
+- *Single pixels a step apart*, mostly in one channel: on the static world's textured faces (the
+  ground in front of the effects, a pillar, a wall behind the Hangul text, a tiled floor), on the
+  water seen in the navigation windows' views, and down one column of a translucent effect behind
+  a figure in `prontera_crowd`, where a colour or a texture coordinate interpolated a hair from
+  where it was rounds the other way. 1 to 10 a capture, and about 130 on `two_pass_alpha`'s floor
+  of finely patterned tiles.
+- *The shadow map's texel rows.* With shadows, `two_pass_alpha`'s floor has 24 pixels 2 to 5 steps
+  apart, spread along three rows of the screen where a row of the shadow map's texels meets the
+  floor, and `camera_level_view` and `hunter_traps` 6 and 2 single ones on lit ground: a caster's
+  vertices land a hair from where they did in the shadow map, and a texel at the lit edge of a
+  shadow's soft border takes the other depth. Without shadows none of these is more than a step.
+- *Samples along seams.* With 4 samples, `two_pass_alpha`'s floor differs along its tiles' seams
+  in groups of 3 at most, up to 34 steps: one sample of four takes the neighbouring tile's colour
+  where the seam lies within the floats' rounding of a sample's position.
+
+No sprite, Granny actor, interface or text pixel differs. Before the depths were handed over
+(above), every 4-sample capture of the Prontera view also had a row of eight pixels 2 to 6 steps
+apart near the top of the screen, which the wobble copied to other rows; with the depths handed
+over it is gone, so it was such a tie.
+
+The counters: draws, indirect draws, draw calls, primitives, modes sent and skipped, texture binds,
+vertex and texture bytes the same in every capture; the instance bytes grow by the particles' and
+ground tiles' corners' z, 624,268 over the set where they were 575,788 (`prontera_crowd` 99,340
+where it was 89,068, `two_pass_alpha` 66,772 where it was 60,308). `renderer_draw_scene` takes 0.06
+ms in `effects_instances` where it took 0.61 and 0.12 in `screen_wobble_1` where it took 0.68, the
+widening of texels falling from 0.55 ms to 0.02 (the frame that first shows the effects writes atlas
+cells); elsewhere the times stay within what the rounds spread over.
+
+The load scenes (`tests/scenes/load.py`, `RAGEXE_MSAA=4`, 600 measured frames, the arrivals 300):
+this client, the line's (e83fd345) and the Direct3D 9 baseline (`02fc9e5e` with
+`tests/scenes/load/d3d9_baseline.patch`, FreeType), one run of each scene a round, three rounds by
+turns, the frames pooled over the rounds; on a GTX 970 at 1,600 by 900, with two other agents
+building and running scenes on the machine. This client is the build before the depths were
+handed over and before textures not yet sent were cleared on the GPU (both above, measured apart
+against it). `frame_ms` in ms, the worst frame with its round and
+its frame in the stretch:
+
+| scene | objects | this client | worst | the line | worst | Direct3D 9 | worst |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,975 | 31.96 | 84.3 (1.44) | 37.33 | 89.0 (1.288) | 31.94 | 306.0 (3.59) |
+| `woe_choke` | 11,290 | 25.91 | 48.1 (3.187) | 29.41 | 78.9 (1.271) | 27.89 | 682.4 (3.239) |
+| `arrive_castle` | 7,028 | 27.40 | 285.6 (3.1) | 29.94 | 260.7 (3.1) | 24.26 | 257.1 (3.1) |
+| `bombers_ifrit` | 5,559 | 18.12 | 41.3 (3.586) | 18.33 | 95.1 (1.249) | 17.55 | 186.3 (3.395) |
+| `arrive_prontera` | 243 | 12.80 | 203.6 (3.1) | 13.62 | 181.5 (1.1) | 14.92 | 279.0 (3.25) |
+| `town_prontera` | 243 | 11.80 | 30.7 (3.249) | 15.74 | 90.0 (3.180) | 15.38 | 196.5 (3.82) |
+| `mvp_randgris` | 2,041 | 6.81 | 48.5 (1.436) | 7.07 | 58.5 (3.207) | 8.50 | 81.5 (3.3) |
+| `snow_lutie` | 837 | 6.06 | 31.3 (3.223) | 7.62 | 27.6 (2.300) | 9.62 | 239.3 (3.514) |
+| `mvp_baphomet` | 2,160 | 6.53 | 45.3 (3.62) | 7.27 | 35.8 (3.2) | 6.84 | 213.7 (3.15) |
+| `aoe_orc_dungeon` | 731 | 2.98 | 33.1 (3.53) | 3.07 | 36.1 (3.138) | 2.62 | 119.4 (3.6) |
+
+The machine's other work moved whole rounds: a scene's medians of the three rounds spread by 2 to
+5 ms in the crowded scenes (the Emperium room 30.3 to 35.1 ms on this client, 33.6 to 41.1 on the
+line's), and the worst frames (the Direct3D 9 client's of 300 to 680 ms among them) fell in rounds
+where another agent was busy. The parts of the frame that this phase does not touch show how far:
+the line's objects took 17.6 ms in the Emperium room where this client's took 15.1, with the same
+code. What the phase changes is the widening of texels: 0.27 ms a frame in the Emperium room where
+the line took 1.23, 0.23 at the choke (1.20), 0.86 arriving in the castle (2.27), 0.21 arriving in
+Prontera (1.10), 0.07 in Prontera (0.56) and 0.04 in Lutie (0.55); the rest of
+`renderer_draw_scene` is the same less what the machine took (6.13 ms in the Emperium room against
+7.14, which the objects' 16 % explains).
+
+Against Direct3D 9 (the medians; the parts in ms, this client / Direct3D 9):
+
+| scene | view | objects | effects | actors | draw scene | present | texels |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 17.31 / 18.55 | 15.09 / 15.92 | 2.27 / 2.59 | 3.01 / 3.27 | 6.40 / 6.20 | 2.14 / 0.35 | 0.27 / 0.00 |
+| `woe_choke` | 13.54 / 14.66 | 11.51 / 12.04 | 1.95 / 2.33 | 2.23 / 2.48 | 5.34 / 6.45 | 1.90 / 0.72 | 0.23 / 0.00 |
+| `arrive_castle` | 13.16 / 14.18 | 11.55 / 12.06 | 1.46 / 1.74 | 2.06 / 2.10 | 6.13 / 5.19 | 2.47 / 0.34 | 0.86 / 0.00 |
+| `bombers_ifrit` | 7.56 / 7.76 | 6.83 / 6.62 | 0.68 / 0.78 | 4.04 / 4.08 | 4.42 / 3.74 | 0.86 / 0.52 | 0.21 / 0.00 |
+| `arrive_prontera` | 9.36 / 10.84 | 7.82 / 8.34 | 1.48 / 1.93 | 0.09 / 0.09 | 1.40 / 2.68 | 0.90 / 0.18 | 0.21 / 0.00 |
+| `town_prontera` | 8.96 / 10.94 | 7.58 / 8.53 | 1.36 / 1.86 | 0.08 / 0.10 | 1.02 / 2.75 | 0.85 / 0.20 | 0.07 / 0.00 |
+| `mvp_randgris` | 2.32 / 2.78 | 2.11 / 2.33 | 0.01 / 0.01 | 0.52 / 0.51 | 0.98 / 1.85 | 2.23 / 0.79 | 0.05 / 0.00 |
+| `snow_lutie` | 4.22 / 5.66 | 3.58 / 4.14 | 0.57 / 0.92 | 0.22 / 0.31 | 0.52 / 2.57 | 0.55 / 0.21 | 0.04 / 0.00 |
+| `mvp_baphomet` | 2.44 / 3.30 | 2.03 / 2.30 | 0.37 / 0.50 | 0.55 / 0.56 | 1.11 / 1.66 | 1.49 / 0.17 | 0.06 / 0.00 |
+| `aoe_orc_dungeon` | 0.35 / 0.70 | 0.32 / 0.35 | 0.01 / 0.02 | 0.07 / 0.08 | 0.17 / 1.10 | 2.32 / 0.30 | 0.00 / 0.00 |
+
+In the crowds this client's frame is Direct3D 9's within what the rounds spread over, and shorter in
+the town and in the snow (11.8 ms against 15.4, 6.1 against 9.6), where `renderer_draw_scene` takes
+1.0 and 0.5 ms against Direct3D 9's 2.8 and 2.6. Its own
+renderer costs the main thread more where the crowd is largest: `renderer_draw_scene` and
+presenting take 8.5 ms in the Emperium room where Direct3D 9's take 6.6, 8.6 arriving in the castle
+against 5.5, 5.3 among the bombers against 4.3, almost all of it in presenting (2.1 to 2.5 ms
+against 0.35), which records the frame's passes into Vulkan's command buffer, copies the frame's
+records into the transfer buffer, submits and waits for the frame two before; Direct3D 9's driver
+does that work on a thread of its own. The first frame of an arrival takes 281 ms in the castle and
+186 in Prontera against Direct3D 9's 238 and 146: 19 and 22 ms of it widening texels where
+Direct3D 9 sent its 16-bit texels as they are (12.6 and 16.4 ms with the textures not yet sent
+cleared on the GPU, above).
+
+The load scenes' captures with `RAGEXE_MSAA=1`, the line's against this client's (one run each;
+the scenes give the same pictures run after run, but for 99 pixels of `mvp_randgris` in one of the
+measured build's three runs): twelve of the thirteen keep the budget, with 0 to 90 pixels more than
+a step apart, each alone or in twos, on the static world's faces and on effects drawn on the
+ground. The
+thirteenth, `arrive_castle`, has 50 such pixels (0.0035 % of the screen), 46 of them in one row (37
+and 9, at y 531 from x 1,213 to 1,260) along a straight edge of the static world, which lies within
+the floats' rounding of the row of pixel centres; with 4 samples that row is gone (11 pixels apart
+in that capture, each alone). A group one pixel thick along an edge is an edge's difference, which
+the budget holds to its share of the screen alone (the plan's Decisions), so it keeps the budget.
+Before the depths were handed over, `town_prontera` had a group of 445 (a figure's cloak turned behind its body),
+`arrive_prontera` 150 and stripes of two layers, `woe_choke` 35; and before the particles' were
+too, `town_prontera` kept groups of 34 where a level-99 aura's particles tie with the figure.
+
+**What goes to the GPU next.** A CPU profile of the result (VSDiagnostics' sampler at 4 kHz on a
+`build.bat dbg` build, one run of each scene cut to its measured stretch; the main thread's samples,
+times as shares of each run's median frame) says where the renderer's own time goes:
+
+| part | Emperium room (30.3 ms) | Prontera (11.2) | bombers (16.5) |
+|---|---|---|---|
+| presenting: recording the passes into Vulkan's command buffer | 1.26 ms | 0.37 | 0.42 |
+| presenting: the frame's records copied into the transfer buffer | 0.33 | 0.10 | 0.19 |
+| presenting: waiting for the GPU | 0.00 | 0.00 | 0.00 |
+| `renderer_draw_scene`: the quads' records (`gfx_draw_quad`) | 2.87 | 0.62 | 1.89 |
+| `renderer_draw_scene`: sorting the lists | 0.70 | 0.08 | 0.48 |
+| `renderer_draw_scene`: batches recorded | 0.75 | 0.19 | 0.45 |
+| effect primitives' triangles built and queued | 3.56 | 0.00 | 2.67 |
+| level-99 auras (stepped and drawn) | 1.51 | 1.81 | 0.38 |
+| particles drawn (the auras' among them) | 0.98 | 1.20 | 0.50 |
+
+The CPU's own waste outside the renderer, which other work fixes, is larger still: the sprite
+atlas's linear search (2.80, 0.35 and 0.72 ms), robe sprites looked for on disk every frame (1.42,
+3.20, 0.58), Lua calls per layer (1.18, 1.38, 0.32) and a linear search of the skills for every
+effect (2.0 ms in the Emperium room). From these numbers `plans/gpu-renderer.md` takes three
+phases: recording and submitting the frame on a thread of the device's own, with the records
+written once into the memory the GPU reads (about 2 ms of the Emperium room's main thread, where
+Direct3D 9's driver did that work on its own thread); the effect primitives and particle systems as
+parametric instances whose triangles the vertex shader makes (3.6 and 1.5 ms there, 2.7 among the
+bombers, 1.8 in Prontera), where their blending lets one entry stand for many in the sorted lists;
+and the 16-bit texels widened on the GPU (13 to 16 ms of an arrival's first frame).
+
+Checks: With the Khronos validation layer (synchronization validation on) and SDL's debug checks
+(`RAGEXE_GPU_DEBUG=1`), `test_gfx_gpu` at 1 and 4 samples, `test_quad_instances` (20,000 records a
+kind, both sample counts), `test_skin_instances` (both), `test_shadow_fit_gpu` and the scenes
+`camera_level_view`, `prontera_crowd`, `effects_instances`, `screen_wobble`, `window_resize`,
+`granny_actions` and `two_pass_alpha` at 1 and 4 samples run without a message but the layer's own
+note on its settings. That run found the skin test failing on a fuzzed pose of another seed than the
+suite's: a corner nearer than the near plane (depth -6.05, which clips it) held to the depth range's
+absolute bound; it counts such corners apart now, as `test_quad_instances` does. `build.bat check`
+passes (the include check over 1,863 files in 35 libraries, the link check over 1,148 objects, the
+shaders' check), and so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 336 tests and
+the oracle's 7. Not checked: Linux: the WSL build and the device's tests on Mesa's lavapipe did not
+run, as the machine had 4 GB of its 32 free while two other agents worked on it; macOS and Android
+were not built, and no Metal compiler has seen the shaders, so how SDL's fast-math MSL rounds them
+is not known. The effect gallery (`tools/effect_gallery.py`) did not run: the effect primitives'
+triangles, which the scene set and the load scenes show only some of, are held to the tolerance by
+`test_quad_instances` alone. The load scenes' times were measured on the build before the depths
+were handed over and textures not yet sent were cleared; the final build was timed against it on
+three scenes only (the two arrivals and the Emperium room, where the frames stayed within what the
+rounds spread over). Trilinear filtering, under which the atlas's pages have mipmaps, was checked by
+`test_gfx_gpu` only, in no capture. The GPU's own time was not measured, and no one played.

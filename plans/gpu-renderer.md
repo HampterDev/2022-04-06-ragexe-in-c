@@ -1,15 +1,17 @@
 # One renderer on SDL's GPU API
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
-resolution. Phases 2 to 6 are done on Windows: phase 5 draws the static world from records the GPU
-culls and fits its shadows and culls their casters on the GPU, and phase 6 draws sprites, effects
-and the UI as instances and skins Granny's actors on the GPU. On Linux, in WSL, the client and its
-tests build with GCC and pass, the device's own tests of phases 2 to 5 and of phase 6's instances
-among them on Mesa's lavapipe (Granny's skinning has not run there), and the scene harness of
+resolution. Phases 2 to 7 are done on Windows: phase 5 draws the static world from records the GPU
+culls and fits its shadows and culls their casters on the GPU, phase 6 draws sprites, effects and
+the UI as instances and skins Granny's actors on the GPU, and phase 7 holds every shader to a
+tolerance of the CPU's floats instead of their bits, sends a texture's changed rectangles alone and
+measured the result on the load scenes. On Linux, in WSL, the client and its tests build with GCC
+and pass, the device's own tests of phases 2 to 5 and of phase 6's instances among them on Mesa's
+lavapipe (Granny's skinning and phase 7's shaders have not run there), and the scene harness of
 phases 2 to 4 has run there, but no one has played on it. The Android client of phase 2 builds for
 both ABIs and draws the login screen on the x86_64 emulator (the host's GPU through gfxstream, and
 SwiftShader); no map has been drawn on Android. The macOS client has not been built or run on it,
-and no Metal compiler has seen its shaders. Phase 7 is next.
+and no Metal compiler has seen its shaders. Phase 8 is next.
 File references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
@@ -55,25 +57,25 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   computed in the vertex shaders from view depth.
 - **Quads and triangles are instances** (phase 6, first part). Everything the client draws but the
   static world and Granny's actors is a record of the frame's quads (`render/quads.c`), from which
-  the quad shader's vertex shader makes the vertices the CPU made before, bit for bit
-  (`render/shaders/exact.hlsli`): a sprite's from its quad's rows, rhw and turn; a particle's, an
-  effect primitive's triangle's and a ground cell tile's by projecting its points as
+  the quad shader's vertex shader makes the vertices the CPU made before, within the tolerance of
+  *Decisions* (`render/shaders/instances.hlsli`): a sprite's from its quad's rows, rhw and turn; a
+  particle's, an effect primitive's triangle's and a ground cell tile's by projecting its points as
   `renderer_project_vertex` did; everything else, which the client builds on the screen (the UI,
   STR effects around their anchors, the screen-space effect primitives, the cooldown pies), from
   the client's own vertices, copied once into the frame's upload.
 - **Granny's actors skinned on the GPU** (phase 6, second part). A model's meshes stay on the GPU
   in a vertex and an index buffer of their own, put up when a draw first takes the model; each frame
   an actor gives one pose (its bones' matrices, its meshes' matrix into the view, its light) among
-  the frame's quads, and the skin shader skins, lights and projects every vertex as the CPU did, in
-  plain arithmetic within a tolerance of the CPU's floats (`render/shaders/skin.hlsl`,
-  `render/skin_layout.c`); one mesh of several actors is one instanced draw.
+  the frame's quads, and the skin shader skins, lights and projects every vertex as the CPU did
+  (`render/shaders/skin.hlsl`, `render/skin_layout.c`); one mesh of several actors is one instanced
+  draw.
 - **The static world on the GPU** (phase 5, first half): a map's ground blocks and RSM model nodes
   in one vertex and one index buffer, their textures and lightmap pages in texture arrays of one
   size and number of mipmap levels each, a draw record per (block or node, texture run) and a
   transform slot per model and node (`render/static_world.c`, `render/world_layout.c`,
   `world/world_gpu.c`, `gfx_world_*`); the meshes and textures go up through a stream of their own,
   a bounded transfer buffer at a time. Each frame a compute pass computes every slot's view as the
-  CPU computed a node's matrix, to the bit, and two more cull the records against the view and
+  CPU computed a node's matrix, and two more cull the records against the view and
   compact each run of records with one texture array, lightmap array and cull mode into one
   indirect draw. A model's pose is the one its first tick of the frame left; a model that animates
   and of which the view, or the box whatever can shade the view lies in, keeps a record is ticked
@@ -94,10 +96,12 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   the playback and their light, `actor/granny.c`; one vertex of one monster's mesh is still skinned
   on the CPU, where its effect starts), the water's key among the sprites (one per cell in view), the
   particles', effect primitives' and ground cell tiles' points (projected on the GPU, the CPU
-  computing their rhw for the lists' order), STR effects and the screen-space effect primitives
-  (built on the screen around anchors the CPU projects), damage numbers and every 2D quad. The CPU
-  still walks the scene graph's leaves the view reaches, for the water's keys, the actors, and the
-  models' ticks and the poses and alpha-blended records it takes from them for the device.
+  computing their rhw for the lists' order, and the particles' and tiles' depth, as the sprites'
+  rows' depth, which the depth test compares by its bits), STR effects and the screen-space effect
+  primitives (built on the screen around anchors the CPU projects), damage numbers and every 2D
+  quad. The CPU still walks the scene graph's leaves the view reaches, for the water's keys, the
+  actors, and the models' ticks and the poses and alpha-blended records it takes from them for the
+  device.
 - **How it reaches the device:** 18 queues (`render/draw_queue.h`), flushed in a fixed order by
   `renderer_draw_lists`, each in its draw mode (`render/crenderer.c`), with the static world's
   passes drawn before the opaque lists' quads and the ground's after them. Instances are batched
@@ -114,10 +118,10 @@ File references drift as the code changes. Sizes are judgement, not measurement.
 - **Textures:** 16-bit 4444/1555 converted on the CPU (`render/csurface.c`) and widened to
   B8G8R8A8 when they go up, magenta keyed to alpha 0, mips made on the GPU; sprite atlas pages
   decoded from palette RLE on the CPU (`render/rp_atlas.c`) and kept as layers of texture arrays of
-  their size, placed by the main thread; UI canvases re-uploaded as 256-pixel tiles when they
-  change. The static world's textures and lightmap pages go into the layers of texture arrays of
-  its own, one per size and number of mipmap levels, made for the map; every other surface is a
-  texture of its own.
+  their size, placed by the main thread, only the cells written going up; UI canvases re-uploaded as
+  256-pixel tiles when they change. The static world's textures and lightmap pages go into the
+  layers of texture arrays of its own, one per size and number of mipmap levels, made for the map;
+  every other surface is a texture of its own.
 - **Measured:** each scene capture writes its frame's counters (`tests/scenes/README.md`).
   `prontera_crowd` made 1,174 draws (1,954 calls) and `camera_level_view` 3,345 with Direct3D 9;
   they make 613 and 574, of them 318 and 317 for the shadows (the depth pass and the casters, an
@@ -175,6 +179,8 @@ Nothing below this floor is supported by a second path.
     and `main0` in MSL.
   - The SPIR-V runs in every Windows and Linux test and capture; the MSL has not met a Metal
     compiler.
+- The shaders are plain arithmetic, held to a tolerance of the CPU code they replaced by their
+  tests, and their pictures to a budget (*Decisions*).
 - Per-draw data comes through an instance-rate vertex attribute holding the draw's index, never
   through `SV_InstanceID`: SDL warns that `first_instance` does not reach built-in IDs the same way
   on every API (`SDL_GPUIndirectDrawCommand` in `SDL_gpu.h`).
@@ -250,10 +256,10 @@ Nothing below this floor is supported by a second path.
   the frame first draws it, as today drew it after its first tick; a model the walk did not reach
   whose moving part the view holds, or whose moving part can shade the view, is ticked first, so
   that no part is drawn, nor casts its shadow, in a pose the frame did not tick. A compute pass
-  multiplies each slot's matrix into its parent's view as the CPU did, to the bit, so that the
-  vertices land on the pixels they did.
+  multiplies each slot's matrix into its parent's view as the CPU did, so that the vertices land on
+  the pixels they did.
 - The water's cells stay on the GPU, one quad each, and the vertex shader raises their corners by
-  the frame's waves as the CPU did each frame, to the bit. The water is drawn among the sprites, one
+  the frame's waves as the CPU did each frame. The water is drawn among the sprites, one
   cell after another in the order of their depth, so the CPU still keys the cells it sees; drawing
   them all at once would change the picture wherever water and sprites overlap.
 
@@ -314,7 +320,7 @@ a model out of view whose shadow can fall into it is ticked (`renderer_shadow_re
 ### Sprites, actors and effects
 
 - Actor sprites, damage numbers, item and screen sprites, particles and STR effect quads become
-  instances whose vertices the vertex shader makes exactly as the CPU made them. The sprites'
+  instances whose vertices the vertex shader makes as the CPU made them. The sprites'
   projection stays on the CPU, which needs their screen quad anyway: picking builds its rectangles
   from it, name tags and balloons take the anchor, and callers add depth tweaks
   (`render_object_clip_to_quad`, `renderer_project_point`); a sprite's instance is that quad.
@@ -322,16 +328,11 @@ a model out of view whose shadow can fall into it is ticked (`renderer_shadow_re
   around one projected anchor and drawn from their vertices. Sprite atlas pages become layers of
   texture arrays.
 - Granny actors are skinned in the vertex shader from bone matrices in the frame's upload; bone
-  and mesh matrices and the light vector stay on the CPU. Their shader need not give the CPU's
-  floats to the bit: it is held to a tolerance of the CPU code it replaced instead.
-- A shader that must reproduce the CPU's floats does so to the bit only under strict rules
-  (`render/shaders/exact.hlsli`, which the quads', the static world's and the water's shaders
-  share): `precise` on every operation, assigned to a variable first; no fused multiply-add,
-  `mul()` or dot product; division through a correctly rounded helper; the C code's double
-  expressions computed exactly and rounded once; constants given by their bits. Under them a vertex
-  shader puts sprites on the CPU's pixels on NVIDIA's driver and Mesa's lavapipe alike (20 million
-  vertices, pictures equal at 1x and 4x); a shader written plainly moves about a pixel a scene to
-  another sprite, ten with multisampling, and samples another texel in about twenty.
+  and mesh matrices and the light vector stay on the CPU.
+- What the CPU decides from its own floats stays its own: the lists' order (the sort keys), which
+  draws are flat, and the depths a figure's layers and what stands with it tie at (the sprites'
+  rows, the particles' and ground tiles' corners), so that the GPU's rounding (*Shaders*) moves a
+  vertex by a hair but never reorders a list nor turns a figure's layers about.
 - What the CPU still builds per frame is a list of instances and a few matrices, uploaded once.
 
 ### 2D, UI and text
@@ -571,15 +572,98 @@ recorded.
   (`granny_actions`) are within the captures' budget of the commit before, with and without
   multisampling, and the effect gallery's frames are the same (`docs/custom-review.md`).
 
-### Phase 7: measure and settle (small)
+### Phase 7: measure and settle (done)
 
-- Record the counters again on the same scenes and write the result into the review entry. Remove
-  what the phases left unused.
-- Measure on the load scenes (`tests/scenes/load`: the War of Emperium in the Emperium room and at a
-  choke, MVP fights with Earthquake, bombers on an MVP, AoE levelling, a busy Prontera, arriving in
-  a crowd, Lutie's snow) with `tests/scenes/load.py`, against the Direct3D 9 client's numbers on
-  the same scenes (`02fc9e5e` with `tests/scenes/load/d3d9_baseline.patch`, built as
-  `tests/scenes/README.md` says), and decide from them which CPU jobs left per object go to the GPU.
+- The shaders are plain arithmetic within the tolerance of *Decisions*: `exact.hlsli` (every
+  operation `precise`, a correctly rounded division, exact products emulated, constants by their
+  bits), the device's check of the GPU's rounding when it is made, the tests' check of the rules in
+  the SPIR-V and the vertex fog's table (`render/vertex_fog.c`) are gone, the shaders computing the
+  fog's step from the rhw. The quad vertex shader is 34 KB of SPIR-V where it was 288 KB, the
+  client's shaders 218 KB where they were 503 KB, and a start with an empty driver cache takes
+  2.0 s where it took 2.7. The depths the depth test decides ties by stay the CPU's: the client
+  hands over the sprites' rows' z and the particles' and ground tiles' corners' z, which it
+  computes from the rhw it has for their keys (plain arithmetic turned whole overlaps of a figure's
+  layers about in the load scenes). The tests hold every shader to the tolerance against the same
+  CPU fixtures; the scene set's captures, with 1 and 4 samples and with and without shadows, are
+  within the budget of the line's, and so are the load scenes' with one sample but for one row of
+  46 pixels along an edge of the static world in the castle, which lies within the floats'
+  rounding of a row of pixel centres (`docs/custom-review.md`).
+- What the phases left: a texture's changed texels go up as the rectangles written, each alone
+  (`render/dirty_rects.c`), and a texture not yet sent as what was written on it, its other texels
+  cleared on the GPU, so that a cell drawn into a sprite atlas page no longer sends the page; a
+  layer with mipmaps makes its levels from its own top level, copied on the GPU. The atlas's
+  16-bit texels stay widened to 32 bits on the CPU: SDL's Metal driver takes 16-bit formats only on
+  Apple's GPUs, and the floor's Intel Macs would need the widening as a second path.
+- Measured on the load scenes against the line and Direct3D 9 (`docs/custom-review.md`, "The
+  shaders within a tolerance"; three rounds by turns, 4 samples, a GTX 970): this client's frame is
+  Direct3D 9's within what the rounds spread over in the crowds (32.0 ms against 31.9 in the
+  Emperium room, 18.1 against 17.6 among the bombers) and shorter in Prontera (11.8 against 15.4)
+  and in Lutie's snow (6.1 against 9.6). Its renderer costs the main thread more where the crowd
+  is largest: `renderer_draw_scene` and presenting take 8.5 ms in the Emperium room where Direct3D
+  9's take 6.6, 5.3 among the bombers against 4.3, most of the difference in presenting (2.1 ms
+  against 0.35). A CPU profile of the result (VSDiagnostics, the measured stretch of one run of
+  each) splits it: presenting is recording the frame's passes into Vulkan's command buffer (1.3 ms
+  in the Emperium room, with SDL's and the driver's work) and copying the frame's records into
+  the transfer buffer (0.3 ms), never waiting for the GPU; `renderer_draw_scene` is making the
+  quads' records (2.9 ms), sorting the lists (0.7) and batching (0.8). Before them, in
+  `view_on_render`, the effect primitives' triangles are built and queued one by one (3.6 ms of
+  the Emperium room's 30.3 in the profile, 2.7 of the bombers' 16.5), and the level-99 auras'
+  particles take 1.5 ms there and 1.8 of Prontera's 11.2. The rest of the objects' time is the
+  CPU's own waste outside the renderer, fixed elsewhere: the sprite atlas's linear search (2.8 ms
+  in the Emperium room), robe sprites checked on disk every frame (3.2 ms in Prontera), Lua calls
+  per layer (1.4 ms in Prontera), and a linear search of the skills for every effect (2.0 ms in the
+  Emperium room).
+
+### Phase 8: the frame recorded off the main thread (medium)
+
+- What it takes from the main thread: presenting, which records the frame's passes into Vulkan's
+  command buffer and copies the frame's records into the transfer buffer: 2.0 ms of the Emperium
+  room's frame, 0.9 in Prontera, 0.8 among the bombers, where Direct3D 9's driver did that work on
+  a thread of its own; and the records' second copy (0.6 ms in the Emperium room), since the
+  frame's quads are written into memory of the device's, zeroed first, and copied again.
+- A render thread of the device's own acquires the frame's command buffer, records the passes and
+  submits them, from a copy of what the frame recorded (its steps, draws and uploads), while the
+  main thread goes on to the next frame; the records are written once, into the transfer buffer
+  the frame's copy pass reads, mapped when the frame begins. SDL lets a command buffer be used only
+  on the thread that acquired it and the swapchain be acquired only on the window's thread, so the
+  render thread draws the screen's texture and the main thread's present puts the last finished
+  screen into the swapchain; a frame is shown a frame after it is recorded, as Direct3D 9's driver
+  queued frames.
+- Checked: the scene set's captures the line's to the pixel (the GPU's work is the same), the
+  validation layer's synchronization checks, and the load scenes' presenting time on the main
+  thread.
+
+### Phase 9: effect primitives and particles as parametric instances (large)
+
+- What it takes from the CPU: building and queueing the effect primitives' triangles one by one
+  (their corners, each triangle's key, an entry and a record each: 3.6 ms of the Emperium room's
+  frame, 2.7 of the bombers'), and the level-99 auras' particles (1.5 ms in the Emperium room, 1.8
+  in Prontera).
+- One instance a primitive (a ring of strips, a cylinder, a quad of a mode) or a particle system,
+  holding what the CPU steps (a ring's radius, span, turn, tilt and column heights; a system's
+  particles as the CPU spawned them, with the original's random numbers), from which the vertex
+  shader makes every triangle or particle, as the corner sets of phase 6 already let one primitive
+  hand its parameters where the set holds its corners.
+- First settled: the original sorted every triangle and particle by its own key among the
+  alpha-blended lists, and one instance is one entry. The harness counts, for each primitive and
+  particle kind, how it blends and how often its entries interleave with other entries in the lists;
+  a kind drawn additively whose entries do not interleave becomes an instance, the others keep
+  their entries (the CPU can compute their keys from the parameters alone).
+- Checked: the effect gallery's frames and the load scenes within the budget, `test_effect_trace`'s
+  digest unchanged, the instances' triangles against the CPU code they replace in a test of their
+  own.
+
+### Phase 10: texels widened on the GPU (small)
+
+- What it takes from the CPU: widening the client's 16-bit texels to 32 bits as they go up, 13 to
+  16 ms of the first frame of an arrival in a crowd (Direct3D 9 sent them as they are) and 0.2 to
+  0.5 ms a frame in the crowds.
+- The rectangles written go up as they are, 16 bits a texel, into a texture of 16-bit integers the
+  device keeps for staging, and a pass of their own widens them into the texture by bit replication
+  as `render/texel_convert.c` does (the colour key for a system surface): one path on every GPU of
+  the floor, where SDL's Metal driver has no 16-bit colour formats on Intel Macs.
+- Checked: every texel of each format against `texel_convert` through a probe, and the captures
+  to the pixel.
 
 ## Decisions
 
@@ -596,6 +680,27 @@ recorded.
 - **Shadows are fitted on the GPU** from what the frame shows, with today's look.
 - **Text is FreeType's on every platform.**
 - **Android needs Vulkan.**
+- **The GPU's floats are held to a tolerance of the CPU's, not to its bits** (decided 2026-11-12).
+  Every shader is plain arithmetic, and its tests hold it to the CPU code it replaced: a vertex
+  within 1/16 of a pixel, its rhw and its depth within 1e-5 relative (nearer than twice the near
+  plane, the depth within 1e-5 of the depth range), texture coordinates within 1/4096, colours
+  within a step. Every capture is held to a budget against the capture before: the pixels more
+  than a colour step apart at most 0.05 % of the screen, each group of such pixels that touch at
+  most 16, and every capture that differs looked at. A group one pixel thick along an edge of a
+  triangle (a row or column of pixel centres that the floats' rounding puts on the other side of
+  the edge) is an edge's difference, held to the share alone. Exactness stays where it is cheap
+  and decides something discrete: the C code compiled without contraction (`-ffp-contract=off`),
+  the sort keys and the flatness the CPU computes, the depth of the sprites' rows and of the
+  particles' and ground tiles' corners, which the CPU computes from the rhw it has for their keys
+  and hands over
+  (the layers of a figure, and what is drawn where it stands, lie at depths that tie, and the depth
+  test decides between them by the bits), and the shadow fit's squares and snapped texels, which
+  are its C reference's by construction. The CPU's floats to the bit take a correctly
+  rounded division and emulated exact products in every vertex, a check of the GPU's rounding at
+  start-up and rules checked in the SPIR-V; they make the quad vertex shader 288 KB of SPIR-V where
+  plain arithmetic makes it 34 KB, and a start with an empty driver cache 0.7 s slower; neither
+  Vulkan nor Metal's fast-math MSL promises them; and they buy pictures that plain arithmetic draws
+  within a few pixels a scene.
 
 ## Risks
 
@@ -603,9 +708,9 @@ recorded.
   harness only runs where there is a GPU, and CI has none (scene captures need game data and stay
   off CI anyway).
 - **Matching the reference.** Pre-transformed vertices must keep Direct3D 9's pixel centres and
-  top-left fill rule, as the GL backend does (`docs/portability.md`); GPU mips and RGBA8 sampling of
-  quantised texels differ from CPU mips by small amounts. Each phase's review entry accounts for the
-  pixels that change.
+  top-left fill rule, as the passes' viewport and `snapped_ndc` keep them (`docs/portability.md`,
+  "Pixels"); GPU mips and RGBA8 sampling of quantised texels differ from CPU mips by small amounts.
+  Each phase's review entry accounts for the pixels that change.
 - **The GPU shadow fit moves when the picture does.** It follows the receivers on screen (the
   ground and the models; characters are not receivers), so the camera and animated model nodes move
   it; the range and the squares kept from frame to frame and the texel snapping hold the edges
@@ -629,12 +734,19 @@ recorded.
   19 ms. A frame waits for the frame two before it before it takes its command buffer, so in steady
   play it takes the cache that frame gave back; a frame that makes many textures can still make SDL
   start a new cache that a later frame fills once.
-- **Shaders that must match the CPU or Direct3D 9.** `records.hlsli`'s `transform()` for the
-  static world's records and casters matches Direct3D 9 only where the driver fuses
-  its multiply-adds, as NVIDIA's does and lavapipe does not; the shaders of phases 5 and 6 that
-  must match the CPU follow the rules under *Sprites, actors and effects* (`exact.hlsli`), and a
-  driver may still part from C where those rules do not reach, as NVIDIA's remainder of a negative
-  int did (`water.hlsli` takes it of the magnitude).
+- **The GPU's floats are not the CPU's.** Every shader is plain arithmetic within the tolerance of
+  *Decisions*, which its tests hold it to (`test_quad_instances`, `test_static_world_maps`,
+  `test_skin_instances`, the fog in `test_gfx_gpu`), and every capture is checked against the
+  budget. A decision the GPU takes from its own floats can fall the other way from the CPU's where
+  its input lies within the rounding of a boundary: a flat draw's corner may land on the pixel
+  boundary next to the CPU's in a multisampled pass, a record whose box touches a plane of the view
+  be culled otherwise than `sw_record_in_view` decides (so that a model whose part only touches
+  the view's edge is drawn in the pose of its last tick), a wave's corner take the next degree, a
+  vertex's fog the next step; the tests count these, and a long straight edge that lies within the
+  rounding of a row of pixel centres, or of samples, changes the whole row. A device that rounds or
+  divides less exactly than NVIDIA's driver moves more of them; Metal's fast-math MSL has not been
+  tried. The static world's vertices likewise land within the tolerance of Direct3D 9's, not on
+  its bits: the GPU computes the views and multiplies the points in its own floats.
 - **Threads.** The loader thread's texture creation moves to the main thread's upload (see *Memory
   and uploads*); SDL's drivers lock creation internally, but the API does not promise it, so the
   plan does not lean on it.
@@ -642,14 +754,15 @@ recorded.
   here; each is recorded as not needed, and fixes above `gfx.h` and the window layer still pick as
   before.
 - **Tests that stub `gfx_*`.** About 14 of them change with each API change in phases 2 to 4.
-- **Floats bit for bit on every GPU.** The instances' vertices and the static world's views, cull
-  and water are the CPU's only where the GPU rounds to nearest even, which Vulkan leaves to the
-  device (the device checks it when it is made), where the C code is compiled without contraction
-  (the CMake builds give GCC and Clang `-ffp-contract=off`), and on Metal only as far as SDL's
-  fast-math MSL keeps `div_rn`'s tests; no Metal compiler has run the shaders yet.
+- **The CPU's floats on every platform.** The sort keys and the flatness the CPU computes decide
+  the lists' order and which draws move onto pixel boundaries; they are the same on every platform
+  only where the C code rounds each float operation once, in the order written: MSVC's
+  `/fp:precise` on x64, GCC and Clang with `-ffp-contract=off`, which the CMake builds pass.
 - **Storage buffers a shader stage.** Every Vulkan device takes four
   (`maxPerStageDescriptorStorageBuffers`), and every shader keeps to them, what it reads packed into
   four buffers; the device refuses a shader that reads more (`STORAGE_BUFFERS_MAX`), so a pass added
   later must pack its own too.
-- **Start-up with a cold driver cache.** The quad vertex shader is large: its 147 pipelines take
-  about a second to make the first time a driver sees them (980 ms on a GTX 970).
+- **Start-up with a cold driver cache.** The first start after a driver update compiles every
+  pipeline: a run of the scene harness that starts the client and captures the login screen takes
+  2.01 s with an empty NVIDIA shader cache on a GTX 970 and 1.59 s with it filled (2.67 and 1.59 s
+  with phase 6's quad vertex shader of 288 KB of SPIR-V, which phase 7 brought to 34 KB).

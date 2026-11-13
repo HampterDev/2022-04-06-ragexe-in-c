@@ -642,9 +642,8 @@ pair of the eight blend factors a target without alpha of its own distinguishes.
 until what they are drawn with changes, as Direct3D 9's draws were until a state changed. Fog is
 computed in the vertex shaders and interpolated across the triangle: for the static world's
 records from the view depth as the Direct3D 9 client's mesh shader did; for the quads the
-original's vertex fog to the bit, the 1/255 step its CPU computed from a vertex's rhw, which the
-shader looks up in the fog's table of the rhw at which each step begins (`render/vertex_fog.c`,
-the library `vertex-fog`), since a GPU's division need not round as the CPU's does.
+original's vertex fog, the 1/255 step its CPU computed from a vertex's rhw, which the shader
+computes from the rhw within a step of the CPU's (`src/render/shaders/quad.hlsli`, `vertex_fog`).
 
 A frame is recorded, not drawn. Each draw becomes a record of what its mode and the draw give the
 shaders (the combination, the alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes
@@ -654,14 +653,14 @@ that changed since they last went up, widened to B8G8R8A8 (`render/texel_convert
 `texel-convert` library), go into one staging area. Every quad and triangle the client draws, the
 static world and Granny's actors aside, is an instance (`render/gfx.h`, `gfx_draw_quad` and
 `gfx_draw_vertices`): a record of the frame's quads (`render/quads.c`, the library `quads`) from
-which the quad shader's vertex shader makes the vertices the client's C code made before, to the
-bit: a sprite's from its quad's rows, their rhw and its turn (`render_object_submit_spr_quad`'s
-vertices); a particle's, an effect primitive's triangle's and a ground cell tile's (the cursor's
+which the quad shader's vertex shader makes the vertices the client's C code made before, within
+the tolerance below: a sprite's from its quad's rows, their rhw and its turn
+(`render_object_submit_spr_quad`'s vertices); a particle's, an effect primitive's triangle's and a ground cell tile's (the cursor's
 cell, ground skills' areas, the navigation path and its marker) by projecting its points as
 `renderer_project_vertex` did, with the rhw and depth rules the client applied to those vertices
 (the rhw added to or set, the depth set or moved, an effect quad stood up on the screen about its
-point), the CPU computing only their rhw, which the lists sort by and which say whether one lies
-flat; and the rest, which the client builds on the screen, from the client's own vertices, an
+point), the CPU computing their rhw, which the lists sort by and which say whether one lies flat
+(and for the particles and ground tiles their z, below); and the rest, which the client builds on the screen, from the client's own vertices, an
 axis-aligned rectangle with one rhw and colour into a short record of its own. An effect
 primitive's triangles name corners of a set (`struct GfxCorners`) that the triangles of one quad
 share, put among the frame's quads by the first of them drawn, so that a triangle's record is a
@@ -697,13 +696,18 @@ draw of the static world takes its record as a uniform, the wobble finds its rec
 instance-rate vertex attribute that holds its index (a draw's first instance), never through the
 instance ID. Textures keep their pixels on the CPU in the client's own format, so the model
 loader's thread creates, locks and fills them without calling SDL; the main thread uploads them
-when a draw first uses them after a change, and a texture changed after a draw used it in the same
-frame takes its new texels in a copy pass of its own between the render passes, so that the
-earlier draw keeps the old ones. Mipmaps are made on the GPU (`SDL_GenerateMipmapsForGPUTexture`)
-whenever the texels of a texture that has them go up; a layered texture's go up whole into a
-scratch texture of their own, whose levels SDL makes so, and are then copied into the layer, so
-that a layer's levels are a texture's on every backend. The windows that composite (the menu
-icons, the party plates) draw into a render target of their own, which their quad reads as a
+when a draw first uses them after a change, as the rectangles that changed (`render/dirty_rects.c`,
+the library `dirty-rects`: a texture keeps up to eight apart, merging those that touch, and where
+there is no room the two whose union wastes least, so that the cells written on a sprite atlas's
+page go up each alone and not the page), and a texture changed after a draw used it in the same
+frame takes its new texels in a copy pass of its own between the render passes, so that the earlier
+draw keeps the old ones. Mipmaps are made on the GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever
+the texels of a texture that has them go up; a layered texture's top level is copied on the GPU
+from its layer into a scratch texture of its own, the rectangles that changed go up over it, SDL
+makes its levels, and they are copied into the layer, so that a layer's levels are a texture's on
+every backend while only what changed goes up. A texture not yet sent goes up as what was written
+on it, its other texels cleared on the GPU to what its zero pixels widen to (`clear_texels`). The
+windows that composite (the menu icons, the party plates) draw into a render target of their own, which their quad reads as a
 texture (`texture_create_target`, `render/render_clients.c`). The screen wobble (the player's
 status 0x108) is a step of the frame: a copy of the screen's picture so far, then a pass over the
 whole screen that draws it again with each row taken from the row and the shift a table gives
@@ -736,16 +740,16 @@ it does not use (depth clamping, clip distances, indirect draws from a first ins
 without them run it. A GPU device is never lost: the client has no lost-device handling, and a
 window size the device has no memory for is tried again when the size changes.
 
-Pixels: every vertex lands where Direct3D 9 put it. Every pass's viewport is its target moved by
-half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's
+Pixels: every vertex lands where Direct3D 9 put it, within the shaders' tolerance (below). Every
+pass's viewport is its target moved by half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's
 (the wobble's pass, which draws whole pixels of a copy of the screen, covers the whole target from
 0, 0);
 since a viewport must lie within its texture (SDL's GPU API, Metal), a target's textures are a pixel
 wider and taller than the target, and a stage that samples a target scales its texture coordinates
 to match and, when it clamps, keeps them off the margin. The static world's records take the
-matrices the Direct3D 9 client drew with, computed in floats as it computed them and multiplied in
-the order Direct3D 9's shader compiler did, and the GPU divides and moves their points as Direct3D
-9's did; the casters take the cascades' matrices, which the GPU fits (below).
+matrices the Direct3D 9 client drew with, which the GPU computes as its CPU did, and the GPU
+divides and moves their points as Direct3D 9's did; the casters take the cascades' matrices, which
+the GPU fits (below).
 Pre-transformed vertices are snapped in the vertex shader to the 1/256 of a pixel Direct3D 9's
 rasterizer snapped them to, rounding to even, and handed over a 1/1024 of a pixel further on, so
 that the GPU's own viewport transform, which lands within a few ten-thousandths of a pixel of that
@@ -790,8 +794,7 @@ copied into the layer, as the sprite atlas's layers are, so that a layer's level
 on every backend. A texture reload (`texcache_reload_all`) makes the device's world again from the
 new surfaces. Each frame three compute passes run before the render passes: one computes every
 slot's view and its place in the world from the camera's view, the model's matrix, the nodes' own
-matrices and the frame's matrices of the animated nodes, as the CPU computed a node's matrix, to the
-bit
+matrices and the frame's matrices of the animated nodes, as the CPU computed a node's matrix
 (`world_transform.hlsl`); the next culls the records against the frustum of the view, a group of
 threads to each run of records that share their texture array, lightmap array and cull mode,
 giving each kept record its place in the frame's index buffer of them, one after the other, and
@@ -805,10 +808,10 @@ it, the indirect draws having no first instance to tell it (the device asks for 
 `drawIndirectFirstInstance`). A draw of the world is recorded with the world's generation and left
 out where the world was made again before it went up; uploads that fail make the world again, and
 after two in a row the device takes no more of it until the next map. The water's cells are kept
-likewise, and the vertex shader raises each by the frame's waves (`water.hlsli`). The passes that
-must give the CPU's floats follow the rules of `exact.hlsli` (below), and `test_static_world_maps`
-checks that their SPIR-V has no float operation the rules forbid, and their results against the C
-on real maps.
+likewise, and the vertex shader raises each by the frame's waves (`water.hlsli`).
+`test_static_world_maps` holds the passes' results to the tolerance (below) of the C on real maps:
+every vertex through its slot, the records each cull keeps but those whose box lies within the
+rounding of a plane, and the water's quads.
 
 The shadows are the device's own (`render/gfx.h`, `GfxShadow`): the client gives each frame the
 light, its view and the box the static world's draw records lie in, the animated ones in the
@@ -856,16 +859,12 @@ it by its normal as the CPU did (rigid meshes by the normal they lie with) and p
 `renderer_project_vertex` projected the CPU's corners, to the pixel and depth the CPU gave them; the
 fragment shader is the quads'. Consecutive draws of one model, mode and textures are one draw: an
 actor's meshes that run on in the model's indices, or one mesh of several actors, instanced, each
-instance a header among the frame's quads naming its pose and the draw's record. Unlike the quads,
-the skinning is plain shader arithmetic, not the CPU's floats to the bit:
+instance a header among the frame's quads naming its pose and the draw's record.
 `tests/test_skin_instances.c` compares every corner of every model in the game folder's converted
 files, in their animations and fuzzed poses, with the CPU code it replaced
-(`tests/fixtures/granny_reference.c`) within a tolerance (the pixel within 1/16, rhw within 1e-5
-relative, the depth within 1e-5 of itself from twice the near plane on and within 1e-5 of the depth
-range nearer than that, where a relative bound would measure the CPU's own cancellation and a depth
-buffer compares absolute depths, texture coordinates within 1/4096, the colour within a step), and
-draws actors both ways through `render/gfx_gpu.c`. A model whose skeleton has more than 256 bones,
-which the shim samples no animation for, is not drawn.
+(`tests/fixtures/granny_reference.c`) within the tolerance (below), and draws actors both ways
+through `render/gfx_gpu.c` within the captures' budget. A model whose skeleton has more than 256
+bones, which the shim samples no animation for, is not drawn.
 
 The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, which builds their vertices
 from their records, `instances.hlsli`; `skin.hlsl` for Granny's actors, `skin.hlsli`; `world.hlsl`
@@ -873,37 +872,48 @@ for the static world's records with their shadows, `world_depth.hlsl` for their 
 the shadow fit takes, `world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the
 water, which draws its pixels as the quads draw theirs (`quad.hlsli`: the texture stages'
 combinations, an atlas layer, the vertex fog and the alpha test); `rows.hlsl` for the screen wobble,
-`rounding.hlsl` for the device's check of the GPU's rounding, and the compute passes
-`world_transform.hlsl`, `world_cull.hlsl` and `world_compact.hlsl`; `shadow_range.hlsl`,
-`shadow_extents.hlsl` and `shadow_cascades.hlsl`, the shadow fit; and what they share in
-`records.hlsli`, `quad.hlsli`, `instances.hlsli`, `skin.hlsli`, `world.hlsli`, `water.hlsli`,
-`shadow_fit.hlsli`, `cascades.hlsli` (the fit's result, as the world's shaders read it) and
-`exact.hlsli`; test programs' own shaders in `tests/shaders`).
-A shader that must give the CPU's floats bit for bit (the quads' vertices, the static world's views
-and cull, the water's quads) follows the rules of `exact.hlsli`: `precise` on every operation,
-assigned to a variable first; no fused multiply-add, `mul()` or dot product; division through a
-correctly rounded helper; constants given by their bits. They rest on the GPU rounding an addition,
-subtraction or multiplication to nearest, ties to even: Vulkan promises the rounding correct but
-leaves its mode to the device, unless the shader declares RoundingModeRTE, which shaders for Vulkan
-1.0 cannot; every GPU they have run on does. The device checks it when it is made (`check_rounding`,
-`render/shaders/rounding.hlsl`: sums, differences, products and quotients that tell the modes apart,
-against the CPU's) and logs where a GPU does not, whose quads and world then land a pixel apart from
-Direct3D 9's now and then. They rest on the C code too: each of its float operations must round
-once, in the order written. MSVC's `/fp:precise` contracts nothing on x64; GCC and Clang contract
-unless compiled with `-ffp-contract=off`, which the CMake builds pass (above). On Metal SDL compiles
-the MSL with fast math, under which `div_rn`'s test for an infinite quotient is not assured.
-`tests/test_quad_instances.c` checks the quad shader's SPIR-V for an operation the rules forbid (an
-unmarked one, scalar or vector, a division not `div_rn`'s, a fused multiply-add, a matrix or dot
-product), runs the quad shader's `quad_vertex` on the GPU against the CPU code it replaced
-(`tests/fixtures/quad_reference.c`: the sprites', the particles' and the sprite particles' vertices
-and `snap_flat`) for millions of records and every divisor from 1 to 2, the instances made by the
-client's own functions, and draws scenes through `render/gfx_gpu.c` both as instances and as the
-reference's vertices, pixel for pixel. The quad vertex shader is large (256 KB of SPIR-V): its 147
-pipelines take about a second to make where the driver has none of them cached (980 ms on a GTX
-970), 4 ms where it has. `tools\shaders\build.bat` compiles each with the Vulkan SDK's `dxc` to
-SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through SPIRV-Cross's C API
-with the resource indices SDL's Metal driver binds, and writes `<name>.h` beside the source: both as
-byte arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the compilers' versions, and
+and the compute passes `world_transform.hlsl`, `world_cull.hlsl` and `world_compact.hlsl`;
+`shadow_range.hlsl`, `shadow_extents.hlsl` and `shadow_cascades.hlsl`, the shadow fit; and what they
+share in `records.hlsli`, `quad.hlsli`, `instances.hlsli`, `skin.hlsli`, `world.hlsli`,
+`water.hlsli`, `projection.hlsli` (the client's 4x3 matrices and its projection of a point),
+`shadow_fit.hlsli` and `cascades.hlsli` (the fit's result, as the world's shaders read it); test
+programs' own shaders in `tests/shaders`).
+The shaders are plain arithmetic: they give the floats of the C code they stand for within a
+tolerance, not to the bit (`plans/gpu-renderer.md`, Decisions). A vertex lies within 1/16 of a
+pixel of the C's, its rhw within 1e-5 of the C's relative, its depth within 1e-5 relative from
+twice the near plane on and within 1e-5 of the depth range nearer than that (where a bound relative
+to the depth would measure the C's own cancellation, and a depth buffer compares absolute depths),
+its texture coordinates within 1/4096 and its colour within a step; the C's floats are themselves
+rounded, so where a test computes the exact value of the same arithmetic (in double), a GPU's value
+that is not within the tolerance of the C's may be within it, and within the rounding any float
+computation of it may carry, of the exact one (a point near the eye seen from a camera thousands of
+units away has a view depth that is the small sum of large terms). `tests/test_quad_instances.c`
+runs the quad shader's `quad_vertex` on the GPU against the CPU code it replaced
+(`tests/fixtures/quad_reference.c`) for millions of records, made by the client's own functions,
+and draws scenes through `render/gfx_gpu.c` both as instances and as the reference's vertices;
+`tests/test_static_world_maps.c` and `tests/test_skin_instances.c` hold the static world's passes
+and Granny's skinning likewise. Pictures are held to a budget: the pixels more than a colour step
+apart at most 0.05 % of the screen, in groups of at most 16 that touch, every differing capture
+looked at. A decision the GPU takes from its own floats can fall the other way from the C's where
+the input lies within the rounding of a boundary: a flat draw's corner may land on the pixel
+boundary next to the C's in a multisampled pass, a record whose box touches a plane of the view be
+culled otherwise than `sw_record_in_view` decides, a wave's corner take the next degree, a vertex's
+fog the next step; the tests count those. What decides the lists' order and which draws are flat
+stays on the CPU, from its own floats, and so does the depth of what the depth test must decide by
+its bits: a figure's sprite layers lie at depths that tie, and so do the particles and ground tiles
+drawn where it stands, so the client computes the sprites' rows' z and the particles' and tiles'
+corners' z from the rhw it has for their keys (`renderer_project_depth`) and hands them over
+(`GFX_DEPTH_CORNERS`); the shadow fit's squares and texels are its C reference's to the bit
+(above). The C code's floats are the same on every platform where each
+operation rounds once, in the order written: MSVC's `/fp:precise` contracts nothing on x64; GCC and
+Clang contract unless compiled with `-ffp-contract=off`, which the CMake builds pass (above). The
+quad vertex shader is 34 KB of SPIR-V and the client's shaders 218 KB: a run of the scene harness
+that starts the client and captures the login screen takes 2.0 s where NVIDIA's driver has none of
+the pipelines cached and 1.6 s where it has (a GTX 970). `tools\shaders\build.bat` compiles each
+with the Vulkan SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL
+through SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes
+`<name>.h` beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo`
+needs, the compilers' versions, and
 hashes of the source with its includes, of the tool's own source (which holds the flags and the
 binding rules) and of the arrays. The tool fails when a resource is not where SDL's binding rules
 put it. The headers are committed, so builds need no shader compiler; `tools/shaders/check.py` (in

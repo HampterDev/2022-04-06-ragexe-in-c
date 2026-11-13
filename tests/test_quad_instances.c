@@ -3,30 +3,49 @@
    replaced (tests/fixtures/quad_reference.c: the vertices render_object_submit_spr_quad,
    particle_render, sprite_particle_render, the effect primitives' prim_draw_quad and the ground's
    cell tiles made, and the multisampled pass's snap_flat, as they were) and the client's own C
-   code (renderer_project_vertex, renderer_project_depth):
+   code (renderer_project_vertex, renderer_project_depth), within the tolerance plans/gpu-renderer.md
+   sets for the GPU's floats:
 
-   - The shaders' SPIR-V: no operation that would let the GPU round otherwise than the CPU in the
-     code that must match it (render/shaders/instances.hlsli and exact.hlsli, which
-     tests/shaders/quad_probe.hlsl runs alone) but the upright triangle's few (QUAD_PROBE_BARE),
-     which round alike in any order, and in quad.hlsl's vertex shader only those and the operations
-     phase 4's quad shader had too (bare_operations).
-   - The exact operations alone against the C expressions they stand for: division over every
-     divisor from 1 to 2 and beyond, renderer_project_depth, renderer_project_vertex.
    - Records of every kind, made as the client makes them (sprites by render_object_submit_spr_quad
      itself, actor/sprite_quad.c; particles by particle_render and sprite_particle_render,
      effects/particle.c and sprite_particle.c; the effect primitives' triangles by prim_draw_quad,
      effects/rag/effect_prim_draw.c, in each of its modes; the ground's cell tiles by
      world/ground_draw.c; the rest by render/quads.c), realistic, edge and fuzzed, read on the
-     GPU's vertex stage by quad_vertex, the vertex the quad shader draws: every corner's x, y, z,
-     rhw, colour and both stages' coordinates bit for bit, as made and as moved onto pixel
-     boundaries (QUAD_SNAP), against the reference; and on the CPU the rhw the lists sort sprites,
-     particles, triangles and tiles by and whether a projected one is flat.
+     GPU's vertex stage by quad_vertex, the vertex the quad shader draws, as made and as moved onto
+     pixel boundaries (QUAD_SNAP), against the reference (compare): every corner's x and y within
+     1/16 of a pixel, its rhw within 1e-5 of the CPU's relative, its depth within 1e-5 relative
+     from 0.5 on and 1e-5 absolute nearer, each colour byte within a step, both stages'
+     coordinates within 1/4096; beyond the guard band of 8192 pixels its place within 1e-5 of its
+     largest coordinate. Where the client hands the depth over (a sprite's rows, a particle's or a
+     ground tile's corners: GFX_DEPTH_CORNERS), the shader takes it as it is.
+     The CPU's floats are rounded too. Where the device projects the corner, one that is not
+     within the tolerance of the CPU's is held to the exact value of the same arithmetic (in
+     double) instead: within the tolerance, or twice the CPU's own distance from it, and the
+     rounding any float computation of it may carry (exact_point: a few units in the last place of
+     each sum's terms, carried through the division by the view depth, which for a point near the
+     eye seen from a camera thousands of units away is the small sum of large terms). A snapped
+     corner's place may lie a pixel from the CPU's within that, and its values, which its
+     triangle's plane gives it, differ besides by how far that plane moves with the GPU's corners
+     as made and by the rounding of the plane's evaluation (plane_slack, plane_bound). Such corners
+     are counted.
+     Counted apart, not compared: a corner the CPU puts behind the eye, outside the depth range
+     (which clips it) or makes no number of, which draws nothing; a snapped corner whose plane is
+     ill-conditioned (its triangle's longest edge squared more than 64 times its area, or a pixel's
+     move longer than its shortest edge), whose values there are the rounding's; and a snapped
+     corner on the pixel boundary next to the CPU's where the corner it moves from lies within
+     reach of the snap's threshold, so that the GPU's own corner is on the other side of it. A
+     triangle the GPU finds without area within the rounding of its corners moves none of them
+     (instances.hlsli, no_area).
+     On the CPU, which decides the lists' order and flatness, the rhw the lists sort sprites,
+     particles, triangles and tiles by and whether a projected one is flat are the reference's to
+     the bit.
    - Pictures through render/gfx_gpu.c itself: scenes of sprites drawn as the instances the client
      now makes them (from a layered texture, an array's layer) and as the reference's vertices (from
      a plain texture of the same texels), and of projected quads drawn as instances and as the
-     vertices renderer_project_vertex makes, pixel for pixel, at the sample count asked for.
+     vertices renderer_project_vertex makes, at the sample count asked for, within the captures'
+     budget (tests/picture_budget.h).
 
-   usage: test_quad_instances msaa [seed] [records per kind] [exact operations] [scenes]
+   usage: test_quad_instances msaa [seed] [records per kind] [scenes]
    Exits 77 where no GPU device can be made. */
 #include "actor/types.h"
 #include "actor/sprite_render.h"
@@ -51,9 +70,9 @@
 #include "std/string.h"
 #include "diag/perf.h"
 #include "render/shaders/shader_code.h"
-#include "render/shaders/quad.h"
 #include "shaders/quad_probe.h"
 #include "fixtures/quad_reference.h"
+#include "picture_budget.h"
 #include "effects/rag/rag_effect.h"
 #include "actor/attr_state.h"
 #include "actor/weather.h"
@@ -292,7 +311,7 @@ static float coordinate(int kind, int size)
     if (kind == KIND_EDGES) {
         static const float edges[] = {0.0f, -0.5f, 0.5f, -1.0f, 1.0f, 255.996f, 32767.5f, -32768.0f, 40000.25f};
         /* a hair under half a 256th of a pixel, whose 256 times plus a half rounds up to 1 in float,
-           and its neighbours (exact.hlsli, pixel_boundary) */
+           and its neighbours (instances.hlsli, pixel_boundary) */
         static const uint32_t halves[] = {0x3affffffu, 0xbaffffffu, 0x3b000000u, 0x3b000001u, 0x3afffffeu};
         if (chance(5))
             return float_of(halves[irange(0, 4)]);
@@ -321,7 +340,7 @@ static float some_rhw(int kind)
 
 static SDL_GPUDevice *g_dev;
 static SDL_GPUGraphicsPipeline *g_probe;
-static SDL_GPUTexture *g_targets[4];
+static SDL_GPUTexture *g_targets[3];
 static SDL_GPUBuffer *g_corners, *g_identity, *g_offsets, *g_quads;
 
 /* What a batch of records holds for the probe: the frame's quads as the device makes them, the
@@ -380,7 +399,7 @@ static void probe_init(void)
     SDL_GPUGraphicsPipelineCreateInfo info;
     SDL_GPUVertexBufferDescription vb[3];
     SDL_GPUVertexAttribute va[3];
-    SDL_GPUColorTargetDescription ct[4];
+    SDL_GPUColorTargetDescription ct[3];
     SDL_GPUTextureCreateInfo tex;
     int i;
     need(vs && fs, "probe shaders");
@@ -396,7 +415,7 @@ static void probe_init(void)
         va[i].buffer_slot = (Uint32)i;
         va[i].format = SDL_GPU_VERTEXELEMENTFORMAT_UINT;
     }
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 3; i++)
         ct[i].format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
     info.vertex_shader = vs;
     info.fragment_shader = fs;
@@ -407,7 +426,7 @@ static void probe_init(void)
     info.primitive_type = SDL_GPU_PRIMITIVETYPE_POINTLIST;
     info.rasterizer_state.enable_depth_clip = true;
     info.target_info.color_target_descriptions = ct;
-    info.target_info.num_color_targets = 4;
+    info.target_info.num_color_targets = 3;
     g_probe = SDL_CreateGPUGraphicsPipeline(g_dev, &info);
     SDL_ReleaseGPUShader(g_dev, vs);
     SDL_ReleaseGPUShader(g_dev, fs);
@@ -419,7 +438,7 @@ static void probe_init(void)
     tex.width = tex.height = SIDE;
     tex.layer_count_or_depth = 1;
     tex.num_levels = 1;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         g_targets[i] = SDL_CreateGPUTexture(g_dev, &tex);
         need(g_targets[i] != NULL, "probe targets");
     }
@@ -433,7 +452,7 @@ static void probe_init(void)
 static void probe_free(void)
 {
     int i;
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 3; i++)
         SDL_ReleaseGPUTexture(g_dev, g_targets[i]);
     SDL_ReleaseGPUBuffer(g_dev, g_corners);
     SDL_ReleaseGPUBuffer(g_dev, g_identity);
@@ -442,9 +461,11 @@ static void probe_free(void)
     SDL_ReleaseGPUGraphicsPipeline(g_dev, g_probe);
 }
 
-/* Runs the batch's instances through the probe for its results `mode` (0: quad_vertex's, 1: the
-   exact operations'); out gets each vertex's 16 floats (4 vertices an instance). */
-static void probe_run(const struct Batch *b, int mode, float *out)
+/* Runs the batch's instances through the probe; out gets each vertex's 12 floats, quad_vertex's
+   (4 vertices an instance): x, y, z, rhw; the colour; both stages' coordinates. */
+#define PROBE_FLOATS 12
+
+static void probe_run(const struct Batch *b, float *out)
 {
     Uint32 n = (Uint32)b->ninstances, targetBytes = SIDE * SIDE * 16;
     Uint32 sizes[4], offsets[4], total = 0, i;
@@ -454,7 +475,7 @@ static void probe_run(const struct Batch *b, int mode, float *out)
     SDL_GPUCommandBuffer *cmd;
     SDL_GPUCopyPass *copy;
     SDL_GPUFence *fence;
-    SDL_GPUColorTargetInfo ct[4];
+    SDL_GPUColorTargetInfo ct[3];
     SDL_GPURenderPass *rp;
     SDL_GPUBufferBinding bind[3];
     Uint32 probe[4];
@@ -478,7 +499,7 @@ static void probe_run(const struct Batch *b, int mode, float *out)
     tinfo.size = total;
     up = SDL_CreateGPUTransferBuffer(g_dev, &tinfo);
     tinfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    tinfo.size = targetBytes * 4;
+    tinfo.size = targetBytes * 3;
     down = SDL_CreateGPUTransferBuffer(g_dev, &tinfo);
     need(up && down, "transfer buffers");
     p = SDL_MapGPUTransferBuffer(g_dev, up, false);
@@ -505,13 +526,13 @@ static void probe_run(const struct Batch *b, int mode, float *out)
     }
     SDL_EndGPUCopyPass(copy);
     SDL_zero(ct);
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         ct[i].texture = g_targets[i];
         ct[i].load_op = SDL_GPU_LOADOP_CLEAR;
         ct[i].store_op = SDL_GPU_STOREOP_STORE;
         ct[i].cycle = true;
     }
-    rp = SDL_BeginGPURenderPass(cmd, ct, 4, NULL);
+    rp = SDL_BeginGPURenderPass(cmd, ct, 3, NULL);
     SDL_BindGPUGraphicsPipeline(rp, g_probe);
     bind[0].buffer = g_corners;
     bind[1].buffer = g_offsets;
@@ -520,14 +541,13 @@ static void probe_run(const struct Batch *b, int mode, float *out)
     SDL_BindGPUVertexBuffers(rp, 0, bind, 3);
     SDL_BindGPUVertexStorageBuffers(rp, 0, &g_quads, 1);
     probe[0] = SIDE;
-    probe[1] = (Uint32)mode;
-    probe[2] = 0;
-    memcpy(&probe[3], &step, 4);
+    memcpy(&probe[1], &step, 4);
+    probe[2] = probe[3] = 0;
     SDL_PushGPUVertexUniformData(cmd, 0, probe, sizeof probe);
     SDL_DrawGPUPrimitives(rp, 4, n, 0, 0);
     SDL_EndGPURenderPass(rp);
     copy = SDL_BeginGPUCopyPass(cmd);
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         SDL_GPUTextureRegion src;
         SDL_GPUTextureTransferInfo dst;
         SDL_zero(src);
@@ -545,8 +565,8 @@ static void probe_run(const struct Batch *b, int mode, float *out)
     SDL_ReleaseGPUFence(g_dev, fence);
     p = SDL_MapGPUTransferBuffer(g_dev, down, false);
     for (i = 0; i < n * 4; i++)
-        for (t = 0; t < 4; t++)
-            memcpy(out + (size_t)i * 16 + t * 4, p + (size_t)t * targetBytes + (size_t)i * 16, 16);
+        for (t = 0; t < 3; t++)
+            memcpy(out + (size_t)i * PROBE_FLOATS + t * 4, p + (size_t)t * targetBytes + (size_t)i * 16, 16);
     SDL_UnmapGPUTransferBuffer(g_dev, down);
     SDL_ReleaseGPUTransferBuffer(g_dev, up);
     SDL_ReleaseGPUTransferBuffer(g_dev, down);
@@ -591,8 +611,7 @@ static void batch_case(struct Batch *b, uint32_t *words, int n, int snap)
 
 /* ---- the comparison ---- */
 
-/* the same float, bit for bit, or both not a number: which NaN an operation makes is the
-   hardware's, and a vertex with one covers nothing either way */
+/* the same float, bit for bit, or both not a number: what the CPU decides from its own floats */
 static int same(float a, float b)
 {
     return bits(a) == bits(b) || (a != a && b != b);
@@ -620,53 +639,317 @@ static void expect_of(const struct ReferenceVertex *r, struct Expect *e)
     e->v[11] = r->v1;
 }
 
-static const char *const g_fieldNames[12] = {"x", "y", "z", "rhw", "r", "g", "b", "a", "u0", "v0", "u1", "v1"};
-
-struct Tally {
-    long instances, vertices, differ[2][12], printed, keys, flat;
+/* One record and what each of its four corners should come back as, made and snapped; whether it
+   is a triangle (its corner 3 is its corner 2); and what its corners are without the rounding of
+   the C's floats */
+struct Case {
+    struct Expect made[4], snapped[4];
+    int corners;
+    double exact[4][4];  /* x, y, z and rhw as made without rounding where the device projects
+                            the corner (exact_corners), else the CPU's own */
+    double bound[4][4];  /* how far a float computation of them may lie from those: 0 where the CPU's
+                            are the exact ones */
 };
 
-/* the probe's 16 floats of a vertex, as made (mode 0) or snapped (1): r0 (x, y, z, rhw), r1 (the
-   colour), r2 (uv) */
-static int compare(struct Tally *t, int mode, const float *got, const struct Expect *want, const char *what)
+/* the tolerance (plans/gpu-renderer.md, Decisions) and the guard band within which a corner's place
+   is held to pixels */
+#define PIXEL_TOLERANCE (1.0 / 16)
+#define RELATIVE_TOLERANCE 1e-5
+#define UV_TOLERANCE (1.0 / 4096)
+#define GUARD_BAND 8192.0
+/* four units in the last place of a float, relative: what each of a few float operations may round */
+#define ROUNDING (4.0 / 16777216.0)
+
+/* Per kind of record: the largest differences, as made ([0]) and snapped ([1]), and the corners
+   counted apart */
+struct Tally {
+    long instances, vertices, printed[2], keys, flat;
+    long beyond[2];      /* corners beyond the tolerance */
+    long undrawable[2];  /* the CPU's corner behind the eye, outside the depth range or not a number:
+                            nothing drawn, not compared */
+    long bounded[2];     /* beyond the tolerance of the CPU's, within the rounding of the exact value */
+    long illPlane;       /* snapped from an ill-conditioned plane: not compared */
+    long off[2];         /* beyond the guard band: held to RELATIVE_TOLERANCE of its largest coordinate */
+    long across;         /* snapped onto the boundary next to the CPU's, from a corner within the
+                            tolerance of the snap's threshold */
+    double pixel[2], rhw[2], depth[2], nearDepth[2], uv[2], offRelative[2];
+    int colour[2];
+};
+
+static double relative(double got, double want)
 {
-    int f, bad = 0;
-    for (f = 0; f < 12; f++)
-        if (!same(got[f], want->v[f])) {
-            t->differ[mode][f]++;
-            if (t->printed < 16) {
-                t->printed++;
-                printf("  %s, %s: %s cpu %.9g gpu %.9g\n", what, mode ? "snapped" : "as made", g_fieldNames[f],
-                       want->v[f], got[f]);
-            }
-            bad = 1;
+    double scale = fabs(want) > 1e-30 ? fabs(want) : 1e-30;
+    return fabs(got - want) / scale;
+}
+
+static void most(double *into, double d)
+{
+    if (d > *into || d != d)
+        *into = d;
+}
+
+/* The triangle a snapped corner of the case takes its plane from (instances.hlsli, snapped; the
+   reference's snap_flat): (0, 1, 2) for corners 0 to 2, (2, 1, 3) for corner 3 and for corners 1
+   and 2 where the CPU found the first without area, of the CPU's own corners as made, into k.
+   Answers whether its plane is well-conditioned: its longest edge squared at most 64 times its
+   area, and its shortest edge no shorter than the pixel a corner moves at most. */
+static int snap_triangle(const struct Case *cs, int corner, int k[3])
+{
+    const float *a, *b, *c;
+    double dx1, dy1, dx2, dy2, det, e1, e2, e3, longest, shortest;
+    float fx1, fy1, fx2, fy2, fdet;
+    k[0] = corner == 3 ? 2 : 0;
+    k[1] = 1;
+    k[2] = corner == 3 ? 3 : 2;
+    a = cs->made[k[0]].v;
+    b = cs->made[k[1]].v;
+    c = cs->made[k[2]].v;
+    fx1 = b[0] - a[0];
+    fy1 = b[1] - a[1];
+    fx2 = c[0] - a[0];
+    fy2 = c[1] - a[1];
+    fdet = fx1 * fy2 - fx2 * fy1;
+    if (fdet > -1e-6f && fdet < 1e-6f && (corner == 1 || corner == 2) && cs->corners == 4) {
+        k[0] = 2;
+        k[2] = 3;
+        a = cs->made[2].v;
+        c = cs->made[3].v;
+    }
+    dx1 = (double)b[0] - a[0];
+    dy1 = (double)b[1] - a[1];
+    dx2 = (double)c[0] - a[0];
+    dy2 = (double)c[1] - a[1];
+    det = fabs(dx1 * dy2 - dx2 * dy1);
+    e1 = dx1 * dx1 + dy1 * dy1;
+    e2 = dx2 * dx2 + dy2 * dy2;
+    e3 = (dx2 - dx1) * (dx2 - dx1) + (dy2 - dy1) * (dy2 - dy1);
+    longest = e1 > e2 ? e1 : e2;
+    longest = e3 > longest ? e3 : longest;
+    shortest = e1 < e2 ? e1 : e2;
+    shortest = e3 < shortest ? e3 : shortest;
+    return det > 0.0 && longest <= 64.0 * det && shortest >= 1.0;
+}
+
+/* How far value f (of the probe's 12) of triangle k's plane, of the CPU's corners as made, moves at
+   (px, py) when the corners move by up to `shift` pixels and their values by up to `value`: the
+   magnitudes of the point's barycentric weights times the gradient times the shift and the value's
+   move, to first order. */
+static double plane_slack(const struct Case *cs, const int k[3], int f, double px, double py, double shift,
+                          double value)
+{
+    const float *a = cs->made[k[0]].v, *b = cs->made[k[1]].v, *c = cs->made[k[2]].v;
+    double dx1 = (double)b[0] - a[0], dy1 = (double)b[1] - a[1], dx2 = (double)c[0] - a[0];
+    double dy2 = (double)c[1] - a[1], det = dx1 * dy2 - dx2 * dy1, ox = px - a[0], oy = py - a[1];
+    double d1 = (double)b[f] - a[f], d2 = (double)c[f] - a[f];
+    double gx = (d1 * dy2 - d2 * dy1) / det, gy = (d2 * dx1 - d1 * dx2) / det;
+    double l1 = (ox * dy2 - oy * dx2) / det, l2 = (oy * dx1 - ox * dy1) / det;
+    return ((fabs(gx) + fabs(gy)) * shift + value) * (fabs(1.0 - l1 - l2) + fabs(l1) + fabs(l2));
+}
+
+/* How far a float evaluation of value f of triangle k's plane at (px, py) may lie from the exact
+   one: ROUNDING of the values its corners weigh in (the magnitudes of the point's barycentric
+   weights), times the corners' largest coordinate over the triangle's shortest edge, by which the
+   rounding of a coordinate moves the weights. */
+static double plane_bound(const struct Case *cs, const int k[3], int f, double px, double py)
+{
+    const float *a = cs->made[k[0]].v, *b = cs->made[k[1]].v, *c = cs->made[k[2]].v;
+    double dx1 = (double)b[0] - a[0], dy1 = (double)b[1] - a[1], dx2 = (double)c[0] - a[0];
+    double dy2 = (double)c[1] - a[1], det = dx1 * dy2 - dx2 * dy1, ox = px - a[0], oy = py - a[1];
+    double l1 = (ox * dy2 - oy * dx2) / det, l2 = (oy * dx1 - ox * dy1) / det;
+    double e1 = sqrt(dx1 * dx1 + dy1 * dy1), e2 = sqrt(dx2 * dx2 + dy2 * dy2);
+    double e3 = sqrt((dx2 - dx1) * (dx2 - dx1) + (dy2 - dy1) * (dy2 - dy1)), shortest = fmin(e1, fmin(e2, e3));
+    double corners = fmax(fmax(fmax(fabs(a[0]), fabs(a[1])), fmax(fabs(b[0]), fabs(b[1]))),
+                          fmax(fabs(c[0]), fabs(c[1])));
+    double largest = fmax(fmax(fabs(px), fabs(py)), corners);
+    double values = fmax(fabs(a[f]), fmax(fabs(b[f]), fabs(c[f])));
+    return ROUNDING * values * (fabs(1.0 - l1 - l2) + fabs(l1) + fabs(l2)) * (1.0 + largest / shortest);
+}
+
+/* value f of triangle k's plane, of the CPU's corners as made, at (px, py), in double */
+static double plane_exact(const struct Case *cs, const int k[3], int f, double px, double py)
+{
+    const float *a = cs->made[k[0]].v, *b = cs->made[k[1]].v, *c = cs->made[k[2]].v;
+    double dx1 = (double)b[0] - a[0], dy1 = (double)b[1] - a[1], dx2 = (double)c[0] - a[0];
+    double dy2 = (double)c[1] - a[1], det = dx1 * dy2 - dx2 * dy1, ox = px - a[0], oy = py - a[1];
+    double d1 = (double)b[f] - a[f], d2 = (double)c[f] - a[f];
+    return a[f] + (d1 * dy2 - d2 * dy1) / det * ox + (d2 * dx1 - d1 * dx2) / det * oy;
+}
+
+/* whether the snap of a corner at v (instances.hlsli, pixel_boundary: v to 256ths rounding halves
+   up, then the boundary before the next pixel centre) changes within `reach` of v: a whole pixel
+   less one 512th, k - 1/512, lies that near */
+static int near_threshold(double v, double reach)
+{
+    double t = floor(v + 1.0 / 512) - 1.0 / 512, u = t + 1.0;
+    return fabs(v - t) <= reach || fabs(v - u) <= reach;
+}
+
+/* Whether `gpu` keeps the tolerance `tolerance` of `want`, the CPU's value (0), or, where `exact`
+   is the value without rounding, `bound` of it (the rounding a float computation of it may carry)
+   and the tolerance, or twice the CPU's own distance from it if that is more (1); `slack` more
+   besides either way. Answers 2 where neither holds. */
+static int within(double gpu, double want, double exact, double bound, double tolerance, double slack)
+{
+    double own = 2.0 * fabs(want - exact);
+    if (fabs(gpu - want) <= tolerance + slack)
+        return 0;
+    return fabs(gpu - exact) <= (tolerance > own ? tolerance : own) + bound + slack ? 1 : 2;
+}
+
+/* The probe's 12 floats of corner `corner` of the case, as made (mode 0) or snapped (1), against
+   what it should be; `made` the probe's floats of the case's four corners as made (within: the
+   exact value where the device projects the corner; a snapped corner's values from its plane
+   besides by how far that plane moves with the GPU's corners as made, plane_slack). Answers
+   whether it is within the tolerance. */
+static int compare(struct Tally *t, int mode, const float *got, const float *made, const struct Case *cs, int corner,
+                   const char *what)
+{
+    const float *cpu = cs->made[corner].v, *w = mode ? cs->snapped[corner].v : cpu;
+    double exact[12], bound[12], pixel = 0.0, uv = 0.0, shift = 0.0, slack[12];
+    int f, colour = 0, bad = 0, drawable, moved, k[3], i, how = 0;
+    drawable = w[3] == w[3] && w[3] > 0.0f && w[3] < 3.4e38f && w[0] == w[0] && w[1] == w[1] && w[2] == w[2]
+               && fabs(w[0]) < 3.4e38 && fabs(w[1]) < 3.4e38 && w[2] >= 0.0f && w[2] <= 1.0f;
+    if (!drawable) {
+        t->undrawable[mode]++;
+        return 1;
+    }
+    for (f = 0; f < 12; f++) {
+        exact[f] = f < 4 && !mode ? cs->exact[corner][f] : w[f];
+        bound[f] = f < 4 && !mode ? cs->bound[corner][f] : 0.0;
+        slack[f] = 0.0;
+    }
+    moved = mode && (got[0] != cpu[0] || got[1] != cpu[1] || w[0] != cpu[0] || w[1] != cpu[1]);
+    if (mode) {
+        /* a snapped corner's place is the pixel boundary at most a pixel from its own place, its rhw
+           its own */
+        for (f = 0; f < 2; f++) {
+            exact[f] = cs->exact[corner][f];
+            bound[f] = cs->bound[corner][f] + 1.0;
         }
-    return bad;
+        exact[3] = cs->exact[corner][3];
+        bound[3] = cs->bound[corner][3];
+        if (!moved) {
+            exact[2] = cs->exact[corner][2];
+            bound[2] = cs->bound[corner][2];
+        }
+    }
+    if (moved) {
+        double reach;
+        if (!snap_triangle(cs, corner, k)) {
+            t->illPlane++;
+            return 1;
+        }
+        for (i = 0; i < 3; i++) {
+            const float *g = made + k[i] * PROBE_FLOATS, *c = cs->made[k[i]].v;
+            double d = fabs((double)g[0] - c[0]) > fabs((double)g[1] - c[1]) ? fabs((double)g[0] - c[0])
+                                                                                : fabs((double)g[1] - c[1]);
+            shift = d > shift ? d : shift;
+        }
+        /* the plane's values move with the GPU's corners and with the GPU's boundary, where that
+           lies elsewhere within the bound of the place */
+        for (f = 2; f < 12; f++)
+            if (f != 3) {
+                double moveX = fabs((double)got[0] - w[0]), moveY = fabs((double)got[1] - w[1]), value = 0.0;
+                for (i = 0; i < 3; i++)
+                    value = fmax(value, fabs((double)made[k[i] * PROBE_FLOATS + f] - cs->made[k[i]].v[f]));
+                slack[f] = (plane_slack(cs, k, f, w[0], w[1], shift, value)
+                            + fabs(plane_exact(cs, k, f, w[0] + 1.0, w[1]) - plane_exact(cs, k, f, w[0], w[1])) * moveX
+                            + fabs(plane_exact(cs, k, f, w[0], w[1] + 1.0) - plane_exact(cs, k, f, w[0], w[1])) * moveY)
+                           * (f >= 4 && f < 8 ? 255.0 : 1.0);
+                exact[f] = plane_exact(cs, k, f, w[0], w[1]);
+                bound[f] = plane_bound(cs, k, f, w[0], w[1]) * (f >= 4 && f < 8 ? 255.0 : 1.0);
+            }
+        reach = PIXEL_TOLERANCE + fmax(fabs(cpu[0] - cs->exact[corner][0]), fabs(cpu[1] - cs->exact[corner][1]))
+                + fmax(cs->bound[corner][0], cs->bound[corner][1]);
+        if ((fabs((double)got[0] - w[0]) == 1.0 && near_threshold(cpu[0], reach))
+            || (fabs((double)got[1] - w[1]) == 1.0 && near_threshold(cpu[1], reach))) {
+            /* the GPU's corner on the other side of the snap's threshold: the values its plane gives
+               there are another point's */
+            t->across++;
+            return 1;
+        }
+    }
+    for (f = 4; f < 8; f++) {
+        int d = abs((int)floor(got[f] * 255.0 + 0.5) - (int)floor(w[f] * 255.0 + 0.5));
+        if (got[f] != got[f])
+            d = 255;
+        if (d > colour)
+            colour = d;
+        i = within(got[f] * 255.0, floor(w[f] * 255.0 + 0.5), exact[f] * 255.0, bound[f], 1.0, slack[f]);
+        how = i > how ? i : how;
+    }
+    for (f = 8; f < 12; f++) {
+        most(&uv, fabs((double)got[f] - w[f]));
+        i = within(got[f], w[f], exact[f], bound[f], UV_TOLERANCE, slack[f]);
+        how = i > how ? i : how;
+    }
+    if (fabs(w[0]) <= GUARD_BAND && fabs(w[1]) <= GUARD_BAND) {
+        most(&pixel, fabs((double)got[0] - w[0]));
+        most(&pixel, fabs((double)got[1] - w[1]));
+        most(&t->pixel[mode], pixel);
+        for (f = 0; f < 2; f++) {
+            i = within(got[f], w[f], exact[f], bound[f], PIXEL_TOLERANCE, 0.0);
+            how = i > how ? i : how;
+        }
+    } else {
+        double scale = fabs(w[0]) > fabs(w[1]) ? fabs(w[0]) : fabs(w[1]);
+        double r = (fabs((double)got[0] - w[0]) > fabs((double)got[1] - w[1]) ? fabs((double)got[0] - w[0])
+                                                                                : fabs((double)got[1] - w[1])) / scale;
+        t->off[mode]++;
+        most(&t->offRelative[mode], r);
+        for (f = 0; f < 2; f++) {
+            i = within(got[f], w[f], exact[f], bound[f], RELATIVE_TOLERANCE * scale, 0.0);
+            how = i > how ? i : how;
+        }
+    }
+    most(&t->rhw[mode], relative(got[3], w[3]));
+    i = within(got[3], w[3], exact[3], bound[3], RELATIVE_TOLERANCE * fabs(w[3]), 0.0);
+    how = i > how ? i : how;
+    if (fabs(w[2]) >= 0.5) {
+        most(&t->depth[mode], relative(got[2], w[2]));
+        i = within(got[2], w[2], exact[2], bound[2], RELATIVE_TOLERANCE * fabs(w[2]), slack[2]);
+    } else {
+        most(&t->nearDepth[mode], fabs((double)got[2] - w[2]));
+        i = within(got[2], w[2], exact[2], bound[2], RELATIVE_TOLERANCE, slack[2]);
+    }
+    how = i > how ? i : how;
+    bad = how == 2;
+    t->bounded[mode] += how == 1;
+    most(&t->uv[mode], uv);
+    if (colour > t->colour[mode])
+        t->colour[mode] = colour;
+    if (bad) {
+        t->beyond[mode]++;
+        if (t->printed[mode] < 6) {
+            t->printed[mode]++;
+            printf("  %s, %s: cpu", what, mode ? "snapped" : "as made");
+            for (f = 0; f < 12; f++)
+                printf(" %.9g", w[f]);
+            printf("; gpu");
+            for (f = 0; f < 12; f++)
+                printf(" %.9g", got[f]);
+            printf("; exact %.9g %.9g %.9g %.9g\n", cs->exact[corner][0], cs->exact[corner][1], cs->exact[corner][2],
+                   cs->exact[corner][3]);
+        }
+    }
+    return !bad;
 }
 
 static int report(const char *name, const struct Tally *t)
 {
-    int m, f, clean = !t->keys && !t->flat;
-    printf("%s: %ld records, %ld vertices; sort keys differ %ld, flatness %ld; differ as made:", name, t->instances,
-           t->vertices, t->keys, t->flat);
-    for (m = 0; m < 2; m++) {
-        if (m)
-            printf("; snapped:");
-        for (f = 0; f < 12; f++) {
-            printf(" %ld", t->differ[m][f]);
-            clean = clean && !t->differ[m][f];
-        }
-    }
-    printf("\n");
+    int m, clean = !t->keys && !t->flat && !t->beyond[0] && !t->beyond[1];
+    printf("%s: %ld records, %ld vertices; sort keys differ %ld, flatness %ld;", name, t->instances, t->vertices,
+           t->keys, t->flat);
+    for (m = 0; m < 2; m++)
+        printf(" %s: pixel %.3g, rhw %.3g, depth %.3g (nearer %.3g), uv %.3g, colour %d, off the guard band %ld "
+               "(%.3g), not drawn %ld, within the rounding of the exact value %ld, beyond %ld;",
+               m ? "snapped" : "as made", t->pixel[m], t->rhw[m], t->depth[m], t->nearDepth[m], t->uv[m], t->colour[m],
+               t->off[m], t->offRelative[m], t->undrawable[m], t->bounded[m], t->beyond[m]);
+    printf(" ill-conditioned planes %ld, across a snap's threshold %ld\n", t->illPlane, t->across);
     return clean;
 }
 
 /* ---- cases ---- */
-
-/* One record and what each of its four corners should come back as, made and snapped */
-struct Case {
-    struct Expect made[4], snapped[4];
-};
 
 /* the reference's vertices of a primitive, made and snapped as a flat draw's in a multisampled
    pass: a strip's triangles (0, 1, 2) and (2, 1, 3), a triangle's (0, 1, 2) */
@@ -677,10 +960,15 @@ static void expect_primitive(const struct ReferenceVertex *in, int corners, stru
     int i;
     memcpy(moved, in, (size_t)corners * sizeof *in);
     reference_snap_flat(moved, corners, corners == 4 ? strip : NULL, corners == 4 ? 6 : 3);
+    c->corners = corners;
     for (i = 0; i < 4; i++) {
-        int k = i < corners ? i : 2;
+        int k = i < corners ? i : 2, f;
         expect_of(&in[k], &c->made[i]);
         expect_of(&moved[k], &c->snapped[i]);
+        for (f = 0; f < 4; f++) {
+            c->exact[i][f] = c->made[i].v[f];
+            c->bound[i][f] = 0.0;
+        }
     }
 }
 
@@ -689,7 +977,7 @@ static void check_keys(struct Tally *t, const struct Queued *q, const struct Tex
 {
     if (bits(q->rhw[0]) != bits(v[0].rhw) || bits(q->rhw[1]) != bits(v[1].rhw)) {
         t->keys++;
-        if (t->printed++ < 16)
+        if (t->printed[0]++ < 6)
             printf("  sort keys: cpu %.9g %.9g, instance %.9g %.9g\n", v[0].rhw, v[1].rhw, q->rhw[0], q->rhw[1]);
     }
 }
@@ -847,6 +1135,96 @@ static void point_at(const struct View *s, float px, float py, float depth, floa
         out[i] = eye[i] + (m[3 * i + 2] + rx * m[3 * i] + ry * m[3 * i + 1]) * depth;
 }
 
+/* A point through the client's 4x3 view (NULL: in view space already) and its projection, in
+   double: x, y and rhw into out[0], out[1] and out[3]; into bound[0], [1] and [3] how far a float
+   computation of the same may lie from them, to first order: each sum off by ROUNDING of its
+   terms' magnitudes, the view depth's error carried through its reciprocal, each product and sum
+   after it off by ROUNDING of its own size. */
+static void exact_point(const float *p, const float *view, const float *proj, const float *centre, double *out,
+                        double *bound)
+{
+    double v[3], e[3], rhw, erhw;
+    int k;
+    for (k = 0; k < 3; k++) {
+        if (view) {
+            double t0 = (double)view[k] * p[0], t1 = (double)view[3 + k] * p[1], t2 = (double)view[6 + k] * p[2];
+            v[k] = t0 + t1 + t2 + view[9 + k];
+            e[k] = ROUNDING * (fabs(t0) + fabs(t1) + fabs(t2) + fabs(view[9 + k]));
+        } else {
+            v[k] = p[k];
+            e[k] = 0.0;
+        }
+    }
+    rhw = 1.0 / v[2];
+    erhw = fabs(rhw) * (e[2] / fabs(v[2]) + ROUNDING);
+    out[3] = rhw;
+    bound[3] = erhw;
+    for (k = 0; k < 2; k++) {
+        out[k] = v[k] * rhw * proj[k] + centre[k];
+        bound[k] = fabs(proj[k]) * (e[k] * fabs(rhw) + fabs(v[k]) * erhw) + ROUNDING * (fabs(out[k]) + fabs(centre[k]));
+    }
+}
+
+/* The rhw and depth rules (render/quads.h, GFX_RHW_* and GFX_DEPTH_*) on a projected point, in
+   double, with their bounds; the depth as renderer_project_depth computes it, with its float
+   constant: (1 / rhw - 10) S rhw, whose rounding is about S times twice the rhw's relative one; or
+   the z given (GFX_DEPTH_CORNERS), exactly */
+static void exact_rules(double *out, double *bound, int rhwRule, int depthRule, float rhwValue, float depthValue,
+                        float given)
+{
+    double rhw = out[3], relative;
+    if (rhwRule == GFX_RHW_ADD) {
+        rhw += rhwValue;
+        bound[3] += ROUNDING * fabs(rhw);
+    } else if (rhwRule == GFX_RHW_VALUE) {
+        rhw = rhwValue;
+        bound[3] = 0.0;
+    }
+    out[3] = rhw;
+    relative = rhw != 0.0 ? bound[3] / fabs(rhw) : 1.0;
+    if (depthRule == GFX_DEPTH_VALUE || depthRule == GFX_DEPTH_CORNERS) {
+        out[2] = depthRule == GFX_DEPTH_VALUE ? depthValue : given;
+        bound[2] = 0.0;
+    } else {
+        out[2] = (1.0 / rhw - RENDER_NEAR_Z) * (double)RENDER_DEPTH_SCALE * rhw
+                 + (depthRule == GFX_DEPTH_ADD ? depthValue : 0.0);
+        bound[2] = (double)RENDER_DEPTH_SCALE * (2.0 * relative + ROUNDING) + ROUNDING * fabs(out[2]);
+    }
+}
+
+/* A quad's corners as the device projects them, without the rounding of floats (GFX_QUAD_WORLD and
+   GFX_QUAD_CORNERS; instances.hlsli, corner_of), into the case's exact corners */
+static void exact_corners(const struct GfxQuad *q, int corners, struct Case *c)
+{
+    int i;
+    if (q->kind == GFX_QUAD_WORLD) {
+        for (i = 0; i < 4; i++) {
+            exact_point(q->world.point[i], q->world.viewSpace ? NULL : q->world.view, q->world.proj, q->world.centre,
+                        c->exact[i], c->bound[i]);
+            exact_rules(c->exact[i], c->bound[i], q->world.rhw, q->world.depth, q->world.rhwValue, q->world.depthValue,
+                        q->world.z[i]);
+        }
+    } else if (q->kind == GFX_QUAD_CORNERS) {
+        const struct GfxCorners *set = &q->corners.set->corners;
+        double up[4], c0[4], c1[4], eu[4], e0[4], e1[4];
+        exact_point(set->uprightPoint, set->view, set->proj, set->centre, up, eu);
+        exact_point(set->point[q->corners.corner[0]], set->view, set->proj, set->centre, c0, e0);
+        exact_point(set->point[q->corners.corner[1]], set->view, set->proj, set->centre, c1, e1);
+        for (i = 0; i < 4; i++) {
+            int k = i < corners ? i : 2;
+            exact_point(set->point[q->corners.corner[k]], set->view, set->proj, set->centre, c->exact[i], c->bound[i]);
+            exact_rules(c->exact[i], c->bound[i], set->rhw, set->depth, set->rhwValue, set->depthValue, 0.0f);
+            if (set->upright) {
+                double side = k == 0 || (k == 2 && q->corners.right) ? 1.0 : -1.0;
+                c->exact[i][0] = up[0] + side * fabs(c0[0] - c1[0]) * 0.5;
+                c->bound[i][0] = eu[0] + 0.5 * (e0[0] + e1[0]) + ROUNDING * (fabs(c->exact[i][0]) + fabs(up[0]));
+                c->exact[i][1] += set->lift;
+                c->bound[i][1] += ROUNDING * (fabs(c->exact[i][1]) + fabs(set->lift));
+            }
+        }
+    }
+}
+
 /* a matrix and projection as the device puts them among the quads (view NULL for points in view
    space): the row it starts at */
 static uint32_t add_view(struct Batch *b, const float *view, const float *proj, const float *centre)
@@ -943,6 +1321,7 @@ static int world_case(int kind, const struct View *s, struct Batch *b, struct Ca
     h.matrix = add_matrix(b, &q);
     batch_case(b, words, quad_words(&q, &h, words), 1);
     expect_primitive(r, 4, c);
+    exact_corners(&q, 4, c);
     return 1;
 }
 
@@ -969,7 +1348,7 @@ static void world_record(struct Tally *t, const struct Queued *q, const struct T
     check_keys(t, q, v);
     if (flat != quad_vertices_flat(v, corners)) {
         t->flat++;
-        if (t->printed++ < 16)
+        if (t->printed[0]++ < 6)
             printf("  flat: cpu %d, instance %d\n", quad_vertices_flat(v, corners), flat);
     }
     if (q->quad.kind == GFX_QUAD_CORNERS) {
@@ -984,6 +1363,7 @@ static void world_record(struct Tally *t, const struct Queued *q, const struct T
     for (i = 0; i < corners; i++)
         reference_widen(&v[i], &r[i]);
     expect_primitive(r, corners, c);
+    exact_corners(&q->quad, corners, c);
 }
 
 /* A particle as particle_render draws it now, against the vertices it made: corners round the
@@ -1217,233 +1597,6 @@ static int cell_case(int kind, struct View *s, struct Batch *b, struct Case *c, 
     return 1;
 }
 
-/* ---- the shaders' SPIR-V ---- */
-
-/* the operations of instances.hlsli's upright triangles (QUAD_UPRIGHT), plain arithmetic:
-   upright_of's difference of two corners' x and its half (2), and at each of corner_of's seven uses
-   in quad_vertex and snapped the half times the corner's side, its sum with the point's x and the
-   lift's sum with y (21). A product by 0.5 or by a side of 1 or -1 is exact, so a multiply-add the
-   GPU may fuse of it rounds as the two operations do, and the corners come out bit for bit all the
-   same, which test_records checks. */
-#define QUAD_PROBE_BARE 23
-/* the operations quad.hlsl's vertex shader has outside exact.hlsli: instances.hlsli's
-   (QUAD_PROBE_BARE) and those of phase 4's quad shader: snapped_ndc's product, division and sum of
-   both coordinates as vectors, then the division and subtraction of each (7), the vertex fog's
-   product, sum and division and its product by q (4), and the colour and texture coordinates times
-   q (2) */
-#define QUAD_VS_BARE (QUAD_PROBE_BARE + 13)
-
-/* an operand by its value as far as div_rn's divisions go: |x| as x with the top bit, as dxc may
-   make |x| more than once */
-static uint32_t operand(const uint32_t *absOf, uint32_t bound, uint32_t id)
-{
-    return id < bound && absOf[id] ? (absOf[id] - 1) | 0x80000000u : id;
-}
-
-/* The operations of a vertex shader that would let the GPU part from the CPU's results now and
-   then: float additions, subtractions, multiplications and divisions, of scalars or of vectors,
-   without NoContraction (HLSL's precise), which the GPU may fuse, reorder or factor; a division
-   that is not one of div_rn's (exact.hlsli), which Vulkan lets be 2.5 units off even where
-   precise: div_rn's quotient of a by b is multiplied by b (two_product, remainder), or is the same
-   division again (dxc may make one for each of its uses, and of |a| and |b| as well), and its
-   correction added to such a quotient by b; a quotient that is only tested for 0 and infinity is
-   div_rn's first test, of a copy whose quotient nothing reads (dxc keeps such tests); fused
-   multiply-adds (mad()), which Vulkan does not
-   promise to fuse; matrix and dot products (mul(), dot()), which leave the order of their sums to
-   the GPU. */
-static int bare_operations(const char *name, const unsigned char *code, size_t size)
-{
-    enum { F_ADD = 129, F_SUB = 131, F_MUL = 133, F_DIV = 136, VECTOR_TIMES_SCALAR = 142 };
-    const uint32_t *w = (const uint32_t *)code;
-    size_t n = size / 4, i, k;
-    uint32_t bound, *decorated, *floats, *absOf, *divisor, *dividend, *quotient, *zero;
-    int bare = 0, plain = 0;
-    if (n < 5 || w[0] != 0x07230203u)
-        return -1;
-    bound = w[3];
-    decorated = calloc(bound, sizeof *decorated);
-    floats = calloc(bound, sizeof *floats);
-    absOf = calloc(bound, sizeof *absOf);       /* an |x|'s x + 1 */
-    divisor = calloc(bound, sizeof *divisor);   /* a precise division's divisor (operand()) + 1 */
-    dividend = calloc(bound, sizeof *dividend); /* and its dividend (operand()) */
-    quotient = calloc(bound, sizeof *quotient); /* div_rn's quotient */
-    zero = calloc(bound, sizeof *zero);         /* the float constant 0 */
-    if (!decorated || !floats || !absOf || !divisor || !dividend || !quotient || !zero)
-        return -1;
-    for (i = 5; i < n; i += w[i] >> 16) {
-        uint32_t op = w[i] & 0xffff;
-        if ((w[i] >> 16) == 0)
-            break;
-        if (op == 22 && w[i + 2] == 32 && w[i + 1] < bound)
-            floats[w[i + 1]] = 1;
-        if (op == 23 && w[i + 2] < bound && floats[w[i + 2]] && w[i + 1] < bound)
-            floats[w[i + 1]] = 1;
-        if (op == 71 && w[i + 2] == 42 && w[i + 1] < bound)
-            decorated[w[i + 1]] = 1;
-        if (op == 12 && w[i + 4] == 4 && w[i + 2] < bound)
-            absOf[w[i + 2]] = w[i + 5] + 1;
-        if (op == 43 && w[i + 2] < bound && w[i + 1] < bound && floats[w[i + 1]] && w[i + 3] == 0)
-            zero[w[i + 2]] = 1;
-    }
-    for (i = 5; i < n; i += w[i] >> 16) {
-        uint32_t op = w[i] & 0xffff;
-        if ((w[i] >> 16) == 0)
-            break;
-        if (op == F_DIV && w[i + 2] < bound && w[i + 1] < bound && floats[w[i + 1]] && decorated[w[i + 2]]) {
-            divisor[w[i + 2]] = operand(absOf, bound, w[i + 4]) + 1;
-            dividend[w[i + 2]] = operand(absOf, bound, w[i + 3]);
-        }
-    }
-    /* div_rn's quotients: multiplied by their divisor */
-    for (i = 5; i < n; i += w[i] >> 16) {
-        uint32_t op = w[i] & 0xffff;
-        if ((w[i] >> 16) == 0)
-            break;
-        if (op == F_MUL)
-            for (k = 0; k < 2; k++) {
-                uint32_t a = w[i + 3 + k], b = w[i + 4 - k];
-                if (a < bound && divisor[a] == operand(absOf, bound, b) + 1)
-                    quotient[a] = 1;
-            }
-    }
-    /* and the same divisions again */
-    for (i = 0; i < bound; i++)
-        if (divisor[i] && !quotient[i])
-            for (k = 0; k < bound; k++)
-                if (quotient[k] == 1 && divisor[k] == divisor[i] && dividend[k] == dividend[i]) {
-                    quotient[i] = 2;
-                    break;
-                }
-    for (i = 5; i < n; i += w[i] >> 16) {
-        uint32_t op = w[i] & 0xffff;
-        int arithmetic = op == F_ADD || op == F_SUB || op == F_MUL || op == F_DIV || op == VECTOR_TIMES_SCALAR;
-        if ((w[i] >> 16) == 0)
-            break;
-        if (arithmetic && w[i + 1] < bound && floats[w[i + 1]] && w[i + 2] < bound && !decorated[w[i + 2]])
-            bare++;
-        if ((op == 12 && w[i + 4] == 50) || (op >= 143 && op <= 148))
-            bare++;
-        /* a precise division that is neither div_rn's quotient nor its correction, which is added
-           to a quotient by the same divisor */
-        if (op == F_DIV && w[i + 2] < bound && divisor[w[i + 2]] && !quotient[w[i + 2]]) {
-            uint32_t r = w[i + 2];
-            int correction = 0, tested = 1;
-            size_t j2, m;
-            for (j2 = 5; j2 < n; j2 += w[j2] >> 16) {
-                uint32_t op2 = w[j2] & 0xffff, count = w[j2] >> 16;
-                if (!count)
-                    break;
-                if (op2 == F_ADD)
-                    for (k = 0; k < 2; k++) {
-                        uint32_t a = w[j2 + 3 + k], b = w[j2 + 4 - k];
-                        if (a == r && b < bound && quotient[b] && divisor[b] == divisor[r])
-                            correction = 1;
-                    }
-                /* every use of it a test for infinity (OpIsInf) or 0 (OpFOrdEqual) */
-                for (m = 3; m < count; m++)
-                    if (w[j2 + m] == r && !(op2 == 157 || (op2 == 180 && w[j2 + 7 - m] < bound
-                                                          && zero[w[j2 + 7 - m]])))
-                        tested = 0;
-            }
-            plain += !correction && !tested;
-        }
-    }
-    free(decorated);
-    free(floats);
-    free(absOf);
-    free(divisor);
-    free(dividend);
-    free(quotient);
-    free(zero);
-    printf("%s: %d operations that may part from the CPU (contractible, fused or matrix), %d plain divisions\n",
-           name, bare, plain);
-    return bare + plain;
-}
-
-/* ---- the exact operations alone ---- */
-
-/* div_rn, project_depth and project_point against a / b, renderer_project_depth and
-   renderer_project_vertex. The first 2^23 divisions take every float b from 1 to 2 under a = 1
-   (every reciprocal), the next 2^23 the same b under a random a from 1 to 2. */
-static int test_operations(struct Batch *b, float *out, long count)
-{
-    static struct View s;
-    long done = 0, differ[4] = {0, 0, 0, 0};
-    int printed = 0;
-    while (done < count) {
-        long base = done, i;
-        uint32_t matrix;
-        batch_clear(b);
-        make_view(&s, chance(50) ? KIND_EDGES : KIND_FUZZ);
-        {
-            struct GfxQuad q;
-            memset(&q, 0, sizeof q);
-            memcpy(q.world.view, s.view, sizeof q.world.view);
-            q.world.proj[0] = s.proj[0];
-            q.world.proj[1] = s.proj[1];
-            q.world.centre[0] = s.centre[0];
-            q.world.centre[1] = s.centre[1];
-            matrix = add_matrix(b, &q);
-        }
-        while (done < count && b->ninstances < PER_BATCH) {
-            uint32_t w[12];
-            float a, d, rhw, p[3];
-            if (done < (1l << 24)) {
-                a = done < (1l << 23) ? 1.0f : float_of(0x3f800000u | (uint32_t)(next() & 0x7fffff));
-                d = float_of(0x3f800000u + (uint32_t)(done & 0x7fffff));
-            } else {
-                a = spread(-30, 30, 1);
-                d = spread(-30, 30, 1);
-            }
-            rhw = chance(50) ? spread(-16, 3, 0) : 1.0f / uniform(10.0f, 40000.0f);
-            point_at(&s, uniform(-0.5f, 1.5f) * s.centre[0] * 2.0f, uniform(-0.5f, 1.5f) * s.centre[1] * 2.0f,
-                     chance(10) ? uniform(-500.0f, 10.0f) : uniform(10.0f, 40000.0f), p);
-            memset(w, 0, sizeof w);
-            w[3] = matrix;
-            w[4] = bits(a);
-            w[5] = bits(d);
-            w[6] = bits(rhw);
-            w[8] = bits(p[0]);
-            w[9] = bits(p[1]);
-            w[10] = bits(p[2]);
-            batch_record(b, w, 12);
-            done++;
-        }
-        probe_run(b, 1, out);
-        for (i = 0; i < done - base; i++) {
-            const float *g = out + (size_t)i * 4 * 16;
-            const uint32_t *w = b->words + (size_t)b->offsets[i] * 4;
-            struct TexDrawVertex v;
-            Vec3 point;
-            float want[6];
-            int f;
-            point.x = float_of(w[8]);
-            point.y = float_of(w[9]);
-            point.z = float_of(w[10]);
-            renderer_project_vertex(&s.renderer, &point, s.view, &v);
-            want[0] = float_of(w[4]) / float_of(w[5]);
-            want[1] = renderer_project_depth(float_of(w[6]));
-            want[2] = v.x;
-            want[3] = v.y;
-            want[4] = v.z;
-            want[5] = v.rhw;
-            for (f = 0; f < 6; f++) {
-                float got = f < 2 ? g[f] : g[4 + f - 2];
-                if (same(want[f], got))
-                    continue;
-                differ[f < 2 ? f : f < 5 ? 2 : 3]++;
-                if (printed++ < 12)
-                    printf("  operation %d: inputs %.9g %.9g %.9g | %.9g %.9g %.9g: cpu %.9g gpu %.9g\n", f,
-                           float_of(w[4]), float_of(w[5]), float_of(w[6]), point.x, point.y, point.z, want[f], got);
-            }
-        }
-    }
-    printf("operations: %ld inputs each (the first 2^24 divisions over every b from 1 to 2); differ: a / b %ld, "
-           "renderer_project_depth %ld, renderer_project_vertex x y z %ld, rhw %ld\n",
-           count, differ[0], differ[1], differ[2], differ[3]);
-    return !differ[0] && !differ[1] && !differ[2] && !differ[3];
-}
-
 /* ---- records of every kind ---- */
 
 static int test_records(struct Batch *b, struct Case *cases, float *out, long perKind)
@@ -1484,7 +1637,7 @@ static int test_records(struct Batch *b, struct Case *cases, float *out, long pe
                         make_view(&s, kind);
                 }
                 g_renderer = client;
-                probe_run(b, 0, out);
+                probe_run(b, out);
                 for (i = 0; i < n; i++) {
                     int c;
                     t->instances++;
@@ -1492,8 +1645,9 @@ static int test_records(struct Batch *b, struct Case *cases, float *out, long pe
                         char label[96];
                         t->vertices++;
                         snprintf(label, sizeof label, "%s, %s, corner %d", names[what], g_kindNames[kind], c);
-                        compare(t, 0, out + ((size_t)i * 8 + (size_t)c) * 16, &cases[i].made[c], label);
-                        compare(t, 1, out + ((size_t)i * 8 + 4 + (size_t)c) * 16, &cases[i].snapped[c], label);
+                        const float *made = out + (size_t)i * 8 * PROBE_FLOATS;
+                        compare(t, 0, made + (size_t)c * PROBE_FLOATS, made, &cases[i], c, label);
+                        compare(t, 1, made + (size_t)(4 + c) * PROBE_FLOATS, made, &cases[i], c, label);
                     }
                 }
                 done += n;
@@ -1513,18 +1667,28 @@ static int test_records(struct Batch *b, struct Case *cases, float *out, long pe
 #define PICTURE_W 1280
 #define PICTURE_H 720
 
+/* a value that rises and falls by one step from t to t + 1, 0 to 255 */
+static uint32_t wave(int t)
+{
+    t &= 511;
+    return (uint32_t)(t < 256 ? t : 511 - t);
+}
+
+/* A page of gentle gradients: each channel a step at most from a texel to its neighbours across or
+   along (red along u, green along v, blue and alpha along both, every alpha from see-through to
+   opaque), so that coordinates interpolated a hair apart read the same colour within a step and
+   the pictures show where the quads cover the screen. */
 static gfx_surface *page_texture(int layered, unsigned salt)
 {
     gfx_surface *t = layered ? gfx_create_layer_texture(256, 256, GFX_FMT_8888)
                              : gfx_create_texture(256, 256, GFX_FMT_8888);
     struct gfx_lock lk;
-    int x, y;
+    int x, y, k = (int)salt * 97;
     need(t && gfx_lock(t, NULL, &lk) == 0, "page texture");
     for (y = 0; y < 256; y++)
         for (x = 0; x < 256; x++) {
-            uint32_t c = (uint32_t)(x * 73856093u ^ y * 19349663u ^ salt * 83492791u) * 2654435761u;
-            /* a quarter see-through, a quarter half */
-            c = (c >> 8) | ((x / 8 + y / 8) % 4 == 0 ? 0 : (x / 8 + y / 8) % 4 == 1 ? 0x80000000u : 0xff000000u);
+            uint32_t c = wave(x + k) << 16 | wave(y + 2 * k) << 8 | wave((x + y) / 2 + k)
+                         | wave((x + 2 * y) / 3 + 3 * k) << 24;
             memcpy((BYTE *)lk.bits + y * lk.pitch + x * 4, &c, 4);
         }
     gfx_unlock(t);
@@ -1534,14 +1698,6 @@ static gfx_surface *page_texture(int layered, unsigned salt)
 static void read_picture(uint32_t *out)
 {
     need(gfx_read_frame(NULL, out, PICTURE_W * 4) == 0, "gfx_read_frame");
-}
-
-static long picture_differences(const uint32_t *a, const uint32_t *b)
-{
-    long i, n = 0;
-    for (i = 0; i < PICTURE_W * PICTURE_H; i++)
-        n += a[i] != b[i];
-    return n;
 }
 
 /* A quad a particle makes on the picture's screen: world points the view sees, for the device to
@@ -1586,7 +1742,165 @@ static void picture_world_quad(const struct View *s, struct GfxQuad *q, struct T
    drawn as instances from layered textures and as the reference's vertices from plain ones; and
    of projected quads (blended additively, and alpha-tested, which multisampling covers by alpha
    to coverage where they are not flat) drawn as instances and as renderer_project_vertex's
-   vertices. */
+   vertices: each pair within the captures' budget. */
+
+/* A picture beyond the budget kept for a look: quad_<scene>_<kind>_<side>.bmp in the working
+   directory */
+static void save_picture(const uint32_t *pixels, int scene, int kind, const char *side)
+{
+    SDL_Surface *s = SDL_CreateSurfaceFrom(PICTURE_W, PICTURE_H, SDL_PIXELFORMAT_XRGB8888, (void *)pixels,
+                                           PICTURE_W * 4);
+    char name[64];
+    snprintf(name, sizeof name, "quad_%d_%d_%s.bmp", scene, kind, side);
+    if (s) {
+        SDL_SaveBMP(s, name);
+        SDL_DestroySurface(s);
+    }
+}
+
+/* the distance from (px, py) to the segment from a to b */
+static double segment_distance(double px, double py, const struct TexDrawVertex *a, const struct TexDrawVertex *b)
+{
+    double dx = (double)b->x - a->x, dy = (double)b->y - a->y, l = dx * dx + dy * dy, t = 0.0, ex, ey;
+    if (l > 0.0)
+        t = ((px - a->x) * dx + (py - a->y) * dy) / l;
+    t = t < 0.0 ? 0.0 : t > 1.0 ? 1.0 : t;
+    ex = a->x + t * dx - px;
+    ey = a->y + t * dy - py;
+    return sqrt(ex * ex + ey * ey);
+}
+
+/* The depth of quad q (a strip of four corners, triangles (0, 1, 2) and (2, 1, 3)) at (px, py),
+   interpolated on the screen as the rasterizer interpolates it; answers 0 where the quad does not
+   cover the point. */
+static int quad_depth_at(const struct TexDrawVertex *q, double px, double py, double *z)
+{
+    static const int tris[2][3] = {{0, 1, 2}, {2, 1, 3}};
+    int t;
+    for (t = 0; t < 2; t++) {
+        const struct TexDrawVertex *a = &q[tris[t][0]], *b = &q[tris[t][1]], *c = &q[tris[t][2]];
+        double dx1 = (double)b->x - a->x, dy1 = (double)b->y - a->y, dx2 = (double)c->x - a->x;
+        double dy2 = (double)c->y - a->y, det = dx1 * dy2 - dx2 * dy1, ox = px - a->x, oy = py - a->y, l1, l2;
+        if (det == 0.0)
+            continue;
+        l1 = (ox * dy2 - oy * dx2) / det;
+        l2 = (oy * dx1 - ox * dy1) / det;
+        if (l1 >= 0.0 && l2 >= 0.0 && l1 + l2 <= 1.0) {
+            *z = a->z + l1 * ((double)b->z - a->z) + l2 * ((double)c->z - a->z);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Whether pixel (x, y)'s difference is the vertices' tolerance's: an edge of the n quads (verts) comes
+   within `reach` of its centre, or two quads that cover it lie at depths there within the depth
+   tolerance of each other, where the depth test may pick either. */
+static int by_edge(int x, int y, const struct TexDrawVertex (*verts)[4], int n, double reach)
+{
+    static const int edges[5][2] = {{0, 1}, {1, 3}, {3, 2}, {2, 0}, {1, 2}};
+    double depths[512];
+    int i, e, j, covering = 0;
+    for (i = 0; i < n; i++)
+        for (e = 0; e < 5; e++)
+            if (segment_distance(x, y, &verts[i][edges[e][0]], &verts[i][edges[e][1]]) <= reach)
+                return 1;
+    for (i = 0; i < n && covering < 512; i++)
+        if (quad_depth_at(verts[i], x, y, &depths[covering]))
+            covering++;
+    for (i = 0; i < covering; i++)
+        for (j = i + 1; j < covering; j++)
+            if (fabs(depths[i] - depths[j]) <= RELATIVE_TOLERANCE * fmax(fabs(depths[i]), 0.5))
+                return 1;
+    return 0;
+}
+
+/* The pixels more than a step apart in groups of more than 16 that touch, the budget's groups,
+   which do not lie wholly where the vertices' tolerance changes pixels (by_edge): within `reach` of
+   an edge, where an edge moved within the tolerance covers the centre of a pixel, or of one of its
+   samples, otherwise, so that a long straight edge that lies that near a row of pixel or sample
+   centres changes the whole row; and along the line where two quads' depths cross, within the
+   depth tolerance (a sprite's depth changes along its rows alone, so that line is a row). */
+static long groups_off_edges(const uint32_t *a, const uint32_t *b, const struct TexDrawVertex (*verts)[4], int n,
+                             double reach)
+{
+    static unsigned char mark[PICTURE_W * PICTURE_H];
+    static int stack[PICTURE_W * PICTURE_H], group[PICTURE_W * PICTURE_H];
+    long off = 0;
+    int i, c;
+    for (i = 0; i < PICTURE_W * PICTURE_H; i++) {
+        int d = 0;
+        for (c = 0; c < 24; c += 8) {
+            int e = abs((int)(a[i] >> c & 255) - (int)(b[i] >> c & 255));
+            d = e > d ? e : d;
+        }
+        mark[i] = d > 1;
+    }
+    for (i = 0; i < PICTURE_W * PICTURE_H; i++) {
+        int top = 0, size = 0, k, along = 1;
+        if (mark[i] != 1)
+            continue;
+        stack[top++] = i;
+        mark[i] = 2;
+        while (top) {
+            int at = stack[--top], x = at % PICTURE_W, y = at / PICTURE_W, dx, dy;
+            group[size++] = at;
+            for (dy = -1; dy <= 1; dy++)
+                for (dx = -1; dx <= 1; dx++) {
+                    int xx = x + dx, yy = y + dy;
+                    if (xx >= 0 && xx < PICTURE_W && yy >= 0 && yy < PICTURE_H && mark[yy * PICTURE_W + xx] == 1) {
+                        mark[yy * PICTURE_W + xx] = 2;
+                        stack[top++] = yy * PICTURE_W + xx;
+                    }
+                }
+        }
+        if (size <= 16)
+            continue;
+        for (k = 0; k < size && along; k++)
+            along = by_edge(group[k] % PICTURE_W, group[k] / PICTURE_W, verts, n, reach);
+        off += along ? 0 : size;
+    }
+    return off;
+}
+
+/* A pair of pictures held to the budget, counted into the kind's differing pixels (differ[0]), its
+   pixels more than a step apart (differ[1]), the largest group of those (differ[2]) and the pixels
+   of groups of more than 16 that do not lie along edges (differ[3]): beyond a step at most 0.05 %
+   of the screen, and every group of more than 16 such pixels along the edges of the quads drawn or
+   where their depths cross (groups_off_edges): in these scenes of hundreds of quads drawn at random,
+   long straight edges and crossings lie within the vertices' tolerance of rows of pixel centres far
+   more often than in a game's frame. A
+   scene beyond the budget leaves its two pictures in the working directory
+   (quad_<scene>_<kind>_device.bmp and quad_<scene>_<kind>_cpu.bmp). Answers whether it keeps it. */
+static int budget(const uint32_t *a, const uint32_t *b, int scene, int kind, const struct TexDrawVertex (*verts)[4],
+                  int n, double reach, long *differ, int *most)
+{
+    struct PictureDifference d;
+    long away;
+    int ok;
+    picture_difference(a, b, PICTURE_W, PICTURE_H, &d);
+    away = d.largest > 16 ? groups_off_edges(a, b, verts, n, reach) : 0;
+    ok = d.over * 2000 <= (long)PICTURE_W * PICTURE_H && !away;
+    if (!ok || !picture_within_budget(&d, PICTURE_W, PICTURE_H)) {
+        printf("  scene %d, kind %d: %ld pixels more than a step apart, the largest group %ld, %ld in groups of more "
+               "than 16 off the edges\n", scene, kind, d.over, d.largest, away);
+        if (!ok) {
+            save_picture(a, scene, kind, "device");
+            save_picture(b, scene, kind, "cpu");
+        }
+    }
+    differ[0] += d.differ;
+    differ[1] += d.over;
+    if (d.largest > differ[2])
+        differ[2] = d.largest;
+    differ[3] += away;
+    if (d.most > *most)
+        *most = d.most;
+    return ok;
+}
+/* the samples a pixel of the pictures has (RAGEXE_MSAA) */
+static int g_samples = 1;
+
 static int test_pictures(int scenes)
 {
     static uint32_t a[PICTURE_W * PICTURE_H], c[PICTURE_W * PICTURE_H];
@@ -1594,8 +1908,12 @@ static int test_pictures(int scenes)
     static struct GfxQuad quads[512];
     static int pages[512];
     gfx_surface *layered[2], *plain[2];
-    long differ[4] = {0, 0, 0, 0}, covered = 0;
-    int scene, ok = 1, i, side;
+    long differ[4][4], covered = 0;
+    int scene, ok = 1, i, side, most[4] = {0, 0, 0, 0};
+    /* a pixel's samples lie within half a pixel of its centre; a flat draw's corner moved onto the
+       boundary next to the CPU's moves its edge by a pixel more (instances.hlsli, snapped) */
+    double reach = PIXEL_TOLERANCE + (g_samples > 1 ? 1.5 : 0.5);
+    memset(differ, 0, sizeof differ);
     for (i = 0; i < 2; i++) {
         layered[i] = page_texture(1, (unsigned)i);
         plain[i] = page_texture(0, (unsigned)i);
@@ -1653,7 +1971,7 @@ static int test_pictures(int scenes)
                 gfx_end_scene();
                 read_picture(side ? c : a);
             }
-            differ[m] += picture_differences(a, c);
+            ok = budget(a, c, scene, m, (const struct TexDrawVertex (*)[4])verts, n, reach, differ[m], &most[m]) && ok;
             for (i = 0; i < PICTURE_W * PICTURE_H; i++)
                 covered += a[i] != 0xff203040u;
         }
@@ -1681,7 +1999,8 @@ static int test_pictures(int scenes)
                 gfx_end_scene();
                 read_picture(side ? c : a);
             }
-            differ[2 + m] += picture_differences(a, c);
+            ok = budget(a, c, scene, 2 + m, (const struct TexDrawVertex (*)[4])verts, n, reach, differ[2 + m],
+                        &most[2 + m]) && ok;
             for (i = 0; i < PICTURE_W * PICTURE_H; i++)
                 covered += a[i] != 0xff203040u;
         }
@@ -1690,11 +2009,14 @@ static int test_pictures(int scenes)
         gfx_release(layered[i]);
         gfx_release(plain[i]);
     }
-    printf("pictures through render/gfx_gpu.c: %d scenes of %d by %d, %ld pixels drawn; differ: sprites blended %ld, "
-           "alpha-tested %ld; projected quads additive %ld, alpha-tested %ld\n",
-           scenes, PICTURE_W, PICTURE_H, covered, differ[0], differ[1], differ[2], differ[3]);
-    for (i = 0; i < 4; i++)
-        ok = ok && !differ[i];
+    printf("pictures through render/gfx_gpu.c: %d scenes of %d by %d, %ld pixels drawn; differing pixels, those "
+           "more than a step apart, the largest group of those, those in groups of more than 16 off the edges and the "
+           "largest difference: "
+           "sprites blended %ld, %ld, %ld, %ld, %d; alpha-tested %ld, %ld, %ld, %ld, %d; projected quads additive %ld, "
+           "%ld, %ld, %ld, %d; alpha-tested %ld, %ld, %ld, %ld, %d\n",
+           scenes, PICTURE_W, PICTURE_H, covered, differ[0][0], differ[0][1], differ[0][2], differ[0][3], most[0],
+           differ[1][0], differ[1][1], differ[1][2], differ[1][3], most[1], differ[2][0], differ[2][1], differ[2][2],
+           differ[2][3], most[2], differ[3][0], differ[3][1], differ[3][2], differ[3][3], most[3]);
     return ok;
 }
 
@@ -1704,15 +2026,16 @@ int main(int argc, char **argv)
     struct C3dDevice *d = &g_3dDevice;
     uint64_t seed = argc > 2 ? strtoull(argv[2], NULL, 0) : 20261112u;
     long perKind = argc > 3 ? strtol(argv[3], NULL, 0) : 40000;
-    long operations = argc > 4 ? strtol(argv[4], NULL, 0) : (1l << 24) + 1000000;
-    int scenes = argc > 5 ? (int)strtol(argv[5], NULL, 0) : 12, ok = 1, bare;
+    int scenes = argc > 4 ? (int)strtol(argv[4], NULL, 0) : 12, ok = 1;
     struct Batch batch;
     struct Case *cases = malloc(sizeof *cases * PER_BATCH);
-    float *out = malloc(sizeof(float) * 16 * 4 * (size_t)PER_BATCH);
+    float *out = malloc(sizeof(float) * PROBE_FLOATS * 4 * (size_t)PER_BATCH);
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    if (argc > 1)
+    if (argc > 1) {
         SDL_setenv_unsafe("RAGEXE_MSAA", argv[1], 1);
+        g_samples = atoi(argv[1]);
+    }
     memset(&batch, 0, sizeof batch);
     batch.words = malloc(BATCH_WORDS * 4);
     batch.offsets = malloc(PER_BATCH * 4);
@@ -1746,17 +2069,7 @@ int main(int argc, char **argv)
            SDL_GetStringProperty(SDL_GetGPUDeviceProperties(g_dev), SDL_PROP_GPU_DEVICE_NAME_STRING, "?"),
            (unsigned long long)seed, argc > 1 ? argv[1] : "unset");
 
-    /* instances.hlsli and exact.hlsli, alone in the probe, keep every rule but the upright
-       triangles' (QUAD_PROBE_BARE); quad.hlsl's vertex shader adds to them only what phase 4's
-       quad shader had too (QUAD_VS_BARE) */
-    ok = bare_operations("tests/shaders/quad_probe.hlsl", quad_probe_vs.spirv, quad_probe_vs.spirvSize)
-         == QUAD_PROBE_BARE;
-    bare = bare_operations("render/shaders/quad.hlsl", quad_vs.spirv, quad_vs.spirvSize);
-    ok = ok && bare == QUAD_VS_BARE;
-
     probe_init();
-    if (operations > 0)
-        ok = test_operations(&batch, out, operations) && ok;
     if (perKind > 0)
         ok = test_records(&batch, cases, out, perKind) && ok;
     probe_free();
@@ -1766,6 +2079,7 @@ int main(int argc, char **argv)
     gfx_close(d);
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
-    printf("quad_instances: %s\n", ok ? "every vertex and pixel matches" : "DIFFERENCES");
+    printf("quad_instances: %s\n", ok ? "every vertex within the tolerance, every picture within the budget"
+                                       : "DIFFERENCES");
     return ok ? 0 : 1;
 }

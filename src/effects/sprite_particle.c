@@ -187,8 +187,9 @@ void sprite_particle_render(struct SpriteParticle *self)
         mat_multiply(world, own_placed, self->base.matrix);
 
         /* custom: the device projects the corners as renderer_project_vertex did them (render/gfx.h,
-           GFX_QUAD_WORLD), with the clip's depth added to their rhw and z of that rhw where it is not
-           0; the CPU finds their rhw alone, for the lists' order and whether the quad is flat */
+           GFX_QUAD_WORLD), with the clip's depth added to their rhw where it is not 0; the CPU finds
+           their rhw, for the lists' order and whether the quad is flat, and the z of that rhw, which
+           the depth test compares by its bits (GFX_DEPTH_CORNERS) */
         depth = (float)i * 1e-5f + self->base.depth_bias;
         q->kind = GFX_QUAD_WORLD;
         for (k = 0; k < 4; k++) {
@@ -210,7 +211,9 @@ void sprite_particle_render(struct SpriteParticle *self)
         q->world.centre[1] = (float)g_renderer->centreY;
         q->world.rhw = depth != 0 ? GFX_RHW_ADD : GFX_RHW_PROJECTED;
         q->world.rhwValue = depth;
-        q->world.depth = GFX_DEPTH_PROJECTED;
+        q->world.depth = GFX_DEPTH_CORNERS;
+        for (k = 0; k < 4; k++)
+            q->world.z[k] = renderer_project_depth(rhw4[k]);
         q->world.colour = color;
         q->world.flat = quad_rhw_flat(rhw4, 4);
         batch->base.rhw[0] = rhw4[0];

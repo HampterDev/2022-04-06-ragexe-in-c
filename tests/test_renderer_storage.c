@@ -392,6 +392,10 @@ float renderer_project_rhw(const Vec3 *in, const float *view)
     ++projected_vertices;
     return in->z == 0.0f ? 0.00125f : 0.0025f;
 }
+float renderer_project_depth(float rhw)
+{
+    return rhw * 100.0f;
+}
 struct Particle *particle_construct(struct Particle *particle, Vec3 pos, int flags)
 { (void)pos; (void)flags; memset(particle, 0, sizeof *particle); return particle; }
 void particle_reset(struct Particle *particle) { assert(particle); }
@@ -439,16 +443,17 @@ static void multitex_frame_vertices(void)
     assert(!renderer.queues[RENDER_MULTITEXTURE].count);
     multi_tex_particle_render_on_cell(&particle, 10, 20);
     q = multitex_queued(&renderer, 0, &first, &key);
-    /* the cell's corners for the device to project through the view, z nudged towards the camera,
-       both stages' coordinates; flat only where every corner's rhw is the same (the stub gives the
-       first corner, at height 0, another) */
+    /* the cell's corners for the device to project through the view, each corner's z the depth of
+       its rhw nudged towards the camera, both stages' coordinates; flat only where every corner's
+       rhw is the same (the stub gives the first corner, at height 0, another) */
     assert(q && q->kind == GFX_QUAD_WORLD && !q->world.viewSpace && q->world.stage2);
     assert(first->texture == textures && key == 101 && first->instance == q);
     assert(!memcmp(q->world.view, test_view, sizeof test_view));
     assert(q->world.proj[0] == 5.0f && q->world.proj[1] == 6.0f);
     assert(q->world.centre[0] == 7.0f && q->world.centre[1] == 8.0f);
-    assert(q->world.rhw == GFX_RHW_PROJECTED && q->world.depth == GFX_DEPTH_ADD);
-    assert(q->world.depthValue == -k_multitexDepthNudge && !q->world.flat);
+    assert(q->world.rhw == GFX_RHW_PROJECTED && q->world.depth == GFX_DEPTH_CORNERS && !q->world.flat);
+    assert(q->world.z[0] == 0.00125f * 100.0f + -k_multitexDepthNudge);
+    assert(q->world.z[3] == 0.0025f * 100.0f + -k_multitexDepthNudge);
     assert(q->world.colour == 0xffffffff);
     assert(projected_vertices == before_projection + 4);
     for (i = 0; i < 4; ++i) {

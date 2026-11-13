@@ -1,13 +1,12 @@
 // What the client's quads (quad.hlsl), the water (water.hlsl) and Granny's actors (skin.hlsl)
-// share: the resources their vertex shaders read first (the draw records and the fog tables; what
-// each reads after them, each declares), the varyings, the vertex fog, and the pixels
+// share: the resource their vertex shaders read first (the draw records; what each reads after
+// them, each declares), the varyings, the vertex fog, and the pixels
 // (quad_pixel): the texture stages' combination of the draw's mode (render/draw_modes.h, enum
 // DrawCombine), stage 0 read from a layer of an atlas array where the draw's record says so, the
 // fog and the alpha test, as Direct3D 9 drew them.
 #include "records.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
-StructuredBuffer<float4> fogTables : register(t1, space0);
 
 [[vk::combinedImageSampler]] Texture2D<float4> texture0 : register(t0, space2);
 [[vk::combinedImageSampler]] SamplerState sampler0 : register(s0, space2);
@@ -29,18 +28,17 @@ struct Varyings
                                                                 // the draw reads one (Draw.stages.y)
 };
 
-// The share of its colour a vertex of this rhw keeps from the fog (render/gfx.h, GfxFog): the step
-// the original's vertex fog computed on the CPU, looked up in the fog's table of the rhw at which
-// each step begins (render/vertex_fog.h, vertex_fog_lookup), which comparisons find exactly.
-float vertex_fog(float rhw, float4 fog, uint table)
+// The share of its colour a vertex of this rhw keeps from the fog (render/gfx.h, GfxFog; fog holds
+// its start, end, origin and span): the step the original's vertex fog computed on the CPU, 1 - t
+// in 1/255 steps rounded down, t = ((1 / rhw - origin) / span - start) / (end - start) clamped to
+// 0..1, without the division where end equals start. A vertex whose rhw is not positive takes the
+// step of the smallest normal one, which lies beyond any fog's range.
+float vertex_fog(float rhw, float4 fog)
 {
-    uint at = 0;
-    [unroll] for (uint step = 128; step > 0; step >>= 1) {
-        uint i = at + step - 1;
-        if (fogTables[table * 64 + i / 4][i % 4] <= rhw)
-            at += step;
-    }
-    return (fog.x + fog.y * min((float)at, fog.z)) / 255;
+    float t = (1.0 / max(rhw, 1.17549435e-38) - fog.z) / fog.w;
+    if (fog.y != fog.x)
+        t = (t - fog.x) / (fog.y - fog.x);
+    return floor((1.0 - saturate(t)) * 255.0) / 255.0;
 }
 
 // What the stages make of the first texture (t), the second (u) and the vertex colour (d)

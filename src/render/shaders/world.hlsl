@@ -96,9 +96,7 @@ WorldOut vs_main(WorldIn i)
     o.l0 = o.l1 = o.l2 = o.l3 = 0;
     if (receive) {
         float3 p = transform(i.position, v.toView).xyz;
-        float3 n = v.toView[1].xyz * i.normal.y;
-        n = mad(i.normal.x, v.toView[0].xyz, n);
-        n = mad(i.normal.z, v.toView[2].xyz, n);
+        float3 n = mul(i.normal, (float3x3)v.toView);
         n *= rsqrt(max(dot(n, n), 1e-12));
         float c = dot(n, s.lightView.xyz);
         float3 away = n * sign(c) * sqrt(saturate(1 - c * c));
