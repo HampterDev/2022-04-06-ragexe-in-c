@@ -57,9 +57,12 @@ struct C3dGrannyModelRes {
 };
 
 enum { GRANNY_BONE_JOB_COUNT = 10, GRANNY_BONE_ANIMATION_COUNT = 5 };
+/* unavailable: the animation's file was looked for and is not there, or is there and failed to
+   load; neither looked for nor loaded again until granny_animation_cache_clear. */
 struct GrannyAnimationEntry {
     granny_file *file;
     granny_animation *animation;
+    unsigned char unavailable;
 };
 struct C3dGrannyBoneRes {
     struct GrannyAnimationEntry entries[GRANNY_BONE_JOB_COUNT][GRANNY_BONE_ANIMATION_COUNT];

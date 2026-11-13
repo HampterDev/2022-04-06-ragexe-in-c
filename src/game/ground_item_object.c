@@ -243,19 +243,11 @@ void item_add_pick_box(struct RenderObject *object, const struct ScreenBounds *s
 {
     struct Item *self = (struct Item *)object;
     if (self->base.pickable) {
-        struct PickInfo *box;
+        struct PickInfo value, *box = &value;
         float left, right;
         int min_side;
 
-        box = (struct PickInfo *)mem_alloc(sizeof *box);
-        if (box) {
-            box->left = 0.0f;
-            box->top = 0.0f;
-            box->near_z = 0.0f;
-            box->right = 0.0f;
-            box->bottom = 0.0f;
-            box->far_z = 0.0f;
-        }
+        memset(box, 0, sizeof *box);
         min_side = (int)(renderer_scale_x(g_renderer) * 34.0f);
         left = screen->left < screen->right ? screen->left : screen->right;
         right = screen->left > screen->right ? screen->left : screen->right;

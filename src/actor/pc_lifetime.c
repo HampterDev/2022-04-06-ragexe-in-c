@@ -70,15 +70,16 @@ struct Pc *pc_construct(struct Pc *self)
 {
     game_actor_construct((struct GameActor *)self);
     self->ops = &pc_ops.base.base;
-    string_init(&self->imf_name);
+    named_res_init(&self->imf);
     self->footprint_last.x = 0.0f;
     self->footprint_last.y = 0.0f;
     self->footprint_last.z = 0.0f;
-    string_init(&self->head_pal_name);
+    named_res_init(&self->head_pal);
     self->layer_sprs.first = self->layer_sprs.last = self->layer_sprs.end = NULL;
     self->layer_acts.first = self->layer_acts.last = self->layer_acts.end = NULL;
     vec_resize(&self->layer_sprs, PC_RES_COUNT, sizeof(void *));
     vec_resize(&self->layer_acts, PC_RES_COUNT, sizeof(void *));
+    memset(&self->robe_sprites, 0, sizeof self->robe_sprites);
     self->hp_gage_wnd = NULL;
     self->head_palette = 0;
     self->shield = 0;
@@ -121,14 +122,15 @@ static void pc_destroy(struct Pc *self)
         if (((struct Res **)self->layer_acts.first)[i])
             res_unlock(((struct Res **)self->layer_acts.first)[i]);
     }
+    pc_forget_robe_sprites(self);
     if (self->hp_gage_wnd) {
         ui_window_mgr_post_quit2(&g_windowMgr, self->hp_gage_wnd);
         self->hp_gage_wnd = NULL;
     }
     vec_free(&self->layer_acts);
     vec_free(&self->layer_sprs);
-    string_free(&self->head_pal_name);
-    string_free(&self->imf_name);
+    named_res_free(&self->head_pal);
+    named_res_free(&self->imf);
     game_actor_dc_game_actor((struct GameActor *)self);
 }
 

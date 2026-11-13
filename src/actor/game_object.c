@@ -225,7 +225,7 @@ struct RenderObject *render_object_construct(struct RenderObject *self)
     self->pos.x = 0;
     self->pos.y = 0;
     self->pos.z = 0;
-    string_init(&self->body_pal_name);
+    named_res_init(&self->body_pal);
     tree_init(&self->vars);
     self->spr = NULL;
     self->act = NULL;
@@ -241,7 +241,7 @@ void render_object_dc_render_object(struct RenderObject *self)
     if (self->act)
         res_unlock(self->act);
     tree_free(&self->vars, NULL);
-    string_free(&self->body_pal_name);
+    named_res_free(&self->body_pal);
     self->ops = &game_object_ops;
 }
 

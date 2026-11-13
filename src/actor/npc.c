@@ -482,7 +482,7 @@ void npc_set_job_and_sex(struct GameActor * base_actor, int job, int sex)
     self->body_palette = 0;
     if (session_named_body_palettes_enabled(&g_session1)) {
         self->body_palette = 1;
-        string_assign_cstr(&self->body_pal_name, name);
+        named_res_assign(&self->body_pal, name, strlen(name));
     }
 }
 

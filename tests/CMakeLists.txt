@@ -156,7 +156,7 @@ endif()
 
 # The client files that a test held to /W1 or /W4 (the highest level any test compiled them
 # at); before the first test, since a file takes its options when a test first names it.
-rage_client_warnings(1 actor/map_type_table.c contents/body_layer_maps.c core/byte_array.c core/thread_text.c
+rage_client_warnings(1 actor/map_type_table.c core/byte_array.c core/thread_text.c
     effects/ez2str_effect_mgr.c game/msg_broadcast.c game/packet_dispatch.c game/packet_dispatch2.c
     game/skill_cast_chat.c game/whisper_commands.c json/json_bson.c json/json_loader.c render/rp_pool.c
     session/character_name.c session/job_sounds.c ui/character/character_std.c ui/chat/edit_history.c
@@ -429,6 +429,9 @@ rage_test(draw_modes W4 CLIENT render/draw_modes.c)
 rage_test(quads W4 CLIENT render/quads.c)
 rage_test(skin_layout W4 CLIENT render/skin_layout.c)
 rage_test(screen_wobble W4 CLIENT render/screen_wobble.c)
+rage_test(atlas_index W4 CLIENT render/atlas_index.c)
+rage_test(lua_memo W4 CLIENT contents/lua_memo.c)
+rage_test(named_res W4 CLIENT core/fatal.c core/memory.c resources/named_res.c std/string.c)
 rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
 rage_test(world_layout W4 CLIENT render/world_layout.c render/static_world.c)
 rage_test(static_world W4 CLIENT render/math3d.c render/rp_project.c render/rp_screen.c render/shadow_fit.c
@@ -673,6 +676,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         iteminfo/item_info.c std/container_memory.c std/string.c std/vec.c)
     rage_test(basic_info_restore WE4013 GENERATED basic_info_restore)
     rage_test(bitmap_owner CLIENT core/cstr.c std/string.c LIBS rage_png)
+    rage_test(body_layer_slots W1 WE4013 CLIENT std/string.c)
     rage_test(bitmap_png OBJECTS test_bitmap_png_bitmap_png test_bitmap_png_bitmap_storage LIBS rage_png)
     rage_test(broadcast_packets W1 WE4013 CLIENT game/msg_broadcast.c session/character_name.c)
     rage_test(broadcast_text W4 CLIENT core/utf8.c game/broadcast_text.c)
@@ -711,9 +715,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(container_memory WE4013 tests/container_memory_mail_probe.c
         tests/container_memory_vector_probe.c tests/container_memory_ui_probe.c
         tests/container_memory_controls_probe.c CLIENT platform/clock_win32.c std/string.c std/vec.c)
-    rage_test(content_managers W1 WE4013 src/core/map_sky.c src/contents/client_lua.c src/core/text_util.c
-        src/std/std_comdats.c src/std/string.c src/std/container_memory.c src/std/vec.c src/std/string_vec.c
-        src/std/tree.c src/platform/code_page_win32.c FORCE_INCLUDE tests/content_manager_allocations.h
+    rage_test(content_managers W1 WE4013 src/core/map_sky.c src/contents/client_lua.c src/contents/lua_memo.c
+        src/core/text_util.c src/std/std_comdats.c src/std/string.c src/std/container_memory.c src/std/vec.c
+        src/std/string_vec.c src/std/tree.c src/platform/code_page_win32.c FORCE_INCLUDE
+        tests/content_manager_allocations.h
         INCLUDES src/contents LIBS rage_lua)
     rage_test(cooldown_clock CLIENT session/skill_delay.c ui/cooldown_lists.c)
     rage_test(cooldown_geometry CLIENT ui/cooldown_timer.c ARGS
@@ -723,8 +728,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(cooldown_storage CLIENT ui/cooldown_timer.c)
     rage_test(crash_dialog W4 OBJECTS test_crash_dialog_crash_dialog)
     rage_test(crash_report OBJECTS test_crash_report_crash_report)
-    rage_test(draw_maps W1 WE4013 CLIENT contents/body_layer_maps.c core/once_win32.c std/container_memory.c
-        std/string.c std/tree.c std/vec.c)
     rage_test(edit_history W1 CLIENT core/owned_text.c core/text_array.c core/utf8.c
         platform/code_page_win32.c std/string.c ui/chat/edit_history.c ui/controls/edit_text.c
         ui/wndmgr/whisper_names.c)
@@ -869,7 +872,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(guild_state tests/guild_state_support.c CLIENT contents/guild_info.c contents/guild_lists.c
         platform/code_page_win32.c std/container_memory.c std/list.c std/string.c std/tree.c std/vec.c
         ui/social/guild_containers.c ui/social/guild_requests.c)
-    rage_test(headgear_names CLIENT std/string.c GENERATED headgear_names LIBS rage_lua)
+    rage_test(headgear_names CLIENT contents/lua_memo.c platform/system_win32.c std/string.c GENERATED headgear_names
+        LIBS rage_lua)
     rage_test(heal_colours WE4013 tests/effect_base_stubs.c CLIENT std/vec.c)
     rage_test(hex W4 CLIENT core/hex.c)
     rage_test(imf_owner CLIENT actor/layer_order.c core/utf8.c fileio/file.c fileio/resource_path.c
@@ -910,8 +914,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(list_operations W1 CLIENT std/container_memory.c std/string.c std/tree.c std/vec.c
         ui/controls/combo_list.c ui/controls/controls_std.c ui/controls/listbox_ex.c ui/controls/listbox_id.c)
     rage_test(local_account CLIENT contents/account_settings.c contents/account_settings_json.c
-        contents/lua_calls.c contents/settings_json.c contents/user_hotkey_apply.c contents/user_hotkeys.c
-        contents/whisper_block.c core/owned_text.c core/text_array.c core/text_encoding.c core/utf8.c
+        contents/lua_calls.c contents/lua_memo.c contents/settings_json.c contents/user_hotkey_apply.c
+        contents/user_hotkeys.c contents/whisper_block.c core/owned_text.c core/text_array.c core/text_encoding.c core/utf8.c
         json/json_tree.c json/service_json.c platform/code_page_win32.c platform/sha256_win32.c
         platform/system_win32.c platform/window_sdl.c session/chat_macro_json.c session/session_chat_macros.c
         LIBS rage_json rage_lua)
@@ -926,11 +930,12 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         std/container_memory.c std/string.c std/vec.c)
     rage_test(login_pin_state WE4013 CLIENT core/memory.c login/char_results.c login/login_dispatch.c
         platform/clock_win32.c)
-    rage_test(lua_boundaries CLIENT core/utf8.c fileio/file.c fileio/resource_path.c
-        platform/code_page_win32.c platform/filesystem_win32.c platform/window_sdl.c std/container_memory.c
-        std/string.c std/vec.c LIBS rage_lua)
-    rage_test(lua_calls CLIENT core/utf8.c platform/code_page_win32.c platform/window_sdl.c LIBS rage_lua)
-    rage_test(lua_calls_disabled MAIN tests/test_lua_calls.c LIBS rage_lua)
+    rage_test(lua_boundaries CLIENT contents/lua_memo.c core/utf8.c fileio/file.c fileio/resource_path.c
+        platform/code_page_win32.c platform/filesystem_win32.c platform/system_win32.c platform/window_sdl.c
+        std/container_memory.c std/string.c std/vec.c LIBS rage_lua)
+    rage_test(lua_calls CLIENT contents/lua_memo.c core/utf8.c platform/code_page_win32.c platform/window_sdl.c LIBS
+        rage_lua)
+    rage_test(lua_calls_disabled MAIN tests/test_lua_calls.c CLIENT contents/lua_memo.c LIBS rage_lua)
     rage_test(lua_data_managers W1 WE4013 src/contents/champion_monster.c src/contents/check_attendance.c
         src/contents/pet_auto_feed.c src/contents/private_airplane_mgr.c src/contents/lua_data.c
         src/session/predicates.c src/fileio/res_maps.c src/core/text_util.c src/std/std_comdats.c
@@ -1031,11 +1036,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         render/math3d.c resources/attr_queries.c std/container_memory.c std/string.c std/tree.c std/vec.c
         OBJECTS rage_test_weather_state_support)
     rage_test(perf_overlay WE4013 GENERATED perf_overlay)
-    rage_test(pet_accessory GENERATED pet_accessory LIBS rage_lua)
+    rage_test(pet_accessory CLIENT contents/lua_memo.c platform/system_win32.c GENERATED pet_accessory LIBS rage_lua)
     rage_test(pet_actions GENERATED pet_actions)
     rage_test(pet_portrait GENERATED pet_portrait)
-    rage_test(pick_state tests/pick_state_support.c CLIENT std/container_memory.c std/list.c std/vec.c
-        world/pick_node.c)
+    rage_test(pick_state tests/pick_state_support.c CLIENT std/container_memory.c world/pick_node.c)
     rage_test(plain_lines W1 WE4013 CLIENT core/hex.c core/owned_text.c core/text_array.c core/text_format.c
         core/utf8.c platform/code_page_win32.c ui/controls/window_lines.c)
     rage_test(player_names)
@@ -1113,9 +1117,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         ui/misc/skin_mgr.c)
     rage_test(snap_state CLIENT ui/misc/snap_mgr.c)
     rage_test(sound_manager CLIENT platform/thread_win32.c)
-    rage_test(sprite_atlas)
+    rage_test(sprite_atlas CLIENT render/atlas_index.c)
     rage_test(sprite_owner CLIENT core/utf8.c fileio/file.c fileio/resource_path.c platform/clock_win32.c
-        platform/code_page_win32.c platform/filesystem_win32.c render/device_palette.c)
+        platform/code_page_win32.c platform/filesystem_win32.c render/atlas_index.c render/device_palette.c)
     rage_test(startup_order WE4013 CLIENT core/client_managers.c core/manager_table.c std/string.c GENERATED
         startup_order)
     rage_test(startup_settings CLIENT platform/win_utf8.c)

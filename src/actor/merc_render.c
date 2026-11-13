@@ -225,7 +225,7 @@ void render_object_render_mercenary(struct RenderObject *self, const float *matr
             }
             palette = spr->palette;
             if (self->body_palette)
-                palette = palette_resource_colors(MERC_RES(string_cstr(&self->body_pal_name)), spr->palette);
+                palette = palette_resource_colors((struct PaletteRes *)named_res_get(&self->body_pal), spr->palette);
             if (layer <= 1)
                 render_object_draw_pulse_outline(self, clip, rect, screen_shift, depth_a, depth_b, palette, image, colour);
             QUAD_BUILDER(self, &quad, palette, flags, 0.0f, 0.0f);

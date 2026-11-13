@@ -180,6 +180,29 @@ static void loaders(struct ClientLua *lua)
     assert(!client_lua_load_file(lua, NULL, 0, 0));
 }
 
+/* A remembered answer outlives Lua run beside the client, but not a script the client loads, even
+   one that fails part way, nor the state opened again. */
+static void answers_forgotten_on_load(struct ClientLua *lua)
+{
+    int answer = 0, errors = dialogs;
+    assert(!luaL_dostring(lua->L, "function versioned() return 1 end"));
+    assert(client_lua_call_pure(lua, "versioned", ">d", &answer) && answer == 1);
+    assert(!luaL_dostring(lua->L, "function versioned() return 2 end"));
+    assert(client_lua_call_pure(lua, "versioned", ">d", &answer) && answer == 1);
+    source_text = "function versioned() return 3 end"; queries = 0;
+    assert(client_lua_load_file(lua, "version", 0, 0));
+    assert(client_lua_call_pure(lua, "versioned", ">d", &answer) && answer == 3);
+    source_text = "function versioned() return 4 end error('after the definition')"; queries = 0;
+    assert(!client_lua_load_file(lua, "failing", 0, 0) && dialogs == errors + 1);
+    assert(client_lua_call_pure(lua, "versioned", ">d", &answer) && answer == 4);
+    check_stack(lua->L);
+    client_lua_open(lua);
+    assert(lua->L && !lua->answers.functions[0].name_size && !lua->answers.functions[0].answers.entries);
+    answer = 0;
+    assert(!client_lua_call_pure(lua, "versioned", ">d", &answer) && !answer && dialogs == errors + 2);
+    sentinels(lua->L);
+}
+
 static void local_loader(struct ClientLua *lua)
 {
     const char *path = "SaveData\\ChatWndInfo_U.lua";
@@ -320,6 +343,7 @@ int main(void)
     assert(lua.L);
     sentinels(lua.L);
     loaders(&lua);
+    answers_forgotten_on_load(&lua);
     local_loader(&lua);
     globals(&lua);
     registration_error = 1;

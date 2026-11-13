@@ -6,6 +6,7 @@
 #include "std/container_types.h"
 #include "render/vec3.h"
 #include "world/path_info.h"
+#include "resources/named_res.h"
 
 enum { ACTOR_EFFECT_SLOT_COUNT = 5 };
 
@@ -19,7 +20,7 @@ struct GameObject { CGAMEOBJECT_MEMBERS };
 #define CRENDEROBJECT_MEMBERS                  \
     CGAMEOBJECT_MEMBERS                        \
     Vec3 pos;                                  \
-    struct String body_pal_name;            \
+    struct NamedRes body_pal;                  \
     int base_action;                           \
     int action;                                \
     int motion;                                \
@@ -292,10 +293,21 @@ struct ActorStates {
     int pk_mode;
 };
 
+struct Res;
+
+/* A robe's sprite and action as the player's job, sex, robe and mount ask for them, found when one
+   of those changes (robe 0: none found yet); held locked as the layer sprites are, NULL where the
+   robe has no sprite or action for them. */
+struct PcRobeSprites {
+    int job, sex, robe;
+    unsigned char mounted;
+    struct Res *spr, *act;
+};
+
 #define CPC_MEMBERS                            \
     CGAMEACTOR_MEMBERS                         \
     struct GameObject *costume_body_obj;       \
-    struct String imf_name;                 \
+    struct NamedRes imf;                       \
     int honor;                                 \
     unsigned virtue;                           \
     unsigned hat_flags;                        \
@@ -309,7 +321,7 @@ struct ActorStates {
     int footprint_step;                        \
     Vec3 footprint_last;                       \
     int single_sprite;                         \
-    struct String head_pal_name;            \
+    struct NamedRes head_pal;                  \
     struct UIWindow *hp_gage_wnd;              \
     int pvp_rank;                              \
     int pvp_total;                             \
@@ -319,6 +331,7 @@ struct ActorStates {
     int body_clip_y;                           \
     struct Vec layer_sprs;                     \
     struct Vec layer_acts;                     \
+    struct PcRobeSprites robe_sprites;         \
     int char_id;                               \
     int body_style;                            \
     int look_job;                              \

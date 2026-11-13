@@ -242,6 +242,7 @@ void granny_animation_cache_clear(struct C3dGrannyBoneRes *self)
             if (entry->file) _GrannyFreeFile(entry->file);
             entry->file = NULL;
             entry->animation = NULL;
+            entry->unavailable = 0;
         }
 }
 
@@ -292,6 +293,8 @@ static granny_animation *bone_animation(struct C3dGrannyBoneRes *bones, int job,
     entry = &bones->entries[job][part];
     if (entry->animation)
         return entry->animation;
+    if (entry->unavailable)
+        return NULL;
     if (part == 0) {
         const char *model = g_grannyJobModelName ? g_grannyJobModelName(g_grannyBoneJobIds[job]) : NULL;
         if (!model)
@@ -300,9 +303,12 @@ static granny_animation *bone_animation(struct C3dGrannyBoneRes *bones, int job,
     } else {
         length = snprintf(name, sizeof name, "model\\3dmob_bone\\%d_%s.gr2", job, g_grannyBonePartNames[part]);
     }
-    if (length <= 0 || (size_t)length >= sizeof name || !file_make_file_name(name, 0))
+    if (length <= 0 || (size_t)length >= sizeof name)
         return NULL;
-    granny_animation_cache_load(bones, name, job, part);
+    if (!file_make_file_name(name, 0) || !granny_animation_cache_load(bones, name, job, part)) {
+        entry->unavailable = 1;
+        return NULL;
+    }
     return entry->animation;
 }
 

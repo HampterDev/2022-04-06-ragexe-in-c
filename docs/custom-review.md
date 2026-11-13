@@ -16997,3 +16997,150 @@ were handed over and textures not yet sent were cleared; the final build was tim
 three scenes only (the two arrivals and the Emperium room, where the frames stayed within what the
 rounds spread over). Trilinear filtering, under which the atlas's pages have mipmaps, was checked by
 `test_gfx_gpu` only, in no capture. The GPU's own time was not measured, and no one played.
+
+## A player drawn without the disk, Lua or searches (2026-11-13)
+
+A sampling profile of the load scenes found that drawing a player took 28 µs (the War of
+Emperium's crowd) to 41 µs (Prontera's) of the main thread a frame, most of it work whose answer
+the frames before had already had. Each of these is a change of `custom`: the original does the
+same work every frame, as the addresses below show. The work was done and measured on the load
+scenes' commit (`88f1365a`), before the shadows were fitted on the GPU, Granny's actors skinned
+there and the shaders held to a tolerance (the entries above), and merged onto them afterwards.
+
+- **Robes.** A robe's sprite and action depend on the player's job (as `game_actor_get_job` gives
+  it), sex, robe and mount. The original's robe draw (`0x82f1b0`, which also asks `_New_DrawOnTop`
+  inline) builds both names (`0x879640`, `0x8795d0`) and asks the resource manager whether each
+  exists (`0x5013d0`) on every frame, for each of its two passes that draws. Most robes have no
+  whole-robe sprite, and the name tried first for it (`sprite\로브\<name>\<name>.spr`) is in no GRF,
+  so it was looked for on disk, a `FindFirstFile` of about 57 µs, each time. The player now keeps
+  the robe's sprite and action with the job, sex, robe and mount they were found for
+  (`struct PcRobeSprites`, `actor/types.h`), finds them again only when one of those changes, and
+  holds them locked as it holds its layer sprites.
+- **Lua.** `GetLayerPriority`, `_New_DrawOnTop`, `TB_Layer_Priority.IsIgnoredRidingState` and
+  `IsTopLayer` answer from their arguments and from tables their scripts set up as they load
+  (`TB_Layer_Priority`, the `_New_*LayerDir_*` tables, `LAYER_ALL_TABLE_LIST`, `LayerSizeTypeList`,
+  `RobeTopLayer`), which no other script of the game data names; `_New_DrawOnTop` also writes a
+  global `motInfo`, which only it and `DrawOnTop` read, after writing it. Their calls go through
+  `client_lua_call_pure` (`contents/client_lua_calls.h`), which remembers each answer by the call's
+  format and arguments in a memo of its own library (`contents/lua_memo.c`). Each function's
+  answers are kept apart from the others', in sets of eight by the key's hash: the memo doubles when
+  a new answer would take another's place, up to 16,384 answers of 68 bytes for one function, and
+  from then on a new answer takes the place of the one in its set used longest ago, so one
+  function's many answers never push out another's and nothing is ever emptied at once. The memo
+  trusts these functions to answer from their arguments alone, which the game data's do; another
+  data set's scripts might not, so one remembered answer in 256 is asked of Lua again, and a
+  function that then answers differently, or fails, is called every time from then on while the
+  state lives, and the debug output says so once. The answers are forgotten whenever a script is
+  loaded, and the functions too when the state is opened or closed again; a call with a string or
+  without results, a call that fails, and one too long to remember go to Lua every time. In the load
+  scenes a function kept at most 2,439 answers (`_New_DrawOnTop` in `town_prontera`, in 8,192
+  slots; its 2,330 in the Emperium room took 16,384), `GetLayerPriority` 256 and the other two at
+  most 22, and after the first call with given arguments nearly every call was answered from the
+  memo: in `town_prontera` 210,764 of `GetLayerPriority`'s 211,017 calls. `DrawOnTop`, used when
+  `_New_2DLayerDir_F` does not load, reads a global `robeID` that is not its argument, and is called
+  as before.
+  `OffsetItemPos_GetUppingBottomItem` was called for every layer of every player drawn, but its
+  answer was used only for the accessory's layer, which never reaches that function: the original's
+  only call of its depth bias (`0x830040`, from `0x910e4d`) takes layers 0, 1 and 5 to 7, and sends
+  the worn layers (2 to 4 and 8) to another (`0x82f0b0`). The call, and the cases for layers 2 to 4
+  that nothing reaches, are gone (`pc_body_layer_depth_bias`); the character windows' model
+  (`ui/render/character_render.c`) still asks it, so its scripts still load.
+- **The sprite atlas** found a frame's cell by walking every cell of the frame's size bucket: in the
+  Emperium room 6,458 lookups a frame over a bucket of 832 cells, 1.6 million cells. An index of its
+  own library (`render/atlas_index.c`) maps a frame's image, palette and size bucket to the cell
+  holding them; the atlas keeps it right as cells are taken, reused and invalidated and as pages
+  are purged or cleared. A frame not in the atlas still takes the first free or expired cell of its
+  bucket in page order, so every frame lands in the cell it landed in before.
+- **A player's frame** made three trees and two vectors and freed them again, copied the imf's and
+  the palettes' names to look them up, looked up `shadow.spr` and `shadow.act` by name for every
+  shadow, and allocated its pick box and the box's list node. The layers' sprites, views and queued
+  worn layers are arrays now (one quad per priority, the first queued keeping it, as the original's
+  `std::map` insert at `0x90f2d0` keeps it); the shadow's sprite and action are looked up once; and
+  the pick boxes (`world/pick_node.c`) are copied into storage the frames keep, so a frame
+  allocates nothing for them once the frames before held as many. The body palette (every actor's),
+  the head palette and the imf are a `NamedRes` (`resources/named_res.c`, a library of its own
+  with its own test): the name, and the resource it names, looked up the first time it is asked for
+  after the name is set, even to the same name, and held locked until the name is set again or the
+  actor goes. The resource cache's purges skip locked resources, so what a `NamedRes` holds stays
+  while its actor lives; actors are freed when they go, and all at once when the world's
+  objects are cleared on a map change, so what they hold is bounded by the actors alive: one
+  palette for each, and a head palette and an imf more for each player.
+- **What else asked the disk.** The resource manager's other questions in these frames are about
+  files the GRF has. The Granny models' bone animations asked for an absent `.gr2`, and opened and
+  read again one that is there but fails to load, each time an animation was played
+  (`resources/granny_res.c`, as the original's `0x9ff1f0` does: it looks for the file and loads it
+  whenever the entry has no animation); both are now remembered as unavailable for the rest of the
+  run, since the animation cache is cleared only at exit.
+
+The profile again after the changes (VSDiagnostics, 4 kHz, the same scripts; ms of the profiled
+runs' mean frame, which the sampling makes longer), taken on a build with one memo for all four Lua
+functions and without its checks, and without the pick boxes' kept storage or the bone animations'
+remembered absence:
+
+| work | Prontera before | after | Emperium before | after |
+|---|---|---|---|---|
+| the players' layers (`pc_render_body_layers`) | 7.23 | 0.80 | 4.99 | 0.96 |
+| disk searches (`FindFirstFile`) | 3.59 | 0 | 1.59 | 0.04 |
+| Lua calls | 1.43 | 0.01 | 1.36 | 0.11 |
+| the sprite atlas | 0.39 | 0.10 | 3.02 | 0.22 |
+| trees, vectors and the heap under the players' layers | 0.88 | 0.08 | 0.77 | 0.08 |
+| lookups by name under the players' layers and shadows | 0.28 | 0 | 0.24 | 0 |
+
+A player drawn in Prontera costs 4.4 µs instead of 40. The Emperium room's 0.04 ms of disk
+searches in that profile are the bone animations' searches, which the client now makes once.
+
+The load scenes before and after, three runs each by turns (before, after, before, ...),
+`RAGEXE_MSAA=4`, the median and, in brackets, the worst frame of all measured frames in ms, on a
+GTX 970 while other programs used the machine and its graphics card:
+
+| scene | `frame_ms` before | after | `objects_render_ms` before | after | `view_render_ms` before | after |
+|---|---|---|---|---|---|---|
+| `woe_emperium` | 39.20 (190.56) | 29.03 (130.43) | 17.47 (104.66) | 8.90 (66.56) | 20.15 (110.56) | 11.38 (79.72) |
+| `woe_choke` | 31.07 (152.11) | 22.76 (45.83) | 12.82 (80.90) | 6.78 (13.79) | 15.35 (85.24) | 9.06 (17.00) |
+| `arrive_castle` | 29.88 (297.32) | 23.85 (293.43) | 12.18 (28.41) | 6.37 (16.64) | 14.08 (30.49) | 8.32 (18.23) |
+| `bombers_ifrit` | 21.12 (122.90) | 16.63 (29.38) | 6.93 (84.21) | 4.41 (8.09) | 8.07 (85.97) | 5.49 (9.76) |
+| `arrive_prontera` | 15.71 (205.33) | 8.34 (208.18) | 8.54 (27.90) | 0.88 (17.57) | 10.65 (31.00) | 2.90 (20.28) |
+| `town_prontera` | 15.23 (29.68) | 7.44 (17.18) | 8.98 (19.31) | 0.83 (2.52) | 11.10 (22.48) | 2.79 (6.88) |
+| `mvp_randgris` | 8.49 (53.19) | 12.56 (102.99) | 2.10 (4.93) | 1.09 (4.24) | 2.56 (5.56) | 1.53 (11.09) |
+| `snow_lutie` | 8.88 (34.88) | 5.38 (44.87) | 4.41 (10.92) | 0.57 (3.12) | 5.74 (13.41) | 1.77 (13.56) |
+| `mvp_baphomet` | 7.70 (64.08) | 7.58 (42.38) | 2.03 (4.46) | 1.13 (2.96) | 2.91 (6.21) | 2.01 (4.59) |
+| `aoe_orc_dungeon` | 3.04 (34.53) | 3.01 (23.61) | 0.35 (2.05) | 0.30 (1.72) | 0.68 (2.70) | 0.65 (2.21) |
+
+`mvp_randgris`'s frame is longer after in all three runs by its present alone, the wait for the
+graphics card (3.0 to 4.5 ms a run before, 6.4 to 10.4 after), while every part the CPU spends is
+shorter (its objects 1.0 to 1.3 ms instead of 2.0 to 2.2); its present varies as much between runs
+of one client (3.9 to 12.7 ms in three runs of the old client at another time). `mvp_baphomet` and
+`aoe_orc_dungeon` draw few players, and their frames are the same within that noise.
+
+Validation: the regular scene set and every load scene at `RAGEXE_MSAA=1` against the client of
+`88f1365a`, run one after the other: all 38 regular captures and all 13 load captures are the same
+to the pixel, and the 13 again in a second pair of runs. The draws and texture binds of single
+frames differ by one or two between the two clients (`town_prontera`, `arrive_prontera`,
+`woe_choke`, `snow_lutie`), as they also differ between two runs of the same client
+(`town_prontera`, `arrive_prontera`, `woe_choke`): the ground's surfaces are sorted by the addresses
+of their textures and lightmap pages (`world/ground_load.c`), so which textures share an array, and
+with it the binds and merged draws a frame needs, can follow where the heap places them. An earlier
+build of these changes once drew 139 pixels of damage digits in `mvp_randgris`'s last capture
+differently, with every count of every frame the same, in one of ten runs; it was not seen again,
+and its cause was not found.
+
+The tests of the three new libraries push them against references: `test_lua_memo` runs 300,000
+steps of stores, finds, growth and fresh starts against a list that keeps the sets and the order of
+use, and catches eight of ten mistakes made in the memo on purpose (the two it misses change nothing
+it can see: a key-length comparison that matters only for two keys of the same hash where one begins
+the other, and which free place a new function takes); `test_named_res` runs 200,000 steps of
+assigning, taking, asking and freeing against a model, counting every lookup and lock;
+`test_atlas_index` fuzzes the index against a list, and the atlas's test runs 180,000 steps of
+takes, uses, reuses, invalidations, purges and clears, each resolve checked against the cell a scan
+of the pages picks on the same state (`test_sprite_atlas`), and catches each of five mistakes made
+in the atlas on purpose. `test_lua_calls` checks the remembered answers, the calls that are not
+remembered (a string among the values, no result, a name too long), the checks (a function whose
+answer changed, and one that now fails, found out at the 256th answer, said once and called every
+time after, past a script load, until the state is opened again) and the bounds (20,000 answers of
+one function take 16,384 slots, keep its latest and leave another function's answer);
+`test_lua_boundaries` checks the forgetting on every script load, `test_resource_lifecycle` the bone
+animations that are absent or fail to load (not looked for, opened or reported again until the cache
+is cleared), `test_body_layer_slots` the arrays and that a player's frame allocates nothing,
+`test_pick_state` the kept storage. The effect trace's digest moves with the actors' layout
+(`tests/test_effect_trace.c` says how it was checked). `build.bat check` passes, and so does the
+whole suite (`tests\build.bat` with `ORACLE_EXE`): 334 tests and the oracle's 7.

@@ -470,18 +470,10 @@ void skill_render_body(struct RenderObject *object, const struct ScreenBounds *r
     struct RenderObject *me = (struct RenderObject *)&self->base;
 
     if (me->pickable) {
-        struct PickInfo *pick;
+        struct PickInfo box, *pick = &box;
         int least, w, h;
 
-        pick = mem_alloc(sizeof *pick);
-        if (pick) {
-            pick->left = 0.0f;
-            pick->top = 0.0f;
-            pick->near_z = 0.0f;
-            pick->right = 0.0f;
-            pick->bottom = 0.0f;
-            pick->far_z = 0.0f;
-        }
+        memset(pick, 0, sizeof *pick);
         pick->left = rect->left < rect->right ? rect->left : rect->right;
         pick->top = rect->top;
         pick->near_z = rect->z + 350.0f;

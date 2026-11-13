@@ -61,8 +61,12 @@
    trace before (7421cc352aaed63c) is this one line for line once its wave lines lose their
    position and distances. The vertices have had no specular colour since the fog moved into the
    renderer's shaders: the trace before (356d458afcc7debb) is this one line for line but for the
-   new effects' lines, whose effect is 4,096 bytes smaller and its bytes' hash another. */
-#define EXPECTED_DIGEST 0x027d7d81b571a862ull
+   new effects' lines, whose effect is 4,096 bytes smaller and its bytes' hash another. The render
+   objects' body palette became a name with the resource it names, and the players' imf and head
+   palette too, and the players hold their robe's sprites: the trace before (027d7d81b571a862) is
+   this one line for line once the objects' sizes, the hashes of their bytes and the offsets and
+   counts of the changed words are left out. */
+#define EXPECTED_DIGEST 0x070472d1e6f92c2dull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -484,7 +488,8 @@ static void fix_ptr(size_t at, size_t offset)
 static void fix_render_object(size_t at, size_t base)
 {
     fix_ptr(at, base + offsetof(struct RenderObject, ops));
-    fix_ptr(at, base + offsetof(struct RenderObject, body_pal_name.data));
+    fix_ptr(at, base + offsetof(struct RenderObject, body_pal.name.data));
+    fix_ptr(at, base + offsetof(struct RenderObject, body_pal.res));
     fix_ptr(at, base + offsetof(struct RenderObject, spr));
     fix_ptr(at, base + offsetof(struct RenderObject, act));
     fix_ptr(at, base + offsetof(struct RenderObject, vars.head));

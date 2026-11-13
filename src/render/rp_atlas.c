@@ -1,4 +1,5 @@
 #include "render/sprite_atlas.h"
+#include "render/atlas_index.h"
 #include "render/renderer.h"
 #include "render/texture.h"
 #include "core/client.h"
@@ -12,10 +13,12 @@
 #define ATLAS_BUCKETS 25
 #define ATLAS_SPARES 50
 #define ATLAS_PAGE_SIZE 256
+#define ATLAS_INDEX_FIRST 256
 
 struct SpriteAtlasCell {
     const struct SprImg *image;
     const DWORD *palette;
+    struct SpriteAtlasPage *page;
     struct SpriteRegion region;
     DWORD last_use;
     int occupied, pinned;
@@ -26,15 +29,18 @@ struct SpriteAtlasPage {
     struct Texture *texture;
     struct SpriteAtlasCell *cells;
     size_t cell_count;
-    int cell_width, cell_height, reusable;
+    int bucket, cell_width, cell_height, reusable;
     DWORD last_use;
 };
 
+/* index finds the cell holding an image and palette among the pages of pages[] (not retired), in
+   the bucket of the image's size: every such cell with an image is in it, and nothing else. */
 struct SpriteAtlasCache {
     struct SpriteAtlasPage *pages[ATLAS_BUCKETS];
     struct SpriteAtlasPage *retired;
     struct Texture *spares[ATLAS_SPARES];
     size_t spare_count;
+    struct AtlasIndex index;
 };
 
 static int atlas_step(int side)
@@ -120,10 +126,12 @@ static struct SpriteAtlasPage *atlas_page_create(struct SpriteAtlasCache *cache,
         atlas_page_free(cache, page);
         return NULL;
     }
+    page->bucket = bucket;
     page->cell_width = cell_width;
     page->cell_height = cell_height;
     for (i = 0; i < page->cell_count; ++i) {
         struct SpriteRegion *region = &page->cells[i].region;
+        page->cells[i].page = page;
         region->x = (int)(i % columns) * cell_width;
         region->y = (int)(i / columns) * cell_height;
         region->u = (float)region->x / (float)texture->base.width;
@@ -146,11 +154,43 @@ static struct Texture *atlas_use(struct SpriteAtlasPage *page, struct SpriteAtla
     return page->texture;
 }
 
+static void atlas_empty_cell(struct SpriteAtlasCache *cache, struct SpriteAtlasCell *cell)
+{
+    atlas_index_remove(&cache->index, cell->image, cell->palette, cell->page->bucket);
+    cell->image = NULL;
+    cell->palette = NULL;
+}
+
+/* The page leaves pages[]: its cells can no longer be found. */
+static void atlas_forget_page(struct SpriteAtlasCache *cache, struct SpriteAtlasPage *page)
+{
+    size_t i;
+    for (i = 0; i < page->cell_count; ++i)
+        atlas_index_remove(&cache->index, page->cells[i].image, page->cells[i].palette, page->bucket);
+}
+
+static int atlas_index_room(struct SpriteAtlasCache *cache)
+{
+    struct AtlasIndex grown;
+    struct AtlasIndexSlot *slots;
+    size_t capacity;
+    if (!atlas_index_full(&cache->index)) return 1;
+    capacity = cache->index.capacity ? cache->index.capacity * 2 : ATLAS_INDEX_FIRST;
+    if (capacity < cache->index.capacity) return 0;
+    slots = calloc(capacity, sizeof *slots);
+    if (!slots) return 0;
+    atlas_index_init(&grown, slots, capacity);
+    atlas_index_move(&grown, &cache->index);
+    free(cache->index.slots);
+    cache->index = grown;
+    return 1;
+}
+
 struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct SprImg *image,
                                       const DWORD *palette, struct SpriteRegion *region)
 {
     struct SpriteAtlasCache *cache;
-    struct SpriteAtlasPage *page, *available_page = NULL;
+    struct SpriteAtlasPage *page;
     struct SpriteAtlasCell *available = NULL;
     size_t i;
     int bucket;
@@ -162,32 +202,34 @@ struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct Spr
     cache = atlas_cache(renderer);
     if (!cache) return NULL;
     bucket = atlas_step(image->width) * 5 + atlas_step(image->height);
-    for (page = cache->pages[bucket]; page; page = page->next) {
+    available = atlas_index_find(&cache->index, image, palette, bucket);
+    if (available)
+        return atlas_use(available->page, available, now, region);
+    if (!atlas_index_room(cache)) return NULL;
+    for (page = cache->pages[bucket]; page && !available; page = page->next) {
+        if (image->width > page->cell_width || image->height > page->cell_height) continue;
         for (i = 0; i < page->cell_count; ++i) {
             struct SpriteAtlasCell *cell = &page->cells[i];
-            if (cell->image == image && cell->palette == palette)
-                return atlas_use(page, cell, now, region);
-            if (!available && image->width <= page->cell_width && image->height <= page->cell_height
-                && (!cell->occupied || (!cell->pinned && (DWORD)(now - cell->last_use) > (g_resPurgeAgeMs >> 2)))) {
+            if (!cell->occupied || (!cell->pinned && (DWORD)(now - cell->last_use) > (g_resPurgeAgeMs >> 2))) {
                 available = cell;
-                available_page = page;
+                break;
             }
         }
     }
     if (!available) {
-        available_page = atlas_page_create(cache, bucket, image);
-        if (!available_page) return NULL;
-        available = &available_page->cells[0];
+        page = atlas_page_create(cache, bucket, image);
+        if (!page) return NULL;
+        available = &page->cells[0];
     }
-    page = available_page;
-    available->image = NULL;
-    available->palette = NULL;
+    page = available->page;
+    atlas_empty_cell(cache, available);
     if (!texture_draw_sprite_frame(page->texture, available->region.x, available->region.y,
                                   page->cell_width, page->cell_height, image, palette))
         return NULL;
     available->image = image;
     available->palette = palette;
     available->occupied = 1;
+    atlas_index_insert(&cache->index, image, palette, bucket, available);
     available->region.u1 = (float)(available->region.x + image->width) / (float)page->texture->base.width;
     available->region.v1 = (float)(available->region.y + image->height) / (float)page->texture->base.height;
     return atlas_use(page, available, now, region);
@@ -208,10 +250,8 @@ static void atlas_invalidate(struct Renderer *renderer, const struct SprImg *ima
                 uintptr_t address = (uintptr_t)cell->image, begin = (uintptr_t)images;
                 if ((palette && cell->palette == palette)
                     || (images && address >= begin && (address - begin) / sizeof *images < count
-                        && (address - begin) % sizeof *images == 0)) {
-                    cell->image = NULL;
-                    cell->palette = NULL;
-                }
+                        && (address - begin) % sizeof *images == 0))
+                    atlas_empty_cell(cache, cell);
             }
         }
     }
@@ -237,6 +277,7 @@ void sprite_atlas_clear(struct Renderer *renderer)
         cache->pages[bucket] = NULL;
         while (page) {
             struct SpriteAtlasPage *next = page->next;
+            atlas_forget_page(cache, page);
             if (atlas_page_pinned(page)) {
                 page->next = cache->retired;
                 cache->retired = page;
@@ -279,6 +320,7 @@ void sprite_atlas_purge(struct Renderer *renderer)
             struct SpriteAtlasPage *page = *link;
             if (!atlas_page_pinned(page) && (DWORD)(now - page->last_use) > g_resPurgeAgeMs) {
                 *link = page->next;
+                atlas_forget_page(cache, page);
                 atlas_page_free(cache, page);
             } else {
                 link = &page->next;
@@ -294,6 +336,7 @@ void sprite_atlas_destroy(struct Renderer *renderer)
     sprite_atlas_finish_frame(renderer);
     sprite_atlas_clear(renderer);
     while (cache->spare_count) texture_destroy(cache->spares[--cache->spare_count]);
+    free(cache->index.slots);
     free(cache);
     renderer->sprite_atlas = NULL;
 }
