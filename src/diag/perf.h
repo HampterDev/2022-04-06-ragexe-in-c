@@ -57,6 +57,25 @@ enum perf_phase {
    - drawSceneNs, viewRenderNs and presentNs: the time spent in renderer_draw_scene, in
      view_on_render and in presenting the frame (c3d_device_show_frame), where the device submits
      the frame's recorded draws and waits while the GPU is two frames behind.
+   - The game's own work in a frame, timed the same way: packetsNs, handling the map server's
+     packets (game_mode_poll_network_msg: actors appearing and moving, skills launching their
+     effects); effectsNs, stepping the effect manager's effects (effect_mgr_process); actorsNs,
+     stepping the world's objects (world_process_actors: actors walking and animating, the effects
+     and damage numbers attached to them); objectsRenderNs and effectsRenderNs, the parts of
+     view_on_render that build the world's objects' quads (game_object_render: sprites, their
+     shadows, names, damage numbers, Granny models' bones) and the effect manager's
+     (effect_mgr_render: STR and RagEffect primitives, particles); uiNs, drawing the windows
+     (ui_window_mgr_render and ui_window_mgr_render_windows: shop signs, chat rooms and chat
+     balloons among them); atlasNs, decoding sprite frames into the sprite atlas
+     (texture_draw_sprite_frame); texelsNs, widening texels to the GPU's B8G8R8A8 for an upload
+     (render/gfx_gpu.c). All of them run on the thread that draws.
+   - Which times lie within which: objectsRenderNs and effectsRenderNs within viewRenderNs; atlasNs
+     within the time of whatever draws the sprite: objectsRenderNs for the world's objects,
+     effectsRenderNs for sprite particles, uiNs for windows, none of the others for the mouse
+     cursor and what it drags; texelsNs within the time of whatever sends a texture's new texels to
+     the device: drawSceneNs for the renderer's lists, uiNs for a window drawn into a texture of its
+     own, presentNs for the static world's textures, which go up with the frame. packetsNs,
+     effectsNs, actorsNs, viewRenderNs, uiNs, drawSceneNs and presentNs do not overlap.
    The model loader's thread (world/models.c) creates textures and builds them as well, so
    texCreated, locks, builds, buildsSkipped and textureBytes go up through perf_count_shared, and a
    texture counts in whichever frame the loader built it during; resGets and resHits go up under
@@ -74,6 +93,14 @@ struct perf_counters {
     int64_t drawSceneNs;
     int64_t viewRenderNs;
     int64_t presentNs;
+    int64_t packetsNs;
+    int64_t effectsNs;
+    int64_t actorsNs;
+    int64_t objectsRenderNs;
+    int64_t effectsRenderNs;
+    int64_t uiNs;
+    int64_t atlasNs;
+    int64_t texelsNs;
     unsigned locks;
     unsigned texCreated;
     unsigned surfCreated;

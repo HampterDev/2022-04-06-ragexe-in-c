@@ -46,7 +46,6 @@
 #include "shaders/skin_probe.h"
 #include "fixtures/granny_reference.h"
 #include "fileio/file_api.h"
-#include "platform/clock.h"
 #include "platform/system.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
@@ -99,8 +98,6 @@ unsigned char file_open(struct File *self, const char *name, int mode, unsigned 
     return 1;
 }
 void file_destruct(struct File *self) { self->buffer = NULL; }
-int64_t platform_perf_counter(void) { return 0; }
-int64_t platform_perf_frequency(void) { return 1; }
 void platform_debug_output(const char *text) { fputs(text, stderr); }
 
 /* ---- random numbers ---- */

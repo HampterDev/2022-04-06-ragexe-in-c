@@ -73,6 +73,14 @@ static struct {
     char out[1024];
     int enter_x, enter_y, enter_dir, traced_mode;
     struct perf_counters counters; /* of the last frame shown */
+    int64_t shown_ns;              /* when the driver was done with the last frame shown */
+    int64_t frame_ns, script_ns;   /* the last frame drawn: the client's time, the script's */
+    int64_t script_running_ns;     /* the script's time since the last frame shown */
+    struct {
+        FILE *file;
+        char path[1200];
+        int left, logged;
+    } measure;                     /* scene.measure: the frames still to log */
 } S;
 
 /* Headless, silent and without vsync unless the caller says otherwise; set before the client
@@ -107,6 +115,13 @@ void drive_state_note_chat(const char *text)
 
 static void finish(int failed)
 {
+    if (S.measure.file) {
+        fprintf(stderr, "scene: the run ended %d frames into the %d the measure of %s asked for\n", S.measure.logged,
+                S.measure.logged + S.measure.left, S.measure.path);
+        fclose(S.measure.file);
+        S.measure.file = NULL;
+        failed = 1;
+    }
     fflush(stdout);
     fflush(stderr);
     exit(failed || S.failures ? 1 : 0);
@@ -326,7 +341,8 @@ static int l_enter_map(lua_State *L)
 }
 
 /* scene.spawn{aid, job, x, y, dir, name, kind = "monster"|"npc"|"player", hair, hair_color,
-   weapon, shield, head_top, head_mid, head_bottom, robe, sex, level, hp, max_hp, speed, state} */
+   weapon, shield, head_top, head_mid, head_bottom, robe, sex, level, hp, max_hp, speed, state,
+   option, boss} */
 static int l_spawn(lua_State *L)
 {
     static const struct { const char *name; int type; } kinds[] = {
@@ -350,6 +366,8 @@ static int l_spawn(lua_State *L)
     e->aid = (unsigned)opt_int(L, 1, "aid", 110000000);
     e->char_id = type == 0 ? e->aid : 0;
     e->speed = (short)opt_int(L, 1, "speed", 150);
+    e->effect_state = opt_int(L, 1, "option", 0);
+    e->is_boss = (unsigned char)opt_int(L, 1, "boss", 0);
     e->job = (short)opt_int(L, 1, "job", 1002);
     e->head = (short)opt_int(L, 1, "hair", 0);
     e->weapon = opt_int(L, 1, "weapon", 0);
@@ -470,6 +488,20 @@ static int l_mouse(lua_State *L)
     return 0;
 }
 
+/* scene.wheel(delta): the mouse wheel turned by delta (120 a notch, positive away from the player) */
+static int l_wheel(lua_State *L)
+{
+    input_wheel((int)luaL_checkinteger(L, 1));
+    return 0;
+}
+
+/* scene.ticks(): the client's clock in milliseconds, which the fake map server's times are on */
+static int l_ticks(lua_State *L)
+{
+    lua_pushinteger(L, (lua_Integer)platform_ticks_ms());
+    return 1;
+}
+
 /* scene.button(x, y, down[, "right"]) */
 static int l_button(lua_State *L)
 {
@@ -502,10 +534,36 @@ static void write_file(void *context, void *data, int size)
     fwrite(data, 1, (size_t)size, context);
 }
 
+/* The last frame shown's counters (README.md, "Counters") as one JSON object, its fields
+   `separator` apart: what a capture's counters file and each line of a measure hold. */
+static int print_counters(FILE *file, const char *separator)
+{
+    const struct perf_counters *c = &S.counters;
+    struct World *world = g_modeMgr.curModeType == MODE_TYPE_GAME && g_modeMgr.curMode
+                              ? ((struct GameMode *)g_modeMgr.curMode)->world : NULL;
+    const char *s = separator;
+    return fprintf(file,
+                   "{%s\"frame\": %u,%s\"frame_ms\": %.3f,%s\"script_ms\": %.3f,%s\"objects\": %u,%s\"draws\": %u,"
+                   "%s\"indirect_draws\": %u,%s\"draw_calls\": %u,%s\"primitives\": %u,%s\"modes_sent\": %u,"
+                   "%s\"modes_skipped\": %u,%s\"texture_binds\": %u,%s\"vertex_bytes\": %u,%s\"instance_bytes\": %u,"
+                   "%s\"texture_bytes\": %u,%s\"draw_scene_ms\": %.3f,%s\"view_render_ms\": %.3f,%s\"present_ms\": %.3f,"
+                   "%s\"packets_ms\": %.3f,%s\"effects_ms\": %.3f,%s\"actors_ms\": %.3f,"
+                   "%s\"objects_render_ms\": %.3f,%s\"effects_render_ms\": %.3f,%s\"ui_ms\": %.3f,"
+                   "%s\"atlas_ms\": %.3f,%s\"texels_ms\": %.3f%s}\n",
+                   s, S.frame, s, (double)S.frame_ns / 1e6, s, (double)S.script_ns / 1e6, s,
+                   world && world->gameObjects.head ? (unsigned)world->gameObjects.size : 0u, s, c->draws, s,
+                   c->indirectDraws, s, c->drawCalls, s, c->prims, s, c->modesSent, s, c->modesSkipped, s, c->texSets,
+                   s, c->vertexBytes,
+                   s, c->instanceBytes, s, c->textureBytes, s, (double)c->drawSceneNs / 1e6, s,
+                   (double)c->viewRenderNs / 1e6, s, (double)c->presentNs / 1e6, s, (double)c->packetsNs / 1e6, s,
+                   (double)c->effectsNs / 1e6, s, (double)c->actorsNs / 1e6, s, (double)c->objectsRenderNs / 1e6,
+                   s, (double)c->effectsRenderNs / 1e6, s, (double)c->uiNs / 1e6, s, (double)c->atlasNs / 1e6, s,
+                   (double)c->texelsNs / 1e6, *s == '\n' ? "\n" : "") > 0;
+}
+
 /* <out>/<name>.counters.json: the counters of the frame a capture shows (README.md). */
 static int write_counters(const char *name)
 {
-    const struct perf_counters *c = &S.counters;
     char path[1200];
     FILE *file;
     int ok;
@@ -513,14 +571,7 @@ static int write_counters(const char *name)
     file = fopen(path, "w");
     if (!file)
         return 0;
-    ok = fprintf(file,
-                 "{\n  \"frame\": %u,\n  \"draws\": %u,\n  \"indirect_draws\": %u,\n  \"draw_calls\": %u,\n"
-                 "  \"primitives\": %u,\n  \"modes_sent\": %u,\n  \"modes_skipped\": %u,\n  \"texture_binds\": %u,\n"
-                 "  \"vertex_bytes\": %u,\n  \"instance_bytes\": %u,\n  \"texture_bytes\": %u,\n"
-                 "  \"draw_scene_ms\": %.3f,\n  \"view_render_ms\": %.3f,\n  \"present_ms\": %.3f\n}\n",
-                 S.frame, c->draws, c->indirectDraws, c->drawCalls, c->prims, c->modesSent, c->modesSkipped, c->texSets,
-                 c->vertexBytes, c->instanceBytes, c->textureBytes, (double)c->drawSceneNs / 1e6,
-                 (double)c->viewRenderNs / 1e6, (double)c->presentNs / 1e6) > 0;
+    ok = print_counters(file, "\n  ");
     if (fclose(file))
         ok = 0;
     return ok;
@@ -709,6 +760,51 @@ static int l_quake(lua_State *L)
     return 0;
 }
 
+/* A line of the measure's file for the frame just shown; the file is closed after the last. */
+static void measure_frame(void)
+{
+    if (!print_counters(S.measure.file, " ")) {
+        fprintf(stderr, "scene: cannot write %s\n", S.measure.path);
+        S.failures++;
+    }
+    S.measure.logged++;
+    if (--S.measure.left > 0)
+        return;
+    if (fclose(S.measure.file)) {
+        fprintf(stderr, "scene: cannot write %s\n", S.measure.path);
+        S.failures++;
+    }
+    S.measure.file = NULL;
+    printf("scene: measured %s (%d frames, the last frame %u)\n", S.measure.path, S.measure.logged, S.frame);
+}
+
+/* scene.measure(frames, name): the counters of each of the next `frames` frames drawn and shown, a
+   line of JSON each, in <out>/<name>.frames.jsonl. The script goes on at once; until the last of
+   them is shown, a capture is an error, as reading the frame back stalls the GPU, and so is another
+   measure. scene.measuring() answers the frames still to come. */
+static int l_measure(lua_State *L)
+{
+    int frames = (int)luaL_checkinteger(L, 1);
+    const char *name = luaL_checkstring(L, 2);
+    if (S.measure.file)
+        return luaL_error(L, "measure: %s is still being measured", S.measure.path);
+    if (frames <= 0)
+        return luaL_error(L, "measure: %d frames", frames);
+    snprintf(S.measure.path, sizeof S.measure.path, "%s/%s.frames.jsonl", S.out, name);
+    S.measure.file = fopen(S.measure.path, "w");
+    if (!S.measure.file)
+        return luaL_error(L, "measure: cannot write %s", S.measure.path);
+    S.measure.left = frames;
+    S.measure.logged = 0;
+    return 0;
+}
+
+static int l_measuring(lua_State *L)
+{
+    lua_pushinteger(L, S.measure.file ? S.measure.left : 0);
+    return 1;
+}
+
 /* scene.capture(name[, {w, h, x, y, jpeg}]): the whole frame, or a w x h part of it whose top
    left corner is x, y (default: centred on the frame), as <out>/<name>.png, or with jpeg = quality
    (1 to 100) as <out>/<name>.jpg, and the frame's counters beside it. The frame is the one just
@@ -722,6 +818,8 @@ static int l_capture(lua_State *L)
     FILE *file;
     int frameW = 0, frameH = 0, w, h, x, y, ok;
     RECT r;
+    if (S.measure.file)
+        return luaL_error(L, "capture: %s is still being measured", S.measure.path);
     if (!g_3dDevice.target || gfx_get_size(g_3dDevice.target, &frameW, &frameH) < 0 || frameW <= 0 || frameH <= 0)
         return luaL_error(L, "capture: no frame");
     w = frameW;
@@ -838,8 +936,9 @@ static int l_fail(lua_State *L)
 static const luaL_Reg scene_api[] = {
     {"enter_map", l_enter_map}, {"spawn", l_spawn}, {"vanish", l_vanish}, {"say", l_say},
     {"chat", l_chat}, {"send", l_send}, {"key_event", l_key_event}, {"text", l_text}, {"mouse", l_mouse},
-    {"button", l_button}, {"open", l_open}, {"resize", l_resize}, {"capture", l_capture}, {"effects", l_effects}, {"frame", l_frame},
-    {"mode", l_mode}, {"wait", l_wait}, {"wait_ready", l_wait_ready}, {"fail", l_fail},
+    {"wheel", l_wheel}, {"button", l_button}, {"open", l_open}, {"resize", l_resize}, {"capture", l_capture},
+    {"measure", l_measure}, {"measuring", l_measuring}, {"effects", l_effects}, {"frame", l_frame},
+    {"ticks", l_ticks}, {"mode", l_mode}, {"wait", l_wait}, {"wait_ready", l_wait_ready}, {"fail", l_fail},
     {"shadow_fit", l_shadow_fit}, {"shadow_fit_check", l_shadow_fit_check}, {"quake", l_quake},
     {NULL, NULL},
 };
@@ -898,6 +997,15 @@ static void start(void)
     S.L = luaL_newstate();
     luaL_openlibs(S.L);
     luaL_register(S.L, "scene", scene_api);
+    {
+        /* scene.dir: the script's directory, with its separator, for the files it loads */
+        const char *end = script, *p;
+        for (p = script; *p; p++)
+            if (*p == '/' || *p == '\\')
+                end = p + 1;
+        lua_pushlstring(S.L, script, (size_t)(end - script));
+        lua_setfield(S.L, -2, "dir");
+    }
     lua_pop(S.L, 1);
     if (luaL_dostring(S.L, prelude) || luaL_loadfile(S.L, script)) {
         fprintf(stderr, "scene: %s\n", lua_tostring(S.L, -1));
@@ -913,22 +1021,32 @@ static void start(void)
 
 /* One frame of virtual time per shown frame: loops that wait on the clock (fades, timeouts)
    always present while they wait. The counters start again with each frame shown, so that a
-   capture writes those of the frame it shows. */
+   capture writes those of the frame it shows. A frame's time is the client's alone: from the
+   moment the driver was done with the frame before to the moment this one was shown, less the
+   script's steps in between, which count as the frame's script time. */
 void drive_state_frame_shown(void)
 {
+    int64_t now = platform_stopwatch_ns();
     S.shown++;
     /* a frame shown again without being drawn (a move while the window is inactive) keeps the
-       counters of the frame it shows */
+       counters of the frame it shows, and a measure does not count it */
     if (g_perf.drawCalls || g_perf.drawSceneNs) {
         S.counters = g_perf;
         memset(&g_perf, 0, sizeof g_perf);
+        S.frame_ns = S.shown_ns ? now - S.shown_ns - S.script_running_ns : 0;
+        S.script_ns = S.script_running_ns;
+        if (S.measure.file)
+            measure_frame();
     }
+    S.script_running_ns = 0;
     scene_clock_advance(SCENE_FRAME_MS);
+    S.shown_ns = platform_stopwatch_ns();
 }
 
 void drive_state_tick(void)
 {
     int status;
+    int64_t resumed;
     S.frame++;
     if (getenv("RAGEXE_SCENE_TRACE") && g_modeMgr.curModeType != S.traced_mode) {
         fprintf(stderr, "scene: mode %d at frame %u (%s)\n", g_modeMgr.curModeType, S.frame, g_modeMgr.curModeName);
@@ -960,7 +1078,9 @@ void drive_state_tick(void)
         break;
     }
     S.wait = WAIT_NONE;
+    resumed = platform_stopwatch_ns();
     status = lua_resume(S.co, 0);
+    S.script_running_ns += platform_stopwatch_ns() - resumed;
     if (status == LUA_YIELD)
         return;
     S.finished = 1;

@@ -43,6 +43,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "world/world.h"
 #include "platform/clock.h"
+#include "diag/perf.h"
 
 int g_followActorGid;
 DWORD g_firstFrameTick;
@@ -170,6 +171,21 @@ static void restart_bgm(struct GameMode *self)
     string_free(&rsw);
 }
 
+/* custom: the effects' and the world's objects' steps, timed for the counters (diag/perf.h) */
+static void process_effects(void)
+{
+    int64_t start = platform_stopwatch_ns();
+    effect_mgr_process(g_effectMgr);
+    g_perf.effectsNs += platform_stopwatch_ns() - start;
+}
+
+static void process_actors(struct World *world)
+{
+    int64_t start = platform_stopwatch_ns();
+    world_process_actors(world);
+    g_perf.actorsNs += platform_stopwatch_ns() - start;
+}
+
 static void run_logic_steps(struct GameMode *self)
 {
     int steps, n;
@@ -184,25 +200,29 @@ static void run_logic_steps(struct GameMode *self)
     res_mgr_call_residents(g_resMgr());
     if (steps > 0) {
         for (n = steps; n != 0; n--) {
-            effect_mgr_process(g_effectMgr);
-            world_process_actors(self->world);
+            process_effects();
+            process_actors(self->world);
             c3d_ground15_update_water(self->world->ground);
             view_on_calc_view_info(self->view);
         }
     } else if (steps == 0) {
-        world_process_actors(self->world);
+        process_actors(self->world);
         view_on_calc_view_info(self->view);
     }
 }
 
 static void render_frame(struct GameMode *self)
 {
+    int64_t start;
     renderer_clear_scene(g_renderer);
     actor_pick_node_clear(&g_actorPickNode);
     view_on_render(self->view);
     game_mode_draw_minimap(self);
+    /* custom: timed for the counters (diag/perf.h) */
+    start = platform_stopwatch_ns();
     ui_window_mgr_render(&g_windowMgr);
     ui_window_mgr_render_windows(&g_windowMgr);
+    g_perf.uiNs += platform_stopwatch_ns() - start;
     if (self->world->is_pvp != 0 || g_session1.map_rule_flags[3] != 0) {
         game_mode_draw_pk_ranking(self);
         game_mode_draw_ranking_time_attack(self);
@@ -238,13 +258,17 @@ static void send_stat_raises(struct GameMode *self)
 void game_mode_on_update(struct Mode *mode)
 {
     struct GameMode *self = (struct GameMode *)mode;
+    int64_t start;
     if (once_begin(&g_firstFrameTickGuard)) {
         g_firstFrameTick = platform_ticks_ms();
         once_complete(&g_firstFrameTickGuard);
     }
     adventurer_agency_tick(g_adventurerAgency);
     check_system_message();
+    /* custom: timed for the counters (diag/perf.h) */
+    start = platform_stopwatch_ns();
     game_mode_poll_network_msg(self);
+    g_perf.packetsNs += platform_stopwatch_ns() - start;
     if (self->base.loop_cond != 0) {
         time_scheduler_tick(g_timeScheduler);
         player_names_update();

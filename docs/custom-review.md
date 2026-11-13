@@ -16569,3 +16569,69 @@ effect quad (IDs 788 to 790 and 940 save the 40 bytes a frame one upright quad's
 no frame was looked at for one; its corners are held to the bit); why the gallery is not the same
 from run to run for a few IDs; a device made again while playing; the GPU's time; and a game played
 by hand.
+
+## A frame's time under load: timers and load scenes (2026-11-13)
+
+Phase 7 of `plans/gpu-renderer.md` decides from measurements which of the CPU's jobs left per
+object go to the GPU. The counters timed `renderer_draw_scene`, `view_on_render` and presenting,
+and the heaviest scene of the set, `prontera_crowd`, has 11 actors, so neither said where a busy
+frame's time goes.
+
+- **The client's timers.** `g_perf` (`diag/perf.h`) times eight more parts of a frame: handling the
+  map server's packets, stepping the effects and the world's objects, the objects' and the
+  effects' parts of `view_on_render`, drawing the windows, decoding sprite frames into the sprite
+  atlas, and widening texels for an upload. `diag/perf.h` says what each times and which lie within
+  which. Each costs two stopwatch reads a call; the client only adds them up, and nothing reads
+  them to decide anything.
+- **Measuring without capturing.** A capture downloads the frame and stalls the GPU, so
+  `scene.measure(n, name)` writes the counters of each of the next `n` frames drawn and shown, a
+  JSON line each, and refuses a capture until they are done. A frame's `frame_ms` is the client's
+  alone: the harness's own work in it, the scene script's step with the packets it builds, is timed
+  apart (`script_ms`) and left out. It is 0.01 to 0.16 ms in a steady frame, and 2.8 and 6.1 ms in
+  the first frame of the two arrivals, where the script builds the whole crowd.
+- **The load scenes** (`tests/scenes/load`, `tests/scenes/README.md`): the War of Emperium in
+  Kriemhild's Emperium room and at its last choke (113 players of three guilds), Baphomet and
+  Valkyrie Randgris against parties of 19 and 23 with Earthquake every 150 frames, 30 bombers on
+  Ifrit, a wizard with a pack of 50 in the Orc Dungeon, Prontera with 180 players and 20 pets,
+  arriving in that Prontera and in that war, and Lutie's snow over 100 players. They are staged as
+  rAthena sends such play, keep fighting through the whole measured stretch, draw a 1600×900 frame
+  and stay out of the regular set. `tests/scenes/load.py` runs each several times and reports the
+  median and the worst frame of every time.
+- **The baseline.** The Direct3D 9 client is `02fc9e5e` built with FreeType, with
+  `tests/scenes/load/d3d9_baseline.patch`, which gives its harness the same calls and its frames
+  the same timers.
+
+Both clients, three runs a scene, `RAGEXE_MSAA=4`, 600 measured frames (the arrivals 300) pooled
+over the runs; `frame_ms` in ms, the worst frame with its run and its frame in the stretch; on a
+GTX 970. The GPU client measured is 5ea7b76b's renderer with these timers, before the shadows were
+fitted on the GPU and Granny's actors skinned there (the two entries above), which phase 7 measures
+again:
+
+| scene | objects | GPU median | GPU worst | Direct3D 9 median | Direct3D 9 worst |
+|---|---|---|---|---|---|
+| `woe_emperium` | 14,976 | 30.77 | 50.06 (2.264) | 27.85 | 49.17 (2.363) |
+| `woe_choke` | 11,290 | 24.74 | 38.58 (2.280) | 23.34 | 40.59 (2.334) |
+| `arrive_castle` | 7,028 | 24.80 | 274.94 (3.1) | 20.45 | 260.22 (3.1) |
+| `bombers_ifrit` | 5,559 | 15.84 | 26.86 (1.55) | 15.45 | 24.72 (1.281) |
+| `arrive_prontera` | 243 | 12.22 | 170.42 (1.1) | 12.92 | 140.03 (3.1) |
+| `town_prontera` | 243 | 11.65 | 30.36 (1.111) | 12.55 | 31.70 (3.35) |
+| `mvp_randgris` | 2,041 | 7.17 | 27.88 (1.51) | 4.24 | 8.53 (2.231) |
+| `snow_lutie` | 837 | 6.20 | 24.31 (2.87) | 7.67 | 11.24 (2.221) |
+| `mvp_baphomet` | 2,160 | 5.56 | 26.77 (1.160) | 4.79 | 19.45 (3.134) |
+| `aoe_orc_dungeon` | 731 | 2.63 | 3.98 (3.32) | 2.33 | 4.96 (2.584) |
+
+Building the world's objects' quads (`objects_render_ms`) is the largest part of every crowded
+frame on both clients: 13.75 of the GPU client's 30.77 ms in the Emperium room, 7.33 of 11.65 in
+Prontera, 5.48 of 15.84 among the bombers, where stepping the objects (`actors_ms`) takes 3.71
+more. The GPU client spends more in `renderer_draw_scene` and in presenting (7.27 and 2.05 ms in
+the Emperium room where Direct3D 9 spends 5.31 and 0.37, with 1.19 ms of widening texels) and a
+little less in `view_on_render`. The first frame of an arrival (the median of the three runs: 267
+ms on the GPU client and 209 on Direct3D 9 in the castle, 151 and 129 in Prontera) goes to
+handling the packets of the crowd that appears (98 to 108 ms in Prontera, 133 to 176 in the
+castle, over both clients' runs), stepping the castle's objects (53 to 60 ms), and on the GPU
+client 25 to 29 ms in `renderer_draw_scene` and 19 to 22 ms widening texels.
+
+Validation: the regular scene set's captures are the same to the pixel as those of the client
+before these changes, the 35 that client can make (it crashes on `broadcast` and
+`potion_pitcher`, and has no `scene.measure` for `measure_frames`). `build.bat check` passes, and
+so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 331 tests and the oracle's 7.

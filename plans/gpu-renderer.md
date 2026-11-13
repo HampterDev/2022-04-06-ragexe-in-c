@@ -575,6 +575,11 @@ recorded.
 
 - Record the counters again on the same scenes and write the result into the review entry. Remove
   what the phases left unused.
+- Measure on the load scenes (`tests/scenes/load`: the War of Emperium in the Emperium room and at a
+  choke, MVP fights with Earthquake, bombers on an MVP, AoE levelling, a busy Prontera, arriving in
+  a crowd, Lutie's snow) with `tests/scenes/load.py`, against the Direct3D 9 client's numbers on
+  the same scenes (`02fc9e5e` with `tests/scenes/load/d3d9_baseline.patch`, built as
+  `tests/scenes/README.md` says), and decide from them which CPU jobs left per object go to the GPU.
 
 ## Decisions
 

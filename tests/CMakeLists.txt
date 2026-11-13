@@ -807,7 +807,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
     # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c render/draw_modes.c render/quads.c render/shadow_fit.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/draw_modes.c render/quads.c render/shadow_fit.c
         render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/vertex_fog.c render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
@@ -819,9 +819,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # (2^24 and more takes every divisor from 1 to 2), scenes drawn both ways.
     rage_test(quad_instances tests/fixtures/quad_reference.c src/render/gfx_gpu.c src/render/texel_convert.c
         CLIENT actor/sprite_quad.c effects/particle.c effects/rag/effect_prim_draw.c effects/sprite_particle.c
-        platform/thread_win32.c render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c
-        render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c
-        render/vertex_fog.c render/world_layout.c world/ground_draw.c LIBS SDL3::SDL3
+        platform/clock_win32.c platform/thread_win32.c render/draw_modes.c render/math3d.c render/quads.c
+        render/rp_project.c render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c
+        render/static_world.c render/vertex_fog.c render/world_layout.c world/ground_draw.c LIBS SDL3::SDL3
         ARGS 1 20261112 300000 17000000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 0 30
         ENVIRONMENT SDL_VIDEO_DRIVER=windows)
@@ -835,9 +835,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(RAGE_MAPS_GAME_DIR "${default_game}" CACHE PATH
         "Game folder of test_static_world_maps's maps and test_skin_instances's converted Granny models")
     rage_test(skin_instances tests/fixtures/granny_reference.c src/render/gfx_gpu.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c
-        render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c
-        render/vertex_fog.c render/world_layout.c resources/granny_gltf.c resources/granny_mesh.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/draw_modes.c render/math3d.c render/quads.c
+        render/rp_project.c render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c
+        render/static_world.c render/vertex_fog.c render/world_layout.c resources/granny_gltf.c
+        resources/granny_mesh.c
         LIBS rage_cgltf rage_stb rage_zlib SDL3::SDL3 ARGS 1 ${RAGE_MAPS_GAME_DIR}/data/model/gltf 20261113 20 20
         LABELS client-files ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(skin_instances_msaa COMMAND test_skin_instances 4 ${RAGE_MAPS_GAME_DIR}/data/model/gltf 20261114 4 20
