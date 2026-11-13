@@ -1,49 +1,37 @@
 // The kept records' indices into their places in the frame's index buffer, which world_cull.hlsl
-// gave each kept record: a group of 64 threads to each chunk of a record's indices, 64 of them
-// (render/world_layout.h, WlChunk), which copies them, the record's base vertex added, where the
-// record's kept indices go, and leaves at once where the record is culled. The chunks are fixed
-// with the records, so that a thread finds its index without a search, and a long run's or a long
-// record's copy is spread over as many groups as it has chunks.
+// gave each kept record in each view's section: a group of 64 threads to each chunk of a record's
+// indices, 64 of them (render/world_layout.h, WlChunk), in each section the dispatch takes, which
+// copies them, the record's base vertex added, where the record's kept indices go there, and
+// leaves at once where the view culled the record. The chunks are fixed with the records, so that a
+// thread finds its index without a search, and a long run's or a long record's copy is spread over
+// as many groups as it has chunks.
 
 #define CULLED 0xffffffff
+#define RECORD_WORDS 12  // render/world_layout.h, WlCullRecord
 
-// A record in draw order (render/world_layout.h, WlCullRecord).
-struct CullRecord
-{
-    uint4 centre;
-    uint4 half;     // w: the first index
-    uint4 draw;     // x: the index count, y: the base vertex
-};
-
-struct Chunk
-{
-    uint record;
-    uint offset;
-};
-
-StructuredBuffer<CullRecord> cullRecords : register(t0, space0);
-StructuredBuffer<uint> places : register(t1, space0);
+StructuredBuffer<uint> cullData : register(t0, space0);  // render/world_layout.h, WlCullLayout
+StructuredBuffer<uint> draws : register(t1, space0);     // WlDrawLayout: the commands, then the places
 StructuredBuffer<uint> indices : register(t2, space0);
-StructuredBuffer<Chunk> chunks : register(t3, space0);
 RWStructuredBuffer<uint> drawn : register(u0, space1);
 
 cbuffer Frame : register(b0, space2)
 {
-    uint4 counts;  // x: the chunks, y: the dispatch's groups across (render/world_layout.h, wl_groups)
+    uint4 counts;  // the chunks, the dispatch's groups across (wl_groups), the sections, the first
+    uint4 layout;  // where the chunks lie in cullData, where the places lie in draws, the records
 };
 
 [numthreads(64, 1, 1)]
 void cs_main(uint3 group : SV_GroupID, uint3 thread : SV_GroupThreadID)
 {
-    uint c = group.y * counts.y + group.x;
-    if (c >= counts.x)
+    uint g = group.y * counts.y + group.x;
+    if (g >= counts.x * counts.z)
         return;
-    Chunk chunk = chunks[c];
-    uint to = places[chunk.record];
+    uint section = counts.w + g / counts.x, c = layout.x + (g % counts.x) * 2;
+    uint record = cullData[c], offset = cullData[c + 1];
+    uint to = draws[layout.y + section * layout.z + record];
     if (to == CULLED)
         return;
-    CullRecord r = cullRecords[chunk.record];
-    uint within = chunk.offset + thread.x;
-    if (within < r.draw.x)
-        drawn[to + within] = indices[r.half.w + within] + r.draw.y;
+    uint base = record * RECORD_WORDS, within = offset + thread.x;
+    if (within < cullData[base + 8])
+        drawn[to + within] = indices[cullData[base + 7] + within] + cullData[base + 9];
 }

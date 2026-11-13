@@ -5,8 +5,9 @@
 #include <stddef.h>
 
 /* Scenes for the shadow fit's tests (render/shadow_fit.h): ground over a square map with models
-   and walls as boxes, seen by the client's camera, whose view depths are cast exactly into a depth
-   buffer of SCENE_W by SCENE_H pixels as the receivers' depth pass would draw them. */
+   and walls as boxes, some of them blended (seen through), seen by the client's camera, whose view
+   depths are cast exactly into the two depth buffers of SCENE_W by SCENE_H pixels as the
+   receivers' depth pass would draw them. */
 
 #define SCENE_W 256
 #define SCENE_H 144
@@ -15,7 +16,7 @@
 #define LEAVES 32    /* the scene graph's leaves across the ground */
 #define MAX_BOXES 64
 #define SCENE_BOXES (LEAVES * LEAVES + MAX_BOXES)
-#define SCENE_KINDS 4
+#define SCENE_KINDS 5
 #define PI 3.14159265358979
 
 struct Scene {
@@ -23,6 +24,7 @@ struct Scene {
     double slope[3];
     int count;
     double box[MAX_BOXES][2][3];  /* models and walls */
+    int blended[MAX_BOXES];       /* seen through: what lies behind shows too */
 };
 
 struct Pose {
@@ -31,14 +33,21 @@ struct Pose {
     double distance;
 };
 
-/* the last frame render drew: each pixel's view depth (0 for none) and the point it sees */
+/* the last frame render drew: each pixel's view depth of the nearest receiver that is not blended
+   and the point it sees there (0 and the eye for none), and of the nearest receiver at all and its
+   point, the same where nothing blended lies before the other */
 extern float depth[SCENE_PIXELS];
 extern double hit[SCENE_PIXELS][3];
+extern float front[SCENE_PIXELS];
+extern double frontHit[SCENE_PIXELS][3];
 extern const char *const scene_names[SCENE_KINDS];
 
 /* a number from lo to hi of a fixed sequence */
 double uniform(double lo, double hi);
-/* flat ground, a slope, a wall on flat ground, or models on it (each time others) */
+/* the depth buffers of that frame (front, depth) for render/shadow_fit.h */
+struct ShadowFitDepths scene_depths(void);
+/* flat ground, a slope, a wall on flat ground, or models on it (each time others), or models on it
+   half of which are blended */
 void scene_make(struct Scene *s, int kind);
 double ground_height(const struct Scene *s, double x, double z);
 /* the boxes the receivers and casters lie in, as the scene graph hands them to the CPU's fit: the

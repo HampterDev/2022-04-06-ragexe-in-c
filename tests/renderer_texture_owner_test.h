@@ -197,12 +197,9 @@ static void queued_all_routes(struct Renderer *renderer)
     renderer_add_multi_tex_batch(renderer, &pair->base, texture);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
     memset(&draw, 0, sizeof draw);
-    draw.kind = RP_WORLD_CAST;
-    draw.count = 3;
-    renderer_add_world_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, 0.0f);
     draw.kind = RP_WORLD_WATER;
     renderer_add_world_draw(renderer, RENDER_ALPHA_CLAMP, &draw, texture, 0.00125f);
-    assert(surface->refs == 1 + submissions + 2 + 1 + 2);
+    assert(surface->refs == 1 + submissions + 2 + 1 + 1);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;
         assert(renderer->queues[i].count);
@@ -216,7 +213,7 @@ static void queued_all_routes(struct Renderer *renderer)
         renderer->twoPassAlpha = (BYTE)(i & 1);
         g_lightmap = (int)(i >> 1);
         renderer_draw_lists(renderer);
-        assert(live_surfaces == 1 && surface->refs == submissions + 2 + 1 + 2);
+        assert(live_surfaces == 1 && surface->refs == submissions + 2 + 1 + 1);
     }
     g_lightmap = 0;
     renderer_destroy_all_rp_list(renderer); renderer_destroy_all_rp_list(renderer); assert(!live_surfaces);

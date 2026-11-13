@@ -18,7 +18,10 @@
    - compute shaders (SDL_CreateGPUComputePipeline): space 0 sampled textures, then read-only
      storage textures, then read-only storage buffers; space 1 read-write storage textures, then
      read-write storage buffers; space 2 uniforms.
-   A texture and its sampler share one binding as [[vk::combinedImageSampler]]. SPIRV-Cross's C
+   A texture and its sampler share one binding as [[vk::combinedImageSampler]]. A read-only storage
+   texture, of either kind of shader, is a texture without a sampler (Texture2D, read with Load or
+   []), since SDL's Vulkan driver binds it as a sampled image; only a compute shader's read-write
+   storage textures are storage images (RWTexture2D). SPIRV-Cross's C
    API turns the SPIR-V into MSL with the indices SDL's Metal driver binds: [[texture(n)]] and
    [[sampler(n)]] in the order above, [[buffer(n)]] the uniform buffers first and then the storage
    buffers in the order above. The tool fails when a resource is not where those rules put it.
@@ -230,13 +233,16 @@ struct Compiled {
 /* A vertex or fragment shader's resources (the comment at the top), its own in `set` and its
    uniforms in set + 1. */
 static void place_graphics(const char *file, const char *entry, SpvExecutionModel stage, unsigned set,
-                           const List *sampled, const List *storageImages, const List *storageBuffers,
-                           const List *uniforms, struct Compiled *out)
+                           const List *sampled, const List *storageTextures, const List *storageImages,
+                           const List *storageBuffers, const List *uniforms, struct Compiled *out)
 {
     const unsigned NONE = ~0u;
     Res a[32];
     unsigned i, n, textures;
-    if (not_in(sampled, set, set) || not_in(storageImages, set, set) || not_in(storageBuffers, set, set)
+    if (storageImages->n)
+        fail("%s (%s): a storage image, where SDL binds a storage texture as a sampled image (declare it "
+             "Texture2D, without a sampler)", file, entry);
+    if (not_in(sampled, set, set) || not_in(storageTextures, set, set) || not_in(storageBuffers, set, set)
         || not_in(uniforms, set + 1, set + 1))
         fail("%s (%s): a resource outside the sets SDL binds for this stage (%u and %u)", file, entry, set, set + 1);
 
@@ -247,7 +253,7 @@ static void place_graphics(const char *file, const char *entry, SpvExecutionMode
         place(file, stage, &a[i], i, NONE, i, i);
     out->samplers = n;
     textures = n;
-    n = in_set(storageImages, set, a);
+    n = in_set(storageTextures, set, a);
     for (i = 0; i < n; i++)
         place(file, stage, &a[i], textures + i, NONE, textures + i, NONE);
     out->storageTextures = n;
@@ -263,13 +269,18 @@ static void place_graphics(const char *file, const char *entry, SpvExecutionMode
 }
 
 /* A compute shader's resources (the comment at the top). */
-static void place_compute(const char *file, SpvExecutionModel stage, const List *sampled, const List *storageImages,
-                          const List *storageBuffers, const List *uniforms, struct Compiled *out)
+static void place_compute(const char *file, SpvExecutionModel stage, const List *sampled,
+                          const List *storageTextures, const List *storageImages, const List *storageBuffers,
+                          const List *uniforms, struct Compiled *out)
 {
     const unsigned NONE = ~0u;
     Res a[32];
     unsigned i, n, binding, textures, buffers;
-    if (not_in(sampled, 0, 0) || not_in(storageImages, 0, 1) || not_in(storageBuffers, 0, 1) || not_in(uniforms, 2, 2))
+    if (not_in(storageImages, 1, 1))
+        fail("%s (cs_main): a storage image outside set 1, where SDL binds a read-only storage texture as a "
+             "sampled image (declare it Texture2D, without a sampler)", file);
+    if (not_in(sampled, 0, 0) || not_in(storageTextures, 0, 0) || not_in(storageBuffers, 0, 1)
+        || not_in(uniforms, 2, 2))
         fail("%s (cs_main): a resource outside the sets SDL binds for compute (0, 1 and 2)", file);
     n = in_set(uniforms, 2, a);
     for (i = 0; i < n; i++)
@@ -279,7 +290,7 @@ static void place_compute(const char *file, SpvExecutionModel stage, const List 
     for (i = 0; i < n; i++)
         place(file, stage, &a[i], i, NONE, i, i);
     out->samplers = textures = binding = n;
-    n = in_set(storageImages, 0, a);
+    n = in_set(storageTextures, 0, a);
     for (i = 0; i < n; i++)
         place(file, stage, &a[i], binding + i, NONE, textures + i, NONE);
     out->storageTextures = n;
@@ -339,13 +350,13 @@ static void compile_stage(const char *dir, const char *file, const char *base, c
     collect(res, SPVC_RESOURCE_TYPE_STORAGE_IMAGE, &storageImages);
     collect(res, SPVC_RESOURCE_TYPE_STORAGE_BUFFER, &storageBuffers);
     collect(res, SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, &uniforms);
-    if (images.n || samplers.n)
-        fail("%s (%s): a texture without [[vk::combinedImageSampler]]", file, entry);
+    if (samplers.n)
+        fail("%s (%s): a sampler without its texture in [[vk::combinedImageSampler]]", file, entry);
     if (kind == COMPUTE)
-        place_compute(file, stage, &sampled, &storageImages, &storageBuffers, &uniforms, out);
+        place_compute(file, stage, &sampled, &images, &storageImages, &storageBuffers, &uniforms, out);
     else
-        place_graphics(file, entry, stage, kind == FRAGMENT ? 2 : 0, &sampled, &storageImages, &storageBuffers,
-                       &uniforms, out);
+        place_graphics(file, entry, stage, kind == FRAGMENT ? 2 : 0, &sampled, &images, &storageImages,
+                       &storageBuffers, &uniforms, out);
     if (spvc_compiler_compile(g_comp, &msl) != SPVC_SUCCESS)
         fail("%s (%s): %s", file, entry, spvc_context_get_last_error_string(ctx));
     out->msl = malloc(strlen(msl) + 1);

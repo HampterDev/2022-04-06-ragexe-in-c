@@ -31,9 +31,10 @@
      as the CPU did. A node with keys (or under one) gives the device its matrix each frame; a
      record under such a node is animated, its bounds in the node's space.
    Each frame takes a model's pose (its animated nodes' matrices and texture-coordinate animations)
-   when the frame first draws or casts it, as the CPU drew its triangles with the pose its first
-   tick of the frame left (world/view_camera.c ticks a model once for each leaf it stands in); and
-   queues its alpha-blended records then, in the order its nodes' runs were queued. */
+   when the frame first draws it, as the CPU drew its triangles with the pose its first tick of the
+   frame left (world/view_camera.c ticks a model once for each leaf it stands in); and queues its
+   alpha-blended records then, in the order its nodes' runs were queued. Every record casts shadows;
+   the device picks each cascade's casters itself (render/gfx.h). */
 
 struct WorldTexture {
     const struct Texture *texture;
@@ -103,6 +104,9 @@ struct WorldGpu {
     size_t animatedCount, animatedCapacity, animatedMatrixCapacity;
     struct WorldUv *uvs;
     float (*uvMatrices)[6];
+    /* the box every static record lies in, which with the animated records in their pose bounds
+       the shadow maps along the light (renderer_shadow_bounds) */
+    struct ShadowFitBox bounds;
     size_t uvCount, uvCapacity, uvMatrixCapacity;
     float (*placed)[12], (*views)[12];  /* by slot: a model's places in the world and views, as the frame needs them */
     size_t placedCapacity, viewCapacity;
@@ -135,6 +139,8 @@ static int grow(void **p, size_t *capacity, size_t need, size_t size)
 
 static void reset(struct WorldGpu *g)
 {
+    int i;
+
     g->failed = 0;
     g->taken = 0;
     memset(&g->layout, 0, sizeof g->layout);
@@ -146,6 +152,25 @@ static void reset(struct WorldGpu *g)
     g->slotCount = g->slotsSent = g->animatedCount = g->uvCount = 0;
     g->garbage = 0;
     g->recordsDue = 1;
+    for (i = 0; i < 3; i++) {
+        g->bounds.min[i] = HUGE_VALF;
+        g->bounds.max[i] = -HUGE_VALF;
+    }
+}
+
+/* a box made to hold another, centre and half its size, where that one is bounded (a record with
+   a corner that is not finite is bounded by nothing) */
+static void bound(struct ShadowFitBox *box, const float *centre, const float *half)
+{
+    int i;
+
+    for (i = 0; i < 3; i++)
+        if (!(half[i] < 1e30f && isfinite(centre[i])))
+            return;
+    for (i = 0; i < 3; i++) {
+        box->min[i] = centre[i] - half[i] < box->min[i] ? centre[i] - half[i] : box->min[i];
+        box->max[i] = centre[i] + half[i] > box->max[i] ? centre[i] + half[i] : box->max[i];
+    }
 }
 
 /* A texture's array and layer, placed on its first use; SW_NO_ARRAY for a texture without pixels
@@ -223,10 +248,13 @@ static int add_mesh(struct WorldGpu *g, uint32_t nverts, uint32_t nindices, uint
     }
     for (i = 0; i < count; i++) {
         const struct GfxMeshVertex *v = &g->verts[g->indices[g->runs[i].first]];
+        const struct SwRecord *r = &g->records[g->recordCount + i];
 
         g->keyPoints[g->recordCount + i][0] = v->x;
         g->keyPoints[g->recordCount + i][1] = v->y;
         g->keyPoints[g->recordCount + i][2] = v->z;
+        if (!(r->flags & SW_ANIMATED))
+            bound(&g->bounds, r->centre, r->half);
     }
     memset(g->dead + g->recordCount, 0, count);
     g->recordCount += count;
@@ -265,9 +293,9 @@ static int add_slot(struct WorldGpu *g, const float *local, int parent, struct C
 static void build_ground(struct WorldGpu *g, struct C3dGround15 *ground)
 {
     static const float identity[12] = {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0};
-    int bx, by, i;
+    int bx, by, i, cols, rows;
 
-    ground_gpu_free(ground);
+    ground_forget_water(ground);
     /* slot 0: the world itself, drawn with the camera's view as it is */
     if (add_slot(g, identity, -1, NULL) != 0) {
         g->failed = 1;
@@ -275,22 +303,13 @@ static void build_ground(struct WorldGpu *g, struct C3dGround15 *ground)
     }
     if (ground->width <= 0 || ground->height <= 0)
         return;
-    ground->gpuCols = (ground->width + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
-    ground->gpuRows = (ground->height + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
-    ground->gpuBlocks = calloc((size_t)ground->gpuCols * (size_t)ground->gpuRows, sizeof *ground->gpuBlocks);
-    if (!ground->gpuBlocks) {
-        ground->gpuCols = ground->gpuRows = 0;
-        g->failed = 1;
-        return;
-    }
-    for (by = 0; by < ground->gpuRows; by++)
-        for (bx = 0; bx < ground->gpuCols; bx++) {
-            struct GndGpuBlock *b = &ground->gpuBlocks[by * ground->gpuCols + bx];
+    cols = (ground->width + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
+    rows = (ground->height + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
+    for (by = 0; by < rows; by++)
+        for (bx = 0; bx < cols; bx++) {
             struct SwPlacement place;
             int indexCount, n = c3d_ground15_block_mesh(ground, bx, by, g->verts, g->indices, &indexCount, g->blockRuns);
-            uint32_t first = (uint32_t)g->recordCount;
 
-            b->castFrame = -1;
             for (i = 0; i < n; i++) {
                 const struct GndBlockRun *d = &g->blockRuns[i];
                 struct SwRun *r = &g->runs[i];
@@ -305,12 +324,8 @@ static void build_ground(struct WorldGpu *g, struct C3dGround15 *ground)
                 r->uv = SW_NONE;
                 r->pass = SW_PASS_GROUND;
             }
-            if (n && add_mesh(g, (uint32_t)indexCount / 6 * 4, (uint32_t)indexCount, 0, 0, NULL, (size_t)n, &place)) {
-                b->firstIndex = place.firstIndex;
-                b->indexCount = place.indexCount;
-                b->baseVertex = place.baseVertex;
-                b->ids = first + (uint32_t)n;
-            }
+            if (n)
+                add_mesh(g, (uint32_t)indexCount / 6 * 4, (uint32_t)indexCount, 0, 0, NULL, (size_t)n, &place);
         }
 }
 
@@ -324,12 +339,8 @@ static void build_water(struct C3dGround15 *ground)
         return;
     }
     c3d_ground15_water_cells(ground, cells);
-    if (!gfx_world_water(cells, n, g_sinTable)) {
-        size_t i;
-
-        for (i = 0; i < ground->cellCount; i++)
-            ground->cells[i].water = -1;
-    }
+    if (!gfx_world_water(cells, n, g_sinTable))
+        ground_forget_water(ground);
     free(cells);
 }
 
@@ -776,14 +787,14 @@ static void places(struct WorldGpu *g, const struct WorldModel *m, const float *
     }
 }
 
-/* whether the view keeps one of the model's records in its pose, as the device's cull decides */
-static int model_in_view(struct WorldGpu *g, const struct WorldModel *m)
+/* whether a view or a box keeps one of the model's records in the pose places() put it in, as the
+   device's culls decide (the view's, and each cascade's of its casters) */
+static int model_kept(const struct WorldGpu *g, const struct WorldModel *m, const struct SwFrustum *frustum)
 {
     uint32_t id;
 
-    places(g, m, NULL);
     for (id = m->firstRecord; id < m->firstRecord + m->records; id++)
-        if (!g->dead[id] && sw_record_in_view(&g->records[id], (const float (*)[12])g->placed, &g->frustum))
+        if (!g->dead[id] && sw_record_in_view(&g->records[id], (const float (*)[12])g->placed, frustum))
             return 1;
     return 0;
 }
@@ -859,29 +870,28 @@ void world_gpu_forget(struct World *world, struct C3dActor *actor)
     m->actor = NULL;
 }
 
-void world_gpu_cast_actor(struct World *world, struct C3dActor *actor)
+/* The box everything that receives and casts the frame's shadows lies in: every static record, and
+   every animated record in the pose the frame gives it (places, which the world's slots are left
+   in). */
+static void frame_bounds(struct WorldGpu *g, struct ShadowFitBox *box)
 {
-    struct WorldModel *m = model_of(world, actor);
-    struct WorldGpu *g;
-    struct RPWorldDraw draw;
+    size_t i;
     uint32_t id;
 
-    if (!m)
-        return;
-    g = world->gpu;
-    if (m->posed != g->frame)
-        pose(g, m);
-    memset(&draw, 0, sizeof draw);
-    draw.kind = RP_WORLD_CAST;
-    for (id = m->firstRecord; id < m->firstRecord + m->records; id++) {
-        const struct SwRecord *r = &g->records[id];
+    *box = g->bounds;
+    for (i = 0; i < g->modelCount; i++) {
+        const struct WorldModel *m = &g->list[i];
 
-        draw.firstIndex = r->firstIndex;
-        draw.count = r->indexCount;
-        draw.baseVertex = r->baseVertex;
-        draw.textureArray = r->textureArray;
-        draw.ids = id + 1;
-        renderer_add_world_draw(g_renderer, RENDER_SHADOW_CASTERS, &draw, NULL, 0.0f);
+        if (!m->actor || !m->animated)
+            continue;
+        places(g, m, NULL);
+        for (id = m->firstRecord; id < m->firstRecord + m->records; id++) {
+            float centre[3], half[3];
+
+            if (!g->dead[id] && (g->records[id].flags & SW_ANIMATED)
+                && sw_record_bounds(&g->records[id], (const float (*)[12])g->placed, centre, half))
+                bound(box, centre, half);
+        }
     }
 }
 
@@ -890,24 +900,32 @@ void world_gpu_frame(struct World *world, void (*tick)(struct C3dActor *actor))
     struct WorldGpu *g = world->gpu;
     struct Renderer *r = g_renderer;
     struct GfxWorldFrame frame;
+    struct SwFrustum reach;
+    struct ShadowFitBox box;
     size_t i;
+    int shadows;
 
     if (!g || !g->framing || g->generation != gfx_world_generation() || !world->ground)
         return;
     g->framing = 0;
     if (!grow((void **)&g->waves, &g->waveCapacity, world->ground->waterCount, sizeof *g->waves))
         return;
-    /* the models the frame neither drew nor cast: their pose as it stands, and where the view
-       keeps a record of one that animates, the tick the walk would have given it had it reached
-       the model, so that no part moves in view standing still; then their alpha-blended records
-       the view keeps */
+    /* the models the frame did not draw: their pose as it stands, and where the view keeps a
+       record of one that animates, or the box whatever can shade the view lies in keeps one, as
+       the view's and the cascades' culls decide, the tick the walk would have given it had it
+       reached the model, so that no part moves in view, nor its shadow, standing still; then their
+       alpha-blended records the view keeps */
+    shadows = renderer_shadow_reach(r, &reach);
     for (i = 0; i < g->modelCount; i++) {
         struct WorldModel *m = &g->list[i];
 
         if (!m->actor || m->posed == g->frame)
             continue;
         pose(g, m);
-        if ((m->animated || m->uvs) && tick && model_in_view(g, m)) {
+        if (!(m->animated || m->uvs) || !tick)
+            continue;
+        places(g, m, NULL);
+        if (model_kept(g, m, &g->frustum) || (shadows && model_kept(g, m, &reach))) {
             tick(m->actor);
             pose(g, m);
         }
@@ -924,6 +942,10 @@ void world_gpu_frame(struct World *world, void (*tick)(struct C3dActor *actor))
         g->waves[i].height = w->waveHeight;
         g->waves[i].level = w->level;
     }
+    if (shadows) {
+        frame_bounds(g, &box);
+        renderer_shadow_bounds(r, &box);
+    }
     memset(&frame, 0, sizeof frame);
     renderer_world_view(r, g->view, &frame.camera);
     frame.frustum = g->frustum;
@@ -933,6 +955,7 @@ void world_gpu_frame(struct World *world, void (*tick)(struct C3dActor *actor))
     frame.uvCount = g->uvCount;
     frame.waves = g->waves;
     frame.waveCount = world->ground->waterCount;
+    frame.shadow = r->shadowSet ? &r->shadow : NULL;
     gfx_world_frame(&frame);
     renderer_set_world(r, &g->models, &g->ground);
 }
@@ -944,7 +967,7 @@ void world_gpu_free(struct World *world)
     if (!g)
         return;
     if (world->ground)
-        ground_gpu_free(world->ground);
+        ground_forget_water(world->ground);
     gfx_world_clear();
     free(g->textures);
     free(g->records);

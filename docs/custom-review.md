@@ -15949,3 +15949,355 @@ the meeting did not bring it. Not checked: macOS and Android, which were not bui
 which no Metal compiler has seen; a device that takes fewer than six storage buffers a stage;
 presenting into a claimed window on this machine (NVIDIA's offscreen driver makes no swapchain);
 and a game played by hand.
+
+## Shadows fitted on the GPU (2026-11-13)
+
+The second half of phase 5 of `plans/gpu-renderer.md`: the GPU fits the four shadow cascades to
+what the frame shows and culls each cascade's casters from the static world's draw records. The
+CPU no longer fits the cascades, chooses the casters or sees the matrices. Before and after, only
+the static world casts: no Granny model or sprite ever went into the casters' queue.
+
+- **What the client gives.** Each frame `renderer_shadow_frame` (`render/rp_project.c`) gives the
+  device the light's axes, the camera and the shadows' reach (four times the camera's distance and
+  400 units more, as before), and `world_gpu_frame` (`world/world_gpu.c`) the box the world's own
+  draw records lie in, through `renderer_shadow_bounds`: every static record, gathered as its mesh
+  is placed, and every animated record in the pose the frame gives it, so that the box follows the
+  models as they stream in and move. `shadow_fit_bounds` makes the light's depth range of that box
+  with a margin either side. Together with the darkness and the ambient light that is the frame's
+  `struct GfxShadow` (`render/gfx.h`). Without lightmaps, without the device's shadows
+  (`RAGEXE_SHADOWS=0`), on a map whose shadow opacity is 0 or with a box that is empty or not
+  finite it gives none, and the frame draws no shadow maps.
+- **The depth pass** (`world_depth.hlsl`). After the view's cull, a single-sample pass draws the
+  records the cull kept, every pass's, into two R32F targets of view depth at the screen's size
+  (with its margin, so that a texel is a pixel): the first takes the nearest receiver of every pass,
+  the second, written by the pipelines of the opaque passes and the ground only, the nearest one
+  that is not blended. A pixel's receivers then lie between the two, the ground behind an
+  alpha-blended face included. A texel a draw drops by its alpha is dropped here too (the opaque
+  passes' and the ground's below 0xcf, the blended passes' at 0). It has a depth target of its own:
+  the main pass is multisampled, and SDL can neither resolve a depth target nor let a compute pass
+  read a multisampled texture.
+- **The fit**, three compute passes that follow `render/shadow_fit.c`, the reference in C, step by
+  step, in groups of at most 64 threads, within the 128 every Vulkan device takes.
+  `shadow_range.hlsl` reduces the pixels' intervals within the shadows' reach to the nearest and
+  farthest depth, each group of 8 by 8 pixels in shared memory before one atomic of the group's;
+  `shadow_extents.hlsl` cuts the range kept (below) into four slices that grow geometrically, each
+  slice's far depth the same multiple of its near one (the range's ratio to the quarter powers,
+  taken by square roots, which every C library rounds exactly), and reduces each pixel's interval,
+  cut at the slices' bounds, to each slice's extent along the light's two axes across it; `shadow_cascades.hlsl` makes each cascade's square, its centre on
+  whole texels of its map, and from it the matrices from the world and from the view, the lookups'
+  offset, blur and slant, and the six planes of the cascade's box, and counts the cascades that
+  receive: 0 where nothing within reach receives, and the ground keeps its baked shadows then.
+  `render/shadow_fit_gpu.c` (the library `shadow-fit-gpu`) packs the passes' constants and reads
+  their state and result, for the device and its tests alike.
+- **Steady edges.** Snapping a square's centre to whole texels holds its shadow edges still only
+  while the square keeps its size and its slice stays, and a fit to the pixels alone moves both
+  whenever the receivers on screen change: as the nearest receiver at the bottom of the view comes
+  and goes while the camera walks, every slice moves with it and the edge slices' squares follow.
+  So both are kept from frame to frame in a buffer of the device's, set to none when the world is
+  made again (a new map, a new device), as `shadow_fit_keep` and `shadow_fit_cascades` describe:
+  - the range the slices are cut from keeps its far end while it lies from the farthest receiver
+    to a tenth beyond it, and takes it anew a hundredth beyond the farthest, or at the reach where
+    the reach lies within that tenth, as nothing lies beyond the reach; it keeps its near end while
+    the nearest receiver lies from it to a quarter beyond it, and takes a nearer one at once, as
+    receivers nearer than the near end would crowd into the first slice and grow its square frame
+    by frame;
+  - a square takes what its slice's receivers need (the wider extent's half, 5 % and 4.5 units more
+    for the soft edge and the offset) rounded up to 8 units, and the slice of the view itself
+    measured the same way (the screen's corners from the slice's near depth to its far one) is the
+    most it can need. It keeps the frame before's size while that is at least what it needs and at
+    most the larger of a fifth more and the most it can need, so receivers coming and going within
+    a slice change nothing. Taken anew, it is what the receivers need grown by a fifth where they
+    outgrew the frame before's square, the top of the band it is kept in, as receivers that spread
+    tend to spread on, and by 5 % otherwise (none kept, or one too large), rounded up to 8 units and
+    no more than the most it can need.
+  The snap is exact by construction: the nearest whole number of texels is found by a division and
+  then corrected with exact products, so that it does not depend on how a GPU rounds the division,
+  which Vulkan leaves loose; the C and the shader both do it.
+- **Shadows are optional.** A device that cannot make the fit's pipelines, its buffers or the
+  shadow maps logs it once and draws without shadows; one that cannot make the fit's targets at the
+  screen's size draws without shadows until the size changes, and does not try again every frame. A
+  frame whose depth pass, fit, casters' cull or shadow pass cannot be recorded draws its world with
+  no cascades, so the receivers keep the ground's baked shadows, and draws no shadow pass.
+- **The casters.** The cull pass culls, besides the view's runs, the casters' runs: the records
+  grouped by texture array (`wl_caster_runs`, an order of the records by array; a caster's pipeline
+  knows nothing else of a record), a group of threads to each run in each cascade, against the
+  planes of the cascade's box that the fit wrote, by `sw_record_in_view`'s test as
+  `sw_cull_cascade` does (`sw_cascade_planes` gives the planes in the shader's order and floats); the
+  compaction gives each cascade's kept records their places in a section of their own of the frame's
+  index buffer, behind the view's. A world whose records the sections cannot all hold is refused, as
+  the compaction copies every record's indices. The shadow pass draws each cascade into its layer of
+  one R32F array of four, an indirect draw a run, each vertex through its slot's place in the world
+  and the cascade's matrix (`world_caster.hlsl`), dropping a texel by its alpha as the depth pass
+  does. Every draw of the world reads the fit's result (`cascades.hlsli`), which the CPU never sees:
+  the receivers look up their cascade by its far depth, as before.
+- **Ticks.** A model out of view whose shadow can fall into it must animate there as it did when the
+  CPU walked the casters: `world_gpu_frame` ticks a model that animates where one of its records,
+  in the pose the frame gives it, lies in the view or in the box whatever can shade the view lies
+  in (`renderer_shadow_reach`: from the near plane to the shadows' reach as wide as the screen with
+  a margin across the light, and along it before the view's farthest point, `shadow_fit_reach`), by
+  the test the device's culls make of the same records.
+- **Four storage buffers a stage.** Every shader now reads at most four, the least every Vulkan
+  device takes, and `STORAGE_BUFFERS_MAX` is 4 again for render and compute shaders alike (a
+  compute pass's written buffers count with the rest). The world's draws take their record as a
+  uniform; the cull reads one buffer of words (the records' bounds, the view's runs, the casters'
+  runs, their order and the chunks, laid out by `wl_cull_layout`) and writes one (the indirect
+  commands and the kept records' places, `wl_draw_layout`), beside the slots' places and the fit's
+  result; the compaction reads the words, the draws and the indices and writes the frame's indices;
+  the water keeps its cells and the table of sines in one buffer and takes its clip matrix as a
+  uniform; the transform pass no longer writes each slot's view in every cascade, which the casters
+  take from the slot's place and the fit. The quad shader keeps its four. The screen wobble's
+  pipeline takes its one vertex buffer at slot 0, where a draw binds it.
+- **Texture arrays' mipmaps.** The world's arrays made a layer's mipmaps level by level with
+  linear blits, the sprite atlas's in a texture of their own. Both take the atlas's way now: a
+  layer's pixels go up into a scratch texture of their size, SDL makes its levels
+  (`SDL_GenerateMipmapsForGPUTexture`) and each level is copied into the layer (`copy_levels`), so
+  that a layer's levels are a texture's on every backend by construction. `test_gfx_gpu`'s
+  `check_world_mips` downloads every level of a layer and of the texture it holds and compares
+  their bytes (`gfx_read_world_level`, `gfx_read_texture_level`).
+- **Counters.** The frame's draws count the depth pass and the shadow maps' draws too; the indirect
+  ones, whose primitives the GPU's cull chooses, are counted on their own (`indirect_draws`), and
+  `primitives` counts the other draws' alone, which the CPU knows (`diag/perf.h`).
+- **Deleted.** `renderer_shadow_frame`'s fit to boxes, `struct ShadowBox`, `view_shadow_boxes`,
+  `view_shadow_bounds`, the leaves' `groundMin` and `groundMax` (and `leaf_ground_box`),
+  `view_cast_shadows`, `struct ShadowReach` and `renderer_shadow_reaches`, the
+  `RENDER_SHADOW_CASTERS` queue, `RP_WORLD_CAST`, `gfx_world_cast`, `gfx_shadow_begin`,
+  `gfx_shadow_cascade`, `gfx_shadow_end`, `gfx_shadow_receive`, `world_gpu_cast_actor`,
+  `c3d_ground15_cast` with the ground's per-block caster lists (`GndGpuBlock`; `ground_gpu_free`,
+  left with nothing to free, is `ground_forget_water`, which forgets the cells' places among the
+  device's water), `C3dActor.castFrame`, `Renderer.shadowDrawn`, the device's shadow records and
+  the casters' per-cascade views, and `test_scene_ground_box`. The fit to boxes stays as a fixture
+  of `test_shadow_fit` (`tests/fixtures/shadow_box_fit.c`), which measures the new fit against it.
+  Leftovers that went with them: `gfx_gpu.c`'s `multiply`, whose last user was the shadow
+  matrices, and `rp_quad_set_vertex_pos`, whose last user was the water's CPU quads.
+
+**A bug the deletion fixes.** The CPU's choice of casters (`view_cast_shadows`, through
+`renderer_shadow_reaches`) left out a caster that shades the foot of a tree on Prontera's main
+street at the closest, flattest camera (`camera_level_view` and `camera_level_view_moving`): the
+commit before and the Direct3D 9 reference draw that spot lit. A build of the commit before whose
+`renderer_shadow_reaches` answers yes for everything draws it shaded, as the GPU's cull does (1,210
+and 1,094 pixels more than 16 steps apart); on every other capture of the scene set and on the 20
+shadow and far views that build draws exactly the commit before's pictures, so the CPU's choice
+missed nothing else there. The caster is the model at world (-140, 160), a tree whose crown stands
+118 units high, with two animated nodes: casting it alone, whatever the tests say, gives the
+shaded picture, and casting every leaf's ground or every other model the walk left out does not.
+The walk left it out on every frame: its leaf's box, from the RSW's quadtree, fails the reach test,
+and so do the model's oriented box and the bounds of its five static records, so the part that
+shades the view is one of its animated nodes, which the CPU's choice never tested where the frame
+poses them. The GPU's cull tests every record, animated ones in the frame's pose, against each
+cascade, and the light's depth range and the ticks for shadows now come from the records too, so
+nothing in use still rests on those boxes.
+
+**A binding the validation layer found.** The fit's first two passes read the depth pass's
+targets as read-only storage textures, which their shaders declared as storage images
+(`RWTexture2D`), while SDL's Vulkan driver binds a read-only storage texture as a sampled image: the
+pipelines' layouts did not match their shaders (`VUID-VkComputePipelineCreateInfo-layout-07990`).
+NVIDIA's driver drew them all the same; Mesa's lavapipe crashed in them. They read textures without
+a sampler now (`Texture2D`), and `tools/shaders` takes a read-only storage texture only so and fails
+a storage image anywhere but among a compute shader's read-write resources. With the Khronos
+validation layer, `test_shadow_fit_gpu`, `test_gfx_gpu` at 1 and 4 samples (the wobble's frame and
+the resizing among its checks), `test_quad_instances` and the scenes `camera_level_view`,
+`prontera_crowd`, `window_resize`, `effects_instances` and `screen_wobble` with the fit checked
+run without a message.
+
+Captures with `RAGEXE_VSYNC=0` and SDL's dummy audio, the commit before's scene harness and this
+one's run one after the other in the same game folder: the 15 scene scripts (35 captures) at
+`RAGEXE_MSAA=1` and 4, and the 16 shadow views and four more far views (the gate flat at -5 degrees
+from 5,000 and 10,000, Prontera steep at -70 from 2,500 and 5,000) at 1. Each was also captured
+without shadows (`RAGEXE_SHADOWS=0`) by each build, to tell the pixels the shadows touch (where
+either build's capture differs from its own without shadows by more than a step, grown by 2
+pixels) from the rest:
+
+- **Away from the shadows** the tolerance budget holds everywhere: at most 9 pixels of a capture
+  differ by more than one step (0.0006 %), each alone.
+- **In the shadows** 0.63 % of the scene set's pixels differ by more than one step at
+  `RAGEXE_MSAA=1` (0.68 % at 4), and 1.15 % of the 20 views'. Edges move by up to a texel where
+  the squares differ: of the scene set's at one sample 37,985 pixels lie in one build's shade and
+  not the other's, all but 4 of them within 3 pixels of a shade's edge; 259,745 differ in how dark
+  they are within a soft edge (the soft edges' grain follows the texels), and 11,899 elsewhere, in
+  soft edges wider than the 15 pixels the count looks across (up to 809 a capture in the dappled
+  shade on Prontera's main street). In the views 56,076 lie in one shade only, all within 3 pixels
+  of an edge, 268,681 in soft edges and 3,801 elsewhere. The largest groups are a roof's shadow on
+  the south gate's wall from 700 (2,853 pixels, its edge a texel away), the tree foot above (2,182),
+  the dappled shade through the lattice of `two_pass_alpha` (1,203) and the soft edges on the hills
+  (up to 1,007).
+
+**Against the reference** (`build/ref`, within 3 a channel: the scene set's 12 golden captures and
+the 16 shadow views) the commit before differs in 3 to 49 pixels of the golden captures and 4 to
+220 of the views (text, and a few pixels along shadow edges), this commit in 9 to 13,510 and 875 to
+28,081, 193,627 in all (0.48 % of the 28 captures' pixels), 653 of them away from the shadows, all
+of them pixels the commit before differs in too. Each pixel of the shadows that differs was held to the
+criterion the reference allows: two fits with different texels may place an edge up to a texel of
+the coarser apart, and its soft edge changes grain, so a pixel may differ within one texel of the
+coarser fit at that pixel plus the soft edge's width (one unit) of an edge both draw, projected to
+the screen at the pixel's depth (from the frame's own depth pass and both fits' cascades: a median
+of 2 to 13 pixels a view), and 1.5 pixels more; the reference's shade is the commit before's,
+whose code drew it. On the 19 frames whose depths were taken (the 16 views, `camera_level_view`,
+its moving capture and `prontera_crowd`), 144,828 of the 148,772 differing shadow pixels (97.3 %)
+lie so. Of the other 3,944, 3,508 lie inside both shades, 1,724 of them partly lit in both: on
+faces steep to the light whose soft edges stretch over several units, as on the south gate's wall
+from 700 (1,587 pixels, the largest group 186), at the foot of the tree the CPU's choice left out
+(1,005 in `camera_level_view`, 430 of them in one group) and in groups of at most 48 pixels on the
+hills; 436 lie in one shade only, 183 of them at the tree's foot and at most 87 in any other view;
+none lies outside both shades.
+
+**The fit on real frames.** With `RAGEXE_SCENE_SHADOW_FIT=1` the harness reads back the frame's
+depth targets, the fit's state and its result (`gfx_read_shadow_fit`) and runs
+`render/shadow_fit.c` on the GPU's own input: on the 90 captures (the scene set at both sample
+counts and the 20 views), on every 25th frame of the motions below and their closing captures (243
+frames) and on the 18 captures run under the validation layer, the range, the range kept, the
+extents, the squares, the sizes kept and the snapped translations are the C's to the bit, the split
+within 5 units in the last place and every matrix, lookup and far depth within 2.5e-7 of its row's
+largest element on the captures and 9.6e-7 in the motions (the turning on `manuk`).
+
+**Texels.** On 23 of those frames (the 20 views, `camera_level_view`, its moving capture and
+`prontera_crowd`; 25 million receiving pixels, each looked up in the cascade its nearest receiver
+falls in, under each fit, on the same frame) a pixel's texel is 0.904 of the fit to boxes' on
+average (geometric mean), and 18.2 % of the pixels get a coarser one. On the hills a view's mean is
+0.71 to 1.00, at the gate from 700 0.76, where the boxes reached far beyond what the screen shows;
+in `prontera_crowd` 0.98. With the camera at its closest and flattest on the main street
+(`camera_level_view`) the median pixel keeps its texel: its slices end at 85, 179 and 379 units
+where the boxes' ended at 83, 184 and 368, and its squares are 40, 56, 112 and 200 units where
+40, 56, 96 and 208: the 15.5 % of its receiving pixels that lie from 179 to 368 units get a
+coarser texel, 1.17 times as coarse (twice as coarse from 179 to 184), and its mean is 1.02 (its
+moving capture's 0.99, 17.1 % coarser, by at most 1.17). The fit to boxes cut its range with
+seven tenths of a geometric split and three of even steps, from the boxes' nearest point in view,
+which at that camera, a leaf's box reaching past the near plane, is the near plane, 10 units off;
+this fit's slices are geometric from the nearest receiver, 40 units off there. A
+view's median texel is coarser than the fit to boxes' only in the far views, by 3 to 5 %: the gate
+from 5,000 and 10,000 and Prontera steep from 2,500, 5,000 and 10,000. There both fits see the
+same receivers, and this one keeps the range's far end a hundredth beyond the farthest of them and
+takes a square 5 % larger than they need, so that both stay while the camera moves (Prontera from
+2,500: slices to 2,399, 2,481, 2,566 and 2,653 where 2,382, 2,462, 2,543 and 2,627, squares of 552,
+592, 616 and 608 where 536, 568, 592 and 592). Neither fit leaves a receiving pixel outside its
+cascades.
+
+**Stability.** The scene harness can shake the camera (`scene.quake`, the game message an
+earthquake's effect sends) and read the fit of each frame (`scene.shadow_fit`), and the scripts in
+`tests/scenes/motion` move the camera for hundreds of frames each (`tests/scenes/README.md`,
+"Motion"; `motion_stats.py` counts and compares). The commit before, with a `scene.shadow_fit` of
+its own reading its CPU fit, and this commit ran the same motions, the harness's clock moving 16 ms
+a frame; cascade size changes per 100 frames, this fit against the fit to boxes, and how far shadow
+edges can jump at them (a texel of the larger map at each change, world units per 100 frames):
+
+| Motion | frames | size changes | edge jumps |
+|---|---|---|---|
+| walking a loop on Prontera's main street (the default camera, 488.8 from the player at -55 degrees) | 500 | 0.0 / 0.40 | 0.0 / 0.04 |
+| walking around its fountain, past the flower beds and banners | 600 | 0.0 / 0.0 | 0.0 / 0.0 |
+| zooming in to the closest camera | 40 | 41.0 / 115.4 | 3.3 / 8.5 |
+| then tilting it to the flattest | 40 | 33.3 / 69.2 | 3.1 / 5.2 |
+| then walking a loop | 360 | 0.0 / 0.0 | 0.0 / 0.0 |
+| turning (a right drag of 2 pixels a frame) | 400 | 7.0 / 48.1 | 0.86 / 5.2 |
+| zooming in, then out | 400 | 4.3 / 10.8 | 0.44 / 1.0 |
+| an earthquake on the main street (6.5 s) | 420 | 0.0 / 0.0 | 0.0 / 0.0 |
+| an earthquake at Prontera's south gate (800, -40 degrees) | 420 | 0.0 / 2.4 | 0.0 / 0.48 |
+| an earthquake on `manuk`'s hilliest spot (800, -40) | 420 | 0.0 / 78.5 | 0.0 / 5.6 |
+| an earthquake on `hu_fild01`'s (800, -40) | 420 | 0.0 / 0.0 | 0.0 / 0.0 |
+| turning on `manuk`'s (1 pixel a frame) | 800 | 10.1 / 98.4 | 2.5 / 26.0 |
+| zooming in, then out on `hu_fild01`'s | 400 | 1.5 / 12.0 | 0.35 / 2.6 |
+| walking a loop of 48 cells there | 480 | 0.0 / 0.0 | 0.0 / 0.0 |
+
+This fit changes sizes no more often than the fit to boxes in any of them, and never while the
+camera walks or shakes. Between size changes every square moved by whole texels of its map in both
+(within 9.1e-5 of a texel, the logs' rounding), so edges stay where they are. `test_shadow_fit`
+measures the same on synthetic scenes against the fit to boxes, 357 frames a motion and scene:
+walking 0.0 to 5.3 changes per 100 frames where it made 2.0 to 16.8, passing a post 0.0 to 2.0
+where 2.8 to 9.0, turning 0.8 to 2.8 where 14.3 to 27.2, zooming 3.4 to 6.7 where 35.3 to 58.5,
+quaking 0.0 to 0.3 where 32.2 to 150.7.
+
+**Counters** (the frame each capture shows; the counts are the same in every run, the times the
+median of three runs by turns with the commit before). The scene set's 35 captures make 16,320
+draws where they made 40,574, of them 8,850 for the shadows where 33,104 (the draws with shadows
+less those without): the depth pass's runs and an indirect draw for each caster run in each
+cascade, where the CPU queued a draw for each caster record or ground block and drew it into all
+four maps (`prontera_crowd` 613 draws, 318 of them the shadows', where 1,279 and 984;
+`camera_level_view` 574 and 317 where 2,941 and 2,684). 15,306 of the draws are indirect; the
+others draw 20,233 primitives, where the commit before counted 5.6 million, its world's meshes
+among them. `view_on_render` takes 0.03 to 0.27 ms where it took 0.18 to 0.43 (3.2 ms over the set
+where 10.9, `prontera_crowd` 0.24 where 0.34). The frame's wait (`present_ms`), where the GPU is two
+frames behind, is 1.58 ms at the median capture where it was 0.94, and 0.24 where 0.26 without
+shadows: the GPU's shadows take about 0.6 ms more a frame on this GTX 970 at 1600 by 900, for the
+depth pass, the fit's passes over every pixel, and the cull and compaction of the casters in four
+cascades, which take 0.01 to 0.44 ms on the maps of `test_static_world_maps` (the cull alone 0.006
+to 0.23: `amatsu` 0.23 of 0.34, `rag_fes` 0.11 of 0.44; `prontera` 0.07 of 0.15, against 0.035 for
+the view's whole cull and compaction). SDL's GPU API has no timestamps, so the passes were not
+timed one by one.
+
+**The wait comes first.** A frame now waits for the frame two before it before anything of the
+frame takes a command buffer (`flush` in `render/gfx_gpu.c`), where the commit before waited after
+recording the frame, just before submitting it. SDL's Vulkan driver gives every command buffer a
+cache of descriptor sets and takes it back only once a wait, or a submit that presents, finds that
+command buffer finished, and it sets a new texture's layout in a command buffer of its own, which
+takes a cache like any other. A frame that takes its command buffer before the wait, after textures
+were made, can find no cache given back; SDL then starts an empty one, and the frame makes a
+descriptor pool for each kind of binding it binds, 28 with the GPU's shadows. The screen wobble's
+first frame makes two textures while it is recorded (the wobble's copy of the screen and a 32 by
+32 one), and with the wait last it waited 17 to 20 ms (three runs; a Vulkan API dump shows its 28
+new pools, and timers put 15 to 19 ms of it in a single binding of descriptor sets), where the
+commit before waited 1.7 to 2.0, and both 0.3 without shadows. With
+the wait first the frame takes the cache the frame it waited for gave back, and the first wobble
+frame waits 1.4 to 1.8 ms, the commit before 1.7 to 2.0 in the same runs by turns. A frame that
+makes more textures than SDL has caches to spare can still make it start a new cache, which some
+later frame fills once: SDL's driver takes a cache even for a command buffer that binds nothing,
+which only SDL can change. The first frame with shadows, whose caches are all new, still waits
+about 16 ms.
+
+Tests. `test_shadow_fit` checks the C fit: degenerate frames; the squares kept, grown 5 % or a
+fifth ahead, shrunk and left empty, where the slice of the view is little larger than the
+receivers need and where it is far larger; the range kept, its far end grown at once and taken at
+the reach, its near end taken nearer at once; the split, each slice's far depth the same multiple
+of its near one; the snap on the half-texel boundary and a few units in the last place either
+side of it; the reach for casters against the points of fuzzed frames; the conventions against
+the fit to boxes kept as a fixture (the same matrices where the squares match); a fuzz of frames
+with and without the frame before's sizes, every receiving point in its cascade; and a steady
+camera, in under a second. With `--motions` it runs five motions (walking a unit a frame, walking
+towards a post that comes into the bottom of the view and back, turning, zooming, quaking) over
+five synthetic scenes from three distances, 120 frames each, where over the three paths of each
+motion and scene the fit must change sizes no more often than the fit to boxes, and every square
+that keeps its size moves by whole texels: 34 seconds, so the suite runs it as a test of its own,
+`shadow_fit_motions`, labelled `long`, which `tests\build.bat -LE long` leaves out of a quick run.
+With `--report` it runs both and prints the texel and resize comparisons and the single paths where
+this fit resized more (two of the 75: walking from 300 over the models and over the blended
+models, 15 and 9 size changes where the fit to boxes made 8 and 2). `test_shadow_fit_gpu` runs the
+three passes on 300 frames of the synthetic scenes, from what a frame before kept, packed and read
+back by
+`render/shadow_fit_gpu.c`, and compares each pass with its step of the C given the GPU's own
+input: range, range kept, extents, squares, kept sizes and translations to the bit (392 squares on
+the half-texel boundary), the split within 4 units in the last place, every matrix within 1.9e-6
+of its rows; and frames from no history, cropped, of a single pixel and empty, the boxes' planes
+and every receiving pixel inside its cascade, front and back. `test_shadow_fit_gpu_packing`
+checks the packing itself: the shaders' layouts, a frame's constants, floats ordered as uints and
+back, the state of nothing seen and the results read back. `test_projection` checks what the
+renderer gives the device for a frame (the fit's constants to the bit, the box, the reach for
+casters) and when it gives none. `test_static_world` checks `sw_cull_cascade` against a
+reference in doubles. `test_world_layout` checks the casters' runs (every record once, by array,
+in draw order, the records past a section's room left out), the layouts and the passes' uniforms.
+`test_static_world_maps` runs the GPU's cull of four nested cascades' boxes each pose on every map
+against `sw_cull_cascade`: 8,064 runs of casters in a cascade, 300,065 records kept, every run's
+command and indices the C's, with the dispatches split into rows of 3 and 7 groups too; it checks
+that the models ticked beyond the walk's either show a moving record or keep one where it can
+shade the view, and that the light's depth range holds every record of every map (8 to 95 units
+to spare). `test_gfx_gpu` draws the frame's shadows through the device: a caster whose texture's
+alpha drops half of it shades the ground there and not where the alpha drops it, the baked shadow
+kept by a frame whose receivers lie beyond the reach and by one given no shadows, the fit's range
+and squares kept from one frame to the next and none kept once the world is made again; and an
+array layer's mipmaps downloaded level by level against its texture's own. `test_renderer_storage`
+and `test_scene_lifecycle` follow the deleted code.
+
+`build.bat check` passes (the include check over 1,862 files in 34 libraries, the link check over
+1,148 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 332 tests and the oracle's 7.
+
+In WSL (Ubuntu 24.04) CMake builds the client, the scene harness and the tests with GCC
+(`-DRAGE_CLIENT=ON`), `test_shadow_fit_gpu` among them, and its 43 tests other than the GPU ones
+(`shadow_fit_motions` among them) pass. On Mesa's lavapipe there `test_shadow_fit_gpu` gives every value of the C to the bit, the
+split and the matrices too; `test_gfx_gpu` passes with `RAGEXE_MSAA=1` and 4, the frame's shadows
+and the texture arrays' mipmaps downloaded level by level among its checks; and
+`test_quad_instances` passes at 1 and 4 samples.
+
+Not checked: macOS and Android (not built), the MSL (no Metal compiler has seen it), a GPU that
+takes no more than four storage buffers a stage or 128 threads a group (the device's own check
+holds every shader to four, and the groups are of 64), a device whose fit pipelines, buffers or
+targets cannot be made and a frame whose shadow passes fail to record (no test makes them fail),
+the GPU's time pass by pass, presenting into a window on this machine (where SDL's driver also
+takes back caches at each submit that presents), how often a frame in play still fills a new
+descriptor cache, and a game played by hand.

@@ -41,17 +41,14 @@ struct TexDrawPrim {
 };
 
 /* custom: a draw of the static world (render/gfx.h) queued among the primitives above: one of its
-   records (RP_WORLD_RECORD, an alpha-blended model's, drawn with `draw`), a caster's triangles
-   (RP_WORLD_CAST: count indices from firstIndex after baseVertex, of textureArray, whose records'
-   ids lie below ids), or a cell of its water (RP_WORLD_WATER, drawn in `colour`). */
-enum { RP_WORLD_RECORD, RP_WORLD_CAST, RP_WORLD_WATER };
+   records (RP_WORLD_RECORD, an alpha-blended model's, drawn with `draw`), or a cell of its water
+   (RP_WORLD_WATER, drawn in `colour`). */
+enum { RP_WORLD_RECORD, RP_WORLD_WATER };
 
 struct RPWorldDraw {
     int kind;
     struct SwRecord record;
     struct GfxWorldDraw draw;
-    uint32_t firstIndex, count, baseVertex, ids;
-    uint8_t textureArray;
     uint32_t cell;
     uint32_t colour;
 };

@@ -27,7 +27,12 @@
    cull the records for the view, giving each run's kept records their places in the frame's index
    buffer of them and writing the run's one indirect draw (world_cull.hlsl), and copy the kept
    records' indices to their places, 64 at a time (world_compact.hlsl); the main pass draws the
-   ground and the opaque models with those draws. */
+   ground and the opaque models with those draws. In a frame with shadows, a depth pass then draws
+   the view's records into two targets of view depth (world_depth.hlsl), three compute passes fit
+   the shadow cascades to them (shadow_range, shadow_extents and shadow_cascades.hlsl), the cull and
+   the compaction run again for each cascade's casters, and the shadow pass draws those into the
+   cascades' maps, all before the frame's own passes, which receive from the fit's buffer: the CPU
+   never sees the cascades. */
 #include "render/gfx.h"
 #include "render/device.h"
 #include "render/present_fit.h"
@@ -39,9 +44,13 @@
 #include "render/shaders/quad.h"
 #include "render/shaders/world.h"
 #include "render/shaders/world_caster.h"
+#include "render/shaders/world_depth.h"
 #include "render/shaders/world_transform.h"
 #include "render/shaders/world_cull.h"
 #include "render/shaders/world_compact.h"
+#include "render/shaders/shadow_range.h"
+#include "render/shaders/shadow_extents.h"
+#include "render/shaders/shadow_cascades.h"
 #include "render/shaders/water.h"
 #include "render/shaders/rows.h"
 #include "render/shaders/rounding.h"
@@ -78,15 +87,7 @@ struct GpuView {
     float toClip[16];
 };
 
-struct GpuShadow {
-    float fromView[GFX_SHADOW_CASCADES][16];
-    float farDepth[4], offset[4], blur[4], slant[4];
-    float lightView[4];  /* w: the bias */
-    float ambient[4];    /* w: the darkness */
-    float mapSize[4];    /* x: the maps' size */
-};
-
-enum { PROG_QUAD, PROG_WORLD, PROG_CASTER, PROG_WATER, PROG_ROWS, PROG_COUNT };
+enum { PROG_QUAD, PROG_WORLD, PROG_CASTER, PROG_DEPTH, PROG_WATER, PROG_ROWS, PROG_COUNT };
 /* The cull modes of the pipelines: Direct3D 9's, which culls by the winding on the screen, y down:
    CULL_CW drops the clockwise triangles, CULL_CCW the others. */
 enum { CULL_NONE = 1, CULL_CW, CULL_CCW };
@@ -134,9 +135,9 @@ struct gpu_array {
 /* One recorded draw: of the frame's quads (PROG_QUAD, `count` instances from `record`, the first's
    place among the offsets of their records), of the world's records, one (`count` indices from
    firstIndex after baseVertex) or a run's indirect command, the firstIndex-th (indirect), of its
-   casters, of its water's cells (PROG_WATER, `instances` of them from firstInstance of the
-   frame's), or the wobble's (`count` vertices, its draw record `record`); a world's draw is of the
-   world of `generation` (gfx_world_generation). */
+   water's cells (PROG_WATER, `instances` of them from firstInstance of the frame's), or the
+   wobble's (`count` vertices, its draw record `record`); a world's draw is of the world of
+   `generation` (gfx_world_generation). */
 struct gpu_draw {
     SDL_GPUGraphicsPipeline *pipeline;
     int program;
@@ -146,7 +147,9 @@ struct gpu_draw {
     int32_t baseVertex;
     uint32_t instances, firstInstance;
     uint32_t record;
-    uint32_t uniform[4];    /* what the world's programs take as their uniform */
+    uint32_t uniform[4];    /* what the world's programs take as their uniform: the draw's record
+                               (the water: its record, the waves' count and the cells', where its
+                               sines start) */
     int generation;
     /* the world's programs: the texture arrays bind[0] and bind[1] read (SW_NO_ARRAY: white), whose
        textures run_pass takes as they are once the flush has made and grown them (world_array) */
@@ -155,13 +158,12 @@ struct gpu_draw {
 
 enum { STEP_PASS, STEP_UPLOADS, STEP_COPY };
 
-/* A step of the frame: a render pass, the draws into one target or into one shadow cascade; the
-   uploads of textures changed after the frame's first draws; or a copy between GPU textures. */
+/* A step of the frame: a render pass, the draws into one target; the uploads of textures changed
+   after the frame's first draws; or a copy between GPU textures. */
 struct gpu_step {
     int kind;
     /* STEP_PASS */
-    struct gfx_surface *target;  /* NULL: the shadow maps' layer */
-    int layer;
+    struct gfx_surface *target;
     SDL_GPULoadOp loadColour, loadDepth;
     SDL_FColor clearColour;
     float clearDepth;
@@ -204,6 +206,7 @@ struct pipe_desc {
     int cull;             /* CULL_* */
     int mask;             /* MASK_* */
     int r32f, hasDepth, samples, a2c;
+    int back;             /* PROG_DEPTH: whether it writes the second target, the opaque depth */
 };
 #define PIPELINE_MAX 256
 
@@ -242,32 +245,37 @@ static struct {
     struct GfxWorldView worldCamera;
     int worldCameraSet;
 
-    /* shadows */
-    int shadowState, shadowPass, shadowReady, shadowReceive, shadowCascade;
-    struct GfxShadow shadow;
-    int shadowRecord;  /* in this frame's records, or -1 */
+    /* shadows: whether the device draws them (gfx_shadows_supported; -1 for good once something
+       they need could not be made), the cascades' maps and their depth, what a draw reads without
+       them, and the depth pass's targets at the screen's size, or the size they could not be made
+       at, which is not tried again */
+    int shadowState;
     SDL_GPUTexture *shadowMaps, *shadowDepth, *noShadow;
+    SDL_GPUTexture *fitFront, *fitBack, *fitDepth;
+    int fitW, fitH, fitFailedW, fitFailedH;
 
     /* fixed resources */
     SDL_GPUShader *vs[PROG_COUNT], *fs[PROG_COUNT];
     const struct GpuShaderCode *vsCode[PROG_COUNT], *fsCode[PROG_COUNT];
     /* every pipeline, made once (make_pipelines), and which serves what: a mode's quads into each
        kind of target, flat or not; its world records by cull mode (CULL_* - 1) and its water; the
-       effect modes' quads by depth test or none and blend factors; the shadow casters; the wobble */
+       effect modes' quads by depth test or none and blend factors; the depth pass's by whether it
+       writes the opaque depth and cull mode; the shadow casters; the wobble */
     struct { struct pipe_desc desc; SDL_GPUGraphicsPipeline *pipeline; } pipelines[PIPELINE_MAX];
     int npipelines;
     SDL_GPUGraphicsPipeline *quadPipeline[DRAW_MODE_COUNT][CLASS_COUNT][2];
     SDL_GPUGraphicsPipeline *worldPipeline[DRAW_MODE_COUNT][3];
     SDL_GPUGraphicsPipeline *waterPipeline[DRAW_MODE_COUNT];
     SDL_GPUGraphicsPipeline *effectPipeline[2][DRAW_FACTOR_COUNT][DRAW_FACTOR_COUNT];
+    SDL_GPUGraphicsPipeline *depthPipeline[2][3];
     SDL_GPUGraphicsPipeline *casterPipeline, *rowsPipeline;
     SDL_GPUSampler *samplers[2][3];  /* wrapped or not, by enum DrawFilter */
     SDL_GPUSampler *pointClamp;
     SDL_GPUTexture *white;
     SDL_GPUTexture *frameCopy;  /* the screen's picture as the wobble found it (gfx_wobble) */
     int frameCopyW, frameCopyH;
-    SDL_GPUBuffer *records, *views, *fogs, *shadows, *rows, *quads, *offsets, *instances;
-    uint32_t recordsSize, viewsSize, fogsSize, shadowsSize, rowsSize, quadsSize, offsetsSize, instanceCount;
+    SDL_GPUBuffer *records, *views, *fogs, *rows, *quads, *offsets, *instances;
+    uint32_t recordsSize, viewsSize, fogsSize, rowsSize, quadsSize, offsetsSize, instanceCount;
     SDL_GPUBuffer *corners, *triangles;  /* quad_corners and quad_triangles, uploaded once */
     struct gpu_array *arrays;  /* every array of layered textures */
     SDL_GPUTexture *noAtlas;   /* the array a quad draw binds where stage 0 reads no layer */
@@ -303,7 +311,7 @@ static struct {
     size_t ndraws, drawCapacity;
     struct gpu_upload *uploads;
     size_t nuploads, uploadCapacity, frameUploads;  /* frameUploads: those of the first copy pass */
-    struct bytes drawRecords, viewRecords, fogTables, shadowRecords, rowTables, texels;
+    struct bytes drawRecords, viewRecords, fogTables, rowTables, texels;
     /* the instances' records with the matrices and vertices they name (render/quads.h), and the row
        each record starts at */
     struct bytes quadData, quadOffsets;
@@ -373,9 +381,10 @@ static struct {
     SDL_GPUTexture *white;  /* the array of a record without a texture: one white texel */
     int whiteDue;
     uint32_t whiteAt;
-    /* the records by id and in draw order, their runs, and the runs drawn indirectly (the first
-       nindirect), whose kept records the cull gives their places in `drawn` (`places`), and whose
-       kept indices the compaction copies there by chunk, drawnIndices of them at most */
+    /* the records by id and in draw order, the view's runs (nindirect of the nruns compacted), the
+       casters' runs and their order, which the cull and compaction read (cullData, as cullLayout
+       lays it out), the chunks the compaction copies, and the frame's draws (commands and places,
+       as drawLayout) and its compacted indices in WL_SECTIONS sections of sectionIndices each */
     struct WlRecord *byId;
     size_t byIdCapacity;
     struct WlCullRecord *cull;
@@ -384,42 +393,60 @@ static struct {
     size_t nruns, runCapacity;
     struct WlRun *indirect;
     size_t nindirect, indirectCapacity;
+    struct WlRun *casterRuns;
+    size_t ncasterRuns, casterRunCapacity;
+    uint8_t *casterArrays;  /* the texture array of each of the casters' runs */
+    size_t casterArrayCapacity;
+    uint32_t *order;
+    size_t orderHeld, orderCapacity;
     struct WlChunk *chunks;
     size_t nchunks, chunkCapacity;
-    uint32_t recordCount, idCount, recordsAt, drawnIndices;
+    struct WlCullLayout cullLayout;
+    struct WlDrawLayout drawLayout;
+    uint32_t recordCount, idCount, recordsAt, sectionIndices;
     int recordsChanged;
-    SDL_GPUBuffer *recordBuffer, *cullBuffer, *runBuffer, *chunkBuffer, *places, *drawn, *commands;
-    uint32_t recordBufferSize, cullBufferSize, runBufferSize, chunkBufferSize, placesSize, drawnSize, commandsSize;
-    /* the transform slots, and their views, places and casters' views for the frame */
+    SDL_GPUBuffer *recordBuffer, *cullData, *draws, *drawn;
+    uint32_t recordBufferSize, cullDataSize, drawsSize, drawnSize;
+    /* the transform slots, and their views and places for the frame */
     struct WlSlot *slots;
     size_t slotCapacity;
     uint32_t slotCount, slotsAt;
     int slotsChanged;
-    SDL_GPUBuffer *slotBuffer, *views, *placed, *casterViews;
-    uint32_t slotBufferSize, viewsSize, placedSize, casterViewsSize;
-    /* the water */
+    SDL_GPUBuffer *slotBuffer, *views, *placed;
+    uint32_t slotBufferSize, viewsSize, placedSize;
+    /* the water: its cells, then the table of sines, in one buffer */
     struct GpuWaterCell *cells;
     size_t cellCapacity;
     uint32_t cellCount, cellsAt;
     int cellsChanged;
     float sines[360];
-    SDL_GPUBuffer *cellBuffer, *sineBuffer, *waveBuffer, *instanceBuffer;
-    uint32_t cellBufferSize, sineSize, waveSize, instanceSize;
-    /* the frame: given (gfx_world_frame) until it is presented; its compute passes due, and run in
-       this flush */
+    SDL_GPUBuffer *cellBuffer, *waveBuffer, *instanceBuffer;
+    uint32_t cellBufferSize, waveSize, instanceSize;
+    /* the frame: given (gfx_world_frame) until it is presented, with its shadows where shadowSet;
+       its compute passes due, and run in this flush; and whether this flush's shadow passes could
+       not all be recorded, after which its draws of the world receive none (run_pass) */
     struct GfxWorldView camera;
     struct SwFrustum frustum;
-    int frameSet, frameDue, computeDue, computed, casterRecord;
+    struct GfxShadow shadow;
+    int frameSet, shadowSet, frameDue, computeDue, computed, shadowFailed;
     uint32_t frameAt, waveCount;
     struct bytes animated, uvs, waves, instances;
     SDL_GPUBuffer *animatedBuffer, *uvBuffer;
     uint32_t animatedSize, uvSize;
     SDL_GPUComputePipeline *transform, *cullPipeline, *compactPipeline;
+    /* the shadow fit: its passes, its state, the squares kept from frame to frame (cleared, with
+       historyDue, when the world is made again) and its result, which every draw of the world
+       binds */
+    SDL_GPUComputePipeline *fitRange, *fitExtents, *fitCascades;
+    SDL_GPUBuffer *fitState, *fitHistory, *fitResult;
+    int historyDue, fitStateDue;
+    uint32_t fitStateAt;
+    /* the shadows the GPU fitted last (gfx_read_shadow_fit), where fitted */
+    struct GfxShadow fitted;
+    int fittedSet;
 } W;
 
 static struct PresentCover present_cover;
-
-static int shadow_record(void);
 
 void gfx_set_cover(const struct PresentCover *cover)
 {
@@ -697,22 +724,10 @@ static struct gpu_step *last_step(void)
     return G.nsteps ? &G.steps[G.nsteps - 1] : NULL;
 }
 
-/* The pass the next draw goes into: the current target's, or the shadow cascade's. */
+/* The pass the next draw goes into: the current target's. */
 static struct gpu_step *current_pass(void)
 {
     struct gpu_step *s = last_step();
-    if (G.shadowPass) {
-        if (s && s->kind == STEP_PASS && !s->target && s->layer == G.shadowCascade)
-            return s;
-        s = add_step(STEP_PASS);
-        if (s) {
-            s->layer = G.shadowCascade;
-            s->loadColour = SDL_GPU_LOADOP_LOAD;
-            s->loadDepth = SDL_GPU_LOADOP_LOAD;
-            s->first = (uint32_t)G.ndraws;
-        }
-        return s;
-    }
     if (s && s->kind == STEP_PASS && s->target && !s->whole && s->target == G.target
         && s->unresolve == G.unresolving)
         return s;
@@ -1045,7 +1060,7 @@ static SDL_GPUBlendFactor sdl_factor(int f)
 static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
 {
     SDL_GPUGraphicsPipelineCreateInfo info;
-    SDL_GPUColorTargetDescription colour;
+    SDL_GPUColorTargetDescription colour[2];
     SDL_GPUVertexBufferDescription buffers[2];
     SDL_GPUVertexAttribute attrs[8];
     Uint32 nattrs = 0;
@@ -1055,9 +1070,9 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
     SDL_zero(buffers);
     SDL_zero(attrs);
     /* the quads: the corner, then where the instance's record starts in the frame's quads; the
-       world's records and casters: their vertices, then each vertex's record id; the water: a cell
-       and its colour per instance; the wobble: the draw's record per instance alone
-       (instances_needed) */
+       world's records, its depth pass and its casters: their vertices, then each vertex's record id;
+       the water: a cell and its colour per instance; the wobble: the draw's record per instance
+       alone (instances_needed) */
     buffers[0].slot = 0;
     buffers[0].input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
     buffers[1].slot = 1;
@@ -1078,7 +1093,7 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
         ATTR(4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 32);
         ATTR(5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 40);
         ATTR(6, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
-    } else if (p->program == PROG_CASTER) {
+    } else if (p->program == PROG_CASTER || p->program == PROG_DEPTH) {
         buffers[0].pitch = sizeof(struct GfxMeshVertex);
         ATTR(0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0);
         ATTR(1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 32);
@@ -1090,10 +1105,11 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
         ATTR(1, 0, SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM, 4);
         nbuffers = 1;
     } else {
-        /* the wobble's triangle comes from the vertex index: the draw's record alone */
-        buffers[0] = buffers[1];
+        /* the wobble's triangle comes from the vertex index: the draw's record alone, its one
+           buffer at slot 0, which a draw binds as the first */
+        buffers[0].pitch = 4;
         buffers[0].input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE;
-        ATTR(0, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
+        ATTR(0, 0, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
         nbuffers = 1;
     }
 #undef ATTR
@@ -1117,20 +1133,23 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
     info.depth_stencil_state.enable_depth_write = p->depth == DRAW_DEPTH_WRITE || p->depth == DRAW_DEPTH_ALWAYS;
     info.depth_stencil_state.compare_op = p->depth == DRAW_DEPTH_ALWAYS ? SDL_GPU_COMPAREOP_ALWAYS
                                                                         : SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
-    colour.format = p->r32f ? SDL_GPU_TEXTUREFORMAT_R32_FLOAT : TARGET_FORMAT;
-    colour.blend_state.enable_blend = p->blend != 0;
-    colour.blend_state.src_color_blendfactor = sdl_factor(p->src);
-    colour.blend_state.dst_color_blendfactor = sdl_factor(p->dst);
-    colour.blend_state.src_alpha_blendfactor = colour.blend_state.src_color_blendfactor;
-    colour.blend_state.dst_alpha_blendfactor = colour.blend_state.dst_color_blendfactor;
-    colour.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
-    colour.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
-    colour.blend_state.enable_color_write_mask = true;
-    colour.blend_state.color_write_mask = p->mask == MASK_NONE ? 0
+    colour[0].format = p->r32f ? SDL_GPU_TEXTUREFORMAT_R32_FLOAT : TARGET_FORMAT;
+    colour[0].blend_state.enable_blend = p->blend != 0;
+    colour[0].blend_state.src_color_blendfactor = sdl_factor(p->src);
+    colour[0].blend_state.dst_color_blendfactor = sdl_factor(p->dst);
+    colour[0].blend_state.src_alpha_blendfactor = colour[0].blend_state.src_color_blendfactor;
+    colour[0].blend_state.dst_alpha_blendfactor = colour[0].blend_state.dst_color_blendfactor;
+    colour[0].blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    colour[0].blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+    colour[0].blend_state.enable_color_write_mask = true;
+    colour[0].blend_state.color_write_mask = p->mask == MASK_NONE ? 0
         : p->mask == MASK_RGB ? (SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B)
         : (SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A);
-    info.target_info.color_target_descriptions = &colour;
-    info.target_info.num_color_targets = 1;
+    /* the depth pass's second target, the opaque depth, which the blended passes leave */
+    colour[1] = colour[0];
+    colour[1].blend_state.color_write_mask = p->back ? SDL_GPU_COLORCOMPONENT_R : 0;
+    info.target_info.color_target_descriptions = colour;
+    info.target_info.num_color_targets = p->program == PROG_DEPTH ? 2 : 1;
     info.target_info.has_depth_stencil_target = p->hasDepth != 0;
     info.target_info.depth_stencil_format = G.depthFormat;
     return SDL_CreateGPUGraphicsPipeline(G.dev, &info);
@@ -1189,10 +1208,13 @@ static void mode_pipe(struct pipe_desc *p, int program, const struct DrawModeDes
     p->a2c = alpha_to_coverage(m, p->samples, flat);
 }
 
+static void shadows_off(const char *what);
+
 /* Every pipeline the modes draw with, once the screen's samples and depth are known: a mode's
    quads into each kind of target it draws into, flat and not, its world records in each cull mode
    and its water, the effect modes' quads by every pair of the blend factors the screen has, the
-   shadow casters' and the wobble's (gfx_wobble). */
+   wobble's (gfx_wobble), and the depth pass's and the shadow casters', without which the device
+   draws no shadows. */
 static int make_pipelines(void)
 {
     struct pipe_desc p;
@@ -1235,14 +1257,6 @@ static int make_pipelines(void)
                     return 0;
             }
     }
-    memset(&p, 0, sizeof p);
-    p.program = PROG_CASTER;
-    p.depth = DRAW_DEPTH_WRITE;
-    p.cull = CULL_NONE;
-    p.r32f = 1;
-    p.hasDepth = 1;
-    p.samples = SDL_GPU_SAMPLECOUNT_1;
-    G.casterPipeline = pipeline(&p);
     /* the wobble's, into the screen with its depth kept, its alpha 1 */
     memset(&p, 0, sizeof p);
     p.program = PROG_ROWS;
@@ -1251,8 +1265,40 @@ static int make_pipelines(void)
     p.mask = MASK_RGB;
     p.hasDepth = G.depth != NULL;
     p.samples = (int)G.samples;
-    G.rowsPipeline = pipeline(&p);
-    return G.casterPipeline && G.rowsPipeline;
+    if (!(G.rowsPipeline = pipeline(&p)))
+        return 0;
+    /* the shadows' own, last, which only turn the shadows off where they cannot be made: the depth
+       pass's, single-sampled into two targets of view depth, by whether it writes the second (the
+       passes up to the ground) and by cull mode, and the casters' */
+    if (G.shadowState < 0)
+        return 1;
+    for (d = 0; d < 2; d++)
+        for (cull = CULL_NONE; cull <= CULL_CCW; cull++) {
+            memset(&p, 0, sizeof p);
+            p.program = PROG_DEPTH;
+            p.depth = DRAW_DEPTH_WRITE;
+            p.cull = cull;
+            p.mask = MASK_RGBA;
+            p.r32f = 1;
+            p.hasDepth = 1;
+            p.samples = SDL_GPU_SAMPLECOUNT_1;
+            p.back = d;
+            if (!(G.depthPipeline[d][cull - CULL_NONE] = pipeline(&p))) {
+                shadows_off("the depth pass's pipelines");
+                return 1;
+            }
+        }
+    memset(&p, 0, sizeof p);
+    p.program = PROG_CASTER;
+    p.depth = DRAW_DEPTH_WRITE;
+    p.cull = CULL_NONE;
+    p.mask = MASK_RGBA;
+    p.r32f = 1;
+    p.hasDepth = 1;
+    p.samples = SDL_GPU_SAMPLECOUNT_1;
+    if (!(G.casterPipeline = pipeline(&p)))
+        shadows_off("the casters' pipeline");
+    return 1;
 }
 
 /* The pipeline of a quad draw in the current mode into a pass's kind of target, NULL where the mode
@@ -1417,16 +1463,6 @@ static void fill_state(struct GpuDraw *r, const struct gpu_step *pass, const str
    floats as it computed them: the GPU divides their points and moves them by the viewport as
    Direct3D 9 did, half a pixel on (MARGIN). */
 
-static void multiply(float *out, const float *a, const float *b)
-{
-    float r[16];
-    int i, j;
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            r[i * 4 + j] = a[i * 4] * b[j] + a[i * 4 + 1] * b[4 + j] + a[i * 4 + 2] * b[8 + j] + a[i * 4 + 3] * b[12 + j];
-    memcpy(out, r, sizeof r);
-}
-
 /* The meshes' fog in a view record: its start and end as view depths, and 1 / (end - start)
    (render/gfx.h, GfxFog), computed as the Direct3D 9 client computed them. */
 static void view_fog(float *fog)
@@ -1501,7 +1537,7 @@ static int quad_draw(int mode, const struct draw_state *s, struct gfx_surface *c
     SDL_GPUGraphicsPipeline *pipe;
     size_t i;
     int cls;
-    if (!G.dev || !G.target || G.shadowPass || !count || (camera && !G.worldCameraSet))
+    if (!G.dev || !G.target || !count || (camera && !G.worldCameraSet))
         return 0;
     /* a texture's upload may need a step of its own before the pass */
     stages[0] = tex[0];
@@ -1568,7 +1604,7 @@ static int batch_join(int flat)
     struct gfx_surface *t0 = G.stageTex[0], *t1 = G.stageTex[1];
     struct gpu_array *array = t0 && t0->layered ? place_layer(t0) : NULL;
     struct GpuDraw *r;
-    if (!G.dev || !G.target || G.shadowPass)
+    if (!G.dev || !G.target)
         return 0;
     if (array)
         t0 = NULL;
@@ -1719,7 +1755,7 @@ static int own_quad(int mode, const struct draw_state *s, struct gfx_surface *te
     struct GpuDraw *r;
     uint32_t first;
     batch_flush();
-    if (!G.dev || !G.target || G.shadowPass)
+    if (!G.dev || !G.target)
         return 0;
     h.layer = 0;
     h.draw = add_record(&r);
@@ -1772,19 +1808,20 @@ struct GpuWaterCell {
     float corners[8];
 };
 
+/* the water's uniform (water.hlsl, WaterFrame) */
 struct GpuWaterFrame {
-    uint32_t frame[4];
+    uint32_t frame[4];  /* the draw's record, the waves, the cells */
     float view[12];
     float screen[4];
+    float toClip[16];
 };
 
 #define INDIRECT_SIZE ((uint32_t)sizeof(SDL_GPUIndexedIndirectDrawCommand))
 /* what the transform pass writes of a slot (world_transform.hlsl, world.hlsli): its views to clip
-   and to view space, its place in the world, and its view in each cascade's light space; and a
-   texture-coordinate matrix as the shaders read it, two float4 */
+   and to view space, and its place in the world; and a texture-coordinate matrix as the shaders
+   read it, two float4 */
 #define SLOT_VIEWS ((uint32_t)sizeof(float[2][16]))
 #define SLOT_PLACE ((uint32_t)sizeof(float[12]))
-#define SLOT_CASTERS ((uint32_t)sizeof(float[WL_CASCADES][16]))
 #define UV_MATRIX ((uint32_t)sizeof(float[2][4]))
 /* a vertex of the world's: struct GfxMeshVertex, then its record's id beside it */
 #define WORLD_VERTEX ((uint32_t)sizeof(struct GfxMeshVertex))
@@ -1795,9 +1832,13 @@ struct GpuWaterFrame {
    made again as small as they need */
 #define STAGING_QUIET 120
 
-_Static_assert(GFX_SHADOW_CASCADES == WL_CASCADES, "the transform pass takes every cascade");
+_Static_assert(GFX_SHADOW_CASCADES == WL_CASCADES, "the cull compacts every cascade's casters");
+_Static_assert(GFX_SHADOW_CASCADES == SHADOW_FIT_CASCADES && GFX_SHADOW_SIZE == SHADOW_FIT_SIZE,
+               "the maps are the fit's");
 
 static int world_stream(int textures);
+static void copy_levels(SDL_GPUCopyPass *copy, SDL_GPUTexture *scratch, SDL_GPUTexture *array, uint32_t layer,
+                        uint32_t w, uint32_t h, uint32_t levels);
 
 /* A buffer of the world's at least `need` bytes: made, or made larger (sw_layout_grow) with the
    `keep` bytes it held copied over by the next stream (world_stream). */
@@ -1849,11 +1890,9 @@ static int world_on(void)
 static void world_release(void)
 {
     size_t i;
-    SDL_GPUBuffer **buffers[] = { &W.vertices, &W.ids, &W.indices, &W.recordBuffer, &W.cullBuffer, &W.runBuffer,
-                                  &W.chunkBuffer, &W.places, &W.drawn, &W.commands, &W.slotBuffer, &W.views,
-                                  &W.placed, &W.casterViews,
-                                  &W.animatedBuffer, &W.uvBuffer, &W.cellBuffer, &W.waveBuffer, &W.sineBuffer,
-                                  &W.instanceBuffer };
+    SDL_GPUBuffer **buffers[] = { &W.vertices, &W.ids, &W.indices, &W.recordBuffer, &W.cullData, &W.draws, &W.drawn,
+                                  &W.slotBuffer, &W.views, &W.placed, &W.animatedBuffer, &W.uvBuffer, &W.cellBuffer,
+                                  &W.waveBuffer, &W.instanceBuffer };
     if (G.dev) {
         for (i = 0; i < sizeof buffers / sizeof buffers[0]; i++)
             if (*buffers[i])
@@ -1870,26 +1909,29 @@ static void world_release(void)
         gfx_release(W.textureUploads[i].surface);
     for (i = 0; i < sizeof buffers / sizeof buffers[0]; i++)
         *buffers[i] = NULL;
-    W.verticesSize = W.idsSize = W.indicesSize = W.recordBufferSize = W.cullBufferSize = W.runBufferSize = 0;
-    W.chunkBufferSize = W.placesSize = W.drawnSize = W.commandsSize = 0;
-    W.slotBufferSize = W.viewsSize = W.placedSize = W.casterViewsSize = W.animatedSize = W.uvSize = 0;
-    W.cellBufferSize = W.waveSize = W.sineSize = W.instanceSize = 0;
+    W.verticesSize = W.idsSize = W.indicesSize = W.recordBufferSize = W.cullDataSize = W.drawsSize = W.drawnSize = 0;
+    W.slotBufferSize = W.viewsSize = W.placedSize = W.animatedSize = W.uvSize = 0;
+    W.cellBufferSize = W.waveSize = W.instanceSize = 0;
     memset(W.arrays, 0, sizeof W.arrays);
     W.narrays = W.ncopies = W.narrayCopies = W.nmeshUploads = W.ntextureUploads = 0;
     W.meshes.size = 0;
     W.vertexCount = W.indexCount = W.uploadedVertices = W.uploadedIndices = 0;
     W.recordCount = W.idCount = W.slotCount = W.cellCount = 0;
-    W.nruns = W.nindirect = W.nchunks = 0;
-    W.drawnIndices = 0;
+    W.nruns = W.nindirect = W.ncasterRuns = W.orderHeld = W.nchunks = 0;
+    W.sectionIndices = 0;
     W.recordsChanged = W.slotsChanged = W.cellsChanged = 0;
     W.computeDue = W.computed = 0;
+    /* the shadows' squares go with the world they were fitted to; nothing staged for them is
+       uploaded from a flush that never went up */
+    W.historyDue = 1;
+    W.fitStateDue = 0;
 }
 
 /* the device's world made again from nothing: the client builds it anew (gfx_world_generation) */
 static void world_reset(void)
 {
     world_release();
-    W.frameSet = 0;
+    W.frameSet = W.shadowSet = W.fittedSet = 0;
     W.generation++;
 }
 
@@ -2003,7 +2045,8 @@ int gfx_world_texture(gfx_surface *texture, uint8_t array, uint16_t layer)
 
 int gfx_world_records(const struct SwRecord *records, size_t count, uint32_t ids)
 {
-    size_t i, indirectRecords, chunks;
+    size_t i, chunks;
+    uint32_t viewIndices, casterIndices;
     if (!world_on() || (count && !records) || count > 0x7fffffff || ids > 0x7fffffff)
         return 0;
     for (i = 0; i < count; i++)
@@ -2012,18 +2055,34 @@ int gfx_world_records(const struct SwRecord *records, size_t count, uint32_t ids
     if (!grow((void **)&W.byId, &W.byIdCapacity, ids, sizeof *W.byId)
         || !grow((void **)&W.cull, &W.cullCapacity, count, sizeof *W.cull)
         || !grow((void **)&W.runs, &W.runCapacity, count, sizeof *W.runs)
-        || !grow((void **)&W.indirect, &W.indirectCapacity, count, sizeof *W.indirect))
+        || !grow((void **)&W.indirect, &W.indirectCapacity, count, sizeof *W.indirect)
+        || !grow((void **)&W.casterRuns, &W.casterRunCapacity, count, sizeof *W.casterRuns)
+        || !grow((void **)&W.casterArrays, &W.casterArrayCapacity, count, 1)
+        || !grow((void **)&W.order, &W.orderCapacity, count, sizeof *W.order))
         return 0;
-    /* the chunks of every record, at least as many as those of the runs drawn indirectly */
+    /* the chunks of every record: the view's cull and every cascade's take any of them */
     chunks = wl_chunks(records, count, NULL);
     if (chunks > 0x7fffffff || !grow((void **)&W.chunks, &W.chunkCapacity, chunks, sizeof *W.chunks))
         return 0;
     memset(W.byId, 0, ids * sizeof *W.byId);
     wl_records(records, count, W.byId, W.cull);
     W.nruns = sw_draw_runs(records, count, W.runs);
-    W.nindirect = wl_runs(W.runs, W.nruns, W.indirect, &W.drawnIndices);
-    indirectRecords = W.nindirect ? W.indirect[W.nindirect - 1].first + W.indirect[W.nindirect - 1].count : 0;
-    W.nchunks = wl_chunks(records, indirectRecords, W.chunks);
+    W.nindirect = wl_runs(W.runs, W.nruns, W.indirect, &viewIndices);
+    W.ncasterRuns = wl_caster_runs(records, count, W.order, &W.orderHeld, W.casterRuns, &casterIndices);
+    for (i = 0; i < W.ncasterRuns; i++)
+        W.casterArrays[i] = records[W.order[W.casterRuns[i].first]].textureArray;
+    W.nchunks = wl_chunks(records, count, W.chunks);
+    W.sectionIndices = viewIndices > casterIndices ? viewIndices : casterIndices;
+    wl_cull_layout(count, W.nindirect, W.ncasterRuns, W.orderHeld, W.nchunks, &W.cullLayout);
+    wl_draw_layout(count, W.nindirect, W.ncasterRuns, &W.drawLayout);
+    /* every record in a run of the view's and of the casters', or none drawn: the compaction copies
+       every record's chunks to the places the culls give, which they give the records of their runs
+       alone */
+    if (W.nindirect < W.nruns || W.orderHeld < count || W.cullLayout.words > 0x3fffffff
+        || W.drawLayout.words > 0x3fffffff) {
+        W.recordCount = 0;
+        return 0;
+    }
     W.recordCount = (uint32_t)count;
     W.idCount = ids;
     W.recordsChanged = 1;
@@ -2068,11 +2127,13 @@ int gfx_world_water(const struct GfxWaterCell *cells, size_t count, const float 
     return 1;
 }
 
+static int shadow_prepare(void);
+
 void gfx_world_frame(const struct GfxWorldFrame *frame)
 {
     long at;
     size_t i;
-    W.frameSet = 0;
+    W.frameSet = W.shadowSet = W.fittedSet = 0;
     if (!world_on() || !frame)
         return;
     W.camera = frame->camera;
@@ -2103,6 +2164,10 @@ void gfx_world_frame(const struct GfxWorldFrame *frame)
         memcpy(W.waves.data, frame->waves, frame->waveCount * sizeof *frame->waves);
     W.waveCount = (uint32_t)frame->waveCount;
     W.frameSet = 1;
+    if (frame->shadow && shadow_prepare()) {
+        W.shadow = *frame->shadow;
+        W.shadowSet = 1;
+    }
 }
 
 /* the array a record's texture or lightmap lies in, white where it has none or its array could not
@@ -2122,11 +2187,12 @@ static int world_cull(int flags)
 static int world_ready(void)
 {
     const struct DrawModeDesc *m = draw_mode(G.mode);
-    return world_on() && G.target && W.frameSet && G.target == G.screen && !G.shadowPass
-           && (m->into & DRAW_MESHES) && W.recordCount && W.slotCount;
+    return world_on() && G.target && W.frameSet && G.target == G.screen && (m->into & DRAW_MESHES) && W.recordCount
+           && W.slotCount;
 }
 
-/* The draw record of a draw of the world's records in the current mode. */
+/* The draw record of a draw of the world's records in the current mode, which its draws push as
+   their uniform (push_uniforms). */
 static uint32_t world_record(struct gpu_step *pass, const struct GfxWorldDraw *draw, struct GpuDraw **out)
 {
     struct gfx_surface *none[2] = { NULL, NULL };
@@ -2142,7 +2208,7 @@ static uint32_t world_record(struct gpu_step *pass, const struct GfxWorldDraw *d
     memcpy(r->colour, draw->colour, sizeof r->colour);
     r->mesh[0] = draw->kind == GFX_MESH_MODEL;
     r->mesh[1] = draw->kind == GFX_MESH_MODEL && draw->lightGround;
-    r->mesh[3] = G.shadowReceive ? (uint32_t)shadow_record() + 1 : 0;
+    r->mesh[3] = W.shadowSet ? 1u : 0u;
     view_fog(r->fog);
     return at;
 }
@@ -2169,7 +2235,7 @@ static void world_bind(struct gpu_draw *d, uint8_t textureArray, uint8_t lightma
     d->bind[0].sampler = stage_sampler(&G.state, 0);
     d->arrays[1] = lightmapArray;
     d->bind[1].sampler = stage_sampler(&G.state, 1);
-    d->bind[2].texture = G.shadowReceive ? G.shadowMaps : G.noShadow;
+    d->bind[2].texture = W.shadowSet ? G.shadowMaps : G.noShadow;
     d->bind[2].sampler = G.pointClamp;
 }
 
@@ -2199,10 +2265,10 @@ void gfx_world_draw(int pass, const struct GfxWorldDraw *draw)
             return;
         world_bind(d, run->textureArray, run->lightmapArray);
         d->indirect = 1;
-        d->firstIndex = (uint32_t)i;
+        d->firstIndex = wl_view_command((uint32_t)i);
         d->uniform[0] = record;
         g_perf.draws++;
-        g_perf.prims += run->indices / 3;
+        g_perf.indirectDraws++;
     }
     W.computeDue = 1;
     G.target->version = next_version();
@@ -2239,45 +2305,6 @@ void gfx_world_draw_record(const struct SwRecord *rec, const struct GfxWorldDraw
     G.target->version = next_version();
 }
 
-void gfx_world_cast(uint32_t firstIndex, uint32_t count, uint32_t baseVertex, uint8_t textureArray, uint32_t ids)
-{
-    struct gpu_step *step;
-    struct gpu_draw *d;
-    struct draw_state caster;
-    g_perf.drawCalls++;
-    batch_flush();
-    if (!world_on() || !G.shadowPass || G.shadowCascade < 0 || !W.frameSet || !W.slotCount || !count || count % 3
-        || ids > W.idCount || firstIndex > W.indexCount || count > W.indexCount - firstIndex)
-        return;
-    step = current_pass();
-    if (!step)
-        return;
-    if (W.casterRecord < 0) {
-        struct GpuDraw *r;
-        W.casterRecord = (int)add_record(&r);
-        if (!r) {
-            W.casterRecord = -1;
-            return;
-        }
-        stage_scale(r->uvScale, r->uvLimit, NULL, 1);
-    }
-    d = world_add_draw(step, PROG_CASTER, G.casterPipeline);
-    if (!d)
-        return;
-    /* the casters read their texture as the opaque lists do */
-    resolve_state(&caster, DRAW_OPAQUE_CLAMP, 0, 0, 0, 0);
-    d->arrays[0] = textureArray;
-    d->bind[0].sampler = stage_sampler(&caster, 0);
-    d->firstIndex = firstIndex;
-    d->count = count;
-    d->baseVertex = (int32_t)baseVertex;
-    d->uniform[0] = (uint32_t)W.casterRecord;
-    d->uniform[1] = (uint32_t)G.shadowCascade;
-    g_perf.draws++;
-    g_perf.prims += count / 3;
-    W.computeDue = 1;
-}
-
 void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
 {
     struct gpu_step *step;
@@ -2289,8 +2316,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
     g_perf.drawCalls++;
     batch_flush();
     if (!world_on() || !G.target || !cells || !count || !W.frameSet || !W.cellCount || !W.waveCount
-        || !G.worldCameraSet || G.shadowPass || G.target != G.screen || !G.waterPipeline[G.mode]
-        || count > 0x7fffffff)
+        || !G.worldCameraSet || G.target != G.screen || !G.waterPipeline[G.mode] || count > 0x7fffffff)
         return;
     bind_stage(bind, &G.state, G.stageTex[0], 0);
     bind[1].texture = G.white;
@@ -2316,6 +2342,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
         return;
     }
     fill_state(r, step, &G.state, G.stageTex, 1, alpha_to_coverage(draw_mode(G.mode), (int)pass_samples(step), 0));
+    /* the camera's view in the screen's pixels, which push_uniforms hands the water as its uniform */
     r->mode[3] = (uint32_t)view_for(&G.worldCamera, &G.cameraView, step);
     d->bind[0] = bind[0];
     d->bind[1] = bind[1];
@@ -2326,6 +2353,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
     d->firstInstance = (uint32_t)(at / WATER_INSTANCE);
     d->uniform[0] = d->record;
     d->uniform[1] = W.waveCount;
+    d->uniform[2] = W.cellCount;
     g_perf.draws++;
     g_perf.prims += (unsigned)count * 2;
     g_perf.vertexBytes += (unsigned)count * WATER_INSTANCE;
@@ -2378,7 +2406,7 @@ static void world_arrays(void)
         SDL_zero(info);
         info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
         info.format = TARGET_FORMAT;
-        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
         info.width = a->width;
         info.height = a->height;
         info.layer_count_or_depth = capacity;
@@ -2489,8 +2517,10 @@ static void stream_mesh(SDL_GPUCopyPass *copy, const struct world_upload *u, uin
     }
 }
 
-/* A texture's top level from the stream at `at` into its layer. */
-static void stream_texture(SDL_GPUCopyPass *copy, const struct world_upload *u, uint32_t at)
+/* A texture's top level from the stream at `at`: into its layer, or, where its array has mipmaps,
+   into `scratch` (a texture of its size and levels), whose levels copy_levels then takes into the
+   layer. */
+static void stream_texture(SDL_GPUCopyPass *copy, const struct world_upload *u, uint32_t at, SDL_GPUTexture *scratch)
 {
     const struct world_array *a = &W.arrays[u->a];
     SDL_GPUTextureTransferInfo src;
@@ -2501,50 +2531,28 @@ static void stream_texture(SDL_GPUCopyPass *copy, const struct world_upload *u, 
     src.offset = at;
     src.pixels_per_row = a->width;
     src.rows_per_layer = a->height;
-    dst.texture = a->tex;
-    dst.layer = u->b;
+    dst.texture = scratch ? scratch : a->tex;
+    dst.layer = scratch ? 0 : u->b;
     dst.w = a->width;
     dst.h = a->height;
     dst.d = 1;
     SDL_UploadToGPUTexture(copy, &src, &dst, false);
 }
 
-/* A layer's mipmaps, each made from the level above with a linear blit, as
-   SDL_GenerateMipmapsForGPUTexture makes a texture's on Vulkan. */
-static void stream_mipmaps(SDL_GPUCommandBuffer *cmd, const struct world_upload *u)
-{
-    const struct world_array *a = &W.arrays[u->a];
-    uint32_t level;
-    for (level = 1; level < a->levels; level++) {
-        SDL_GPUBlitInfo blit;
-        SDL_zero(blit);
-        blit.source.texture = a->tex;
-        blit.source.mip_level = level - 1;
-        blit.source.layer_or_depth_plane = u->b;
-        blit.source.w = a->width >> (level - 1) ? a->width >> (level - 1) : 1;
-        blit.source.h = a->height >> (level - 1) ? a->height >> (level - 1) : 1;
-        blit.destination.texture = a->tex;
-        blit.destination.mip_level = level;
-        blit.destination.layer_or_depth_plane = u->b;
-        blit.destination.w = a->width >> level ? a->width >> level : 1;
-        blit.destination.h = a->height >> level ? a->height >> level : 1;
-        blit.load_op = SDL_GPU_LOADOP_DONT_CARE;
-        blit.filter = SDL_GPU_FILTER_LINEAR;
-        SDL_BlitGPUTexture(cmd, &blit);
-    }
-}
-
 /* Takes what is pending of the world up through the stream (a transfer buffer of STREAM_BYTES,
    or of the largest texture where that is larger): the meshes, and with `textures` the textures
    too, as many as fit at a time, each batch in a command buffer of its own that is waited on
    before the next fills the buffer again; the buffers' and arrays' growth goes first. A texture
-   goes up from its surface's own pixels, widened straight into the stream. 0 where a batch could
-   not go. */
+   goes up from its surface's own pixels, widened straight into the stream; one with mipmaps goes
+   into a scratch texture of its own first, whose levels SDL makes as a texture's (copy_levels). 0
+   where a batch could not go. */
 static int world_stream(int textures)
 {
     size_t mesh = 0, texture = 0, released = 0;
     uint32_t largest = STREAM_BYTES;
     int copies = 1;
+    SDL_GPUTexture **scratch = NULL;
+    size_t scratchCapacity = 0;
     if (!world_shared_buffers())
         return 0;
     if (textures)
@@ -2567,7 +2575,7 @@ static int world_stream(int textures)
     }
     while (mesh < W.nmeshUploads || (textures && texture < W.ntextureUploads) || (copies && (W.ncopies || W.narrayCopies))) {
         size_t meshFrom = mesh, textureFrom = texture, i;
-        int copied = copies;
+        int copied = copies, made = 1;
         uint32_t used = 0;
         unsigned char *mapped;
         SDL_GPUCommandBuffer *cmd;
@@ -2593,9 +2601,24 @@ static int world_stream(int textures)
             used += (n + 15u) & ~15u;
         }
         SDL_UnmapGPUTransferBuffer(G.dev, W.stream);
-        cmd = SDL_AcquireGPUCommandBuffer(G.dev);
-        if (!cmd)
+        /* a scratch texture for each texture of the batch with mipmaps */
+        if (!grow((void **)&scratch, &scratchCapacity, texture - textureFrom + 1, sizeof *scratch))
             goto failed;
+        for (i = textureFrom; i < texture; i++) {
+            const struct world_array *a = &W.arrays[W.textureUploads[i].a];
+            scratch[i - textureFrom] = a->tex && a->levels > 1
+                                           ? new_texture((int)a->width, (int)a->height, (int)a->levels,
+                                                         SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET)
+                                           : NULL;
+            made = made && (scratch[i - textureFrom] || !a->tex || a->levels == 1);
+        }
+        cmd = made ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+        if (!cmd) {
+            for (i = textureFrom; i < texture; i++)
+                if (scratch[i - textureFrom])
+                    SDL_ReleaseGPUTexture(G.dev, scratch[i - textureFrom]);
+            goto failed;
+        }
         copy = SDL_BeginGPUCopyPass(cmd);
         if (copies)
             stream_copies(copy);
@@ -2606,14 +2629,29 @@ static int world_stream(int textures)
         }
         for (i = textureFrom; i < texture; i++) {
             if (W.arrays[W.textureUploads[i].a].tex)
-                stream_texture(copy, &W.textureUploads[i], used);
+                stream_texture(copy, &W.textureUploads[i], used, scratch[i - textureFrom]);
             used += (stream_bytes(&W.textureUploads[i], 1) + 15u) & ~15u;
         }
         SDL_EndGPUCopyPass(copy);
+        copy = NULL;
         for (i = textureFrom; i < texture; i++)
-            if (W.arrays[W.textureUploads[i].a].tex)
-                stream_mipmaps(cmd, &W.textureUploads[i]);
+            if (scratch[i - textureFrom])
+                SDL_GenerateMipmapsForGPUTexture(cmd, scratch[i - textureFrom]);
+        for (i = textureFrom; i < texture; i++) {
+            const struct world_array *a = &W.arrays[W.textureUploads[i].a];
+            if (!scratch[i - textureFrom])
+                continue;
+            if (!copy)
+                copy = SDL_BeginGPUCopyPass(cmd);
+            copy_levels(copy, scratch[i - textureFrom], a->tex, W.textureUploads[i].b, a->width, a->height, a->levels);
+        }
+        if (copy)
+            SDL_EndGPUCopyPass(copy);
         W.streamFence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
+        /* released as soon as the batch no longer needs them */
+        for (i = textureFrom; i < texture; i++)
+            if (scratch[i - textureFrom])
+                SDL_ReleaseGPUTexture(G.dev, scratch[i - textureFrom]);
         if (!W.streamFence)
             goto failed;
         if (copies)
@@ -2631,6 +2669,7 @@ static int world_stream(int textures)
         if (meshFrom == mesh && textureFrom == texture && !copied)
             goto failed;
     }
+    free(scratch);
     W.nmeshUploads = 0;
     W.meshes.size = 0;
     W.uploadedVertices = W.vertexCount;
@@ -2640,6 +2679,7 @@ static int world_stream(int textures)
     return 1;
 
 failed:
+    free(scratch);
     /* the textures that went up let their surfaces go: the list keeps those it still holds */
     memmove(W.textureUploads, W.textureUploads + released, (W.ntextureUploads - released) * sizeof *W.textureUploads);
     W.ntextureUploads -= released;
@@ -2647,8 +2687,8 @@ failed:
 }
 
 /* What goes up with this flush besides the stream, staged in G.texels: the white texel, the records,
-   slots and cells that changed, the frame's matrices, waves and water instances; and the buffers
-   they go into. 0 without memory. */
+   slots and cells that changed, the frame's matrices, waves and water instances, the shadow fit's
+   state and its squares cleared with the world; and the buffers they go into. 0 without memory. */
 static int world_prepare(void)
 {
     long at;
@@ -2676,32 +2716,32 @@ static int world_prepare(void)
         W.whiteAt = (uint32_t)at;
     }
     if (W.recordsChanged) {
-        uint32_t ids = W.idCount ? W.idCount : 1, records = W.recordCount ? W.recordCount : 1;
-        uint32_t runs = W.nindirect ? (uint32_t)W.nindirect : 1, chunks = W.nchunks ? (uint32_t)W.nchunks : 1;
+        uint32_t ids = W.idCount ? W.idCount : 1;
+        size_t idBytes = (size_t)W.idCount * sizeof *W.byId, cullBytes = (size_t)W.recordCount * sizeof *W.cull;
+        size_t runBytes = W.nindirect * sizeof *W.indirect, casterBytes = W.ncasterRuns * sizeof *W.casterRuns;
+        size_t orderBytes = W.orderHeld * sizeof *W.order, chunkBytes = W.nchunks * sizeof *W.chunks;
+        unsigned char *p;
         if (!world_buffer(&W.recordBuffer, &W.recordBufferSize, ids * (uint32_t)sizeof *W.byId, 0,
                           SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
-            || !world_buffer(&W.cullBuffer, &W.cullBufferSize, records * (uint32_t)sizeof *W.cull, 0,
+            || !world_buffer(&W.cullData, &W.cullDataSize, (W.cullLayout.words ? W.cullLayout.words : 1) * 4, 0,
                              SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ)
-            || !world_buffer(&W.runBuffer, &W.runBufferSize, runs * (uint32_t)sizeof *W.indirect, 0,
-                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ)
-            || !world_buffer(&W.chunkBuffer, &W.chunkBufferSize, chunks * (uint32_t)sizeof *W.chunks, 0,
-                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ)
-            || !world_buffer(&W.places, &W.placesSize, records * 4, 0,
-                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE)
-            || !world_buffer(&W.commands, &W.commandsSize, runs * INDIRECT_SIZE, 0,
-                             SDL_GPU_BUFFERUSAGE_INDIRECT | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE)
-            || !world_buffer(&W.drawn, &W.drawnSize, (W.drawnIndices ? W.drawnIndices : 1) * 4, 0,
+            || !world_buffer(&W.draws, &W.drawsSize, (W.drawLayout.words ? W.drawLayout.words : 1) * 4, 0,
+                             SDL_GPU_BUFFERUSAGE_INDIRECT | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ
+                                 | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE)
+            || !world_buffer(&W.drawn, &W.drawnSize, (W.sectionIndices ? W.sectionIndices : 1) * 4 * WL_SECTIONS, 0,
                              SDL_GPU_BUFFERUSAGE_INDEX | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE))
             return 0;
-        size_t idBytes = (size_t)W.idCount * sizeof *W.byId, cullBytes = (size_t)W.recordCount * sizeof *W.cull;
-        size_t runBytes = W.nindirect * sizeof *W.indirect;
-        at = bytes_add(&G.texels, idBytes + cullBytes + runBytes + W.nchunks * sizeof *W.chunks, 16);
+        at = bytes_add(&G.texels, idBytes + (size_t)W.cullLayout.words * 4, 16);
         if (at < 0)
             return 0;
-        memcpy(G.texels.data + at, W.byId, idBytes);
-        memcpy(G.texels.data + at + idBytes, W.cull, cullBytes);
-        memcpy(G.texels.data + at + idBytes + cullBytes, W.indirect, runBytes);
-        memcpy(G.texels.data + at + idBytes + cullBytes + runBytes, W.chunks, W.nchunks * sizeof *W.chunks);
+        p = G.texels.data + at;
+        memcpy(p, W.byId, idBytes);
+        p += idBytes;
+        memcpy(p, W.cull, cullBytes);
+        memcpy(p + (size_t)W.cullLayout.runs * 4, W.indirect, runBytes);
+        memcpy(p + (size_t)W.cullLayout.casterRuns * 4, W.casterRuns, casterBytes);
+        memcpy(p + (size_t)W.cullLayout.order * 4, W.order, orderBytes);
+        memcpy(p + (size_t)W.cullLayout.chunks * 4, W.chunks, chunkBytes);
         W.recordsAt = (uint32_t)at;
     }
     if (W.slotsChanged) {
@@ -2711,9 +2751,8 @@ static int world_prepare(void)
             || !world_buffer(&W.views, &W.viewsSize, n * SLOT_VIEWS, 0,
                              SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
             || !world_buffer(&W.placed, &W.placedSize, n * SLOT_PLACE, 0,
-                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ)
-            || !world_buffer(&W.casterViews, &W.casterViewsSize, n * SLOT_CASTERS, 0,
-                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
+                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ
+                                 | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
             return 0;
         at = bytes_add(&G.texels, (size_t)W.slotCount * sizeof *W.slots, 16);
         if (at < 0)
@@ -2722,9 +2761,8 @@ static int world_prepare(void)
         W.slotsAt = (uint32_t)at;
     }
     if (W.cellsChanged) {
-        if (!world_buffer(&W.cellBuffer, &W.cellBufferSize, (W.cellCount ? W.cellCount : 1) * (uint32_t)sizeof *W.cells,
-                          0, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
-            || !world_buffer(&W.sineBuffer, &W.sineSize, sizeof W.sines, 0, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
+        if (!world_buffer(&W.cellBuffer, &W.cellBufferSize, W.cellCount * (uint32_t)sizeof *W.cells + sizeof W.sines,
+                          0, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
             return 0;
         at = bytes_add(&G.texels, (size_t)W.cellCount * sizeof *W.cells + sizeof W.sines, 16);
         if (at < 0)
@@ -2753,6 +2791,20 @@ static int world_prepare(void)
                    W.instances.size);
         W.frameAt = (uint32_t)at;
         W.frameDue = 1;
+    }
+    /* the fit's state as a frame with shadows begins it (render/shadow_fit_gpu.h), then the
+       history of no frame before, where it is cleared; the state stays as the fit left it until
+       the next such frame (gfx_read_shadow_fit) */
+    W.fitStateDue = W.fitState && ((W.shadowSet && W.computeDue) || W.historyDue);
+    if (W.fitStateDue) {
+        uint32_t *s;
+        at = bytes_add(&G.texels, (SHADOW_FIT_GPU_STATE + SHADOW_FIT_GPU_HISTORY) * 4, 16);
+        if (at < 0)
+            return 0;
+        s = (uint32_t *)(G.texels.data + at);
+        shadow_fit_gpu_state(s);
+        memset(s + SHADOW_FIT_GPU_STATE, 0, SHADOW_FIT_GPU_HISTORY * 4);
+        W.fitStateAt = (uint32_t)at;
     }
     return 1;
 }
@@ -2790,20 +2842,14 @@ static void world_copy(SDL_GPUCopyPass *copy, uint32_t base)
     }
     if (W.recordsChanged) {
         uint32_t at = base + W.recordsAt, ids = W.idCount * (uint32_t)sizeof *W.byId;
-        uint32_t cull = W.recordCount * (uint32_t)sizeof *W.cull;
         upload_buffer(copy, at, W.recordBuffer, 0, ids, 1);
-        upload_buffer(copy, at + ids, W.cullBuffer, 0, cull, 1);
-        uint32_t runs = (uint32_t)(W.nindirect * sizeof *W.indirect);
-        upload_buffer(copy, at + ids + cull, W.runBuffer, 0, runs, 1);
-        upload_buffer(copy, at + ids + cull + runs, W.chunkBuffer, 0, (uint32_t)(W.nchunks * sizeof *W.chunks), 1);
+        upload_buffer(copy, at + ids, W.cullData, 0, W.cullLayout.words * 4, 1);
     }
     if (W.slotsChanged)
         upload_buffer(copy, base + W.slotsAt, W.slotBuffer, 0, W.slotCount * (uint32_t)sizeof *W.slots, 1);
-    if (W.cellsChanged) {
-        upload_buffer(copy, base + W.cellsAt, W.cellBuffer, 0, W.cellCount * (uint32_t)sizeof *W.cells, 1);
-        upload_buffer(copy, base + W.cellsAt + W.cellCount * (uint32_t)sizeof *W.cells, W.sineBuffer, 0,
-                      sizeof W.sines, 1);
-    }
+    if (W.cellsChanged)
+        upload_buffer(copy, base + W.cellsAt, W.cellBuffer, 0,
+                      W.cellCount * (uint32_t)sizeof *W.cells + (uint32_t)sizeof W.sines, 1);
     if (W.frameDue) {
         uint32_t at = base + W.frameAt;
         upload_buffer(copy, at, W.animatedBuffer, 0, (uint32_t)W.animated.size, 1);
@@ -2814,12 +2860,25 @@ static void world_copy(SDL_GPUCopyPass *copy, uint32_t base)
         at += (uint32_t)W.waves.size;
         upload_buffer(copy, at, W.instanceBuffer, 0, (uint32_t)W.instances.size, 1);
     }
+    if (W.fitStateDue) {
+        if (W.shadowSet && W.computeDue)
+            upload_buffer(copy, base + W.fitStateAt, W.fitState, 0, SHADOW_FIT_GPU_STATE * 4, 1);
+        /* the history is read and written by the fit itself from frame to frame: cleared in place,
+           never cycled away */
+        if (W.historyDue)
+            upload_buffer(copy, base + W.fitStateAt + SHADOW_FIT_GPU_STATE * 4, W.fitHistory, 0,
+                          SHADOW_FIT_GPU_HISTORY * 4, 0);
+    }
 }
 
+static void world_shadows(SDL_GPUCommandBuffer *cmd);
+static int flush_only(void);
+
 /* The frame's compute passes: the slots' views; the view's cull of the runs, which gives each run's
-   kept records their places in the frame's buffer of indices and writes the run's one indirect
-   draw; and the compaction, which copies the kept records' indices to their places. Sets
-   W.computed where they ran, without which nothing of the world is drawn. */
+   kept records their places in the view's section of the frame's buffer of indices and writes the
+   run's one indirect draw; and the compaction, which copies the kept records' indices to their
+   places. Sets W.computed where they ran, without which nothing of the world is drawn; then, in a
+   frame with shadows, those (world_shadows). */
 static void world_compute(SDL_GPUCommandBuffer *cmd)
 {
     struct WlTransformFrame transform;
@@ -2827,26 +2886,23 @@ static void world_compute(SDL_GPUCommandBuffer *cmd)
     struct WlCompactFrame compact;
     uint32_t groups[2];
     float projection[16];
-    SDL_GPUStorageBufferReadWriteBinding rw[3];
-    SDL_GPUBuffer *read[4];
+    SDL_GPUStorageBufferReadWriteBinding rw[2];
+    SDL_GPUBuffer *read[3];
     SDL_GPUComputePass *pass;
+    W.shadowFailed = 0;
     if (!world_on() || !W.computeDue || !W.frameSet || !W.slotCount || !W.recordCount || !W.transform
         || !W.cullPipeline || !W.compactPipeline || !G.screen || !W.slotBuffer || !W.animatedBuffer || !W.views
-        || !W.placed || !W.casterViews || !W.cullBuffer || !W.runBuffer || !W.chunkBuffer || !W.places
-        || !W.indices || !W.drawn || !W.commands)
+        || !W.placed || !W.cullData || !W.draws || !W.indices || !W.drawn || !W.fitResult)
         return;
     wl_projection(projection, W.camera.proj, W.camera.centre, W.camera.nearZ, W.camera.depthScale,
                   G.screen->width, G.screen->height);
-    wl_transform_frame(W.camera.view, projection, (const float (*)[16])G.shadow.fromView,
-                       G.shadowReady ? (uint32_t)G.shadow.cascades : 0, W.slotCount, &transform);
+    wl_transform_frame(W.camera.view, projection, W.slotCount, &transform);
     SDL_zero(rw);
     rw[0].buffer = W.views;
     rw[0].cycle = true;
     rw[1].buffer = W.placed;
     rw[1].cycle = true;
-    rw[2].buffer = W.casterViews;
-    rw[2].cycle = true;
-    pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 3);
+    pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
     if (!pass)
         return;
     SDL_BindGPUComputePipeline(pass, W.transform);
@@ -2857,24 +2913,23 @@ static void world_compute(SDL_GPUCommandBuffer *cmd)
     SDL_DispatchGPUCompute(pass, (W.slotCount + 63) / 64, 1, 1);
     SDL_EndGPUComputePass(pass);
     if (W.nindirect) {
-        wl_cull_frame(&W.frustum, (uint32_t)W.nindirect, &cull, groups);
+        wl_cull_frame(&W.frustum, (uint32_t)W.nindirect, &W.cullLayout, &W.drawLayout, W.nindirect, W.recordCount,
+                      W.sectionIndices, &cull, groups);
         SDL_zero(rw);
-        rw[0].buffer = W.places;
+        rw[0].buffer = W.draws;
         rw[0].cycle = true;
-        rw[1].buffer = W.commands;
-        rw[1].cycle = true;
-        pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
+        pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
         if (!pass)
             return;
         SDL_BindGPUComputePipeline(pass, W.cullPipeline);
-        read[0] = W.cullBuffer;
+        read[0] = W.cullData;
         read[1] = W.placed;
-        read[2] = W.runBuffer;
+        read[2] = W.fitResult;
         SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
         SDL_PushGPUComputeUniformData(cmd, 0, &cull, sizeof cull);
         SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
         SDL_EndGPUComputePass(pass);
-        wl_compact_frame((uint32_t)W.nchunks, &compact, groups);
+        wl_compact_frame((uint32_t)W.nchunks, 0, 1, &W.cullLayout, &W.drawLayout, W.recordCount, &compact, groups);
         if (groups[0]) {
             SDL_zero(rw);
             rw[0].buffer = W.drawn;
@@ -2883,17 +2938,18 @@ static void world_compute(SDL_GPUCommandBuffer *cmd)
             if (!pass)
                 return;
             SDL_BindGPUComputePipeline(pass, W.compactPipeline);
-            read[0] = W.cullBuffer;
-            read[1] = W.places;
+            read[0] = W.cullData;
+            read[1] = W.draws;
             read[2] = W.indices;
-            read[3] = W.chunkBuffer;
-            SDL_BindGPUComputeStorageBuffers(pass, 0, read, 4);
+            SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
             SDL_PushGPUComputeUniformData(cmd, 0, &compact, sizeof compact);
             SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
             SDL_EndGPUComputePass(pass);
         }
     }
     W.computed = 1;
+    if (W.shadowSet)
+        world_shadows(cmd);
 }
 
 /* Whether a recorded draw of the world's may be replayed: it is of the world as it is now, and what
@@ -2903,12 +2959,10 @@ static int world_drawable(const struct gpu_draw *d)
     if (d->generation != W.generation || !world_on())
         return 0;
     if (d->program == PROG_WATER)
-        return W.cellBuffer && W.waveBuffer && W.sineBuffer && W.instanceBuffer;
-    if (!W.computed || !W.recordBuffer || !W.vertices || !W.ids || !W.uvBuffer)
+        return W.cellBuffer && W.waveBuffer && W.instanceBuffer;
+    if (!W.computed || !W.recordBuffer || !W.vertices || !W.ids || !W.uvBuffer || !W.views)
         return 0;
-    if (d->program == PROG_CASTER)
-        return W.casterViews && W.indices;
-    return W.views && (d->indirect ? W.drawn && W.commands : W.indices != NULL);
+    return d->indirect ? W.drawn && W.draws : W.indices != NULL;
 }
 
 /* After a flush: what went up has gone up. */
@@ -2916,6 +2970,9 @@ static void world_flushed(void)
 {
     W.recordsChanged = W.slotsChanged = W.cellsChanged = 0;
     W.whiteDue = 0;
+    if (W.fitStateDue)
+        W.historyDue = 0;
+    W.fitStateDue = 0;
 }
 
 /* ---- shadows ---- */
@@ -2926,7 +2983,9 @@ static int shadow_supported(void)
     if (env && env[0] == '0' && !env[1])
         return 0;
     return G.dev && SDL_GPUTextureSupportsFormat(G.dev, SDL_GPU_TEXTUREFORMAT_R32_FLOAT, SDL_GPU_TEXTURETYPE_2D_ARRAY,
-                                                 SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER);
+                                                 SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER)
+           && SDL_GPUTextureSupportsFormat(G.dev, SDL_GPU_TEXTUREFORMAT_R32_FLOAT, SDL_GPU_TEXTURETYPE_2D,
+                                           SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ);
 }
 
 int gfx_shadows_supported(void)
@@ -2938,131 +2997,430 @@ int gfx_shadows_supported(void)
     return G.shadowState > 0;
 }
 
+/* Shadows are optional, the renderer is not: a shader, pipeline or buffer only the shadows use that
+   cannot be made turns them off for the device, said once, and the ground keeps its baked
+   shadows. */
+static void shadows_off(const char *what)
+{
+    if (G.shadowState >= 0)
+        SDL_Log("gfx: %s: %s; no shadows", what, SDL_GetError());
+    G.shadowState = -1;
+}
+
+static void release_texture(SDL_GPUTexture **t)
+{
+    if (*t)
+        SDL_ReleaseGPUTexture(G.dev, *t);
+    *t = NULL;
+}
+
+/* What a frame's shadows need: the cascades' maps and their depth, made once, and the depth pass's
+   two targets of view depth and its depth at the screen's size (with the screen's MARGIN, so that
+   their texels are the screen's pixels), made again when it changes. 0 where they cannot be: the
+   frame then draws no shadows. Maps that cannot be made turn the shadows off; targets that cannot
+   be made at the screen's size are tried again once it changes. */
 static int shadow_prepare(void)
 {
     SDL_GPUTextureCreateInfo info;
-    if (!gfx_shadows_supported())
+    if (!gfx_shadows_supported() || !G.screen)
         return 0;
-    if (G.shadowMaps && G.shadowDepth)
-        return 1;
-    SDL_zero(info);
-    info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
-    info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
-    info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
-    info.width = info.height = GFX_SHADOW_SIZE + MARGIN;
-    info.layer_count_or_depth = GFX_SHADOW_CASCADES;
-    info.num_levels = 1;
-    G.shadowMaps = SDL_CreateGPUTexture(G.dev, &info);
-    info.type = SDL_GPU_TEXTURETYPE_2D;
-    info.format = G.depthFormat;
-    info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
-    info.layer_count_or_depth = 1;
-    G.shadowDepth = SDL_CreateGPUTexture(G.dev, &info);
     if (!G.shadowMaps || !G.shadowDepth) {
-        SDL_Log("gfx: shadow maps: %s", SDL_GetError());
-        G.shadowState = -1;
-        return 0;
+        SDL_zero(info);
+        info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+        info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
+        info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = info.height = GFX_SHADOW_SIZE + MARGIN;
+        info.layer_count_or_depth = GFX_SHADOW_CASCADES;
+        info.num_levels = 1;
+        G.shadowMaps = SDL_CreateGPUTexture(G.dev, &info);
+        info.type = SDL_GPU_TEXTURETYPE_2D;
+        info.format = G.depthFormat;
+        info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+        info.layer_count_or_depth = 1;
+        G.shadowDepth = SDL_CreateGPUTexture(G.dev, &info);
+        if (!G.shadowMaps || !G.shadowDepth) {
+            shadows_off("shadow maps");
+            release_texture(&G.shadowMaps);
+            release_texture(&G.shadowDepth);
+            return 0;
+        }
+    }
+    if (!G.fitFront || G.fitW != G.screen->width || G.fitH != G.screen->height) {
+        if (G.fitFailedW == G.screen->width && G.fitFailedH == G.screen->height)
+            return 0;
+        release_texture(&G.fitFront);
+        release_texture(&G.fitBack);
+        release_texture(&G.fitDepth);
+        SDL_zero(info);
+        info.type = SDL_GPU_TEXTURETYPE_2D;
+        info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
+        info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ;
+        info.width = (Uint32)(G.screen->width + MARGIN);
+        info.height = (Uint32)(G.screen->height + MARGIN);
+        info.layer_count_or_depth = 1;
+        info.num_levels = 1;
+        G.fitFront = SDL_CreateGPUTexture(G.dev, &info);
+        G.fitBack = SDL_CreateGPUTexture(G.dev, &info);
+        info.format = G.depthFormat;
+        info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+        G.fitDepth = SDL_CreateGPUTexture(G.dev, &info);
+        if (!G.fitFront || !G.fitBack || !G.fitDepth) {
+            SDL_Log("gfx: the shadow fit's depth targets at %dx%d: %s; no shadows at this size", G.screen->width,
+                    G.screen->height, SDL_GetError());
+            release_texture(&G.fitFront);
+            release_texture(&G.fitBack);
+            release_texture(&G.fitDepth);
+            G.fitW = G.fitH = 0;
+            G.fitFailedW = G.screen->width;
+            G.fitFailedH = G.screen->height;
+            return 0;
+        }
+        G.fitW = G.screen->width;
+        G.fitH = G.screen->height;
+        G.fitFailedW = G.fitFailedH = 0;
     }
     return 1;
 }
 
-/* A cascade's view-to-light matrix in its shadow map's texture space, with the texel centres where
-   the caster pass drew them (world_caster.hlsl). */
-static void shadow_texture_matrix(float *out, int cascade)
+/* The depth pass (world_depth.hlsl): the view's runs the cull kept, every pass's, into the fit's two
+   targets of view depth, the opaque passes' and the ground's first. Single-sampled, so that the
+   compute passes can read what it draws, and at the main pass's viewport, so that a texel is a
+   pixel of the screen. 0 where it could not be recorded. */
+static int depth_pass(SDL_GPUCommandBuffer *cmd)
 {
-    float tex[16];
-    memset(tex, 0, sizeof tex);
-    tex[0] = 0.5f;
-    tex[5] = -0.5f;
-    tex[10] = 1.0f;
-    tex[12] = 0.5f + 0.5f / GFX_SHADOW_SIZE;
-    tex[13] = 0.5f + 0.5f / GFX_SHADOW_SIZE;
-    tex[15] = 1.0f;
-    multiply(out, G.shadow.fromView[cascade], tex);
+    SDL_GPUColorTargetInfo colour[2];
+    SDL_GPUDepthStencilTargetInfo depth;
+    SDL_GPURenderPass *pass;
+    SDL_GPUBufferBinding binding[2];
+    SDL_GPUBuffer *read[3];
+    SDL_GPUGraphicsPipeline *bound = NULL;
+    SDL_GPUViewport viewport;
+    SDL_Rect scissor;
+    size_t i;
+    SDL_zero(colour);
+    SDL_zero(depth);
+    for (i = 0; i < 2; i++) {
+        colour[i].texture = i ? G.fitBack : G.fitFront;
+        colour[i].load_op = SDL_GPU_LOADOP_CLEAR;
+        colour[i].store_op = SDL_GPU_STOREOP_STORE;
+    }
+    depth.texture = G.fitDepth;
+    depth.clear_depth = 1.0f;
+    depth.load_op = SDL_GPU_LOADOP_CLEAR;
+    depth.store_op = SDL_GPU_STOREOP_DONT_CARE;
+    depth.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
+    depth.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
+    pass = SDL_BeginGPURenderPass(cmd, colour, 2, &depth);
+    if (!pass)
+        return 0;
+    viewport.x = viewport.y = 0.5f;
+    viewport.w = (float)G.fitW;
+    viewport.h = (float)G.fitH;
+    viewport.min_depth = 0.0f;
+    viewport.max_depth = 1.0f;
+    SDL_SetGPUViewport(pass, &viewport);
+    scissor.x = scissor.y = 0;
+    scissor.w = G.fitW;
+    scissor.h = G.fitH;
+    SDL_SetGPUScissor(pass, &scissor);
+    SDL_zero(binding);
+    binding[0].buffer = W.vertices;
+    binding[1].buffer = W.ids;
+    SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
+    binding[0].buffer = W.drawn;
+    SDL_BindGPUIndexBuffer(pass, &binding[0], SDL_GPU_INDEXELEMENTSIZE_32BIT);
+    read[0] = W.recordBuffer;
+    read[1] = W.views;
+    read[2] = W.uvBuffer;
+    SDL_BindGPUVertexStorageBuffers(pass, 0, read, 3);
+    for (i = 0; i < W.nindirect; i++) {
+        const struct SwDrawRun *run = &W.runs[i];
+        SDL_GPUGraphicsPipeline *pipe = G.depthPipeline[run->pass <= SW_PASS_GROUND][world_cull(run->cull) - CULL_NONE];
+        SDL_GPUTextureSamplerBinding texture;
+        int wrap = run->pass == SW_PASS_OPAQUE_WRAP || run->pass == SW_PASS_ALPHA_WRAP;
+        if (pipe != bound) {
+            SDL_BindGPUGraphicsPipeline(pass, pipe);
+            bound = pipe;
+        }
+        texture.texture = world_array(run->textureArray);
+        texture.sampler = G.samplers[wrap][DRAW_FILTER_MIPMAPS];
+        SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
+        SDL_DrawGPUIndexedPrimitivesIndirect(pass, W.draws, wl_view_command((uint32_t)i) * INDIRECT_SIZE, 1);
+        g_perf.draws++;
+        g_perf.indirectDraws++;
+    }
+    SDL_EndGPURenderPass(pass);
+    return 1;
 }
 
-/* The shadow record of the cascades drawn last, in the frame's records: made again after a flush
-   started a new list of them. */
-static int shadow_record(void)
+/* The fit (shadow_range, shadow_extents and shadow_cascades.hlsl) of the depth pass's targets into
+   W.fitResult, from and into the squares and the range of the frames before. 0 where it could not
+   be recorded. */
+static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct ShadowFitGpuFrame *u)
 {
-    const struct GfxShadow *shadow = &G.shadow;
-    struct GpuShadow *s;
-    long at;
+    const struct GpuComputeCode *code[2] = { &shadow_range_cs, &shadow_extents_cs };
+    SDL_GPUComputePipeline *pipes[2] = { W.fitRange, W.fitExtents };
+    SDL_GPUStorageBufferReadWriteBinding rw[2];
+    SDL_GPUTexture *depths[2] = { G.fitFront, G.fitBack };
+    SDL_GPUComputePass *pass;
+    int p;
+    for (p = 0; p < 2; p++) {
+        SDL_zero(rw);
+        rw[0].buffer = W.fitState;
+        pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
+        if (!pass)
+            return 0;
+        SDL_BindGPUComputePipeline(pass, pipes[p]);
+        SDL_BindGPUComputeStorageTextures(pass, 0, depths, 2);
+        /* the extents cut the range into slices as the range kept from the frames before says */
+        if (p == 1)
+            SDL_BindGPUComputeStorageBuffers(pass, 0, &W.fitHistory, 1);
+        SDL_PushGPUComputeUniformData(cmd, 0, u, sizeof *u);
+        SDL_DispatchGPUCompute(pass, (u->size[0] + code[p]->threads[0] - 1) / code[p]->threads[0],
+                               (u->size[1] + code[p]->threads[1] - 1) / code[p]->threads[1], 1);
+        SDL_EndGPUComputePass(pass);
+    }
+    SDL_zero(rw);
+    rw[0].buffer = W.fitHistory;
+    rw[1].buffer = W.fitResult;
+    rw[1].cycle = true;
+    pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
+    if (!pass)
+        return 0;
+    SDL_BindGPUComputePipeline(pass, W.fitCascades);
+    SDL_BindGPUComputeStorageBuffers(pass, 0, &W.fitState, 1);
+    SDL_PushGPUComputeUniformData(cmd, 0, u, sizeof *u);
+    SDL_DispatchGPUCompute(pass, 1, 1, 1);
+    SDL_EndGPUComputePass(pass);
+    return 1;
+}
+
+/* Each cascade's casters: the cull of the casters' runs against the boxes the fit left, and their
+   indices compacted into the cascades' sections, after the view's. 0 where it could not be
+   recorded. */
+static int caster_cull(SDL_GPUCommandBuffer *cmd)
+{
+    struct WlCullFrame cull;
+    struct WlCompactFrame compact;
+    SDL_GPUStorageBufferReadWriteBinding rw;
+    SDL_GPUBuffer *read[3];
+    SDL_GPUComputePass *pass;
+    uint32_t groups[2];
+    wl_cull_frame(NULL, (uint32_t)W.ncasterRuns, &W.cullLayout, &W.drawLayout, W.nindirect, W.recordCount,
+                  W.sectionIndices, &cull, groups);
+    SDL_zero(rw);
+    rw.buffer = W.draws;
+    pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
+    if (!pass)
+        return 0;
+    SDL_BindGPUComputePipeline(pass, W.cullPipeline);
+    read[0] = W.cullData;
+    read[1] = W.placed;
+    read[2] = W.fitResult;
+    SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
+    SDL_PushGPUComputeUniformData(cmd, 0, &cull, sizeof cull);
+    SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
+    SDL_EndGPUComputePass(pass);
+    wl_compact_frame((uint32_t)W.nchunks, 1, WL_CASCADES, &W.cullLayout, &W.drawLayout, W.recordCount, &compact,
+                     groups);
+    if (!groups[0])
+        return 1;
+    SDL_zero(rw);
+    rw.buffer = W.drawn;
+    pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
+    if (!pass)
+        return 0;
+    SDL_BindGPUComputePipeline(pass, W.compactPipeline);
+    read[0] = W.cullData;
+    read[1] = W.draws;
+    read[2] = W.indices;
+    SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
+    SDL_PushGPUComputeUniformData(cmd, 0, &compact, sizeof compact);
+    SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
+    SDL_EndGPUComputePass(pass);
+    return 1;
+}
+
+/* The shadow pass (world_caster.hlsl): each cascade's casters into its layer of the maps, a draw a
+   texture array. The maps are a texel wider and taller than GFX_SHADOW_SIZE (MARGIN), drawn at the
+   same half-pixel viewport as every pass. 0 where it could not be recorded. */
+static int caster_pass(SDL_GPUCommandBuffer *cmd)
+{
+    SDL_GPUBufferBinding binding[2];
+    SDL_GPUBuffer *read[4];
+    SDL_GPUViewport viewport;
+    SDL_Rect scissor;
+    struct draw_state caster;
     int c;
-    if (G.shadowRecord >= 0)
-        return G.shadowRecord;
-    at = bytes_add(&G.shadowRecords, sizeof *s, 16);
-    if (at < 0)
-        return 0;
-    G.shadowRecord = (int)(at / (long)sizeof *s);
-    s = (struct GpuShadow *)(G.shadowRecords.data + at);
+    /* the casters read their texture as the opaque lists do */
+    resolve_state(&caster, DRAW_OPAQUE_CLAMP, 0, 0, 0, 0);
+    viewport.x = viewport.y = 0.5f;
+    viewport.w = viewport.h = (float)GFX_SHADOW_SIZE;
+    viewport.min_depth = 0.0f;
+    viewport.max_depth = 1.0f;
+    scissor.x = scissor.y = 0;
+    scissor.w = scissor.h = GFX_SHADOW_SIZE;
     for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
-        int on = c < shadow->cascades;
-        shadow_texture_matrix(s->fromView[c], on ? c : 0);
-        s->farDepth[c] = on ? shadow->farDepth[c] : 0.0f;
-        s->offset[c] = on ? shadow->offset[c] : 0.0f;
-        s->blur[c] = on ? shadow->blur[c] : 0.0f;
-        s->slant[c] = on ? shadow->slant[c] : 0.0f;
+        SDL_GPUColorTargetInfo colour;
+        SDL_GPUDepthStencilTargetInfo depth;
+        SDL_GPURenderPass *pass;
+        uint32_t uniform[4] = { 0, (uint32_t)c, 0, 0 };
+        size_t k;
+        SDL_zero(colour);
+        SDL_zero(depth);
+        colour.texture = G.shadowMaps;
+        colour.layer_or_depth_plane = (Uint32)c;
+        colour.clear_color.r = colour.clear_color.g = colour.clear_color.b = colour.clear_color.a = 1.0f;
+        colour.load_op = SDL_GPU_LOADOP_CLEAR;
+        colour.store_op = SDL_GPU_STOREOP_STORE;
+        depth.texture = G.shadowDepth;
+        depth.clear_depth = 1.0f;
+        depth.load_op = SDL_GPU_LOADOP_CLEAR;
+        depth.store_op = SDL_GPU_STOREOP_DONT_CARE;
+        depth.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
+        depth.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
+        pass = SDL_BeginGPURenderPass(cmd, &colour, 1, &depth);
+        if (!pass)
+            return 0;
+        SDL_SetGPUViewport(pass, &viewport);
+        SDL_SetGPUScissor(pass, &scissor);
+        SDL_BindGPUGraphicsPipeline(pass, G.casterPipeline);
+        SDL_zero(binding);
+        binding[0].buffer = W.vertices;
+        binding[1].buffer = W.ids;
+        SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
+        binding[0].buffer = W.drawn;
+        SDL_BindGPUIndexBuffer(pass, &binding[0], SDL_GPU_INDEXELEMENTSIZE_32BIT);
+        read[0] = W.recordBuffer;
+        read[1] = W.placed;
+        read[2] = W.uvBuffer;
+        read[3] = W.fitResult;
+        SDL_BindGPUVertexStorageBuffers(pass, 0, read, 4);
+        SDL_PushGPUVertexUniformData(cmd, 0, uniform, sizeof uniform);
+        for (k = 0; k < W.ncasterRuns; k++) {
+            SDL_GPUTextureSamplerBinding texture;
+            texture.texture = world_array(W.casterArrays[k]);
+            texture.sampler = stage_sampler(&caster, 0);
+            SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
+            SDL_DrawGPUIndexedPrimitivesIndirect(
+                pass, W.draws, wl_caster_command(W.nindirect, W.ncasterRuns, c, (uint32_t)k) * INDIRECT_SIZE, 1);
+            g_perf.draws++;
+            g_perf.indirectDraws++;
+        }
+        SDL_EndGPURenderPass(pass);
     }
-    for (c = 0; c < 3; c++) {
-        s->lightView[c] = shadow->lightView[c];
-        s->ambient[c] = shadow->ambient[c];
-    }
-    s->lightView[3] = shadow->bias;
-    s->ambient[3] = shadow->darkness > 1.0f / 255.0f ? shadow->darkness : 1.0f / 255.0f;
-    s->mapSize[0] = (float)GFX_SHADOW_SIZE;
-    return G.shadowRecord;
-}
-
-int gfx_shadow_begin(const struct GfxShadow *shadow)
-{
-    batch_flush();
-    G.shadowReady = 0;
-    G.shadowReceive = 0;
-    if (!G.dev || G.shadowPass || shadow->cascades < 1 || shadow->cascades > GFX_SHADOW_CASCADES || !shadow_prepare())
-        return 0;
-    G.shadow = *shadow;
-    G.shadowRecord = -1;
-    G.shadowCascade = -1;
-    G.shadowPass = 1;
     return 1;
 }
 
-int gfx_shadow_cascade(int cascade)
+/* The frame's shadows, before its own passes: the depth pass, the fit, the casters' cull and the
+   shadow pass, each only once the one before it was recorded. The fit's result stays on the GPU,
+   where every draw of the world reads it; where a step could not be recorded, the flush's draws of
+   the world receive no shadows (W.shadowFailed, run_pass) and keep the ground's baked ones. */
+static void world_shadows(SDL_GPUCommandBuffer *cmd)
 {
-    struct gpu_step *s;
-    batch_flush();
-    G.shadowCascade = -1;
-    if (!G.shadowPass || cascade < 0 || cascade >= G.shadow.cascades)
-        return 0;
-    G.shadowCascade = cascade;
-    s = add_step(STEP_PASS);
-    if (!s) {
-        G.shadowCascade = -1;
-        return 0;
-    }
-    s->layer = cascade;
-    s->loadColour = SDL_GPU_LOADOP_CLEAR;
-    s->clearColour.r = s->clearColour.g = s->clearColour.b = s->clearColour.a = 1.0f;
-    s->loadDepth = SDL_GPU_LOADOP_CLEAR;
-    s->clearDepth = 1.0f;
-    s->first = (uint32_t)G.ndraws;
-    return 1;
-}
-
-void gfx_shadow_end(void)
-{
-    if (!G.shadowPass)
+    struct ShadowFitGpuFrame u;
+    W.shadowFailed = 1;
+    if (!shadow_prepare() || !W.uvBuffer || !W.recordBuffer || !W.vertices || !W.ids)
         return;
-    G.shadowPass = 0;
-    G.shadowCascade = -1;
-    G.shadowReady = 1;
+    shadow_fit_gpu_frame(&W.shadow.fit, G.fitW, G.fitH, W.shadow.ambient, W.shadow.darkness, &u);
+    if (!depth_pass(cmd) || !fit_passes(cmd, &u) || (W.ncasterRuns && !caster_cull(cmd)) || !caster_pass(cmd))
+        return;
+    W.shadowFailed = 0;
+    W.fitted = W.shadow;
+    W.fittedSet = 1;
 }
 
-void gfx_shadow_receive(int receive)
+static void download_buffer(SDL_GPUCopyPass *copy, SDL_GPUBuffer *buffer, uint32_t size, SDL_GPUTransferBuffer *to,
+                            uint32_t at)
 {
-    batch_flush();
-    G.shadowReceive = receive && G.shadowReady;
+    SDL_GPUBufferRegion src;
+    SDL_GPUTransferBufferLocation dst;
+    src.buffer = buffer;
+    src.offset = 0;
+    src.size = size;
+    dst.transfer_buffer = to;
+    dst.offset = at;
+    SDL_DownloadFromGPUBuffer(copy, &src, &dst);
+}
+
+static void download_depths(SDL_GPUCopyPass *copy, SDL_GPUTexture *texture, int w, int h, SDL_GPUTransferBuffer *to,
+                            uint32_t at)
+{
+    SDL_GPUTextureRegion src;
+    SDL_GPUTextureTransferInfo dst;
+    SDL_zero(src);
+    SDL_zero(dst);
+    src.texture = texture;
+    src.w = (Uint32)w;
+    src.h = (Uint32)h;
+    src.d = 1;
+    dst.transfer_buffer = to;
+    dst.offset = at;
+    dst.pixels_per_row = (Uint32)w;
+    dst.rows_per_layer = (Uint32)h;
+    SDL_DownloadFromGPUTexture(copy, &src, &dst);
+}
+
+int gfx_read_shadow_fit(struct GfxShadowFitRead *out)
+{
+    SDL_GPUTransferBufferCreateInfo info;
+    SDL_GPUTransferBuffer *down;
+    SDL_GPUCommandBuffer *cmd;
+    SDL_GPUCopyPass *copy;
+    SDL_GPUFence *fence;
+    const unsigned char *p;
+    struct ShadowFitGpuCascades g;
+    uint32_t state[SHADOW_FIT_GPU_STATE], depthBytes;
+    int depths, ok = 0;
+    /* the frame's fit runs when what was recorded goes up */
+    if (!G.dev || !out || !flush_only() || !W.fittedSet || !G.fitFront || !W.fitState || !W.fitResult)
+        return -1;
+    depths = out->front && out->back;
+    if (depths && (out->width < G.fitW || out->height < G.fitH)) {
+        out->width = G.fitW;
+        out->height = G.fitH;
+        return -1;
+    }
+    out->width = G.fitW;
+    out->height = G.fitH;
+    depthBytes = depths ? (uint32_t)G.fitW * (uint32_t)G.fitH * 4 : 0;
+    SDL_zero(info);
+    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
+    info.size = depthBytes * 2 + (uint32_t)sizeof state + (uint32_t)sizeof g;
+    down = SDL_CreateGPUTransferBuffer(G.dev, &info);
+    cmd = down ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+    if (!cmd) {
+        if (down)
+            SDL_ReleaseGPUTransferBuffer(G.dev, down);
+        return -1;
+    }
+    copy = SDL_BeginGPUCopyPass(cmd);
+    if (depths) {
+        download_depths(copy, G.fitFront, G.fitW, G.fitH, down, 0);
+        download_depths(copy, G.fitBack, G.fitW, G.fitH, down, depthBytes);
+    }
+    download_buffer(copy, W.fitState, (uint32_t)sizeof state, down, depthBytes * 2);
+    download_buffer(copy, W.fitResult, (uint32_t)sizeof g, down, depthBytes * 2 + (uint32_t)sizeof state);
+    SDL_EndGPUCopyPass(copy);
+    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
+    if (fence && SDL_WaitForGPUFences(G.dev, true, &fence, 1) && (p = SDL_MapGPUTransferBuffer(G.dev, down, false))) {
+        if (depths) {
+            memcpy(out->front, p, depthBytes);
+            memcpy(out->back, p + depthBytes, depthBytes);
+        }
+        memcpy(state, p + depthBytes * 2, sizeof state);
+        memcpy(&g, p + depthBytes * 2 + sizeof state, sizeof g);
+        SDL_UnmapGPUTransferBuffer(G.dev, down);
+        ok = 1;
+    }
+    if (fence)
+        SDL_ReleaseGPUFence(G.dev, fence);
+    SDL_ReleaseGPUTransferBuffer(G.dev, down);
+    if (!ok)
+        return -1;
+    out->frame = W.fitted.fit;
+    shadow_fit_gpu_read(state, &g, &out->fit);
+    return 0;
 }
 
 /* ---- the frame's replay ---- */
@@ -3158,8 +3516,31 @@ static int run_uploads(SDL_GPUCopyPass *copy, size_t first, size_t count, uint32
     return mips;
 }
 
+/* A layer of an array with mipmaps takes its levels as a texture of its own makes them, on every
+   backend: its top level goes into a scratch texture of its size and levels, SDL makes that one's
+   levels (SDL_GenerateMipmapsForGPUTexture), and every level is copied into the layer. The sprite
+   atlas's pages and the static world's textures alike; blits into the layer level by level made
+   other mipmaps than a texture's own on Mesa's lavapipe. */
+static void copy_levels(SDL_GPUCopyPass *copy, SDL_GPUTexture *scratch, SDL_GPUTexture *array, uint32_t layer,
+                        uint32_t w, uint32_t h, uint32_t levels)
+{
+    uint32_t level;
+    for (level = 0; level < levels; level++) {
+        SDL_GPUTextureLocation src, dst;
+        SDL_zero(src);
+        SDL_zero(dst);
+        src.texture = scratch;
+        src.mip_level = level;
+        dst.texture = array;
+        dst.mip_level = level;
+        dst.layer = layer;
+        SDL_CopyGPUTextureToTexture(copy, &src, &dst, w >> level ? w >> level : 1, h >> level ? h >> level : 1, 1,
+                                    false);
+    }
+}
+
 /* The lower levels of each texture uploaded that wants them, made from the top one by SDL; then a
-   layer's scratch texture, every level of it, into the layer. */
+   layer's scratch texture, every level of it, into the layer (copy_levels). */
 static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
 {
     SDL_GPUCopyPass *copy = NULL;
@@ -3169,23 +3550,12 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
             SDL_GenerateMipmapsForGPUTexture(cmd, G.uploads[i].tex);
     for (i = first; i < first + count; i++) {
         const struct gpu_upload *u = &G.uploads[i];
-        int level;
         if (!u->scratch)
             continue;
         if (!copy && !(copy = SDL_BeginGPUCopyPass(cmd)))
             return;
-        for (level = 0; level < u->array->levels; level++) {
-            SDL_GPUTextureLocation src, dst;
-            Uint32 w = (Uint32)u->array->width >> level, h = (Uint32)u->array->height >> level;
-            SDL_zero(src);
-            SDL_zero(dst);
-            src.texture = u->tex;
-            src.mip_level = (Uint32)level;
-            dst.texture = u->array->tex;
-            dst.mip_level = (Uint32)level;
-            dst.layer = u->layer;
-            SDL_CopyGPUTextureToTexture(copy, &src, &dst, w ? w : 1, h ? h : 1, 1, false);
-        }
+        copy_levels(copy, u->tex, u->array->tex, u->layer, (uint32_t)u->array->width, (uint32_t)u->array->height,
+                    (uint32_t)u->array->levels);
     }
     if (copy)
         SDL_EndGPUCopyPass(copy);
@@ -3193,24 +3563,25 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
 
 /* The storage buffers the programs read (src/render/shaders), in the order they declare them, at
    most STORAGE_BUFFERS_MAX a stage (make_shader), and their vertex and index buffers: the quads'
-   the draw records, views, fog tables and the frame's quads, a quad's corners and, per instance,
-   where its record starts among the quads, and the corners' two triangles; the world's records and
-   casters the shared buffers, whose index buffer run_pass binds by the draw (the shared indices, or
-   the frame's compacted ones); the water its cells' instances; the wobble the records and its rows,
-   and the records' instances. */
+   the draw records, fog tables, views and the frame's quads, a quad's corners and, per instance,
+   where its record starts among the quads, and the corners' two triangles; the world's records the
+   world's records by id, the slots' views, the shadow fit's result and the texture-coordinate
+   matrices, and the shared buffers, whose index buffer run_pass binds by the draw (the shared
+   indices, or the frame's compacted ones); the water the draw records, fog tables, its cells with
+   the sines and its waves, and its cells' instances; the wobble the records and its rows, and the
+   records' instances. (The depth pass and the shadow pass bind their own: depth_pass, caster_pass.) */
 static void bind_program(SDL_GPURenderPass *pass, int program)
 {
-    SDL_GPUBuffer *vertex[6], *fragment[2];
+    SDL_GPUBuffer *vertex[4], *fragment[1];
     SDL_GPUBufferBinding binding[2];
-    Uint32 nv = 0, nf = 1;
+    Uint32 nv = 0;
     fragment[0] = G.records;
-    fragment[1] = G.shadows;
     SDL_zero(binding);
     switch (program) {
     case PROG_QUAD:
         vertex[nv++] = G.records;
-        vertex[nv++] = G.views;
         vertex[nv++] = G.fogs;
+        vertex[nv++] = G.views;
         vertex[nv++] = G.quads;
         binding[0].buffer = G.corners;
         binding[1].buffer = G.offsets;
@@ -3219,59 +3590,66 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
         SDL_BindGPUIndexBuffer(pass, &binding[0], SDL_GPU_INDEXELEMENTSIZE_16BIT);
         break;
     case PROG_WORLD:
-    case PROG_CASTER:
-        if (program == PROG_WORLD)
-            vertex[nv++] = G.records;
         vertex[nv++] = W.recordBuffer;
-        vertex[nv++] = program == PROG_WORLD ? W.views : W.casterViews;
-        if (program == PROG_WORLD)
-            vertex[nv++] = G.shadows;
+        vertex[nv++] = W.views;
+        vertex[nv++] = W.fitResult;
         vertex[nv++] = W.uvBuffer;
-        nf = program == PROG_WORLD ? 2 : 1;
+        fragment[0] = W.fitResult;
         binding[0].buffer = W.vertices;
         binding[1].buffer = W.ids;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
         break;
     case PROG_WATER:
         vertex[nv++] = G.records;
-        vertex[nv++] = G.views;
         vertex[nv++] = G.fogs;
         vertex[nv++] = W.cellBuffer;
         vertex[nv++] = W.waveBuffer;
-        vertex[nv++] = W.sineBuffer;
         binding[0].buffer = W.instanceBuffer;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 1);
         break;
     default:
         vertex[nv++] = G.records;
         fragment[0] = G.rows;
-        binding[1].buffer = G.instances;
-        SDL_BindGPUVertexBuffers(pass, 1, &binding[1], 1);
+        binding[0].buffer = G.instances;
+        SDL_BindGPUVertexBuffers(pass, 0, binding, 1);
         break;
     }
     SDL_BindGPUVertexStorageBuffers(pass, 0, vertex, nv);
-    SDL_BindGPUFragmentStorageBuffers(pass, 0, fragment, nf);
+    SDL_BindGPUFragmentStorageBuffers(pass, 0, fragment, 1);
 }
 
-/* The uniform a world program's draw takes: the draw's record and the cascade; the water's with
-   the frame's view, which its quads are tested in. */
+/* The uniform a world program's draw takes: its draw record itself; the water's its record, the
+   frame's waves and cells, and the frame's view, which its quads are tested in, and that view to
+   clip space (its draw record's view). */
 static void push_uniforms(SDL_GPUCommandBuffer *cmd, const struct gpu_draw *d)
 {
+    const struct GpuDraw *r = (const struct GpuDraw *)G.drawRecords.data + d->uniform[0];
     if (d->program == PROG_WATER) {
         struct GpuWaterFrame u;
+        const struct GpuView *v = (const struct GpuView *)G.viewRecords.data + r->mode[3];
         memset(&u, 0, sizeof u);
         u.frame[0] = d->uniform[0];
         u.frame[1] = d->uniform[1];
+        u.frame[2] = d->uniform[2];
         memcpy(u.view, W.camera.view, sizeof u.view);
         u.screen[0] = W.camera.proj[0];
         u.screen[1] = W.camera.proj[1];
         u.screen[2] = W.camera.centre[0];
         u.screen[3] = W.camera.centre[1];
+        memcpy(u.toClip, v->toClip, sizeof u.toClip);
         SDL_PushGPUVertexUniformData(cmd, 0, &u, sizeof u);
         return;
     }
-    SDL_PushGPUVertexUniformData(cmd, 0, d->uniform, sizeof d->uniform);
-    SDL_PushGPUFragmentUniformData(cmd, 0, d->uniform, sizeof d->uniform);
+    if (W.shadowFailed && r->mesh[3]) {
+        /* the frame's shadows were not all drawn: the draw receives none (world.hlsl, receiving) */
+        struct GpuDraw unshadowed = *r;
+        unshadowed.mesh[3] = 0;
+        SDL_PushGPUVertexUniformData(cmd, 0, &unshadowed, sizeof unshadowed);
+        SDL_PushGPUFragmentUniformData(cmd, 0, &unshadowed, sizeof unshadowed);
+        return;
+    }
+    SDL_PushGPUVertexUniformData(cmd, 0, r, sizeof *r);
+    SDL_PushGPUFragmentUniformData(cmd, 0, r, sizeof *r);
 }
 
 static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
@@ -3281,30 +3659,24 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     SDL_GPURenderPass *pass;
     SDL_GPUBufferBinding binding;
     SDL_GPUGraphicsPipeline *bound = NULL;
-    int program = -1, ms = s->target && s->target == G.screen && G.msaa, hasDepth = pass_has_depth(s);
+    int program = -1, ms = s->target == G.screen && G.msaa, hasDepth = pass_has_depth(s);
     SDL_GPUBuffer *indices = NULL;
     uint32_t pushed[4];
     int pushedAny = 0;
     SDL_GPUTextureSamplerBinding textures[3];
     SDL_Rect scissor;
-    int w = s->target ? s->target->width : GFX_SHADOW_SIZE, h = s->target ? s->target->height : GFX_SHADOW_SIZE;
+    int w = s->target->width, h = s->target->height;
     SDL_GPUViewport viewport;
     uint32_t i;
     int j;
     SDL_zero(colour);
     SDL_zero(depth);
     SDL_zero(textures);
-    if (s->target) {
-        colour.texture = ms ? G.msaa : s->target->tex;
-        if (ms && !s->unresolve) {
-            colour.resolve_texture = s->target->tex;
-            colour.store_op = SDL_GPU_STOREOP_RESOLVE_AND_STORE;
-        } else {
-            colour.store_op = SDL_GPU_STOREOP_STORE;
-        }
+    colour.texture = ms ? G.msaa : s->target->tex;
+    if (ms && !s->unresolve) {
+        colour.resolve_texture = s->target->tex;
+        colour.store_op = SDL_GPU_STOREOP_RESOLVE_AND_STORE;
     } else {
-        colour.texture = G.shadowMaps;
-        colour.layer_or_depth_plane = (Uint32)s->layer;
         colour.store_op = SDL_GPU_STOREOP_STORE;
     }
     if (!colour.texture)
@@ -3312,10 +3684,10 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     colour.load_op = s->loadColour;
     colour.clear_color = s->clearColour;
     if (hasDepth) {
-        depth.texture = s->target ? G.depth : G.shadowDepth;
+        depth.texture = G.depth;
         depth.load_op = s->loadDepth;
         depth.clear_depth = s->clearDepth;
-        depth.store_op = s->target ? SDL_GPU_STOREOP_STORE : SDL_GPU_STOREOP_DONT_CARE;
+        depth.store_op = SDL_GPU_STOREOP_STORE;
         depth.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
         depth.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
     }
@@ -3339,14 +3711,18 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     for (i = s->first; i < s->first + s->count; i++) {
         const struct gpu_draw *d = &G.draws[i];
         int world = d->program != PROG_QUAD && d->program != PROG_ROWS;  /* of gfx_world_* */
-        int nbind = d->program == PROG_CASTER || d->program == PROG_ROWS ? 1 : 3;
+        int nbind = d->program == PROG_ROWS ? 1 : 3;
         SDL_GPUTextureSamplerBinding bind[3];
         if (!d->pipeline || (world && !world_drawable(d)))
             continue;
         memcpy(bind, d->bind, sizeof bind);
-        if (d->program == PROG_WORLD || d->program == PROG_CASTER)
-            for (j = 0; j < (d->program == PROG_WORLD ? 2 : 1); j++)
+        if (d->program == PROG_WORLD) {
+            for (j = 0; j < 2; j++)
                 bind[j].texture = world_array(d->arrays[j]);
+            /* the shadow passes not all recorded: no maps, and no shadows (push_uniforms) */
+            if (W.shadowFailed)
+                bind[2].texture = G.noShadow;
+        }
         if (d->pipeline != bound) {
             SDL_BindGPUGraphicsPipeline(pass, d->pipeline);
             bound = d->pipeline;
@@ -3358,7 +3734,7 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
             pushedAny = 0;
             indices = NULL;
         }
-        if (d->program == PROG_WORLD || d->program == PROG_CASTER) {
+        if (d->program == PROG_WORLD) {
             SDL_GPUBuffer *want = d->indirect ? W.drawn : W.indices;
             if (want != indices) {
                 binding.buffer = want;
@@ -3384,7 +3760,7 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
         } else if (d->program == PROG_WATER) {
             SDL_DrawGPUPrimitives(pass, 6, d->instances, 0, d->firstInstance);
         } else if (d->indirect) {
-            SDL_DrawGPUIndexedPrimitivesIndirect(pass, W.commands, d->firstIndex * INDIRECT_SIZE, 1);
+            SDL_DrawGPUIndexedPrimitivesIndirect(pass, W.draws, d->firstIndex * INDIRECT_SIZE, 1);
         } else {
             SDL_DrawGPUIndexedPrimitives(pass, d->count, 1, d->firstIndex, d->baseVertex, 0);
         }
@@ -3501,13 +3877,12 @@ static void frame_reset(void)
     }
     G.npins = 0;
     G.nsteps = G.ndraws = G.nuploads = G.frameUploads = 0;
-    G.drawRecords.size = G.viewRecords.size = G.fogTables.size = G.shadowRecords.size = G.rowTables.size = 0;
+    G.drawRecords.size = G.viewRecords.size = G.fogTables.size = G.rowTables.size = 0;
     G.texels.size = G.quadData.size = G.quadOffsets.size = 0;
     G.batch.open = 0;
-    G.cameraView = G.shadowRecord = G.fogTable = G.matrixIndex = -1;
+    G.cameraView = G.fogTable = G.matrixIndex = -1;
     W.instances.size = 0;
     W.computeDue = W.frameDue = W.computed = 0;
-    W.casterRecord = -1;
     G.frame++;
     if (!G.frame)
         G.frame = 1;
@@ -3580,7 +3955,7 @@ static int flush(const struct flush_extra *extra)
     SDL_GPUCommandBuffer *cmd;
     SDL_GPUCopyPass *copy;
     SDL_GPUFence *fence;
-    uint32_t oRecords, oViews, oFogs, oShadows, oRows, oQuads, oOffsets, oTexels, total;
+    uint32_t oRecords, oViews, oFogs, oRows, oQuads, oOffsets, oTexels, total;
     long instances;
     unsigned char *mapped;
     size_t i;
@@ -3592,6 +3967,15 @@ static int flush(const struct flush_extra *extra)
         frame_reset();
         return 1;
     }
+    /* The frame FRAMES_IN_FLIGHT submissions ago is waited for before anything here takes a command
+       buffer. SDL's Vulkan backend gives each command buffer a cache of descriptor sets, and takes
+       it back only once it finds that command buffer finished, at a wait or a submit that presents.
+       A command buffer that finds no cache given back starts an empty one, which makes a
+       descriptor pool for every kind of binding the frame binds (28 with shadows), and the driver
+       can take 15 ms and more over those. Every texture made between frames holds a cache for a
+       while, as SDL_CreateGPUTexture sets the texture's layout in a command buffer of its own;
+       waiting first gives the frame the cache of the frame it waited for. */
+    wait_frames(0);
     /* the world's arrays as large as their layers, its meshes and textures up through the stream,
        then what goes with the frame */
     if (world_on()) {
@@ -3608,8 +3992,6 @@ static int flush(const struct flush_extra *extra)
         bytes_add(&G.viewRecords, sizeof(struct GpuView), 16);
     if (!G.fogTables.size)
         bytes_add(&G.fogTables, 16, 16);
-    if (!G.shadowRecords.size)
-        bytes_add(&G.shadowRecords, sizeof(struct GpuShadow), 16);
     if (!G.quadData.size)
         bytes_add(&G.quadData, 16, 16);
     if (!G.quadOffsets.size)
@@ -3618,8 +4000,7 @@ static int flush(const struct flush_extra *extra)
     oRecords = 0;
     oViews = align16(oRecords + (uint32_t)G.drawRecords.size);
     oFogs = align16(oViews + (uint32_t)G.viewRecords.size);
-    oShadows = align16(oFogs + (uint32_t)G.fogTables.size);
-    oRows = align16(oShadows + (uint32_t)G.shadowRecords.size);
+    oRows = align16(oFogs + (uint32_t)G.fogTables.size);
     oQuads = align16(oRows + (uint32_t)G.rowTables.size);
     oOffsets = align16(oQuads + (uint32_t)G.quadData.size);
     oTexels = align16(oOffsets + (uint32_t)G.quadOffsets.size);
@@ -3641,7 +4022,6 @@ static int flush(const struct flush_extra *extra)
         || !ensure_buffer(&G.records, &G.recordsSize, (uint32_t)G.drawRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.views, &G.viewsSize, (uint32_t)G.viewRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || !ensure_buffer(&G.fogs, &G.fogsSize, (uint32_t)G.fogTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
-        || !ensure_buffer(&G.shadows, &G.shadowsSize, (uint32_t)G.shadowRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
         || (G.rowTables.size
             && !ensure_buffer(&G.rows, &G.rowsSize, (uint32_t)G.rowTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
         || !ensure_buffer(&G.quads, &G.quadsSize, (uint32_t)G.quadData.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
@@ -3672,7 +4052,6 @@ static int flush(const struct flush_extra *extra)
     memcpy(mapped + oRecords, G.drawRecords.data, G.drawRecords.size);
     memcpy(mapped + oViews, G.viewRecords.data, G.viewRecords.size);
     memcpy(mapped + oFogs, G.fogTables.data, G.fogTables.size);
-    memcpy(mapped + oShadows, G.shadowRecords.data, G.shadowRecords.size);
     if (G.rowTables.size)
         memcpy(mapped + oRows, G.rowTables.data, G.rowTables.size);
     memcpy(mapped + oQuads, G.quadData.data, G.quadData.size);
@@ -3690,7 +4069,6 @@ static int flush(const struct flush_extra *extra)
     copy_into(copy, oRecords, G.records, (uint32_t)G.drawRecords.size);
     copy_into(copy, oViews, G.views, (uint32_t)G.viewRecords.size);
     copy_into(copy, oFogs, G.fogs, (uint32_t)G.fogTables.size);
-    copy_into(copy, oShadows, G.shadows, (uint32_t)G.shadowRecords.size);
     copy_into(copy, oRows, G.rows, (uint32_t)G.rowTables.size);
     copy_into(copy, oQuads, G.quads, (uint32_t)G.quadData.size);
     copy_into(copy, oOffsets, G.offsets, (uint32_t)G.quadOffsets.size);
@@ -3760,8 +4138,6 @@ static int flush(const struct flush_extra *extra)
     }
     if (extra->present)
         present_into(cmd, extra->wait);
-    if (!extra->download)
-        wait_frames(0);
     fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
     if (!fence) {
         SDL_Log("gfx: SDL_SubmitGPUCommandBufferAndAcquireFence: %s", SDL_GetError());
@@ -3790,7 +4166,7 @@ static int flush(const struct flush_extra *extra)
     W.failures = 0;
     /* the world's frame lasts until the frame is shown */
     if (extra->present)
-        W.frameSet = 0;
+        W.frameSet = W.shadowSet = 0;
     frame_reset();
     if (shrink) {
         free(G.texels.data);
@@ -3842,6 +4218,83 @@ int gfx_read_frame(const RECT *r, void *out, size_t pitch)
     return flush(&extra) ? 0 : -1;
 }
 
+/* A mipmap level of a layer of a texture, w by h texels of B8G8R8A8, downloaded (render/gfx.h,
+   gfx_read_texture_level); the callers have submitted everything recorded before it, which may
+   make the texture they read. */
+static int read_level(SDL_GPUTexture *tex, uint32_t layer, uint32_t levels, int level, uint32_t w, uint32_t h,
+                      void *out)
+{
+    SDL_GPUTransferBufferCreateInfo info;
+    SDL_GPUTransferBuffer *down;
+    SDL_GPUCommandBuffer *cmd;
+    SDL_GPUCopyPass *copy;
+    SDL_GPUTextureRegion src;
+    SDL_GPUTextureTransferInfo dst;
+    SDL_GPUFence *fence;
+    const unsigned char *p;
+    int ok = 0;
+    if (!tex || level < 0 || (uint32_t)level >= levels || !out)
+        return -1;
+    w = w >> level ? w >> level : 1;
+    h = h >> level ? h >> level : 1;
+    SDL_zero(info);
+    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
+    info.size = w * h * 4;
+    down = SDL_CreateGPUTransferBuffer(G.dev, &info);
+    cmd = down ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+    if (!cmd) {
+        if (down)
+            SDL_ReleaseGPUTransferBuffer(G.dev, down);
+        return -1;
+    }
+    SDL_zero(src);
+    SDL_zero(dst);
+    src.texture = tex;
+    src.mip_level = (Uint32)level;
+    src.layer = layer;
+    src.w = w;
+    src.h = h;
+    src.d = 1;
+    dst.transfer_buffer = down;
+    dst.pixels_per_row = w;
+    dst.rows_per_layer = h;
+    copy = SDL_BeginGPUCopyPass(cmd);
+    SDL_DownloadFromGPUTexture(copy, &src, &dst);
+    SDL_EndGPUCopyPass(copy);
+    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
+    if (fence && SDL_WaitForGPUFences(G.dev, true, &fence, 1) && (p = SDL_MapGPUTransferBuffer(G.dev, down, false))) {
+        memcpy(out, p, (size_t)w * h * 4);
+        SDL_UnmapGPUTransferBuffer(G.dev, down);
+        ok = 1;
+    }
+    if (fence)
+        SDL_ReleaseGPUFence(G.dev, fence);
+    SDL_ReleaseGPUTransferBuffer(G.dev, down);
+    return ok ? 0 : -1;
+}
+
+int gfx_read_texture_level(gfx_surface *s, int level, void *out)
+{
+    if (!G.dev || !s || s->kind != K_TEXTURE || !flush_only())
+        return -1;
+    if (s->layered)
+        return s->array ? read_level(s->array->tex, (uint32_t)s->layer, (uint32_t)s->levels, level,
+                                     (uint32_t)s->width, (uint32_t)s->height, out)
+                        : -1;
+    return read_level(s->tex, 0, (uint32_t)s->levels, level, (uint32_t)s->width, (uint32_t)s->height, out);
+}
+
+int gfx_read_world_level(uint8_t array, uint16_t layer, int level, void *out)
+{
+    const struct world_array *a;
+    if (!G.dev || !flush_only())
+        return -1;
+    a = array < W.narrays ? &W.arrays[array] : NULL;
+    if (!a || !a->tex || layer >= a->layers)
+        return -1;
+    return read_level(a->tex, layer, a->levels, level, a->width, a->height, out);
+}
+
 /* ---- the device ---- */
 
 static int choose_vsync(void)
@@ -3850,14 +4303,14 @@ static int choose_vsync(void)
     return !(env && env[0] == '0' && !env[1]);
 }
 
-/* The storage buffers a shader stage may read, read-only and read-write together: the most one of
-   the renderer's reads, the water's vertex shader (the draw records, views and fog tables, its
-   cells, waves and sines). Every Vulkan device takes 4 (maxPerStageDescriptorStorageBuffers; Metal
-   takes 31), which the quad shader keeps to; the static world's shaders read 5 and 6, so a device
-   that takes fewer than 6 draws no world (plans/gpu-renderer.md). SDL tells nothing of the
+/* The storage buffers a shader stage may read, read-only and read-write together: what every
+   Vulkan device takes (maxPerStageDescriptorStorageBuffers; Metal takes 31). Every shader keeps to
+   it, packing what it reads into fewer buffers where it would read more (the water's cells and
+   sines, the cull's records, runs and chunks); the quads', the world's, the water's, the casters'
+   vertex shaders and the transform, cull and compaction passes read four. SDL tells nothing of the
    device's own limits, so a shader that reads more is not made on any device, rather than failing
    on the smallest alone. */
-#define STORAGE_BUFFERS_MAX 6
+#define STORAGE_BUFFERS_MAX 4
 
 static SDL_GPUShader *make_shader(const struct GpuShaderCode *code)
 {
@@ -4175,6 +4628,8 @@ static int create_device(void)
     G.fsCode[PROG_WORLD] = &world_fs;
     G.vsCode[PROG_CASTER] = &world_caster_vs;
     G.fsCode[PROG_CASTER] = &world_caster_fs;
+    G.vsCode[PROG_DEPTH] = &world_depth_vs;
+    G.fsCode[PROG_DEPTH] = &world_depth_fs;
     G.vsCode[PROG_WATER] = &water_vs;
     G.fsCode[PROG_WATER] = &water_fs;
     G.vsCode[PROG_ROWS] = &rows_vs;
@@ -4200,10 +4655,15 @@ static int create_device(void)
     for (i = 0; i < PROG_COUNT; i++) {
         G.vs[i] = make_shader(G.vsCode[i]);
         G.fs[i] = make_shader(G.fsCode[i]);
-        if (!G.vs[i] || !G.fs[i]) {
-            SDL_Log("gfx: SDL_CreateGPUShader: %s", SDL_GetError());
-            return 0;
+        if (G.vs[i] && G.fs[i])
+            continue;
+        /* the casters' and the depth pass's serve the shadows alone */
+        if (i == PROG_CASTER || i == PROG_DEPTH) {
+            shadows_off("the shadows' shaders");
+            continue;
         }
+        SDL_Log("gfx: SDL_CreateGPUShader: %s", SDL_GetError());
+        return 0;
     }
     G.depthFormat = SDL_GPUTextureSupportsFormat(G.dev, SDL_GPU_TEXTUREFORMAT_D24_UNORM, SDL_GPU_TEXTURETYPE_2D,
                                                  SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)
@@ -4227,13 +4687,36 @@ static int create_device(void)
     W.transform = make_compute(&world_transform_cs);
     W.cullPipeline = make_compute(&world_cull_cs);
     W.compactPipeline = make_compute(&world_compact_cs);
+    {
+        /* the shadow fit's result, which every draw of the world and the view's cull bind, shadows
+           or none; then its passes, its state and its history, which only the shadows need */
+        SDL_GPUBufferCreateInfo binfo;
+        SDL_zero(binfo);
+        binfo.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE
+                      | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
+        binfo.size = sizeof(struct ShadowFitGpuCascades);
+        W.fitResult = SDL_CreateGPUBuffer(G.dev, &binfo);
+        W.fitRange = make_compute(&shadow_range_cs);
+        W.fitExtents = make_compute(&shadow_extents_cs);
+        W.fitCascades = make_compute(&shadow_cascades_cs);
+        if (!W.fitRange || !W.fitExtents || !W.fitCascades)
+            shadows_off("the shadow fit's passes");
+        binfo.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE;
+        binfo.size = SHADOW_FIT_GPU_STATE * 4;
+        W.fitState = SDL_CreateGPUBuffer(G.dev, &binfo);
+        binfo.size = SHADOW_FIT_GPU_HISTORY * 4;
+        W.fitHistory = SDL_CreateGPUBuffer(G.dev, &binfo);
+        if (!W.fitState || !W.fitHistory)
+            shadows_off("the shadow fit's buffers");
+        W.historyDue = 1;
+    }
     if (!G.pointClamp || !G.white || !G.noShadow || !G.noAtlas || !make_samplers() || !upload_constants()
-        || !W.transform || !W.cullPipeline || !W.compactPipeline) {
+        || !W.transform || !W.cullPipeline || !W.compactPipeline || !W.fitResult) {
         SDL_Log("gfx: device resources: %s", SDL_GetError());
         return 0;
     }
     G.frame = 1;
-    G.cameraView = G.shadowRecord = G.fogTable = G.matrixIndex = W.casterRecord = -1;
+    G.cameraView = G.fogTable = G.matrixIndex = -1;
     W.generation++;
     check_rounding();
     return 1;
@@ -4416,9 +4899,23 @@ int gfx_close(struct C3dDevice *d)
             SDL_ReleaseGPUComputePipeline(G.dev, W.cullPipeline);
         if (W.compactPipeline)
             SDL_ReleaseGPUComputePipeline(G.dev, W.compactPipeline);
+        if (W.fitRange)
+            SDL_ReleaseGPUComputePipeline(G.dev, W.fitRange);
+        if (W.fitExtents)
+            SDL_ReleaseGPUComputePipeline(G.dev, W.fitExtents);
+        if (W.fitCascades)
+            SDL_ReleaseGPUComputePipeline(G.dev, W.fitCascades);
+        if (W.fitState)
+            SDL_ReleaseGPUBuffer(G.dev, W.fitState);
+        if (W.fitHistory)
+            SDL_ReleaseGPUBuffer(G.dev, W.fitHistory);
+        if (W.fitResult)
+            SDL_ReleaseGPUBuffer(G.dev, W.fitResult);
         W.white = NULL;
-        W.transform = W.cullPipeline = W.compactPipeline = NULL;
-        W.frameSet = 0;
+        W.fittedSet = 0;
+        W.transform = W.cullPipeline = W.compactPipeline = W.fitRange = W.fitExtents = W.fitCascades = NULL;
+        W.fitState = W.fitHistory = W.fitResult = NULL;
+        W.frameSet = W.shadowSet = 0;
         W.generation++;
         for (i = 0; i < G.npipelines; i++)
             SDL_ReleaseGPUGraphicsPipeline(G.dev, G.pipelines[i].pipeline);
@@ -4437,12 +4934,14 @@ int gfx_close(struct C3dDevice *d)
         if (G.noShadow) SDL_ReleaseGPUTexture(G.dev, G.noShadow);
         if (G.shadowMaps) SDL_ReleaseGPUTexture(G.dev, G.shadowMaps);
         if (G.shadowDepth) SDL_ReleaseGPUTexture(G.dev, G.shadowDepth);
+        if (G.fitFront) SDL_ReleaseGPUTexture(G.dev, G.fitFront);
+        if (G.fitBack) SDL_ReleaseGPUTexture(G.dev, G.fitBack);
+        if (G.fitDepth) SDL_ReleaseGPUTexture(G.dev, G.fitDepth);
         if (G.depth) SDL_ReleaseGPUTexture(G.dev, G.depth);
         if (G.msaa) SDL_ReleaseGPUTexture(G.dev, G.msaa);
         if (G.records) SDL_ReleaseGPUBuffer(G.dev, G.records);
         if (G.views) SDL_ReleaseGPUBuffer(G.dev, G.views);
         if (G.fogs) SDL_ReleaseGPUBuffer(G.dev, G.fogs);
-        if (G.shadows) SDL_ReleaseGPUBuffer(G.dev, G.shadows);
         if (G.rows) SDL_ReleaseGPUBuffer(G.dev, G.rows);
         if (G.frameCopy) SDL_ReleaseGPUTexture(G.dev, G.frameCopy);
         if (G.quads) SDL_ReleaseGPUBuffer(G.dev, G.quads);
@@ -4464,6 +4963,7 @@ int gfx_close(struct C3dDevice *d)
     memset(G.worldPipeline, 0, sizeof G.worldPipeline);
     memset(G.waterPipeline, 0, sizeof G.waterPipeline);
     memset(G.effectPipeline, 0, sizeof G.effectPipeline);
+    memset(G.depthPipeline, 0, sizeof G.depthPipeline);
     G.casterPipeline = G.rowsPipeline = NULL;
     memset(G.samplers, 0, sizeof G.samplers);
     memset(G.vs, 0, sizeof G.vs);
@@ -4471,10 +4971,12 @@ int gfx_close(struct C3dDevice *d)
     G.pointClamp = NULL;
     G.white = G.noAtlas = G.noShadow = G.shadowMaps = G.shadowDepth = G.depth = G.msaa = G.frameCopy = NULL;
     G.frameCopyW = G.frameCopyH = 0;
-    G.records = G.views = G.fogs = G.shadows = G.rows = G.quads = G.offsets = NULL;
+    G.fitFront = G.fitBack = G.fitDepth = NULL;
+    G.fitW = G.fitH = G.fitFailedW = G.fitFailedH = 0;
+    G.records = G.views = G.fogs = G.rows = G.quads = G.offsets = NULL;
     G.instances = NULL;
     G.corners = G.triangles = NULL;
-    G.recordsSize = G.viewsSize = G.fogsSize = G.shadowsSize = G.rowsSize = G.quadsSize = G.offsetsSize = 0;
+    G.recordsSize = G.viewsSize = G.fogsSize = G.rowsSize = G.quadsSize = G.offsetsSize = 0;
     G.instanceCount = 0;
     G.upload = G.download = NULL;
     G.uploadSize = G.downloadSize = 0;
@@ -4811,7 +5313,7 @@ int gfx_clear(int flags, DWORD colour, float z, const RECT *r)
     RECT rc;
     int whole, depth;
     batch_flush();
-    if (!G.dev || !t || G.shadowPass)
+    if (!G.dev || !t)
         return -1;
     pass = current_pass();
     if (!pass)
@@ -4914,7 +5416,7 @@ int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *conte
     long at;
     int y;
     batch_flush();
-    if (!G.dev || !screen || !screen->tex || G.shadowPass || !G.rowsPipeline || !rows || count <= 0 || !fill
+    if (!G.dev || !screen || !screen->tex || !G.rowsPipeline || !rows || count <= 0 || !fill
         || !frame_copy_ready())
         return 0;
     /* what the frame holds with the draws batched so far, to take back to */

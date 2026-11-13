@@ -1,22 +1,22 @@
 // The static world's draw records (render/gfx.h, gfx_world_draw and gfx_world_draw_record): the
 // ground's and the models' triangles from the map's shared buffers, as the Direct3D 9 client drew
 // them: the stages' work for a model's or the ground's quads, the fog by view depth, and the shadow
-// maps while receiving (GfxShadow), with the alpha test of the draw's mode. A vertex carries its
-// record's id, which gives its transform slot, its texture-coordinate matrix and its textures'
-// layers; the draw's record (records.hlsli, Draw) comes as a uniform, the same for every record of
-// an indirect call.
+// maps while receiving, as the shadow fit left them on the GPU (cascades.hlsli), with the alpha
+// test of the draw's mode. A vertex carries its record's id, which gives its transform slot, its
+// texture-coordinate matrix and its textures' layers; the draw's record (records.hlsli, Draw) comes
+// as a uniform, the same for every record of an indirect call.
 #include "records.hlsli"
 #include "world.hlsli"
+#include "cascades.hlsli"
 
-StructuredBuffer<Draw> draws : register(t0, space0);
-StructuredBuffer<WorldRecord> records : register(t1, space0);
-StructuredBuffer<WorldView> views : register(t2, space0);
-StructuredBuffer<Shadow> shadows : register(t3, space0);
-StructuredBuffer<float4> uvs : register(t4, space0);
+StructuredBuffer<WorldRecord> records : register(t0, space0);
+StructuredBuffer<WorldView> views : register(t1, space0);
+StructuredBuffer<Cascades> fit : register(t2, space0);
+StructuredBuffer<float4> uvs : register(t3, space0);
 
 cbuffer VertexDraw : register(b0, space1)
 {
-    uint4 vertexDraw;  // x: the draw's record
+    Draw vertexDraw;
 };
 
 [[vk::combinedImageSampler]] Texture2DArray<float4> colourMaps : register(t0, space2);
@@ -25,12 +25,11 @@ cbuffer VertexDraw : register(b0, space1)
 [[vk::combinedImageSampler]] SamplerState lightSampler : register(s1, space2);
 [[vk::combinedImageSampler]] Texture2DArray<float4> shadowMaps : register(t2, space2);
 [[vk::combinedImageSampler]] SamplerState shadowSampler : register(s2, space2);
-StructuredBuffer<Draw> fragmentDraws : register(t3, space2);
-StructuredBuffer<Shadow> fragmentShadows : register(t4, space2);
+StructuredBuffer<Cascades> fragmentFit : register(t3, space2);
 
 cbuffer FragmentDraw : register(b0, space3)
 {
-    uint4 fragmentDraw;  // x: the draw's record
+    Draw fragmentDraw;
 };
 
 struct WorldIn
@@ -59,19 +58,26 @@ struct WorldOut
     [[vk::location(8)]] nointerpolation uint3 layers : TEXCOORD8;
 };
 
+// Whether the draw receives shadows: the frame has them (Draw.mesh.w) and something on screen
+// receives them; where nothing does, the ground keeps its baked shadows.
+bool receiving(Draw d, Cascades s)
+{
+    return d.mesh.w != 0 && s.count.x != 0;
+}
+
 WorldOut vs_main(WorldIn i)
 {
-    Draw d = draws[vertexDraw.x];
+    Draw d = vertexDraw;
     WorldRecord rec = records[i.record];
     WorldView v = views[record_slot(rec)];
     float4 lit = i.lit.zyxw, lit2 = i.lit2.zyxw;
     WorldOut o;
     o.position = transform(i.position, v.toClip);
     float3 own = floor(lit.rgb * 255 + 0.5);
-    bool receive = d.mesh.w != 0;
-    Shadow s = (Shadow)0;
-    if (receive)
-        s = shadows[d.mesh.w - 1];
+    Cascades s = (Cascades)0;
+    if (d.mesh.w != 0)
+        s = fit[0];
+    bool receive = receiving(d, s);
     float4 shading = receive ? float4(s.ambient.rgb, s.ambient.w) : float4(1, 1, 1, 1);
     if (d.mesh.x != 0) {
         float3 ground = d.mesh.y != 0 ? floor(lit2.rgb * 255 + 0.5) : 0;
@@ -100,6 +106,10 @@ WorldOut vs_main(WorldIn i)
         o.l1 = transform(p + away * s.offset.y, s.fromView[1]);
         o.l2 = transform(p + away * s.offset.z, s.fromView[2]);
         o.l3 = transform(p + away * s.offset.w, s.fromView[3]);
+        o.l0.xy = map_uv(o.l0.xy);
+        o.l1.xy = map_uv(o.l1.xy);
+        o.l2.xy = map_uv(o.l2.xy);
+        o.l3.xy = map_uv(o.l3.xy);
         tangent = min(sqrt(saturate(1 - c * c)) / max(abs(c), 1e-3), 8);
     }
     // the meshes' fog in the draw's record: its start and end in view depth, 1 / (end - start)
@@ -118,13 +128,13 @@ static const float2 disk[16] = {
 
 // The share of the disc's points that are lit, and of those that a model's surface, within the
 // bias in front of the receiver or as far behind as the slant reaches, may or may not shade. The
-// maps are `size` texels square in a texture a texel wider and taller (render/gfx_gpu.c, MARGIN),
+// maps are MAP_SIZE texels square in a texture a texel wider and taller (render/gfx_gpu.c, MARGIN),
 // so they are read by texel, the one point sampling with the coordinates clamped to a map picks.
-float2 shadow_seen(uint cascade, float4 l, float radius, float slant, float bias, float size)
+float2 shadow_seen(uint cascade, float4 l, float radius, float slant, float bias)
 {
     float d = l.z - bias - slant, lit = 0, contact = 0;
     [unroll] for (int k = 0; k < 16; k++) {
-        int2 texel = clamp(int2(floor((l.xy + disk[k] * radius) * size)), 0, int(size) - 1);
+        int2 texel = clamp(int2(floor((l.xy + disk[k] * radius) * MAP_SIZE)), 0, MAP_SIZE - 1);
         float s = shadowMaps.Load(int4(texel, cascade, 0)).r;
         lit += abs(s) >= d ? 1 : 0;
         contact += s < 0 && -s >= d && -s <= l.z + slant ? 1 : 0;
@@ -133,29 +143,29 @@ float2 shadow_seen(uint cascade, float4 l, float radius, float slant, float bias
     return max(edge.x, edge.y) < 0.5 && l.z < 1 ? float2(lit, contact) / 16 : float2(1, 0);
 }
 
-float2 seen_at(WorldOut i, Shadow s)
+float2 seen_at(WorldOut i, Cascades s)
 {
     float2 seen = float2(1, 0);
     float bias = s.lightView.w;
-    float size = s.mapSize.x;
-    if (i.depthFog.x < s.farDepth.x) seen = shadow_seen(0, i.l0, s.blur.x, i.depthFog.z * s.slant.x, bias, size);
-    else if (i.depthFog.x < s.farDepth.y) seen = shadow_seen(1, i.l1, s.blur.y, i.depthFog.z * s.slant.y, bias, size);
-    else if (i.depthFog.x < s.farDepth.z) seen = shadow_seen(2, i.l2, s.blur.z, i.depthFog.z * s.slant.z, bias, size);
-    else if (i.depthFog.x < s.farDepth.w) seen = shadow_seen(3, i.l3, s.blur.w, i.depthFog.z * s.slant.w, bias, size);
+    if (i.depthFog.x < s.farDepth.x) seen = shadow_seen(0, i.l0, s.blur.x, i.depthFog.z * s.slant.x, bias);
+    else if (i.depthFog.x < s.farDepth.y) seen = shadow_seen(1, i.l1, s.blur.y, i.depthFog.z * s.slant.y, bias);
+    else if (i.depthFog.x < s.farDepth.z) seen = shadow_seen(2, i.l2, s.blur.z, i.depthFog.z * s.slant.z, bias);
+    else if (i.depthFog.x < s.farDepth.w) seen = shadow_seen(3, i.l3, s.blur.w, i.depthFog.z * s.slant.w, bias);
     return seen;
 }
 
 float4 fs_main(WorldOut i) : SV_Target0
 {
-    Draw d = fragmentDraws[fragmentDraw.x];
+    Draw d = fragmentDraw;
     float4 t = colourMaps.Sample(colourSampler, float3(stage_uv(i.uv.xy, d.uvScale.xy, d.uvLimit.xy), i.layers.x));
     float4 lightTexel = lightMaps.Sample(lightSampler, float3(stage_uv(i.uv.zw, d.uvScale.zw, d.uvLimit.zw), i.layers.y));
-    bool receive = d.mesh.w != 0;
-    Shadow s = (Shadow)0;
+    Cascades s = (Cascades)0;
+    if (d.mesh.w != 0)
+        s = fragmentFit[0];
+    bool receive = receiving(d, s);
     float2 seen = float2(1, 0);
     float darkness = 1;
     if (receive) {
-        s = fragmentShadows[d.mesh.w - 1];
         seen = seen_at(i, s);
         darkness = s.ambient.w;
     }

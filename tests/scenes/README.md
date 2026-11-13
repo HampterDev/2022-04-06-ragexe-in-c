@@ -61,6 +61,11 @@ has not run it yet. Captures are silent on every platform: `run.py` gives the cl
 `SDL_AUDIO_DRIVER=dummy` unless `SDL_AUDIO_DRIVER` or `SDL_AUDIODRIVER` is set, and the harness
 itself sets `SDL_AUDIODRIVER=dummy` when it is not. Every platform gets `RAGEXE_VSYNC=0`.
 `RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode changes.
+`RAGEXE_SCENE_SHADOW_FIT=1` (`run.py --shadow-fit`) checks every capture's shadow fit, which the
+GPU works out, against `src/render/shadow_fit.c` given the same input: it writes
+`<out>/<name>.shadow_fit.json` (the receivers, the cascades, the range of depths the slices were cut
+from, each square's half size, the error) and fails the scene where the two differ by more than the
+rounding the C allows for.
 
 The game directory's `SaveData` (resolution, options, chat windows) and data files are read as
 usual; settings and account settings start empty and are never written.
@@ -97,7 +102,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 
 | call | does |
 |------|------|
-| `enter_map(map, x, y, opts)` | from the login screen straight into a map. `opts`: `name, job, sex, hair, hair_color, body_palette, level, job_level, hp, sp, weapon, shield, head_top, head_mid, head_bottom, robe, dir` |
+| `enter_map(map, x, y, opts)` | from the login screen straight into a map. `opts`: `name, job, sex, hair, hair_color, body_palette, level, job_level, hp, sp, weapon, shield, head_top, head_mid, head_bottom, robe, dir`, and `distance, latitude`, the free camera's in place of the saved options' |
 | `spawn{...}` | an actor appears (`ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state, guild, emblem` (guild id and emblem version; when the client asks for the emblem, the fake map server sends a generated 24×24 one in the guild's colour) |
 | `vanish(aid[, how])` | the actor leaves |
 | `say(aid, "Name : text")` | chat over an actor |
@@ -112,6 +117,9 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame just shown, downloaded from the GPU, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)) |
 | `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
+| `shadow_fit()` | the shadows of the frame just shown as the GPU fitted them, or nil without shadows: `cascades` (4, or 0 when nothing in view receives one), `nearest` and `farthest` (the range of view depths the slices were cut from, kept from frame to frame), and by cascade `radius` (its square's half size), `kept` (the half size it remembers for the next frame), `far` (its far view depth) and `x`, `y` (its centre across the light) |
+| `shadow_fit_check(name)` | checks the shadow fit of the frame just shown against `src/render/shadow_fit.c`, as a capture does with `RAGEXE_SCENE_SHADOW_FIT=1`: writes `<out>/<name>.shadow_fit.json`, fails the scene where they differ, and answers the mismatches, or nil without shadows |
+| `quake([ms])` | the camera shakes as a skill's earthquake shakes it: for 650 ms, or for `ms` where that is more (1: 200 ms) |
 | `fail(message)` | marks the scene failed and goes on |
 
 A script error, a map that does not finish loading, or `fail` ends the run with exit status 1.
@@ -123,6 +131,32 @@ client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the
 hotkeys off), guild emblems, and the player's own chat line, which it says back as rAthena does.
 `keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.
 
+A script whose name starts with `_` is a helper that other scripts load (`dofile`, with the
+directory of `debug.getinfo(1, "S").source`), not a scene: `run.py` skips it.
+
+## Motion
+
+The scripts in `motion/` move the camera for hundreds of frames each and log every frame's shadow
+fit (`_motion.lua`: a line `fit <motion> <frame> <cascades> <nearest> <farthest>` and per cascade
+its square's half size, centre and far depth): walking on Prontera's main street and around its
+fountain past the flower beds and banners, zooming in to the camera's closest and tilting it to
+its flattest and walking so, turning, zooming, earthquakes (`scene.quake`) on Prontera's street, at
+its south gate and on the hills of `manuk` and `hu_fild01`, and turning, zooming and walking on
+those hills, each from the camera given in the script. They take minutes, so they are not among
+`scripts/`:
+
+```sh
+python3 tests/scenes/run.py --exe build/ragexe_scenes --game ~/ro --out /tmp/motion --scripts tests/scenes/motion --shadow-fit
+python3 tests/scenes/motion_stats.py /tmp/motion                 # how steady the shadows stay
+python3 tests/scenes/motion_stats.py /tmp/motion /tmp/motion-old  # against another build's run
+```
+
+`motion_stats.py` counts per motion how often a cascade's square changes size per 100 frames, how
+far shadow edges can jump at those changes (a texel of the larger square), each cascade's mean
+texel, and how far off whole texels a square moved while it kept its size; given two runs it fails
+where the first changes size more often on any motion. With `--shadow-fit` every 25th frame's fit
+and each script's closing capture are checked against `src/render/shadow_fit.c`.
+
 ## Counters
 
 Every capture writes `<out>/<name>.counters.json` beside the image: the renderer's counters
@@ -132,8 +166,10 @@ moment the frame before it was shown to the moment it was. The file is one JSON 
 | key | counts |
 |-----|--------|
 | `frame` | the frame number the capture's log line gives |
-| `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives (an indirect draw of a run of the static world's records counts every primitive of the run, whether the GPU's cull keeps it or not) |
-| `draw_calls` | `gfx_draw_quad` and `gfx_draw_vertices` calls and the static world's draw calls (`gfx_world_draw`, `gfx_world_draw_record`, `gfx_world_draw_water`, `gfx_world_cast`) |
+| `draws` | draws the device made, after batching, the depth pass and the shadow maps included |
+| `indirect_draws` | those of them whose primitives the GPU's cull chooses: a run of the static world's records in the main pass, the depth pass or a shadow cascade |
+| `primitives` | the primitives of the other draws, which the CPU knows |
+| `draw_calls` | `gfx_draw_quad` and `gfx_draw_vertices` calls and the static world's draw calls (`gfx_world_draw`, `gfx_world_draw_record`, `gfx_world_draw_water`) |
 | `modes_sent`, `modes_skipped` | `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what the device draws with, and calls that left it as it was |
 | `texture_binds` | `gfx_set_texture` calls that changed a stage's texture |
 | `vertex_bytes` | a static world mesh's vertices and indices when it is uploaded, and the water's cells drawn |

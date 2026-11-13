@@ -2,9 +2,9 @@
 // each slot its matrices as the Direct3D 9 client's CPU computed them for a model node's draw, to
 // the bit (exact.hlsli): a model node's view the node's matrix times its parent's view, up to the
 // model's own matrix times the camera's view, as the original drew a model's nodes
-// (tests/test_static_world_maps.c keeps that code, ref_node), then to clip space by the projection
-// and to each shadow cascade's light space; and its place in the world, the node's matrix
-// times its parent's up to the model's matrix, which the cull moves an animated record's bounds by.
+// (tests/test_static_world_maps.c keeps that code, ref_node), then to clip space by the projection;
+// and its place in the world, the node's matrix times its parent's up to the model's matrix, which
+// the cull moves an animated record's bounds by and the shadow casters are drawn through.
 // The slot that is the world itself takes the camera's view as it is.
 #include "exact.hlsli"
 #include "world.hlsli"
@@ -22,14 +22,12 @@ StructuredBuffer<Slot> slots : register(t0, space0);
 StructuredBuffer<Matrix43> animated : register(t1, space0);
 RWStructuredBuffer<WorldView> views : register(u0, space1);
 RWStructuredBuffer<Matrix43> placed : register(u1, space1);
-RWStructuredBuffer<float4x4> casterViews : register(u2, space1);
 
 cbuffer Frame : register(b0, space2)
 {
     Matrix43 camera;          // the camera's view (render/gfx.h, GfxWorldView.view)
     float4x4 projection;      // view space to clip space
-    float4x4 fromView[4];     // view space to each cascade's light space (GfxShadow.fromView)
-    uint4 counts;             // the slots, the cascades
+    uint4 counts;             // the slots
 };
 
 Matrix43 slot_local(Slot s)
@@ -74,6 +72,4 @@ void cs_main(uint3 id : SV_DispatchThreadID)
     v.toView = toView;
     views[slot] = v;
     placed[slot] = world;
-    [loop] for (uint c = 0; c < counts.y; c++)
-        casterViews[slot * 4 + c] = multiply44(toView, fromView[c]);
 }

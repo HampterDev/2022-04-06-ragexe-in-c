@@ -58,54 +58,11 @@ static void queue_water(struct C3dGround15 *self, int x, int y, struct GndCell *
     renderer_add_world_draw(g_renderer, RENDER_ALPHA_CLAMP, &draw, w->texture, v.rhw);
 }
 
-/* the blocks that share a cell with `cells`: x0, y0, x1, y1 */
-static void gpu_blocks(const struct C3dGround15 *self, const int *cells, int *out)
-{
-    out[0] = cells[0] < 0 ? 0 : cells[0] / GND_GPU_BLOCK;
-    out[1] = cells[1] < 0 ? 0 : cells[1] / GND_GPU_BLOCK;
-    out[2] = cells[2] / GND_GPU_BLOCK;
-    out[3] = cells[3] / GND_GPU_BLOCK;
-    if (out[2] >= self->gpuCols)
-        out[2] = self->gpuCols - 1;
-    if (out[3] >= self->gpuRows)
-        out[3] = self->gpuRows - 1;
-}
-
-/* Queues the blocks as one shadow caster each, once a frame; the ground casts without its
-   textures. */
-void c3d_ground15_cast(struct C3dGround15 *self, const int *cells)
-{
-    int frame = g_renderer->frame, b4[4], bx, by;
-    struct RPWorldDraw draw;
-
-    if (!self->gpuBlocks)
-        return;
-    memset(&draw, 0, sizeof draw);
-    draw.kind = RP_WORLD_CAST;
-    draw.textureArray = SW_NO_ARRAY;
-    gpu_blocks(self, cells, b4);
-    for (by = b4[1]; by <= b4[3]; by++)
-        for (bx = b4[0]; bx <= b4[2]; bx++) {
-            struct GndGpuBlock *b = &self->gpuBlocks[by * self->gpuCols + bx];
-
-            if (b->castFrame == frame || !b->indexCount)
-                continue;
-            b->castFrame = frame;
-            draw.firstIndex = b->firstIndex;
-            draw.count = b->indexCount;
-            draw.baseVertex = b->baseVertex;
-            draw.ids = b->ids;
-            renderer_add_world_draw(g_renderer, RENDER_SHADOW_CASTERS, &draw, NULL, 0.0f);
-        }
-}
-
 void c3d_ground15_leaf(struct C3dGround15 *self, const float *view, const int *cells)
 {
     DWORD colour;
     int x, y;
 
-    if (g_renderer->shadowPending)
-        c3d_ground15_cast(self, cells);
     if (!self->waters)
         return;
     colour = water_colour(self);

@@ -1940,8 +1940,9 @@ static void check_world_growth(struct C3dDevice *d)
         gfx_release(more[i]);
 }
 
-/* A texture's mipmaps in a layer of an array are what its own texture's are: a record and a quad
-   of the same 8 by 8 texture, drawn at half and a quarter of its size, read the same texels. */
+/* A texture's mipmaps in a layer of an array are what its own texture's are: once a record and a
+   quad of the same 8 by 8 texture have drawn it, every level of the layer, downloaded, is the same
+   bytes as the level of the texture. */
 static void check_world_mips(struct C3dDevice *d)
 {
     static const WORD indices[6] = { 0, 1, 2, 2, 1, 3 };
@@ -1952,7 +1953,9 @@ static void check_world_mips(struct C3dDevice *d)
     struct gfx_lock lk;
     struct SwRun run;
     gfx_surface *t;
-    int x, y, s, size;
+    DWORD layer[64], own[64];
+    int x, y, s, size, level, levels;
+    (void)d;
     gfx_set_mipmaps(1);
     t = gfx_create_texture(8, 8, GFX_FMT_8888);
     gfx_set_mipmaps(0);
@@ -1986,43 +1989,37 @@ static void check_world_mips(struct C3dDevice *d)
     draw_quad(8, 24, 12, 28, 0xffffffff);
     draw_quad(24, 24, 26, 26, 0xffffffff);
     gfx_end_scene();
-    for (s = 0; s < 2; s++) {
-        size = s ? 2 : 4;
-        for (y = 0; y < size; y++)
-            for (x = 0; x < size; x++) {
-                DWORD a = screen_pixel(d, 8 + s * 16 + x, 8 + y), b = screen_pixel(d, 8 + s * 16 + x, 24 + y);
-                int k;
-                assert(a != 0);
-                for (k = 0; k < 24; k += 8)
-                    assert(near_value(a >> k & 0xff, (int)(b >> k & 0xff)));
-            }
+    /* the client's rule gives an 8 by 8 texture three levels, 8, 4 and 2 texels wide */
+    levels = gfx_get_levels(t);
+    assert(levels == 3);
+    for (level = 0; level < levels; level++) {
+        size = 8 >> level;
+        memset(layer, 0, sizeof layer);
+        memset(own, 0xff, sizeof own);
+        assert(gfx_read_world_level(0, 0, level, layer) == 0 && gfx_read_texture_level(t, level, own) == 0);
+        assert(!memcmp(layer, own, (size_t)size * size * 4));
+        if (level == 0)
+            for (y = 0; y < 8; y++)
+                for (x = 0; x < 8; x++)
+                    assert((layer[y * 8 + x] & 0xffffff) == ((DWORD)(x * 36) << 16 | (DWORD)(y * 36) << 8 | (DWORD)((x ^ y) * 36)));
     }
+    assert(gfx_read_world_level(0, 0, levels, layer) < 0 && gfx_read_texture_level(t, levels, own) < 0);
+    assert(gfx_read_world_level(0, 1, 0, layer) < 0 && gfx_read_world_level(7, 0, 0, layer) < 0);
     gfx_set_texture(0, NULL);
     gfx_release(t);
 }
 
-/* The casters (gfx_world_cast, world_caster.hlsl): a model's record casts where its texture's
-   alpha passes the opaque lists' test (0xcf), and the ground drawn while receiving lies in its
-   shadow there, darkened to the shadow's darkness, and is lit around it and where the texture's
-   alpha drops the caster. */
-static void check_world_cast(struct C3dDevice *d)
+/* The world of check_world_shadows: a caster over the ground at depth 50, world x -16 to 0 and y -8
+   to 8, the left half of its texture opaque; the ground over the whole screen at depth 100, its
+   lightmap baked in shadow (alpha 0x80, colour black). */
+static void shadow_world(gfx_surface *t, gfx_surface *lm)
 {
-    static const DWORD half[4] = { 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff };
-    gfx_surface *t = texture_2x2(GFX_FMT_8888, half), *lm = texture_square(GFX_FMT_8888, 2, 0xff000000);
     struct GfxMeshVertex mv[8];
-    struct GfxWorldView view;
-    struct GfxWorldFrame frame;
-    struct GfxWorldDraw ground;
-    struct GfxShadow shadow;
     struct SwRun run;
-    DWORD p;
     int i;
-    if (!gfx_shadows_supported())
-        return;
     world_begin();
     world_texture(t, 0, 0);
     world_texture(lm, 1, 0);
-    /* the caster: world x -16 to 0, y -8 to 8, at depth 50, its left half opaque */
     memset(mv, 0, sizeof mv);
     for (i = 0; i < 4; i++) {
         mv[i].x = i & 1 ? 0.0f : -16.0f;
@@ -2035,7 +2032,6 @@ static void check_world_cast(struct C3dDevice *d)
     run = model_run(0, 6, SW_CULL_NONE);
     run.textureArray = 0;
     world_add(mv, 4, quad_cw, 6, &run, 1, 0, NULL, 0);
-    /* the ground over the whole screen at depth 100, its lightmap lit (alpha whole, colour black) */
     world_quad(mv + 4, 0, 0, W, H, 0xffffffff);
     for (i = 4; i < 8; i++)
         mv[i].u1 = mv[i].v1 = 0.5f;
@@ -2044,38 +2040,94 @@ static void check_world_cast(struct C3dDevice *d)
     run.lightmapArray = 1;
     world_add(mv + 4, 4, quad_cw, 6, &run, 1, 0, NULL, 0);
     world_send(NULL, 0);
-    /* the light along +z from the eye: x and y across 128 units, depth 0 to 1,000 */
-    memset(&shadow, 0, sizeof shadow);
-    shadow.cascades = 1;
-    shadow.fromView[0][0] = shadow.fromView[0][5] = 1.0f / 64.0f;
-    shadow.fromView[0][10] = 1.0f / 1000.0f;
-    shadow.fromView[0][15] = 1.0f;
-    shadow.farDepth[0] = 1e6f;
-    shadow.lightView[2] = -1.0f;
-    shadow.bias = 1e-4f;
-    shadow.darkness = 0.5f;
-    shadow.ambient[0] = shadow.ambient[1] = shadow.ambient[2] = 0.5f;
+}
+
+/* A frame of the shadow world: 0 with shadows; 1 with shadows whose reach (the far plane, 40) ends
+   before every receiver; 2 without; the light along +z from the eye, the camera 100 from its focus. */
+static void shadow_frame(int way)
+{
+    static const float light[3] = { 0.0f, 0.0f, 1.0f };
+    static const struct ShadowFitBox bounds = { { -40.0f, -30.0f, 40.0f }, { 40.0f, 30.0f, 110.0f } };
+    struct GfxWorldView view;
+    struct GfxWorldFrame frame;
+    struct GfxWorldDraw ground;
+    struct GfxShadow shadow;
+    struct ShadowFitCamera camera;
     test_view(&view);
+    memset(&camera, 0, sizeof camera);
+    memcpy(camera.view, view.view, sizeof camera.view);
+    memcpy(camera.proj, view.proj, sizeof camera.proj);
+    memcpy(camera.centre, view.centre, sizeof camera.centre);
+    camera.width = W;
+    camera.height = H;
+    camera.nearZ = view.nearZ;
+    camera.farZ = way == 1 ? 40.0f : 1e6f;
+    camera.distance = 100.0f;
     memset(&ground, 0, sizeof ground);
     ground.kind = GFX_MESH_GROUND;
     ground.colour[0] = ground.colour[1] = ground.colour[2] = ground.colour[3] = 1.0f;
+    memset(&shadow, 0, sizeof shadow);
+    assert(shadow_fit_frame(&shadow.fit, &camera, light) && shadow_fit_bounds(&shadow.fit, &bounds, 1));
+    shadow.darkness = 0.5f;
+    shadow.ambient[0] = shadow.ambient[1] = shadow.ambient[2] = 0.5f;
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
     memset(&frame, 0, sizeof frame);
+    frame.shadow = way < 2 ? &shadow : NULL;
     world_frame(&view, &frame);
-    assert(gfx_shadow_begin(&shadow) && gfx_shadow_cascade(0));
-    gfx_world_cast(g_world.records[0].firstIndex, g_world.records[0].indexCount, g_world.records[0].baseVertex, 0,
-                   (uint32_t)g_world.count);
-    gfx_shadow_end();
-    gfx_shadow_receive(1);
     gfx_set_mode(DRAW_GROUND_LIGHTMAP);
     gfx_world_draw_record(&g_world.records[1], &ground);
-    gfx_shadow_receive(0);
     gfx_end_scene();
-    /* the opaque half shades the ground at x -16 to -8 (pixels 16 to 23 across, 16 to 31 down) */
-    p = screen_pixel(d, 19, 24);
-    assert(near_value(p >> 16 & 0xff, 0x80) && near_value(p >> 8 & 0xff, 0x80) && near_value(p & 0xff, 0x80));
-    assert(screen_pixel(d, 29, 24) == 0xffffff && screen_pixel(d, 10, 24) == 0xffffff
-           && screen_pixel(d, 19, 10) == 0xffffff);
+}
+
+/* The frame's shadows, fitted, culled and drawn by the device itself (render/gfx.h; world_depth.hlsl,
+   shadow_*.hlsl, world_cull.hlsl, world_caster.hlsl): a model's record casts where its texture's
+   alpha passes the opaque lists' test (0xcf), and the ground drawn in that frame lies in its
+   shadow there, darkened to the shadow's darkness, and is lit around it and where the texture's
+   alpha drops the caster; its lightmap's baked shadow counts as lit down to the darkness. A frame
+   whose receivers all lie beyond the shadows' reach keeps the baked shadow everywhere, and so does
+   a frame given no shadows. The fit keeps its squares and its range from frame to frame
+   (gfx_read_shadow_fit), and a world made again (gfx_world_clear) starts from none. */
+static void check_world_shadows(struct C3dDevice *d)
+{
+    static const DWORD half[4] = { 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff };
+    gfx_surface *t = texture_2x2(GFX_FMT_8888, half), *lm = texture_square(GFX_FMT_8888, 2, 0x80000000);
+    struct GfxShadowFitRead read;
+    DWORD p;
+    int way, c, used = 0;
+    if (!gfx_shadows_supported())
+        return;
+    shadow_world(t, lm);
+    for (way = 0; way < 3; way++) {
+        shadow_frame(way);
+        /* the opaque half shades the ground at x -16 to -8 (pixels 16 to 23 across, 16 to 31 down) */
+        p = screen_pixel(d, 19, 24);
+        assert(near_value(p >> 16 & 0xff, 0x80) && near_value(p >> 8 & 0xff, 0x80) && near_value(p & 0xff, 0x80));
+        p = way ? 0x808080 : 0xffffff;
+        assert(screen_pixel(d, 29, 24) == p && screen_pixel(d, 10, 24) == p && screen_pixel(d, 19, 10) == p);
+    }
+    /* a frame without shadows has no fit to read */
+    memset(&read, 0, sizeof read);
+    assert(gfx_read_shadow_fit(&read) < 0);
+    /* two frames with them: the second's squares and range kept from the first */
+    shadow_frame(0);
+    shadow_frame(0);
+    assert(gfx_read_shadow_fit(&read) == 0 && read.fit.cascades.cascades == GFX_SHADOW_CASCADES);
+    assert(read.fit.previousRange.nearest > 0.0f && read.fit.previousRange.farthest >= read.fit.previousRange.nearest);
+    assert(!memcmp(&read.fit.previousRange, &read.fit.kept, sizeof read.fit.kept));
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++)
+        if (read.fit.cascades.lo[c][0] <= read.fit.cascades.hi[c][0]) {
+            assert(read.fit.previous[c] > 0.0f && read.fit.previous[c] == read.fit.cascades.kept[c]);
+            used++;
+        }
+    assert(used > 0);
+    /* the world made again: nothing kept, and nothing to read until a frame fits again */
+    shadow_world(t, lm);
+    assert(gfx_read_shadow_fit(&read) < 0);
+    shadow_frame(0);
+    assert(gfx_read_shadow_fit(&read) == 0 && read.fit.cascades.cascades == GFX_SHADOW_CASCADES);
+    assert(read.fit.previousRange.nearest == 0.0f && read.fit.previousRange.farthest == 0.0f);
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++)
+        assert(read.fit.previous[c] == 0.0f);
     gfx_release(t);
     gfx_release(lm);
 }
@@ -2281,7 +2333,7 @@ int main(int argc, char **argv)
     check_world_cull(d);
     check_world_growth(d);
     check_world_mips(d);
-    check_world_cast(d);
+    check_world_shadows(d);
     check_world_cleared(d);
 
     check_resize(d);

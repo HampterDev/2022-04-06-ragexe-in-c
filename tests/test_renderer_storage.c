@@ -191,12 +191,6 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
     world_calls[world_call_count - 1].count = (unsigned)count;
     world_calls[world_call_count - 1].colour = colour;
 }
-void gfx_world_cast(uint32_t firstIndex, uint32_t count, uint32_t baseVertex, uint8_t textureArray, uint32_t ids)
-{ (void)firstIndex; (void)count; (void)baseVertex; (void)textureArray; (void)ids; abort(); }
-int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
-int gfx_shadow_cascade(int cascade) { (void)cascade; abort(); }
-void gfx_shadow_end(void) { abort(); }
-void gfx_shadow_receive(int receive) { assert(!receive); }
 void gfx_set_world_camera(const struct GfxWorldView *view) { (void)view; abort(); }
 void renderer_world_view(const struct Renderer *renderer, const float *view, struct GfxWorldView *out)
 {
@@ -468,14 +462,18 @@ static void multitex_frame_vertices(void)
 /* The static world among the lists: its opaque passes and its ground once a frame while it is set,
    its alpha-blended records and its water among the keyed alpha list's quads, farthest first, the
    cells that follow one another with one texture and colour drawn as one run, which a quad between
-   them breaks. */
+   them breaks; a draw of the world for a list that is not an alpha one is not queued. */
 static void world_entries(void)
 {
-    static const struct { int kind; unsigned value, texture; DWORD colour; float key; } adds[] = {
-        {RP_WORLD_WATER, 5, 0, 0x80ffffff, 0.4f}, {RP_WORLD_WATER, 3, 0, 0x80ffffff, 0.1f},
-        {RP_WORLD_RECORD, 7, 0, 0, 0.3f}, {RP_WORLD_WATER, 4, 0, 0x80ffffff, 0.2f},
-        {RP_WORLD_WATER, 6, 1, 0x80ffffff, 0.5f}, {RP_WORLD_WATER, 8, 1, 0x40ffffff, 0.6f},
-        {RP_WORLD_CAST, 9, 0, 0, 0.7f}, {RP_WORLD_WATER, 9, 0, 0x80ffffff, 0.45f}};
+    static const struct { int kind; unsigned value, texture; DWORD colour; float key; int queue; } adds[] = {
+        {RP_WORLD_WATER, 5, 0, 0x80ffffff, 0.4f, RENDER_ALPHA_CLAMP},
+        {RP_WORLD_WATER, 3, 0, 0x80ffffff, 0.1f, RENDER_ALPHA_CLAMP},
+        {RP_WORLD_RECORD, 7, 0, 0, 0.3f, RENDER_ALPHA_CLAMP},
+        {RP_WORLD_WATER, 4, 0, 0x80ffffff, 0.2f, RENDER_ALPHA_CLAMP},
+        {RP_WORLD_WATER, 6, 1, 0x80ffffff, 0.5f, RENDER_ALPHA_CLAMP},
+        {RP_WORLD_WATER, 8, 1, 0x40ffffff, 0.6f, RENDER_ALPHA_CLAMP},
+        {RP_WORLD_RECORD, 9, 0, 0, 0.7f, RENDER_OPAQUE_CLAMP},
+        {RP_WORLD_WATER, 9, 0, 0x80ffffff, 0.45f, RENDER_ALPHA_CLAMP}};
     static const struct { int kind, mode; unsigned value, texture, count; uint32_t cells[2]; } want[] = {
         {'P', DRAW_OPAQUE_CLAMP, SW_PASS_OPAQUE_CLAMP, 0, 0, {0}}, {'P', DRAW_OPAQUE_WRAP, SW_PASS_OPAQUE_WRAP, 0, 0, {0}},
         {'P', DRAW_GROUND_LIGHTMAP, SW_PASS_GROUND, 0, 0, {0}}, {'W', DRAW_ALPHA_CLAMP, 0, 21, 2, {3, 4}},
@@ -502,7 +500,7 @@ static void world_entries(void)
             draw.record.id = adds[i].value;
             draw.draw = models;
             draw.colour = adds[i].colour;
-            renderer_add_world_draw(&renderer, RENDER_ALPHA_CLAMP, &draw, textures + adds[i].texture, adds[i].key);
+            renderer_add_world_draw(&renderer, adds[i].queue, &draw, textures + adds[i].texture, adds[i].key);
         }
         /* an ordinary quad with the first texture between cells 5 and 9 */
         rp_quad_batch_construct(&quad);
@@ -512,8 +510,7 @@ static void world_entries(void)
         for (j = 0; j < 4; ++j)
             quad.quad[j].rhw = 0.42f;
         renderer_add_prim(&renderer, &quad.base, 1);
-        /* a caster goes only to the casters' queue */
-        assert(renderer.queues[RENDER_ALPHA_CLAMP].count == 8);
+        assert(renderer.queues[RENDER_ALPHA_CLAMP].count == 8 && !renderer.queues[RENDER_OPAQUE_CLAMP].count);
         if (!frame)
             renderer_set_world(&renderer, &models, &ground);
         current_mode = -1; world_call_count = 0; count_quads = 1;

@@ -37,17 +37,15 @@ void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags);
 /* custom: a quad of the multitexture list, its texture and texture1 read by the two stages */
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPQuad *prim, struct Texture *texture1);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
-/* custom: queues a draw of the static world (render/gfx.h, struct RPWorldDraw): a record or a
-   cell of water into an alpha queue (RENDER_ALPHA_CLAMP, RENDER_ALPHA_WRAP, RENDER_ALPHA_WRITE_DEPTH),
+/* custom: queues a draw of the static world (render/gfx.h, struct RPWorldDraw), a record or a cell
+   of water, into an alpha queue (RENDER_ALPHA_CLAMP, RENDER_ALPHA_WRAP, RENDER_ALPHA_WRITE_DEPTH),
    drawn among its quads with their states, sorted by `key` (the rhw of its first corner, as
-   theirs), the water with `texture`; a caster into RENDER_SHADOW_CASTERS, drawn into the shadow
-   maps alone. */
+   theirs), the water with `texture`; into another queue, nothing. */
 void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWorldDraw *draw, struct Texture *texture,
                              float key);
 /* custom: room for `count` cells of water in the renderer's buffer of a run of them
    (Renderer.waterCells), NULL without memory */
 uint32_t *renderer_water_cells(struct Renderer *self, size_t count);
-void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
 DWORD rp_fog_blend(DWORD argb);
 
 void renderer_destroy_all_rp_list(struct Renderer *self);

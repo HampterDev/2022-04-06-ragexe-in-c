@@ -162,23 +162,34 @@ struct SwFrustum {
 
 void sw_frustum(struct SwFrustum *out, const struct SwProjection *projection, const float *view);
 
-/* A shadow cascade's reach, world coordinates: along the light's axes 0 and 1 across its map from
-   lo to hi, along axis 2 from depth[0] to depth[1] (render/renderer.h, ShadowReach). */
+/* A shadow cascade's box, world coordinates: along the light's axes 0 and 1 across its map from lo
+   to hi, along axis 2 from depth[0] to depth[1] (render/shadow_fit.h: the frame's axes, a cascade's
+   square, and the light's depth from lightNear to lightNear + lightRange). */
 struct SwCascade {
     float axis[3][3];
     float lo[2], hi[2];
     float depth[2];
 };
 
+/* A record's bounds in the world, centre and half its size: a static record's own, an animated
+   record's moved by its transform (transforms[slot], 4x3), the box around them. 0 for an animated
+   record without transforms. A record bounded by nothing has a half size of 1e30. */
+int sw_record_bounds(const struct SwRecord *record, const float (*transforms)[12], float *centre, float *half);
 /* Whether the view draws a record: whether the frustum leaves its bounds not wholly outside one of
    its planes, an animated record's moved by its transform (transforms[slot], 4x3; a static record's
    transform is not read, and transforms may be NULL where no record is animated, which an animated
    record then fails). The device's cull (render/shaders/world_cull.hlsl) decides as this does, to
    the bit. */
 int sw_record_in_view(const struct SwRecord *record, const float (*transforms)[12], const struct SwFrustum *frustum);
-/* The records that cast into a cascade, in record order: those whose bounds reach its box. The
-   shadows' second half of phase 5 (plans/gpu-renderer.md) culls the casters on the GPU by this
-   rule; until then only test_static_world_maps uses it, measuring it against today's casters. */
+/* A cascade's box as six planes, as sw_frustum gives the view's: inside where n . p + n[3] >= 0;
+   across the light at lo and hi along axes 0 and 1, then along it at depth[0] and depth[1], each
+   plane the axis and minus the lower bound, then minus the axis and the upper bound, as the GPU's
+   fit writes them (src/render/shaders/shadow_cascades.hlsl). */
+void sw_cascade_planes(const struct SwCascade *cascade, struct SwFrustum *out);
+/* The records that cast into a cascade, out[0..n) in record order: those whose bounds are not
+   wholly outside one of its box's planes, an animated record's moved by its transform, as
+   sw_record_in_view tests the view's. The device culls each cascade's casters by this rule
+   (render/shaders/world_cull.hlsl), to the bit. */
 size_t sw_cull_cascade(const struct SwRecord *records, size_t count, const float (*transforms)[12],
                        const struct SwCascade *cascade, uint32_t *out);
 

@@ -1,12 +1,17 @@
 /* The shadow fit's compute passes (src/render/shaders/shadow_range.hlsl, shadow_extents.hlsl,
    shadow_cascades.hlsl) on this machine's GPU, against render/shadow_fit.c on the same depth
-   buffers (tests/shadow_fit_scenes.h): each pass is checked against its step of the C given the
-   GPU's own input to it. The reductions must match to the bit; where a value comes through a
-   division or a square root, which Vulkan lets a GPU round within 2.5 and 3 units in the last
-   place, it may differ by that much, and the test counts how often and by how many units, and
-   checks that the GPU's own cascades still hold every receiving pixel. Exits 77 (skipped) without
-   a GPU. */
+   buffers (tests/shadow_fit_scenes.h), blended receivers before the ground among them, and from
+   what a frame before kept, packed and read back as the client does (render/shadow_fit_gpu.h): each
+   pass is checked against its step of the C given the GPU's own input to it. The reductions, the
+   range kept, the squares, the sizes kept and the snapped translations must match to the bit, on
+   the half-texel boundary too, where the snap does not depend on how the GPU divides; the rest is
+   ordinary shader arithmetic and may differ by a GPU's rounding of a division or a square root,
+   which the test counts, and the matrices must agree within 1e-5 of their rows' largest element;
+   the GPU's own cascades must still hold every receiving point, and each cascade's box for the
+   casters' cull (Cascades.planes) must be its square and the light's depth. Exits 77 (skipped)
+   without a GPU. */
 #include "shadow_fit_scenes.h"
+#include "render/shadow_fit_gpu.h"
 #include "render/shaders/shader_code.h"
 #include "render/shaders/shadow_cascades.h"
 #include "render/shaders/shadow_extents.h"
@@ -16,31 +21,24 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-/* the fit's state and result as the passes lay them out (shadow_fit.hlsli, shadow_cascades.hlsl) */
-#define STATE_EXTENTS 2
-#define STATE_SIZE (STATE_EXTENTS + 4 * SHADOW_FIT_CASCADES)
+#define STATE_SIZE SHADOW_FIT_GPU_STATE
+#define HISTORY_BYTES (SHADOW_FIT_GPU_HISTORY * 4)
 
-struct FrameUniforms {
-    float pixelX[4], pixelY[4], screen[4];
-    uint32_t size[4];
-    float axisX[4], axisY[4], alongLight[4], lightRange[4];
-    float inverse[12];
-};
-
-struct GpuCascades {
-    float world[SHADOW_FIT_CASCADES][16];
-    float fromView[SHADOW_FIT_CASCADES][16];
-    float farDepth[SHADOW_FIT_CASCADES], offset[SHADOW_FIT_CASCADES], blur[SHADOW_FIT_CASCADES];
-    float slant[SHADOW_FIT_CASCADES];
-    float square[SHADOW_FIT_CASCADES][4];
-    uint32_t count[4];
+/* what a frame keeps for the next: the squares, then the range (render/shadow_fit_gpu.h, the
+   history's floats) */
+struct Kept {
+    float squares[SHADOW_FIT_CASCADES];
+    struct ShadowFitRange range;
+    float unused[2];
 };
 
 static SDL_GPUDevice *dev;
 static SDL_GPUComputePipeline *passes[3];
-static SDL_GPUBuffer *depthBuffer, *stateBuffer, *resultBuffer;
+static SDL_GPUTexture *textures[2];
+static SDL_GPUBuffer *stateBuffer, *historyBuffer, *resultBuffer;
 static SDL_GPUTransferBuffer *upload, *download;
 
 /* how often a value differed, and by at most how many units in the last place */
@@ -50,6 +48,7 @@ struct Ulps {
 };
 
 static struct Ulps splitUlps, matrixUlps, viewUlps, lookupUlps;
+static double worstRelative;
 
 static unsigned ulps(float a, float b)
 {
@@ -73,6 +72,25 @@ static void count_ulps(struct Ulps *u, const float *gpu, const float *c, int n, 
         u->differ += d != 0;
         u->most = d > u->most ? d : u->most;
         assert(d <= allowed);
+    }
+}
+
+/* a 4x4's rows within 1e-5 of each row's largest element */
+static void count_rows(const float *gpu, const float *c)
+{
+    int i, j;
+
+    for (i = 0; i < 4; i++) {
+        double scale = 0.0;
+
+        for (j = 0; j < 4; j++)
+            scale = fmax(scale, fabs(c[i * 4 + j]));
+        for (j = 0; j < 4; j++) {
+            double d = fabs((double)gpu[i * 4 + j] - c[i * 4 + j]) / (scale > 0.0 ? scale : 1.0);
+
+            worstRelative = d > worstRelative ? d : worstRelative;
+            assert(d <= 1e-5);
+        }
     }
 }
 
@@ -138,6 +156,8 @@ static SDL_GPUTransferBuffer *transfer(SDL_GPUTransferBufferUsage usage, Uint32 
 static int open_device(void)
 {
     SDL_PropertiesID props;
+    SDL_GPUTextureCreateInfo info;
+    int i;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
@@ -161,12 +181,26 @@ static int open_device(void)
     passes[0] = pipeline(&shadow_range_cs);
     passes[1] = pipeline(&shadow_extents_cs);
     passes[2] = pipeline(&shadow_cascades_cs);
-    depthBuffer = buffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ, SCENE_PIXELS * sizeof(float));
+    SDL_zero(info);
+    info.type = SDL_GPU_TEXTURETYPE_2D;
+    info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
+    info.usage = SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ;
+    info.width = SCENE_W;
+    info.height = SCENE_H;
+    info.layer_count_or_depth = 1;
+    info.num_levels = 1;
+    for (i = 0; i < 2; i++) {
+        textures[i] = SDL_CreateGPUTexture(dev, &info);
+        assert(textures[i]);
+    }
     stateBuffer = buffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE,
                          STATE_SIZE * sizeof(uint32_t));
-    resultBuffer = buffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE, sizeof(struct GpuCascades));
-    upload = transfer(SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, SCENE_PIXELS * sizeof(float) + STATE_SIZE * sizeof(uint32_t));
-    download = transfer(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, sizeof(struct GpuCascades) + STATE_SIZE * sizeof(uint32_t));
+    historyBuffer = buffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE,
+                           HISTORY_BYTES);
+    resultBuffer = buffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE, sizeof(struct ShadowFitGpuCascades));
+    upload = transfer(SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, 2 * SCENE_PIXELS * sizeof(float) + STATE_SIZE * 4 + HISTORY_BYTES);
+    download = transfer(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
+                        sizeof(struct ShadowFitGpuCascades) + STATE_SIZE * 4 + HISTORY_BYTES);
     return 1;
 }
 
@@ -176,8 +210,10 @@ static void close_device(void)
 
     SDL_ReleaseGPUTransferBuffer(dev, upload);
     SDL_ReleaseGPUTransferBuffer(dev, download);
-    SDL_ReleaseGPUBuffer(dev, depthBuffer);
+    for (i = 0; i < 2; i++)
+        SDL_ReleaseGPUTexture(dev, textures[i]);
     SDL_ReleaseGPUBuffer(dev, stateBuffer);
+    SDL_ReleaseGPUBuffer(dev, historyBuffer);
     SDL_ReleaseGPUBuffer(dev, resultBuffer);
     for (i = 0; i < 3; i++)
         SDL_ReleaseGPUComputePipeline(dev, passes[i]);
@@ -185,105 +221,99 @@ static void close_device(void)
     SDL_Quit();
 }
 
-/* the frame's constants as the passes take them; the light's axis over its range is the CPU's,
-   as is the light's near depth over it (shadow_fit_cascades divides the same way) */
-static void uniforms(const struct ShadowFitFrame *f, int width, int height, struct FrameUniforms *u)
+static void upload_texture(SDL_GPUCopyPass *copy, SDL_GPUTexture *t, uint32_t at, int width, int height)
 {
-    int i;
+    SDL_GPUTextureTransferInfo src;
+    SDL_GPUTextureRegion dst;
 
-    memset(u, 0, sizeof *u);
-    memcpy(u->pixelX, f->pixel[0], sizeof u->pixelX);
-    memcpy(u->pixelY, f->pixel[1], sizeof u->pixelY);
-    u->screen[0] = f->centre[0];
-    u->screen[1] = f->centre[1];
-    u->screen[2] = f->nearZ;
-    u->screen[3] = f->reach;
-    u->size[0] = (uint32_t)width;
-    u->size[1] = (uint32_t)height;
-    for (i = 0; i < 3; i++) {
-        u->axisX[i] = f->axis[0][i];
-        u->axisY[i] = f->axis[1][i];
-        u->alongLight[i] = f->axis[2][i] / f->lightRange;
-    }
-    u->alongLight[3] = -f->lightNear / f->lightRange;
-    u->lightRange[0] = f->lightRange;
-    memcpy(u->inverse, f->inverse, sizeof u->inverse);
+    SDL_zero(src);
+    SDL_zero(dst);
+    src.transfer_buffer = upload;
+    src.offset = at;
+    src.pixels_per_row = (Uint32)width;
+    src.rows_per_layer = (Uint32)height;
+    dst.texture = t;
+    dst.w = (Uint32)width;
+    dst.h = (Uint32)height;
+    dst.d = 1;
+    SDL_UploadToGPUTexture(copy, &src, &dst, false);
 }
 
-static uint32_t order_float(float x)
+/* The passes over the depth buffers from what the frame before kept: the fit's state after them,
+   their result and what they keep. With `given`, the cascades pass alone, from that state. */
+static void gpu_fit(const struct ShadowFitFrame *frame, const struct ShadowFitDepths *d, const struct Kept *before,
+                    const uint32_t *given, uint32_t *state, struct ShadowFitGpuCascades *result, struct Kept *kept)
 {
-    uint32_t u;
-
-    memcpy(&u, &x, 4);
-    return u & 0x80000000u ? ~u : u | 0x80000000u;
-}
-
-static float unorder_float(uint32_t u)
-{
-    float x;
-
-    u = u & 0x80000000u ? u & 0x7fffffffu : ~u;
-    memcpy(&x, &u, 4);
-    return x;
-}
-
-/* the three passes over a depth buffer: the fit's state after them and their result */
-static void gpu_fit(const struct ShadowFitFrame *frame, const float *buffer, int width, int height, uint32_t *state,
-                    struct GpuCascades *result)
-{
-    struct FrameUniforms u;
+    static const float ambient[3] = {0.25f, 0.25f, 0.25f};
+    const struct GpuComputeCode *code[2] = {&shadow_range_cs, &shadow_extents_cs};
+    struct ShadowFitGpuFrame u;
     SDL_GPUCommandBuffer *cmd;
     SDL_GPUCopyPass *copy;
     SDL_GPUComputePass *pass;
     SDL_GPUTransferBufferLocation from;
     SDL_GPUBufferRegion region;
-    SDL_GPUStorageBufferReadWriteBinding rw;
+    SDL_GPUStorageBufferReadWriteBinding rw[2];
     SDL_GPUFence *fence;
-    Uint32 depthBytes = (Uint32)(width * height) * sizeof(float);
-    uint32_t init[STATE_SIZE];
+    uint32_t depthBytes = (uint32_t)(d->width * d->height) * sizeof(float), init[STATE_SIZE];
     unsigned char *map;
-    int i, p;
+    int p;
 
-    init[0] = 0x7f800000u;
-    init[1] = 0;
-    for (i = 0; i < 4 * SHADOW_FIT_CASCADES; i++)
-        init[STATE_EXTENTS + i] = i & 2 ? order_float(-HUGE_VALF) : order_float(HUGE_VALF);
+    if (given)
+        memcpy(init, given, sizeof init);
+    else
+        shadow_fit_gpu_state(init);
     map = SDL_MapGPUTransferBuffer(dev, upload, false);
     assert(map);
-    memcpy(map, buffer, depthBytes);
-    memcpy(map + SCENE_PIXELS * sizeof(float), init, sizeof init);
+    memcpy(map, d->front, depthBytes);
+    memcpy(map + SCENE_PIXELS * sizeof(float), d->back, depthBytes);
+    memcpy(map + 2 * SCENE_PIXELS * sizeof(float), init, sizeof init);
+    memcpy(map + 2 * SCENE_PIXELS * sizeof(float) + sizeof init, before, HISTORY_BYTES);
     SDL_UnmapGPUTransferBuffer(dev, upload);
-    uniforms(frame, width, height, &u);
+    shadow_fit_gpu_frame(frame, d->width, d->height, ambient, 0.5f, &u);
 
     cmd = SDL_AcquireGPUCommandBuffer(dev);
     assert(cmd);
     copy = SDL_BeginGPUCopyPass(cmd);
+    if (depthBytes) {
+        upload_texture(copy, textures[0], 0, d->width, d->height);
+        upload_texture(copy, textures[1], SCENE_PIXELS * sizeof(float), d->width, d->height);
+    }
     from.transfer_buffer = upload;
-    from.offset = 0;
-    region.buffer = depthBuffer;
-    region.offset = 0;
-    region.size = depthBytes > 0 ? depthBytes : 4;
-    SDL_UploadToGPUBuffer(copy, &from, &region, false);
-    from.offset = SCENE_PIXELS * sizeof(float);
+    from.offset = 2 * SCENE_PIXELS * sizeof(float);
     region.buffer = stateBuffer;
+    region.offset = 0;
     region.size = sizeof init;
+    SDL_UploadToGPUBuffer(copy, &from, &region, false);
+    from.offset += sizeof init;
+    region.buffer = historyBuffer;
+    region.size = HISTORY_BYTES;
     SDL_UploadToGPUBuffer(copy, &from, &region, false);
     SDL_EndGPUCopyPass(copy);
 
-    SDL_zero(rw);
-    for (p = 0; p < 3; p++) {
-        rw.buffer = p < 2 ? stateBuffer : resultBuffer;
-        pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
+    for (p = 0; p < 2 && !given; p++) {
+        SDL_zero(rw);
+        rw[0].buffer = stateBuffer;
+        pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
         assert(pass);
         SDL_BindGPUComputePipeline(pass, passes[p]);
-        SDL_BindGPUComputeStorageBuffers(pass, 0, p < 2 ? &depthBuffer : &stateBuffer, 1);
+        SDL_BindGPUComputeStorageTextures(pass, 0, textures, 2);
+        if (p == 1)
+            SDL_BindGPUComputeStorageBuffers(pass, 0, &historyBuffer, 1);
         SDL_PushGPUComputeUniformData(cmd, 0, &u, sizeof u);
-        if (p < 2)
-            SDL_DispatchGPUCompute(pass, (Uint32)(width + 15) / 16, (Uint32)(height + 15) / 16, 1);
-        else
-            SDL_DispatchGPUCompute(pass, 1, 1, 1);
+        SDL_DispatchGPUCompute(pass, ((Uint32)d->width + code[p]->threads[0] - 1) / code[p]->threads[0],
+                               ((Uint32)d->height + code[p]->threads[1] - 1) / code[p]->threads[1], 1);
         SDL_EndGPUComputePass(pass);
     }
+    SDL_zero(rw);
+    rw[0].buffer = historyBuffer;
+    rw[1].buffer = resultBuffer;
+    pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
+    assert(pass);
+    SDL_BindGPUComputePipeline(pass, passes[2]);
+    SDL_BindGPUComputeStorageBuffers(pass, 0, &stateBuffer, 1);
+    SDL_PushGPUComputeUniformData(cmd, 0, &u, sizeof u);
+    SDL_DispatchGPUCompute(pass, 1, 1, 1);
+    SDL_EndGPUComputePass(pass);
 
     copy = SDL_BeginGPUCopyPass(cmd);
     region.buffer = stateBuffer;
@@ -296,6 +326,10 @@ static void gpu_fit(const struct ShadowFitFrame *frame, const float *buffer, int
     region.size = sizeof *result;
     from.offset = STATE_SIZE * sizeof(uint32_t);
     SDL_DownloadFromGPUBuffer(copy, &region, &from);
+    region.buffer = historyBuffer;
+    region.size = HISTORY_BYTES;
+    from.offset = STATE_SIZE * sizeof(uint32_t) + sizeof *result;
+    SDL_DownloadFromGPUBuffer(copy, &region, &from);
     SDL_EndGPUCopyPass(copy);
     fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
     assert(fence);
@@ -305,102 +339,178 @@ static void gpu_fit(const struct ShadowFitFrame *frame, const float *buffer, int
     assert(map);
     memcpy(state, map, STATE_SIZE * sizeof(uint32_t));
     memcpy(result, map + STATE_SIZE * sizeof(uint32_t), sizeof *result);
+    memcpy(kept, map + STATE_SIZE * sizeof(uint32_t) + sizeof *result, HISTORY_BYTES);
     SDL_UnmapGPUTransferBuffer(dev, download);
 }
 
-/* Every receiving pixel of the last frame scene_render drew lies in the GPU's cascade for its
-   depth, inside the map by the soft edge and the lookup's offset, through either of its matrices. */
-static void check_cover(const struct ShadowFitFrame *frame, const struct ShadowFitCamera *cam, const struct GpuCascades *g)
+/* a point's place along a plane (inside where it is not negative) */
+static double side(const float *plane, const double *p)
 {
-    int p, c, i, j;
-
-    for (p = 0; p < SCENE_PIXELS; p++) {
-        double d = depth[p], v[3], l[4], lv[4], radius, margin;
-
-        if (!(d >= frame->nearZ && d <= frame->reach))
-            continue;
-        for (c = 0; c < SHADOW_FIT_CASCADES && !(d < g->farDepth[c]); c++)
-            ;
-        assert(g->count[0] == SHADOW_FIT_CASCADES && c < SHADOW_FIT_CASCADES);
-        radius = (g->square[c][2] - g->square[c][0]) * 0.5;
-        margin = (0.5 + 1.5 * 2.0 * radius / SHADOW_FIT_SIZE) / radius;
-        for (i = 0; i < 3; i++)
-            v[i] = cam->view[i] * hit[p][0] + cam->view[3 + i] * hit[p][1] + cam->view[6 + i] * hit[p][2] + cam->view[9 + i];
-        for (j = 0; j < 4; j++) {
-            l[j] = g->world[c][12 + j];
-            lv[j] = g->fromView[c][12 + j];
-            for (i = 0; i < 3; i++) {
-                l[j] += hit[p][i] * g->world[c][i * 4 + j];
-                lv[j] += v[i] * g->fromView[c][i * 4 + j];
-            }
-        }
-        assert(fabs(l[0]) <= 1.0 - margin && fabs(l[1]) <= 1.0 - margin && l[2] > 0.0 && l[2] < 1.0);
-        assert(fabs(lv[0]) <= 1.0 - margin + 1e-5 && fabs(lv[1]) <= 1.0 - margin + 1e-5 && lv[2] > 0.0 && lv[2] < 1.0);
-    }
+    return plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
 }
 
-/* Each pass against its step of the C, given the GPU's input to it; with cam, the frame
-   scene_render drew last, whose pixels the GPU's cascades then hold. */
-static void compare(const struct ShadowFitFrame *frame, const float *buffer, int width, int height,
-                    const struct ShadowFitCamera *cam)
+/* One receiving point lies in the GPU's cascade for its depth, inside the map by the soft edge and
+   the lookup's offset, through either of its matrices, and inside that cascade's box for the
+   casters' cull. */
+static void check_point(const struct ShadowFitCamera *cam, const struct ShadowFitGpuCascades *g, double d,
+                        const double *at)
 {
-    struct ShadowFitRange range, gpuRange;
-    struct ShadowFitExtent ext[SHADOW_FIT_CASCADES], gpuExt[SHADOW_FIT_CASCADES];
+    double v[3], l[4], lv[4], radius, margin;
+    int c, i, j;
+
+    for (c = 0; c < SHADOW_FIT_CASCADES && !(d < g->farDepth[c]); c++)
+        ;
+    assert(g->count[0] == SHADOW_FIT_CASCADES && c < SHADOW_FIT_CASCADES);
+    radius = (g->square[c][2] - g->square[c][0]) * 0.5;
+    margin = (0.5 + 1.5 * 2.0 * radius / SHADOW_FIT_SIZE) / radius;
+    for (i = 0; i < 3; i++)
+        v[i] = cam->view[i] * at[0] + cam->view[3 + i] * at[1] + cam->view[6 + i] * at[2] + cam->view[9 + i];
+    for (j = 0; j < 4; j++) {
+        l[j] = g->world[c][12 + j];
+        lv[j] = g->fromView[c][12 + j];
+        for (i = 0; i < 3; i++) {
+            l[j] += at[i] * g->world[c][i * 4 + j];
+            lv[j] += v[i] * g->fromView[c][i * 4 + j];
+        }
+    }
+    assert(fabs(l[0]) <= 1.0 - margin && fabs(l[1]) <= 1.0 - margin && l[2] > 0.0 && l[2] < 1.0);
+    assert(fabs(lv[0]) <= 1.0 - margin + 1e-5 && fabs(lv[1]) <= 1.0 - margin + 1e-5 && lv[2] > 0.0 && lv[2] < 1.0);
+    for (i = 0; i < 6; i++)
+        assert(side(g->planes[c * 6 + i], at) >= -0.01);
+}
+
+/* Every receiving point of the last frame scene_render drew, front and back, through the GPU's
+   cascades (check_point). */
+static void check_cover(const struct ShadowFitFrame *frame, const struct ShadowFitCamera *cam,
+                        const struct ShadowFitGpuCascades *g)
+{
+    int p, s;
+
+    for (p = 0; p < SCENE_PIXELS; p++)
+        for (s = 0; s < 2; s++) {
+            double d = s ? depth[p] : front[p];
+
+            if (d >= frame->nearZ && d <= frame->reach && (!s || depth[p] > front[p]))
+                check_point(cam, g, d, s ? hit[p] : frontHit[p]);
+        }
+}
+
+/* Each pass against its step of the C, given the GPU's input to it, as the client reads it back
+   (render/shadow_fit_gpu.h); with `given`, the cascades pass alone from that state; with cam, the
+   frame scene_render drew last, whose points the GPU's cascades then hold. Answers what the GPU
+   kept. */
+static void compare(const struct ShadowFitFrame *frame, const struct ShadowFitDepths *d, const struct Kept *before,
+                    const uint32_t *given, const struct ShadowFitCamera *cam, struct Kept *kept)
+{
+    struct ShadowFitRange range, keep;
+    struct ShadowFitExtent ext[SHADOW_FIT_CASCADES];
     struct ShadowFitCascades c;
-    struct GpuCascades g;
+    struct ShadowFitGpuCascades g;
+    struct ShadowFitGpuRead r;
     float split[SHADOW_FIT_CASCADES + 1], gpuSplit[SHADOW_FIT_CASCADES + 1];
     uint32_t state[STATE_SIZE];
-    int k, a;
+    int k, a, i;
 
-    gpu_fit(frame, buffer, width, height, state, &g);
+    gpu_fit(frame, d, before, given, state, &g, kept);
+    shadow_fit_gpu_read(state, &g, &r);
     /* the range, to the bit (the empty state holds +0 where the C holds minus infinity) */
-    shadow_fit_range(&range, frame, buffer, width, height);
-    memcpy(&gpuRange.nearest, &state[0], 4);
-    memcpy(&gpuRange.farthest, &state[1], 4);
-    if (range.nearest <= range.farthest)
-        assert(!memcmp(&gpuRange, &range, sizeof range));
-    else
-        assert(gpuRange.nearest == HUGE_VALF && gpuRange.farthest == 0.0f);
+    if (!given) {
+        shadow_fit_range(&range, frame, d);
+        if (range.nearest <= range.farthest)
+            assert(!memcmp(&r.range, &range, sizeof range));
+        else
+            assert(r.range.nearest == HUGE_VALF && r.range.farthest == 0.0f);
+    }
+    /* the range kept, to the bit, and what the GPU keeps for the next frame */
+    shadow_fit_keep(&keep, &r.range, &before->range, frame);
+    assert(!memcmp(&r.kept, &keep, sizeof keep) && !memcmp(&r.previousRange, &before->range, sizeof keep));
+    assert(!memcmp(&kept->range, &keep, sizeof keep));
     /* the split, within the rounding of a division and two square roots */
-    shadow_fit_split(split, &gpuRange);
+    shadow_fit_split(split, &r.kept);
     gpuSplit[0] = split[0];
-    memcpy(gpuSplit + 1, g.farDepth, sizeof g.farDepth);
+    memcpy(gpuSplit + 1, r.cascades.farDepth, sizeof r.cascades.farDepth);
     count_ulps(&splitUlps, gpuSplit + 1, split + 1, SHADOW_FIT_CASCADES, 8);
     /* the extents of the GPU's slices, to the bit */
-    shadow_fit_extents(ext, frame, gpuSplit, buffer, width, height);
-    for (k = 0; k < SHADOW_FIT_CASCADES; k++)
-        for (a = 0; a < 2; a++) {
-            gpuExt[k].lo[a] = unorder_float(state[STATE_EXTENTS + 4 * k + a]);
-            gpuExt[k].hi[a] = unorder_float(state[STATE_EXTENTS + 4 * k + 2 + a]);
-        }
-    assert(!memcmp(gpuExt, ext, sizeof ext));
-    /* the cascades from the GPU's extents and split: squares and the snapped translation to the
-       bit, the rest within the rounding of a division */
-    shadow_fit_cascades(&c, frame, gpuSplit, gpuExt);
-    assert((int)g.count[0] == c.cascades);
+    if (!given) {
+        shadow_fit_extents(ext, frame, gpuSplit, d);
+        assert(!memcmp(r.extents, ext, sizeof ext));
+    }
+    /* the cascades from the GPU's extents, split and squares before: the squares, the sizes kept
+       and the snapped translations to the bit, the rest within the rounding of a division */
+    shadow_fit_cascades(&c, frame, gpuSplit, r.extents, before->squares);
+    assert(r.cascades.cascades == c.cascades);
     for (k = 0; k < SHADOW_FIT_CASCADES; k++) {
-        assert(g.square[k][0] == c.lo[k][0] && g.square[k][1] == c.lo[k][1]);
-        assert(g.square[k][2] == c.hi[k][0] && g.square[k][3] == c.hi[k][1]);
-        assert(g.farDepth[k] == c.farDepth[k] && g.offset[k] == c.offset[k]);
-        for (a = 2; a < 16; a += 4)
-            assert(g.world[k][a] == c.world[k][a]);
-        assert(!memcmp(&g.world[k][12], &c.world[k][12], 4 * sizeof(float)));
+        assert(!memcmp(r.cascades.lo[k], c.lo[k], sizeof c.lo[k]) && !memcmp(r.cascades.hi[k], c.hi[k], sizeof c.hi[k]));
+        assert(r.cascades.kept[k] == c.kept[k] && kept->squares[k] == c.kept[k] && r.previous[k] == before->squares[k]);
+        assert(r.cascades.farDepth[k] == c.farDepth[k] && r.cascades.offset[k] == c.offset[k]);
+        assert(!memcmp(&g.world[k][12], &c.world[k][12], 2 * sizeof(float)) && g.world[k][15] == 1.0f);
         count_ulps(&matrixUlps, g.world[k], c.world[k], 16, 3);
-        /* fromView sums products whose terms cancel, so its last places say little: the GPU's
-           own matrices are checked by what they hold instead */
+        count_rows(g.world[k], c.world[k]);
+        /* fromView sums products whose terms cancel, so its last places say little: within 1e-5
+           of its rows, and the GPU's own matrices are checked by what they hold */
         count_ulps(&viewUlps, g.fromView[k], c.fromView[k], 16, ~0u);
+        count_rows(g.fromView[k], c.fromView[k]);
         count_ulps(&lookupUlps, &g.blur[k], &c.blur[k], 1, 3);
         count_ulps(&lookupUlps, &g.slant[k], &c.slant[k], 1, 3);
+        /* the box: the square across the light and the light's depth along it */
+        for (a = 0; a < 2; a++)
+            for (i = 0; i < 3; i++) {
+                assert(g.planes[k * 6 + a * 2][i] == frame->axis[a][i]);
+                assert(g.planes[k * 6 + a * 2 + 1][i] == -frame->axis[a][i]);
+            }
+        assert(g.planes[k * 6][3] == -g.square[k][0] && g.planes[k * 6 + 1][3] == g.square[k][2]);
+        assert(g.planes[k * 6 + 2][3] == -g.square[k][1] && g.planes[k * 6 + 3][3] == g.square[k][3]);
+        assert(g.planes[k * 6 + 4][3] == -frame->lightNear && g.planes[k * 6 + 4][2] == frame->axis[2][2]);
     }
+    assert(g.lightView[3] == frame->bias && g.ambient[3] == 0.5f && g.ambient[0] == 0.25f);
     if (cam)
         check_cover(frame, cam, &g);
 }
 
+/* Squares whose centres lie on the half-texel boundary and a few units in the last place either
+   side of it, with radii whose texels are not powers of two: the GPU snaps them to the texel the C
+   does, however its division rounds. The cascades pass alone, from a state of such extents. */
+static int test_snap(const struct ShadowFitFrame *frame, const struct ShadowFitDepths *d)
+{
+    static const float radii[SHADOW_FIT_CASCADES] = {24.0f, 200.0f, 1048.0f, 120.0f};
+    struct Kept before, kept;
+    uint32_t state[STATE_SIZE];
+    float nearest = 100.0f, farthest = 500.0f;
+    int s, u, c, a, cases = 0;
+
+    memset(&before, 0, sizeof before);
+    for (c = 0; c < SHADOW_FIT_CASCADES; c++)
+        before.squares[c] = radii[c];
+    for (s = -3; s <= 3; s++)
+        for (u = -3; u <= 3; u++) {
+            shadow_fit_gpu_state(state);
+            memcpy(&state[0], &nearest, 4);
+            memcpy(&state[1], &farthest, 4);
+            for (c = 0; c < SHADOW_FIT_CASCADES; c++) {
+                float texel = 2.0f * radii[c] / SHADOW_FIT_SIZE, half = (radii[c] - 5.0f) / 1.05f;
+                float centre = ((float)(s * 911 + 37 * c) + 0.5f) * texel;
+
+                for (a = 0; a < abs(u); a++)
+                    centre = nextafterf(centre, u < 0 ? -INFINITY : INFINITY);
+                state[SHADOW_FIT_GPU_EXTENTS + 4 * c] = shadow_fit_gpu_order(centre - half);
+                state[SHADOW_FIT_GPU_EXTENTS + 4 * c + 1] = shadow_fit_gpu_order(-half);
+                state[SHADOW_FIT_GPU_EXTENTS + 4 * c + 2] = shadow_fit_gpu_order(centre + half);
+                state[SHADOW_FIT_GPU_EXTENTS + 4 * c + 3] = shadow_fit_gpu_order(half);
+            }
+            compare(frame, d, &before, state, NULL, &kept);
+            for (c = 0; c < SHADOW_FIT_CASCADES; c++)
+                assert(kept.squares[c] == radii[c]);
+            cases += SHADOW_FIT_CASCADES;
+        }
+    return cases;
+}
+
 int main(int argc, char **argv)
 {
-    static float cropped[SCENE_PIXELS];
+    static float cropFront[SCENE_PIXELS], cropBack[SCENE_PIXELS];
+    static const struct Kept none = {{0}, {0.0f, 0.0f}, {0.0f, 0.0f}};
     struct ShadowFitBox boxes[SCENE_BOXES];
-    int kind, n, frames = 0;
+    int kind, n, frames = 0, snaps = 0;
 
     (void)argc;
     (void)argv;
@@ -409,6 +519,7 @@ int main(int argc, char **argv)
     for (kind = 0; kind < SCENE_KINDS; kind++) {
         struct Scene scene;
         size_t count;
+        struct Kept kept = none;
 
         scene_make(&scene, kind);
         count = scene_boxes(&scene, boxes);
@@ -416,6 +527,8 @@ int main(int argc, char **argv)
             struct Pose pose;
             struct ShadowFitCamera cam;
             struct ShadowFitFrame frame;
+            struct ShadowFitDepths d = scene_depths(), cropped = {cropFront, cropBack, 250, 139};
+            struct Kept before, unused;
             float light[3];
             int j;
 
@@ -423,27 +536,41 @@ int main(int argc, char **argv)
             random_light(light);
             pose_camera(&pose, SCENE_W, SCENE_H, &cam);
             scene_render(&scene, &pose, &cam);
-            assert(shadow_fit_frame(&frame, &cam, light, boxes, count));
-            compare(&frame, depth, SCENE_W, SCENE_H, &cam);
+            assert(shadow_fit_frame(&frame, &cam, light) && shadow_fit_bounds(&frame, boxes, count));
+            /* from what the frame before kept, and from nothing */
+            before = kept;
+            compare(&frame, &d, &before, NULL, &cam, &kept);
+            compare(&frame, &d, &none, NULL, &cam, &unused);
+            if (kind == 0 && n < 2)
+                snaps += test_snap(&frame, &d);
             /* a size that is not a multiple of the groups': the top left 250 by 139 */
-            for (j = 0; j < 139; j++)
-                memcpy(&cropped[j * 250], &depth[j * SCENE_W], 250 * sizeof(float));
-            compare(&frame, cropped, 250, 139, NULL);
+            for (j = 0; j < 139; j++) {
+                memcpy(&cropFront[j * 250], &front[j * SCENE_W], 250 * sizeof(float));
+                memcpy(&cropBack[j * 250], &depth[j * SCENE_W], 250 * sizeof(float));
+            }
+            compare(&frame, &cropped, &before, NULL, NULL, &unused);
             /* a single pixel, and nothing */
-            memset(cropped, 0, sizeof cropped);
-            cropped[77 * SCENE_W + 130] = depth[77 * SCENE_W + 130];
-            compare(&frame, cropped, SCENE_W, SCENE_H, NULL);
-            memset(cropped, 0, sizeof cropped);
-            compare(&frame, cropped, SCENE_W, SCENE_H, NULL);
-            frames += 4;
+            memset(cropFront, 0, sizeof cropFront);
+            memset(cropBack, 0, sizeof cropBack);
+            cropFront[77 * SCENE_W + 130] = front[77 * SCENE_W + 130];
+            cropBack[77 * SCENE_W + 130] = depth[77 * SCENE_W + 130];
+            cropped.width = SCENE_W;
+            cropped.height = SCENE_H;
+            compare(&frame, &cropped, &before, NULL, NULL, &unused);
+            memset(cropFront, 0, sizeof cropFront);
+            memset(cropBack, 0, sizeof cropBack);
+            compare(&frame, &cropped, &before, NULL, NULL, &unused);
+            frames += 5;
         }
     }
     close_device();
-    printf("shadow fit on the GPU: %d frames; range, extents, squares and snapped translations to the bit; "
-           "split depths differ in %.0f of %.0f values (at most %u units in the last place), world matrices in %.0f of "
-           "%.0f (%u), view matrices in %.0f of %.0f (%u), blur and slant in %.0f of %.0f (%u); every receiving pixel "
-           "in the GPU's cascades\n",
-           frames, splitUlps.differ, splitUlps.values, splitUlps.most, matrixUlps.differ, matrixUlps.values, matrixUlps.most,
-           viewUlps.differ, viewUlps.values, viewUlps.most, lookupUlps.differ, lookupUlps.values, lookupUlps.most);
+    printf("shadow fit on the GPU: %d frames; range, range kept, extents, squares, sizes kept and snapped translations "
+           "to the bit, %d squares on the half-texel boundary among them; split depths differ in %.0f of %.0f values "
+           "(at most %u units in the last place), world matrices in %.0f of %.0f (%u), view matrices in %.0f of %.0f "
+           "(%u), blur and slant in %.0f of %.0f (%u); every matrix within %.2g of its rows; every receiving point in "
+           "the GPU's cascades and their boxes\n",
+           frames, snaps, splitUlps.differ, splitUlps.values, splitUlps.most, matrixUlps.differ, matrixUlps.values,
+           matrixUlps.most, viewUlps.differ, viewUlps.values, viewUlps.most, lookupUlps.differ, lookupUlps.values,
+           lookupUlps.most, worstRelative);
     return 0;
 }

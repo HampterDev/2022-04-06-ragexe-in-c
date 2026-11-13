@@ -67,16 +67,8 @@ struct GndLightmapSet {
 };
 
 /* custom: the ground's surfaces in the static world (render/gfx.h, gfx_world_mesh), one mesh per
-   block of GND_GPU_BLOCK x GND_GPU_BLOCK cells (c3d_ground15_block_mesh, world/world_gpu.c): where
-   a block's triangles lie in the world's shared buffers, which cast shadows together, none where
-   indexCount is 0; one past the greatest id of its records; and the last frame that queued them
-   as casters. */
+   block of GND_GPU_BLOCK x GND_GPU_BLOCK cells (c3d_ground15_block_mesh, world/world_gpu.c) */
 #define GND_GPU_BLOCK 32
-
-struct GndGpuBlock {
-    uint32_t firstIndex, indexCount, baseVertex, ids;
-    int castFrame;
-};
 
 /* A run of a block's mesh: the surfaces with one texture and one lightmap page, `count` indices
    from `first`. */
@@ -104,8 +96,6 @@ struct C3dGround15 {
     struct GndWater *waters;
     size_t waterCount;
     BYTE waterPerBlock;
-    struct GndGpuBlock *gpuBlocks;
-    int gpuCols, gpuRows;
 };
 
 #define GND_CELL(g, x, y) ((g)->cells + (size_t)(y) * (g)->width + (x))
@@ -113,7 +103,7 @@ struct C3dGround15 {
 void gnd_lightmap_set_reset(struct GndLightmapSet *self);
 int gnd_lightmap_set_build(struct GndLightmapSet *self, const struct GndRes *gnd);
 float ground_water_height(const struct GndWater *water, int64_t diagonal);
-void ground_gpu_free(struct C3dGround15 *self);
+void ground_forget_water(struct C3dGround15 *self);
 /* a corner of cell (x, y) at height h: x, h, z */
 static inline void c3d_ground15_corner(const struct C3dGround15 *self, int x, int y, float h, float *pos)
 {

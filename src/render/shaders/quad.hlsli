@@ -6,8 +6,7 @@
 #include "records.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
-StructuredBuffer<View> views : register(t1, space0);
-StructuredBuffer<float4> fogTables : register(t2, space0);
+StructuredBuffer<float4> fogTables : register(t1, space0);
 
 [[vk::combinedImageSampler]] Texture2D<float4> texture0 : register(t0, space2);
 [[vk::combinedImageSampler]] SamplerState sampler0 : register(s0, space2);

@@ -296,72 +296,6 @@ static void cells_max(int *v, int c)
         *v = c;
 }
 
-/* custom: where the frame's shadows can fall and their casters stand (renderer_shadow_frame): per
-   leaf of the scene graph, the box around its ground and the models in it */
-static void view_shadow_boxes(const struct SceneGraphNode *node, int level, struct ShadowBox *boxes, size_t *count)
-{
-    struct ShadowBox box;
-    size_t index;
-    int i;
-
-    if (level < RSW_TREE_DEPTH) {
-        for (i = 0; i < 4; i++)
-            if (node->child[i])
-                view_shadow_boxes(node->child[i], level + 1, boxes, count);
-        return;
-    }
-    for (i = 0; i < 3; i++) {
-        box.min[i] = node->groundMin[i];
-        box.max[i] = node->groundMax[i];
-    }
-    for (index = 0; index < node->objects.count; ++index) {
-        const struct C3dActor *a = node->objects.data[index];
-
-        for (i = 0; a && i < 3; i++)
-            if (!(a->bboxMin[i] > -SCENE_HEIGHT_HUGE && a->bboxMax[i] < SCENE_HEIGHT_HUGE))
-                a = NULL;
-        for (i = 0; a && i < 3; i++) {
-            box.min[i] = a->bboxMin[i] < box.min[i] ? a->bboxMin[i] : box.min[i];
-            box.max[i] = a->bboxMax[i] > box.max[i] ? a->bboxMax[i] : box.max[i];
-        }
-    }
-    if (box.min[0] <= box.max[0] && *count < SCENE_GRAPH_MAX_LEAVES)
-        boxes[(*count)++] = box;
-}
-
-/* custom: the models and ground the view left out whose shadows can fall into it
-   (render/renderer.h): their casters only, the models animated as the view's are */
-static void view_cast_shadows(struct World *world, struct SceneGraphNode *node, int level)
-{
-    struct Renderer *r = g_renderer;
-    size_t index;
-    int i;
-
-    if (!renderer_shadow_reaches(r, node->centre, node->half, NULL))
-        return;
-    if (level < RSW_TREE_DEPTH) {
-        for (i = 0; i < 4; i++)
-            if (node->child[i])
-                view_cast_shadows(world, node->child[i], level + 1);
-        return;
-    }
-    for (index = 0; index < node->objects.count; ++index) {
-        struct C3dActor *a = node->objects.data[index];
-
-        if (a->castFrame == r->frame || !renderer_shadow_reaches(r, a->obb.centre, a->obb.extent, a->obb.axis))
-            continue;
-        if (a->lastFrame != r->frame) {
-            if (g_isSkipFrame > 0)
-                a->ops->tick(a);
-            a->lastFrame = r->frame;
-        }
-        world_gpu_cast_actor(world, a);
-        a->castFrame = r->frame;
-    }
-    if (node->ground)
-        c3d_ground15_cast(node->ground, node->groundCell);
-}
-
 /* custom: the frame of the static world (world/world_gpu.c) begins: the ground and the models
    drawn with the weather's colour as the original's CPU scaled them by it, the models with the
    player's blind tint while blind, and the ground's light under the models where that option is
@@ -385,18 +319,9 @@ static void world_begin(struct World *world, const float *view)
     world_gpu_begin(world, view, &models, &ground);
 }
 
-/* custom: a model in the view, where the original drew it: the device draws it from the static
-   world (world/world_gpu.c); while the frame draws shadows its records cast */
-static void actor_seen(struct World *world, struct C3dActor *a)
-{
-    world_gpu_seen(world, a);
-    if (g_renderer->shadowPending)
-        world_gpu_cast_actor(world, a);
-    a->castFrame = g_renderer->frame;
-}
-
-/* custom: a model the walk below did not reach whose moving part the view holds (world/world_gpu.c):
-   ticked as the walk ticks a model it reaches, once a frame */
+/* custom: a model the walk below did not reach whose moving part the view holds, or whose shadow
+   can fall into the view (world/world_gpu.c): ticked as the walk ticks a model it reaches, once a
+   frame */
 static void tick_in_view(struct C3dActor *a)
 {
     if (a->lastFrame == g_renderer->frame)
@@ -408,8 +333,6 @@ static void tick_in_view(struct C3dActor *a)
 
 void view_on_render(struct View *self)
 {
-    static struct ShadowBox boxes[SCENE_GRAPH_MAX_LEAVES];
-    size_t boxCount = 0;
     struct Renderer *r;
     struct ListNode *n;
     size_t leaf_index;
@@ -424,10 +347,10 @@ void view_on_render(struct View *self)
                                        {(float)r->width, (float)r->height}};
         view_frustum_build(&self->frustum, &screen, view, &self->world->root);
     }
-    /* custom: the meshes' shadows, fitted to what the camera sees of the ground and the models
-       (render/renderer.h) */
-    view_shadow_boxes(&self->world->root, 0, boxes, &boxCount);
-    renderer_shadow_frame(r, view, self->distance, boxes, boxCount);
+    /* custom: the shadows of the ground and the models, which the device fits to what the camera
+       sees of them (render/renderer.h; their box along the light comes with the static world's
+       frame, world/world_gpu.c) */
+    renderer_shadow_frame(r, view, self->distance);
     renderer_set_camera(r, view);
     /* custom: the static world takes the models the scene graph took (world/world_gpu.c) */
     world_begin(self->world, view);
@@ -450,7 +373,7 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (res != FRUSTUM_OUTSIDE)
-                actor_seen(self->world, a);
+                world_gpu_seen(self->world, a);
             a->lastFrame = g_renderer->frame;
         }
         c3d_ground15_leaf(leaf->ground, view, leaf->groundCell);
@@ -470,7 +393,7 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (a->lastFrame != g_renderer->frame) {
-                actor_seen(self->world, a);
+                world_gpu_seen(self->world, a);
                 a->lastFrame = g_renderer->frame;
             }
         }
@@ -481,7 +404,6 @@ void view_on_render(struct View *self)
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
     }
 
-    view_cast_shadows(self->world, &self->world->root, 0);
     world_gpu_frame(self->world, tick_in_view);
 
     navi_manager_draw_path(&g_navi, view);

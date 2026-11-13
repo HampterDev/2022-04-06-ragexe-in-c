@@ -6,7 +6,9 @@
 
 float depth[SCENE_PIXELS];
 double hit[SCENE_PIXELS][3];
-const char *const scene_names[SCENE_KINDS] = {"flat ground", "slope", "wall", "models"};
+float front[SCENE_PIXELS];
+double frontHit[SCENE_PIXELS][3];
+const char *const scene_names[SCENE_KINDS] = {"flat ground", "slope", "wall", "models", "blended"};
 
 /* ---- numbers ---- */
 
@@ -66,11 +68,13 @@ size_t scene_boxes(const struct Scene *s, struct ShadowFitBox *out)
     return n;
 }
 
-/* the view depth of the first surface along the ray o + t d from the near plane to the far one,
-   0 for none; d's view depth is 1, so t is the view depth */
-static double cast(const struct Scene *s, const double *o, const double *d, double nearZ, double farZ)
+/* the view depths of the first surface along the ray o + t d from the near plane to the far one
+   that is not blended, and of the first blended one before it, 0 for none; d's view depth is 1, so
+   t is the view depth */
+static void cast(const struct Scene *s, const double *o, const double *d, double nearZ, double farZ, double *opaque,
+                 double *seen)
 {
-    double best = 0.0, inv[3];
+    double best = 0.0, through = 0.0, inv[3];
     int b, k;
 
     for (k = 0; k < 3; k++)
@@ -97,16 +101,32 @@ static double cast(const struct Scene *s, const double *o, const double *d, doub
                 double enter = ta < tb ? ta : tb, leave = ta < tb ? tb : ta;
                 t0 = enter > t0 ? enter : t0;
                 t1 = leave < t1 ? leave : t1;
-                miss = t0 > t1 || (best > 0.0 && t0 > best);
+                miss = t0 > t1;
             }
         }
         if (miss)
             continue;
         t = t0 >= nearZ ? t0 : t1 >= nearZ ? t1 : 0.0;
-        if (t > 0.0 && t <= farZ && (best == 0.0 || t < best))
+        if (!(t > 0.0 && t <= farZ))
+            continue;
+        if (s->blended[b])
+            through = through == 0.0 || t < through ? t : through;
+        else if (best == 0.0 || t < best)
             best = t;
     }
-    return best;
+    *opaque = best;
+    *seen = through > 0.0 && (best == 0.0 || through < best) ? through : best;
+}
+
+struct ShadowFitDepths scene_depths(void)
+{
+    struct ShadowFitDepths d;
+
+    d.front = front;
+    d.back = depth;
+    d.width = SCENE_W;
+    d.height = SCENE_H;
+    return d;
 }
 
 /* ---- cameras ---- */
@@ -146,6 +166,8 @@ void pose_camera(const struct Pose *p, int width, int height, struct ShadowFitCa
     cam->proj[0] = (float)halfW / tHalf * ((float)height / (float)width);
     cam->centre[0] = (float)halfW;
     cam->centre[1] = (float)halfH;
+    cam->width = width;
+    cam->height = height;
     cam->nearZ = 10.0f;   /* RENDER_NEAR_Z and RENDER_FAR_Z (render/render_api.h) */
     cam->farZ = 40000.0f;
     cam->distance = (float)p->distance;
@@ -160,15 +182,18 @@ void scene_render(const struct Scene *s, const struct Pose *p, const struct Shad
     for (j = 0; j < SCENE_H; j++)
         for (i = 0; i < SCENE_W; i++) {
             double v[3] = {((double)i - cam->centre[0]) / cam->proj[0], ((double)j - cam->centre[1]) / cam->proj[1], 1.0};
-            double d[3], t;
+            double d[3], t, seen;
             size_t at = (size_t)j * SCENE_W + (size_t)i;
 
             for (k = 0; k < 3; k++)
                 d[k] = p->axis[0][k] * v[0] + p->axis[1][k] * v[1] + p->axis[2][k] * v[2];
-            t = cast(s, p->eye, d, cam->nearZ, cam->farZ);
+            cast(s, p->eye, d, cam->nearZ, cam->farZ, &t, &seen);
             depth[at] = (float)t;
-            for (k = 0; k < 3; k++)
+            front[at] = (float)seen;
+            for (k = 0; k < 3; k++) {
                 hit[at][k] = p->eye[k] + t * d[k];
+                frontHit[at][k] = p->eye[k] + seen * d[k];
+            }
         }
 }
 
@@ -203,6 +228,12 @@ void scene_make(struct Scene *s, int kind)
             s->box[b][0][0] = floor(x - hx); s->box[b][1][0] = floor(x + hx);
             s->box[b][0][1] = -floor(uniform(20, 400)); s->box[b][1][1] = 0;
             s->box[b][0][2] = floor(z - hz); s->box[b][1][2] = floor(z + hz);
+            /* blended ones float over the ground, so that slices part between them and it */
+            s->blended[b] = kind == 4 && b % 2;
+            if (s->blended[b]) {
+                s->box[b][1][1] = -floor(uniform(30, 300));
+                s->box[b][0][1] = s->box[b][1][1] - floor(uniform(5, 60));
+            }
         }
         break;
     }

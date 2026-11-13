@@ -1,9 +1,9 @@
-// The records render/gfx_gpu.c writes for a frame, read as storage buffers (structs GpuDraw,
-// GpuView and GpuShadow there, the same layout: only 16-byte vectors and row-major matrices,
-// compiled with -Zpr). A quad's draw finds its record through the quad's record in the frame's
-// quads (instances.hlsli), a draw of the static world's and the water's through their uniform, the
-// wobble's through the instance-rate attribute that holds its index; its view and shadow records
-// through the indices in the draw record.
+// The records render/gfx_gpu.c writes for a frame (structs GpuDraw and GpuView there, the same
+// layout: only 16-byte vectors and row-major matrices, compiled with -Zpr), read as storage buffers
+// or, a draw of the static world's, as its uniform. A quad's draw finds its record through the
+// quad's record in the frame's quads (instances.hlsli), the water's through its uniform, the
+// wobble's through the instance-rate attribute that holds its index; its view record through the
+// index in the draw record.
 
 struct Draw
 {
@@ -21,24 +21,12 @@ struct Draw
     float4 uvScale;   // each stage's texture coordinates times this, and then at most uvLimit: a
     float4 uvLimit;   // target's texture is wider than the target (render/gfx_gpu.c, MARGIN), and a
                       // clamped read stays off the margin
-    uint4 mesh;       // a model, its ground light, -, the shadow record + 1 while receiving
+    uint4 mesh;       // a model, its ground light, -, whether the frame has shadows (cascades.hlsli)
 };
 
 struct View
 {
     float4x4 toClip;  // from the draw's space to clip space
-};
-
-struct Shadow
-{
-    float4x4 fromView[4];  // view space to each cascade's texture space, texel centres as drawn
-    float4 farDepth;
-    float4 offset;
-    float4 blur;
-    float4 slant;
-    float4 lightView;      // towards the light, view space; w: the bias
-    float4 ambient;        // the ambient light; w: the darkness (at least 1 / 255)
-    float4 mapSize;        // x: the maps' size in texels (render/gfx.h, GFX_SHADOW_SIZE)
 };
 
 // A stage's texture coordinates as its texture is sampled (Draw.uvScale).

@@ -138,9 +138,10 @@ static void build_lines(void)
     for (i = 0; i < 5 && i < nl; i++) {
         snprintf(s + strlen(s), sizeof P.lines[3] - strlen(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
     }
-    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  modes %u sent / %u skipped  tex sets %u  locks %u",
-             c->draws / f, c->drawCalls / f, c->prims / f, c->modesSent / f, c->modesSkipped / f, c->texSets / f,
-             c->locks / f);
+    snprintf(P.lines[4], sizeof P.lines[4],
+             "draws %u (%u calls, %u indirect)  prims %u  modes %u sent / %u skipped  tex sets %u  locks %u",
+             c->draws / f, c->drawCalls / f, c->indirectDraws / f, c->prims / f, c->modesSent / f,
+             c->modesSkipped / f, c->texSets / f, c->locks / f);
     snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
              c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f,
              (c->textMeasured + c->textHits) / f,

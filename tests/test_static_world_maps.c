@@ -16,10 +16,10 @@
    their models ticked as the walk ticked them and drawn with their nodes' matrices as the first
    tick of the frame left them, each node's faces as one mesh in runs of one texture and one
    two-sidedness, the ground's blocks under the leaves in runs of one texture and lightmap page, the
-   casters it chose, the water quads it built. Each pose's frame is run twice from the same start
-   (pose_models; the test keeps the clock, and every tick moves it on by a millisecond, so that a
-   model ticked twice in a frame takes two times): once by the client's view_on_render, once by
-   the reference. For 12 camera poses on each map:
+   water quads it built. Each pose's frame is run twice from the same start (pose_models; the test
+   keeps the clock, and every tick moves it on by a millisecond, so that a model ticked twice in a
+   frame takes two times): once by the client's view_on_render, once by the reference. For 12
+   camera poses on each map:
    - every record the view's cull keeps (sw_record_in_view) that the reference draws has the same
      vertices, textures, lightmap, cull, texture-coordinate matrix and kind, and its transform slot's
      view is the reference's matrix to the bit: the pose the client gave the device is the one the
@@ -29,9 +29,12 @@
      reference does not draw is measured: whether any of its triangles is in the view, and why the
      reference left it out;
    - no record the view keeps belongs to a model that animates which the frame did not tick, and the
-     frame ticks no model beyond the reference's but one that animates and held a record in view;
-   - the casters the client queues are the reference's, in its order, and the cascades' cull
-     (sw_cull_cascade, part 2 of the plan's phase 5) is measured against them;
+     frame ticks no model beyond the reference's but one that animates and held a record in view, or
+     in the box whatever can shade the view lies in (renderer_shadow_reach), and every model that
+     animates with a record in that box is ticked;
+   - the shadows' depth along the light (render/shadow_fit.h, shadow_fit_bounds, from the box
+     world/world_gpu.c keeps of the records) holds every record the device has, an animated one in
+     its pose, with room to spare;
    - the alpha-blended records the client queues are those the records' cull keeps, keyed to the
      bit as the reference keyed its alpha draws, and the renderer draws them in the reference's
      order, ties included;
@@ -45,14 +48,16 @@
    made its own again, and from the textures' new surfaces after a reload; the costs of a model
    appearing and of the records sent are measured. On this machine's GPU, where there is one, with
    the device's own packing (render/world_layout.h): the transform pass (world_transform.hlsl) gives
-   every slot the C's chain to the bit, view, clip space and place in the world; the cull and
-   compaction passes (world_cull.hlsl, world_compact.hlsl) put into each run exactly the indices of
-   the records sw_record_in_view keeps, in their order, and do the same with their dispatches split
-   into rows of a few groups, as a dispatch of more groups than one row takes is, and the two are
-   timed on the map's first view; the water's quads (water.hlsli, through
-   tests/shaders/water_probe.hlsl) are the reference's to the bit in heights, rhw, screen points and
-   whether drawn, for every cell of the map; and the SPIR-V of those passes has no operation that
-   may part from the C.
+   every slot the C's chain to the bit, view and clip space and place in the world; the cull and
+   compaction passes (world_cull.hlsl, world_compact.hlsl) put into each of the view's runs exactly
+   the indices of the records sw_record_in_view keeps, in their order, and into each casters' run of
+   each of four shadow cascades' boxes (nested about the view's reach for casters) those
+   sw_cull_cascade keeps, each in its section of the frame's index buffer, and do the same with
+   their dispatches split into rows of a few groups, as a dispatch of more groups than one row takes
+   is, and the two are timed on the map's first view, the view's and the cascades'; the water's
+   quads (water.hlsli, through tests/shaders/water_probe.hlsl) are the reference's to the bit in
+   heights, rhw, screen points and whether drawn, for every cell of the map; and the SPIR-V of those
+   passes has no operation that may part from the C.
 
    With `--survey` after the folder it surveys the sizes of every map's textures and lightmap pages
    instead (all the .rsw files in data.grf and data\), and the texture arrays a map needs with one
@@ -169,6 +174,8 @@ static struct {
     size_t uvCount, uvCapacity;
     struct GfxWaterWave *waves;
     size_t waveCount, waveCapacity;
+    struct GfxShadow shadow;
+    int shadowSet;
     int frames;
 } D;
 
@@ -277,6 +284,9 @@ void gfx_world_frame(const struct GfxWorldFrame *frame)
     D.waves = grow(D.waves, &D.waveCapacity, frame->waveCount + 1, sizeof *D.waves);
     memcpy(D.waves, frame->waves, frame->waveCount * sizeof *D.waves);
     D.waveCount = frame->waveCount;
+    D.shadowSet = frame->shadow != NULL;
+    if (frame->shadow)
+        D.shadow = *frame->shadow;
     D.frames++;
 }
 
@@ -291,10 +301,6 @@ int gfx_get_size(gfx_surface *s, int *w, int *h)
 void gfx_world_draw(int pass, const struct GfxWorldDraw *draw) { (void)pass; (void)draw; }
 void gfx_world_draw_record(const struct SwRecord *record, const struct GfxWorldDraw *draw) { (void)record; (void)draw; }
 void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour) { (void)cells; (void)count; (void)colour; }
-void gfx_world_cast(uint32_t firstIndex, uint32_t count, uint32_t baseVertex, uint8_t textureArray, uint32_t ids)
-{
-    (void)firstIndex; (void)count; (void)baseVertex; (void)textureArray; (void)ids;
-}
 void gfx_set_world_camera(const struct GfxWorldView *view) { (void)view; }
 void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
 void gfx_set_mode(int mode) { (void)mode; }
@@ -310,10 +316,6 @@ void gfx_end_scene(void) {}
 void gfx_addref(gfx_surface *s) { (void)s; }
 void gfx_release(gfx_surface *s) { (void)s; }
 int gfx_shadows_supported(void) { return 1; }
-int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; return 1; }
-int gfx_shadow_cascade(int cascade) { (void)cascade; return 1; }
-void gfx_shadow_end(void) {}
-void gfx_shadow_receive(int receiver) { (void)receiver; }
 
 struct gfx_caps g_gfxCaps;
 
@@ -716,6 +718,17 @@ static struct RefMesh *ref_node_mesh(struct C3dNode *node)
     return g;
 }
 
+/* the ground's blocks across and down, as world/world_gpu.c makes a mesh of each */
+static int block_cols(const struct C3dGround15 *ground)
+{
+    return (ground->width + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
+}
+
+static int block_rows(const struct C3dGround15 *ground)
+{
+    return (ground->height + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
+}
+
 static struct RefMesh *ref_block_mesh(struct C3dGround15 *ground, int bx, int by)
 {
     struct RefMesh *g = calloc(1, sizeof *g);
@@ -783,7 +796,7 @@ static void node_meshes_free(void)
 struct Source {
     struct RefMesh *mesh;
     struct SwPlacement place;
-    struct GndGpuBlock *block;
+    int block;  /* a ground block's */
     struct C3dNode *node;
     struct C3dActor *actor;
 };
@@ -832,8 +845,7 @@ static int by_place(const void *a, const void *b)
     return (x > y) - (x < y);
 }
 
-static void add_source(struct Map *map, struct RefMesh *mesh, struct GndGpuBlock *block, struct C3dNode *node,
-                       struct C3dActor *actor)
+static void add_source(struct Map *map, struct RefMesh *mesh, int block, struct C3dNode *node, struct C3dActor *actor)
 {
     struct Source *s;
 
@@ -855,7 +867,7 @@ static void node_sources(struct Map *map, struct C3dActor *actor, struct C3dNode
         return;
     mesh = node_mesh(node);
     if (mesh && mesh->runCount)
-        add_source(map, mesh, NULL, node, actor);
+        add_source(map, mesh, 0, node, actor);
     for (child = 0; child < node->childCount; child++)
         node_sources(map, actor, node->children[child], depth + 1);
 }
@@ -870,11 +882,11 @@ static void map_sources(struct Map *map)
     int b;
 
     map->sourceCount = 0;
-    for (b = 0; b < ground->gpuCols * ground->gpuRows; b++) {
+    for (b = 0; b < block_cols(ground) * block_rows(ground); b++) {
         if (!map->blockMeshes[b])
-            map->blockMeshes[b] = ref_block_mesh(ground, b % ground->gpuCols, b / ground->gpuCols);
+            map->blockMeshes[b] = ref_block_mesh(ground, b % block_cols(ground), b / block_cols(ground));
         if (map->blockMeshes[b]->runCount)
-            add_source(map, map->blockMeshes[b], &ground->gpuBlocks[b], NULL, NULL);
+            add_source(map, map->blockMeshes[b], 1, NULL, NULL);
     }
     map->outsideGraph = 0;
     for (i = 0; i < g_world.models.inserted; i++) {
@@ -905,9 +917,6 @@ static void map_sources(struct Map *map)
             || memcmp(D.vertices + s->place.baseVertex, s->mesh->verts, s->place.vertexCount * sizeof *D.vertices)
             || memcmp(D.indices + s->place.firstIndex, s->mesh->indices, s->place.indexCount * sizeof *D.indices))
             FAIL("%s: mesh %zu is not the reference's", map->name, i);
-        if (s->block && (s->block->firstIndex != s->place.firstIndex || s->block->indexCount != s->place.indexCount
-                         || s->block->baseVertex != s->place.baseVertex))
-            FAIL("%s: a block's place is not its mesh's", map->name);
     }
     /* placed one behind the other: the place of an index is found by firstIndex */
     for (i = 1; i < map->sourceCount; i++)
@@ -1155,8 +1164,7 @@ static void frame_transforms(struct Map *map, const float *view)
    The reference's frame: what view_on_render queued of the ground and the models and the
    renderer drew, at 75489601 (world/view_camera.c, world/model_actor.c, world/model_node_render.c,
    world/ground_draw.c, render/crenderer.c), on the scene graph's leaves as the client's own walk
-   reaches them; the casters it chose while the frame drew shadows (render/renderer.h,
-   renderer_shadow_frame, which the client's view_on_render set up); and its water's quads */
+   reaches them, and its water's quads */
 
 /* the cull modes the old device took (render/gfx.h, GFX_CULL_*) */
 #define CULL_NONE 1
@@ -1170,7 +1178,7 @@ struct RefDraw {
 };
 
 struct DeviceDraw {
-    int phase, cascade;
+    int phase;
     const struct RefMesh *mesh;
     struct RefDraw draw;
     float view[12];
@@ -1181,8 +1189,8 @@ struct DeviceDraw {
 static struct DeviceDraw *g_draws;
 static size_t g_drawCount, g_drawCapacity;
 
-/* the reference's lists: the renderer's opaque, ground, alpha and caster lists */
-enum { RQ_OPAQUE_CLAMP, RQ_OPAQUE_WRAP, RQ_GROUND, RQ_ALPHA_CLAMP, RQ_ALPHA_WRAP, RQ_ALPHA_DEPTH, RQ_CAST, RQ_COUNT };
+/* the reference's lists: the renderer's opaque, ground and alpha lists */
+enum { RQ_OPAQUE_CLAMP, RQ_OPAQUE_WRAP, RQ_GROUND, RQ_ALPHA_CLAMP, RQ_ALPHA_WRAP, RQ_ALPHA_DEPTH, RQ_COUNT };
 
 struct RefEntry {
     struct DeviceDraw d;
@@ -1203,13 +1211,14 @@ struct RefWater {
 static struct RefWater *g_water;
 static size_t g_waterCount, g_waterCapacity;
 
-/* what the reference's walk marked a frame: models reached (ticked) and cast, blocks drawn and cast,
-   cells; and of a pose's models, those the client ticked (2), those that animate (4) and of those
-   the ones with a record in view before the frame (3) */
+/* what the reference's walk marked a frame: models reached (ticked) and drawn, blocks drawn, cells;
+   and of a pose's models, those the client ticked (2), those that animate (4) and of those the ones
+   with a record in view before the frame (3), and with a record in the box whatever can shade the
+   view lies in (5) */
 #define MARK_SLOTS (1u << 20)
 static struct {
     const void *what;
-    int frame[5];
+    int frame[6];
 } g_marks[MARK_SLOTS];
 static int g_refFrame;
 
@@ -1222,7 +1231,7 @@ static int *mark(const void *what, int which)
     if (!g_marks[h].what) {
         g_marks[h].what = what;
         g_marks[h].frame[0] = g_marks[h].frame[1] = g_marks[h].frame[2] = g_marks[h].frame[3] = -1;
-        g_marks[h].frame[4] = -1;
+        g_marks[h].frame[4] = g_marks[h].frame[5] = -1;
     }
     return &g_marks[h].frame[which];
 }
@@ -1251,32 +1260,6 @@ static BYTE ref_mirrored(const struct C3dActor *a)
     return m;
 }
 
-/* model_node_render.c's gpu_cast: every run of a node as a caster with its texture */
-static void ref_node_cast(struct C3dNode *node, int version, const float *m)
-{
-    struct RefMesh *g = node_mesh(node);
-    struct DeviceDraw d;
-    int i;
-
-    if (!g)
-        return;
-    memset(&d, 0, sizeof d);
-    d.phase = -1;
-    d.cascade = 0;
-    d.mesh = g;
-    memcpy(d.view, m, sizeof d.view);
-    d.draw.kind = GFX_MESH_MODEL;
-    for (i = 0; i < g->runCount; i++) {
-        const struct RefRun *r = &g->runs[i];
-
-        uv_turn_matrix(version == 2 ? uv_xform_find((const struct C3dNodeV2 *)node, r->texture) : NULL, d.draw.uv);
-        d.draw.first = r->first;
-        d.draw.count = r->count;
-        d.texture[0] = run_texture(node, r->texture);
-        queue(RQ_CAST, &d, 0.0f, d.texture[0], NULL);
-    }
-}
-
 /* model_node_render.c's gpu_render: each run where renderer_add_prim sent a model's quads, an alpha
    one keyed by the rhw of its first face's first corner */
 static void ref_node_render(struct C3dNode *node, int version, const float *m, BYTE mirrored, BYTE layer)
@@ -1290,7 +1273,6 @@ static void ref_node_render(struct C3dNode *node, int version, const float *m, B
     if (!g)
         return;
     memset(&d, 0, sizeof d);
-    d.cascade = -1;
     d.mesh = g;
     memcpy(d.view, m, sizeof d.view);
     d.draw.kind = GFX_MESH_MODEL;
@@ -1328,38 +1310,33 @@ static void ref_node_render(struct C3dNode *node, int version, const float *m, B
         d.address = list == RQ_OPAQUE_WRAP || list == RQ_ALPHA_WRAP ? DRAW_ADDRESS_WRAP : DRAW_ADDRESS_CLAMP;
         queue(list, &d, key, t, NULL);
     }
-    if (g_renderer->shadowPending)
-        ref_node_cast(node, version, m);
 }
 
-static void ref_node(struct C3dNode *node, int version, const float *view, BYTE mirrored, BYTE layer, int cast)
+static void ref_node(struct C3dNode *node, int version, const float *view, BYTE mirrored, BYTE layer)
 {
     float m[12];
     size_t child;
 
     mat_multiply(m, node->matrix, view);
-    if (cast)
-        ref_node_cast(node, version, m);
-    else
-        ref_node_render(node, version, m, mirrored, layer);
+    ref_node_render(node, version, m, mirrored, layer);
     for (child = 0; child < node->childCount; ++child)
-        ref_node(node->children[child], version, m, mirrored, layer, cast);
+        ref_node(node->children[child], version, m, mirrored, layer);
 }
 
-/* c3d_actor_v1_render and v2 (cast: only the casters) */
-static void ref_actor(struct C3dActor *a, const float *view, int cast)
+/* c3d_actor_v1_render and v2 */
+static void ref_actor(struct C3dActor *a, const float *view)
 {
     float m[12];
 
     mat_multiply(m, a->matrix, view);
     if (a->ops->version == 1) {
-        ref_node(((struct C3dActorV1 *)a)->root, 1, m, ref_mirrored(a), a->layer, cast);
+        ref_node(((struct C3dActorV1 *)a)->root, 1, m, ref_mirrored(a), a->layer);
     } else {
         struct C3dActorV2 *v2 = (struct C3dActorV2 *)a;
         size_t i;
 
         for (i = 0; i < v2->nodeCount; i++)
-            ref_node(v2->nodes[i], 2, m, ref_mirrored(a), a->layer, cast);
+            ref_node(v2->nodes[i], 2, m, ref_mirrored(a), a->layer);
     }
     *mark(a, 1) = g_refFrame;
 }
@@ -1370,37 +1347,10 @@ static void ref_blocks(const struct C3dGround15 *ground, const int *cells, int *
     out[1] = cells[1] < 0 ? 0 : cells[1] / GND_GPU_BLOCK;
     out[2] = cells[2] / GND_GPU_BLOCK;
     out[3] = cells[3] / GND_GPU_BLOCK;
-    if (out[2] >= ground->gpuCols)
-        out[2] = ground->gpuCols - 1;
-    if (out[3] >= ground->gpuRows)
-        out[3] = ground->gpuRows - 1;
-}
-
-/* ground_draw.c's gpu_cast: a block as one caster without a texture */
-static void ref_ground_cast(struct Map *map, const struct C3dGround15 *ground, const float *view, const int *cells)
-{
-    int b4[4], bx, by;
-    struct DeviceDraw d;
-
-    memset(&d, 0, sizeof d);
-    d.phase = -1;
-    d.cascade = 0;
-    memcpy(d.view, view, sizeof d.view);
-    d.draw.kind = GFX_MESH_GROUND;
-    d.draw.uv[0] = d.draw.uv[3] = 1.0f;
-    ref_blocks(ground, cells, b4);
-    for (by = b4[1]; by <= b4[3]; by++)
-        for (bx = b4[0]; bx <= b4[2]; bx++) {
-            struct RefMesh *g = map->blockMeshes[by * ground->gpuCols + bx];
-            int *cast = mark(g, 1);
-
-            if (*cast == g_refFrame || !g->nindices)
-                continue;
-            *cast = g_refFrame;
-            d.mesh = g;
-            d.draw.count = g->nindices;
-            queue(RQ_CAST, &d, 0.0f, NULL, NULL);
-        }
+    if (out[2] >= block_cols(ground))
+        out[2] = block_cols(ground) - 1;
+    if (out[3] >= block_rows(ground))
+        out[3] = block_rows(ground) - 1;
 }
 
 /* ground_draw.c's water_quad: whether the cell's quad is drawn, and its key */
@@ -1450,7 +1400,6 @@ static void ref_ground(struct Map *map, struct C3dGround15 *ground, const float 
 
     memset(&d, 0, sizeof d);
     d.phase = PERF_L_WATER;
-    d.cascade = -1;
     d.address = DRAW_ADDRESS_CLAMP;
     memcpy(d.view, view, sizeof d.view);
     d.draw.kind = GFX_MESH_GROUND;
@@ -1459,7 +1408,7 @@ static void ref_ground(struct Map *map, struct C3dGround15 *ground, const float 
     ref_blocks(ground, cells, b4);
     for (by = b4[1]; by <= b4[3]; by++)
         for (bx = b4[0]; bx <= b4[2]; bx++) {
-            struct RefMesh *g = map->blockMeshes[by * ground->gpuCols + bx];
+            struct RefMesh *g = map->blockMeshes[by * block_cols(ground) + bx];
             int *drawn = mark(g, 0);
 
             if (*drawn == g_refFrame)
@@ -1474,8 +1423,6 @@ static void ref_ground(struct Map *map, struct C3dGround15 *ground, const float 
                 queue(RQ_GROUND, &d, 0.0f, d.texture[0], d.texture[1]);
             }
         }
-    if (g_renderer->shadowPending)
-        ref_ground_cast(map, ground, view, cells);
     if (!ground->waters)
         return;
     for (y = cells[1]; y <= cells[3]; y++)
@@ -1495,36 +1442,6 @@ static void ref_ground(struct Map *map, struct C3dGround15 *ground, const float 
                 g_waterCount++;
             }
         }
-}
-
-/* view_camera.c's view_cast_shadows */
-static void ref_cast_shadows(struct Map *map, struct SceneGraphNode *node, int level, const float *view)
-{
-    struct Renderer *r = g_renderer;
-    size_t index;
-    int i;
-
-    if (!renderer_shadow_reaches(r, node->centre, node->half, NULL))
-        return;
-    if (level < RSW_TREE_DEPTH) {
-        for (i = 0; i < 4; i++)
-            if (node->child[i])
-                ref_cast_shadows(map, node->child[i], level + 1, view);
-        return;
-    }
-    for (index = 0; index < node->objects.count; ++index) {
-        struct C3dActor *a = node->objects.data[index];
-
-        if (*mark(a, 1) == g_refFrame || !renderer_shadow_reaches(r, a->obb.centre, a->obb.extent, a->obb.axis))
-            continue;
-        if (*mark(a, 0) != g_refFrame) {
-            a->ops->tick(a);
-            *mark(a, 0) = g_refFrame;
-        }
-        ref_actor(a, view, 1);
-    }
-    if (node->ground)
-        ref_ground_cast(map, node->ground, view, node->groundCell);
 }
 
 /* render/crenderer.c's sorts, in std_sort as it sorted */
@@ -1567,8 +1484,7 @@ static void emit(int list, StdSortLessFn less)
     }
 }
 
-/* The reference's frame on the view: g_draws in the order the renderer drew them, the casters
-   once (the renderer drew them into every cascade), and g_water. */
+/* The reference's frame on the view: g_draws in the order the renderer drew them, and g_water. */
 static void reference_frame(struct Map *map, struct View *view)
 {
     static struct ViewFrustum leaves;
@@ -1599,7 +1515,7 @@ static void reference_frame(struct Map *map, struct View *view)
             res = view_frustum_test_obb(&leaves, &a->obb);
             a->ops->tick(a);
             if (res != FRUSTUM_OUTSIDE)
-                ref_actor(a, m, 0);
+                ref_actor(a, m);
             *seen = g_refFrame;
         }
         ref_ground(map, leaf->ground, m, leaf->groundCell);
@@ -1613,16 +1529,13 @@ static void reference_frame(struct Map *map, struct View *view)
 
             a->ops->tick(a);
             if (*seen != g_refFrame) {
-                ref_actor(a, m, 0);
+                ref_actor(a, m);
                 *seen = g_refFrame;
             }
         }
         ref_ground(map, leaf->ground, m, leaf->groundCell);
     }
-    if (r->shadowPending)
-        ref_cast_shadows(map, &g_world.root, 0, m);
     view_frustum_clear(&leaves);
-    emit(RQ_CAST, NULL);
     emit(RQ_OPAQUE_CLAMP, ref_quad_less);
     emit(RQ_OPAQUE_WRAP, ref_quad_less);
     emit(RQ_GROUND, ref_two_tex_less);
@@ -1632,7 +1545,7 @@ static void reference_frame(struct Map *map, struct View *view)
 }
 
 /* ---------------------------------------------------------------------------------------------
-   Clipping triangles: what of them is in the view, or in a cascade's box */
+   Clipping triangles: what of them is in the view */
 
 struct Plane {
     double n[3], d;
@@ -1694,38 +1607,6 @@ static double view_area(const double tri[3][3])
     return n >= 3 ? fabs(area) * 0.5 : 0.0;
 }
 
-/* the area across the light, in world units, of a triangle given in the world, clipped to a
-   cascade's box */
-static double cascade_area(const double tri[3][3], const struct SwCascade *c)
-{
-    double poly[12][3], area = 0;
-    struct Plane planes[6];
-    int n = 3, i, k;
-
-    for (i = 0; i < 3; i++)
-        for (k = 0; k < 3; k++)
-            poly[i][k] = tri[i][0] * c->axis[k][0] + tri[i][1] * c->axis[k][1] + tri[i][2] * c->axis[k][2];
-    memset(planes, 0, sizeof planes);
-    for (k = 0; k < 2; k++) {
-        planes[k * 2].n[k] = 1;
-        planes[k * 2].d = -c->lo[k];
-        planes[k * 2 + 1].n[k] = -1;
-        planes[k * 2 + 1].d = c->hi[k];
-    }
-    planes[4].n[2] = 1;
-    planes[4].d = -c->depth[0];
-    planes[5].n[2] = -1;
-    planes[5].d = c->depth[1];
-    for (i = 0; i < 6 && n >= 3; i++)
-        n = clip(poly, n, &planes[i]);
-    for (i = 0; i < n; i++) {
-        const double *a = poly[i], *b = poly[(i + 1) % n];
-
-        area += a[0] * b[1] - b[0] * a[1];
-    }
-    return n >= 3 ? fabs(area) * 0.5 : 0.0;
-}
-
 static void xform_d(const float *m, const double *p, double *out)
 {
     out[0] = p[0] * m[0] + p[1] * m[3] + p[2] * m[6] + m[9];
@@ -1749,7 +1630,7 @@ static void record_triangle(const struct Map *map, const struct SwRecord *r, uin
     }
 }
 
-/* the most of a record's area in the view (screen pixels) or in a cascade's box (world units) */
+/* the most of a record's area in the view (screen pixels) */
 static double record_view_area(const struct Map *map, const struct SwRecord *r, const float *view)
 {
     double most = 0, tri[3][3], v[3][3];
@@ -1763,21 +1644,6 @@ static double record_view_area(const struct Map *map, const struct SwRecord *r, 
         for (k = 0; k < 3; k++)
             xform_d(view, tri[k], v[k]);
         a = view_area((const double (*)[3])v);
-        most = a > most ? a : most;
-    }
-    return most;
-}
-
-static double record_cascade_area(const struct Map *map, const struct SwRecord *r, const struct SwCascade *c)
-{
-    double most = 0, tri[3][3];
-    uint32_t t;
-
-    for (t = 0; t < r->indexCount / 3; t++) {
-        double a;
-
-        record_triangle(map, r, t, tri);
-        a = cascade_area((const double (*)[3])tri, c);
         most = a > most ? a : most;
     }
     return most;
@@ -2314,6 +2180,7 @@ static void matrix_4x3(float *out, const float *m)
 
 struct GpuStats {
     size_t slots, slotsDiffer, draws, drawsDiffer, runs, runsDiffer, records, kept, cells, cellsDiffer, cellsDrawn;
+    size_t casterRuns, casterKept;
 };
 
 static struct GpuStats g_gpuStats;
@@ -2330,12 +2197,12 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
         float toClip[16];
         float toView[16];
     } *views;
-    static float (*placed)[12], (*casters)[16];
+    static float (*placed)[12];
     static size_t capacity;
     struct WlTransformFrame u;
     const void *in[2];
-    void *out[3];
-    uint32_t inSize[2], outSize[3], s;
+    void *out[2];
+    uint32_t inSize[2], outSize[2], s;
     size_t i;
     float proj[16];
 
@@ -2345,15 +2212,14 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
         slots = realloc(slots, capacity * sizeof *slots);
         views = realloc(views, capacity * sizeof *views);
         placed = realloc(placed, capacity * sizeof *placed);
-        casters = realloc(casters, capacity * WL_CASCADES * sizeof *casters);
-        if (!slots || !views || !placed || !casters)
+        if (!slots || !views || !placed)
             abort();
     }
     for (s = 0; s < D.slotCount; s++)
         wl_slot(D.slots[s].local, D.slots[s].parent, D.slots[s].animated, s == 0, &slots[s]);
     wl_projection(proj, D.camera.proj, D.camera.centre, D.camera.nearZ, D.camera.depthScale, g_renderer->width,
                   g_renderer->height);
-    wl_transform_frame(D.camera.view, proj, NULL, 0, (uint32_t)D.slotCount, &u);
+    wl_transform_frame(D.camera.view, proj, (uint32_t)D.slotCount, &u);
     in[0] = slots;
     inSize[0] = (uint32_t)(D.slotCount * sizeof *slots);
     in[1] = D.animated;
@@ -2362,9 +2228,7 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
     outSize[0] = (uint32_t)(D.slotCount * sizeof *views);
     out[1] = placed;
     outSize[1] = (uint32_t)(D.slotCount * sizeof *placed);
-    out[2] = casters;
-    outSize[2] = (uint32_t)(D.slotCount * WL_CASCADES * sizeof *casters);
-    gpu_dispatch(g_transformPass, in, inSize, 2, out, outSize, 3, &u, sizeof u, (uint32_t)(D.slotCount + 63) / 64, 1);
+    gpu_dispatch(g_transformPass, in, inSize, 2, out, outSize, 2, &u, sizeof u, (uint32_t)(D.slotCount + 63) / 64, 1);
     for (s = 0; s < D.slotCount; s++) {
         float toView[16], toClip[16];
 
@@ -2379,7 +2243,7 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
     }
     for (i = 0; i < g_drawCount; i++) {
         const struct DeviceDraw *d = &g_draws[i];
-        const struct Source *src = d->cascade < 0 ? mesh_source(map, d->mesh) : NULL;
+        const struct Source *src = mesh_source(map, d->mesh);
         long rec = src ? record_at(map, src->place.firstIndex + (uint32_t)d->draw.first) : -1;
         float toView[16], toClip[16];
 
@@ -2397,64 +2261,127 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
     return placed;
 }
 
-/* The cull and the compaction as the device runs them (render/gfx_gpu.c, world_compute), their
-   dispatches split as wl_groups splits them, or into rows of `across` groups where it is not 0: the
-   kept records' places, the runs' commands and the indices drawn. */
-static void gpu_compact(const struct WlCullRecord *cull, size_t records, float (*placed)[12], const struct WlRun *runs,
-                        size_t m, const uint32_t *indices, const struct WlChunk *chunks, size_t nchunks,
-                        uint32_t drawnIndices, uint32_t across, uint32_t *places, uint32_t *commands, uint32_t *drawn)
+/* What the cull and the compaction read for the map's records, packed as the device packs them
+   (render/gfx_gpu.c, gfx_world_records): the words of the records, the view's runs, the casters'
+   runs, their order and the chunks, laid out as `cull` says; the draws' layout; and the indices of
+   a section. */
+struct CullData {
+    uint32_t *words;
+    size_t wordCapacity;
+    struct WlCullLayout cull;
+    struct WlDrawLayout draws;
+    struct WlRun *runs, *casters;
+    size_t m, ncasters;
+    uint32_t *order;
+    size_t held;
+    struct WlChunk *chunks;
+    size_t nchunks;
+    uint32_t section;
+};
+
+/* the shadow fit's result as the cull reads it (src/render/shaders/cascades.hlsli): only the boxes
+   are read, the rest is there for their place */
+
+static void cull_data(struct Map *map, struct CullData *cd)
 {
+    static struct WlRecord *byId;
+    static struct WlCullRecord *cull;
+    static struct SwDrawRun *runs;
+    static size_t capacity, idCapacity, chunkCapacity;
+    uint32_t viewIndices, casterIndices;
+    size_t nruns;
+
+    if (capacity < map->recordCount + 1) {
+        capacity = map->recordCount + 1;
+        cull = realloc(cull, capacity * sizeof *cull);
+        runs = realloc(runs, capacity * sizeof *runs);
+        cd->runs = realloc(cd->runs, capacity * sizeof *cd->runs);
+        cd->casters = realloc(cd->casters, capacity * sizeof *cd->casters);
+        cd->order = realloc(cd->order, capacity * sizeof *cd->order);
+        if (!cull || !runs || !cd->runs || !cd->casters || !cd->order)
+            abort();
+    }
+    byId = grow(byId, &idCapacity, D.idCount + 1, sizeof *byId);
+    wl_records(map->records, map->recordCount, byId, cull);
+    nruns = sw_draw_runs(map->records, map->recordCount, runs);
+    cd->m = wl_runs(runs, nruns, cd->runs, &viewIndices);
+    cd->ncasters = wl_caster_runs(map->records, map->recordCount, cd->order, &cd->held, cd->casters, &casterIndices);
+    cd->nchunks = wl_chunks(map->records, map->recordCount, NULL);
+    cd->chunks = grow(cd->chunks, &chunkCapacity, cd->nchunks + 1, sizeof *cd->chunks);
+    if (wl_chunks(map->records, map->recordCount, cd->chunks) != cd->nchunks)
+        FAIL("%s: the chunks counted are not the chunks written", map->name);
+    if (cd->m != nruns || cd->held != map->recordCount || viewIndices != casterIndices)
+        FAIL("%s: runs or casters left out (%zu of %zu runs, %zu of %zu records)", map->name, cd->m, nruns, cd->held,
+             map->recordCount);
+    cd->section = viewIndices > casterIndices ? viewIndices : casterIndices;
+    wl_cull_layout(map->recordCount, cd->m, cd->ncasters, cd->held, cd->nchunks, &cd->cull);
+    wl_draw_layout(map->recordCount, cd->m, cd->ncasters, &cd->draws);
+    cd->words = grow(cd->words, &cd->wordCapacity, cd->cull.words + 1, sizeof *cd->words);
+    memcpy(cd->words, cull, map->recordCount * sizeof *cull);
+    memcpy(cd->words + cd->cull.runs, cd->runs, cd->m * sizeof *cd->runs);
+    memcpy(cd->words + cd->cull.casterRuns, cd->casters, cd->ncasters * sizeof *cd->casters);
+    memcpy(cd->words + cd->cull.order, cd->order, cd->held * sizeof *cd->order);
+    memcpy(cd->words + cd->cull.chunks, cd->chunks, cd->nchunks * sizeof *cd->chunks);
+}
+
+/* The cull and the compaction as the device runs them (render/gfx_gpu.c, world_compute and
+   caster_cull), of the view (boxes NULL) or of the cascades' boxes, their dispatches split as
+   wl_groups splits them, or into rows of `across` groups where it is not 0: the draws' words (the
+   commands and the places) and the indices drawn in every section. */
+static void gpu_compact(const struct CullData *cd, size_t records, float (*placed)[12], const uint32_t *indices,
+                        const struct ShadowFitGpuCascades *boxes, uint32_t across, uint32_t *draws, uint32_t *drawn)
+{
+    static const struct ShadowFitGpuCascades none;
     struct WlCullFrame u;
     struct WlCompactFrame c;
-    const void *in[4];
-    void *out[2];
-    uint32_t inSize[4], outSize[2], groups[2];
+    const void *in[3];
+    void *out[1];
+    uint32_t inSize[3], outSize[1], groups[2], runs = boxes ? (uint32_t)cd->ncasters : (uint32_t)cd->m;
+    uint32_t views = boxes ? WL_CASCADES : 1;
 
-    wl_cull_frame(&D.frustum, (uint32_t)m, &u, groups);
+    wl_cull_frame(boxes ? NULL : &D.frustum, runs, &cd->cull, &cd->draws, cd->m, (uint32_t)records, cd->section, &u,
+                  groups);
     if (across) {
         u.counts[1] = groups[0] = across;
-        groups[1] = (uint32_t)((m + across - 1) / across);
+        groups[1] = (runs * views + across - 1) / across;
     }
-    in[0] = cull;
-    inSize[0] = (uint32_t)(records * sizeof *cull);
+    in[0] = cd->words;
+    inSize[0] = cd->cull.words * 4;
     in[1] = placed;
     inSize[1] = (uint32_t)(D.slotCount * sizeof *placed);
-    in[2] = runs;
-    inSize[2] = (uint32_t)(m * sizeof *runs);
-    out[0] = places;
-    outSize[0] = (uint32_t)(records * sizeof *places);
-    out[1] = commands;
-    outSize[1] = (uint32_t)(m * 5 * sizeof *commands);
-    gpu_dispatch(g_cullPass, in, inSize, 3, out, outSize, 2, &u, sizeof u, groups[0], groups[1]);
-    wl_compact_frame((uint32_t)nchunks, &c, groups);
+    in[2] = boxes ? boxes : &none;
+    inSize[2] = sizeof none;
+    out[0] = draws;
+    outSize[0] = cd->draws.words * 4;
+    gpu_dispatch(g_cullPass, in, inSize, 3, out, outSize, 1, &u, sizeof u, groups[0], groups[1]);
+    wl_compact_frame((uint32_t)cd->nchunks, boxes ? 1 : 0, views, &cd->cull, &cd->draws, (uint32_t)records, &c, groups);
     if (!groups[0])
         return;
     if (across) {
         c.counts[1] = groups[0] = across;
-        groups[1] = (uint32_t)((nchunks + across - 1) / across);
+        groups[1] = ((uint32_t)cd->nchunks * views + across - 1) / across;
     }
-    in[1] = places;
-    inSize[1] = (uint32_t)(records * sizeof *places);
+    in[1] = draws;
+    inSize[1] = cd->draws.words * 4;
     in[2] = indices;
     inSize[2] = (uint32_t)(D.indexCount * sizeof *indices);
-    in[3] = chunks;
-    inSize[3] = (uint32_t)(nchunks * sizeof *chunks);
     out[0] = drawn;
-    outSize[0] = (drawnIndices ? drawnIndices : 1) * (uint32_t)sizeof *drawn;
-    gpu_dispatch(g_compactPass, in, inSize, 4, out, outSize, 1, &c, sizeof c, groups[0], groups[1]);
+    outSize[0] = (cd->section ? cd->section : 1) * WL_SECTIONS * (uint32_t)sizeof *drawn;
+    gpu_dispatch(g_compactPass, in, inSize, 3, out, outSize, 1, &c, sizeof c, groups[0], groups[1]);
 }
 
-/* The GPU's time for the cull and the compaction of a view as the device runs them each frame: 100
-   of them in one command buffer, less the time an empty one takes, the least of 5 tries of each,
-   in milliseconds a view. */
-static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, float (*placed)[12],
-                            const struct WlRun *runs, size_t m, const uint32_t *indices, const struct WlChunk *chunks,
-                            size_t nchunks, uint32_t drawnIndices)
+/* The GPU's time for the cull and the compaction of the view (boxes NULL) or of the cascades as the
+   device runs them each frame: 100 of them in one command buffer, less the time an empty one takes,
+   the least of 5 tries of each, in milliseconds a frame. */
+static double gpu_cull_time(const struct CullData *cd, size_t records, float (*placed)[12], const uint32_t *indices,
+                            const struct ShadowFitGpuCascades *boxes, double *cullMs)
 {
     enum { REPS = 100, TRIES = 5 };
-    const void *in[5];
-    uint32_t inSize[5], outSize[3], groups[2][2], at = 0, total = 0;
-    SDL_GPUBuffer *inBuf[5], *outBuf[3];
+    static const struct ShadowFitGpuCascades none;
+    const void *in[4];
+    uint32_t inSize[4], outSize[2], groups[2][2], at = 0, total = 0;
+    uint32_t runs = boxes ? (uint32_t)cd->ncasters : (uint32_t)cd->m, views = boxes ? WL_CASCADES : 1;
+    SDL_GPUBuffer *inBuf[4], *outBuf[2];
     SDL_GPUTransferBufferCreateInfo ti;
     SDL_GPUBufferCreateInfo bi;
     SDL_GPUTransferBuffer *up;
@@ -2464,39 +2391,38 @@ static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, flo
     struct WlCullFrame u;
     struct WlCompactFrame c;
     unsigned char *bytes;
-    int64_t took[2] = { INT64_MAX, INT64_MAX };
+    int64_t took[3] = { INT64_MAX, INT64_MAX, INT64_MAX };
     int i, r, n, t;
 
-    in[0] = cull;
-    inSize[0] = (uint32_t)(records * sizeof *cull);
+    in[0] = cd->words;
+    inSize[0] = cd->cull.words * 4;
     in[1] = placed;
     inSize[1] = (uint32_t)(D.slotCount * sizeof *placed);
-    in[2] = runs;
-    inSize[2] = (uint32_t)(m * sizeof *runs);
+    in[2] = boxes ? boxes : &none;
+    inSize[2] = sizeof none;
     in[3] = indices;
     inSize[3] = (uint32_t)(D.indexCount * sizeof *indices);
-    in[4] = chunks;
-    inSize[4] = (uint32_t)((nchunks ? nchunks : 1) * sizeof *chunks);
-    wl_cull_frame(&D.frustum, (uint32_t)m, &u, groups[0]);
-    wl_compact_frame((uint32_t)nchunks, &c, groups[1]);
-    outSize[0] = (uint32_t)(records * 4);
-    outSize[1] = (uint32_t)(m * 5 * 4);
-    outSize[2] = (drawnIndices ? drawnIndices : 1) * 4;
-    for (i = 0; i < 5; i++)
+    wl_cull_frame(boxes ? NULL : &D.frustum, runs, &cd->cull, &cd->draws, cd->m, (uint32_t)records, cd->section, &u,
+                  groups[0]);
+    wl_compact_frame((uint32_t)cd->nchunks, boxes ? 1 : 0, views, &cd->cull, &cd->draws, (uint32_t)records, &c,
+                     groups[1]);
+    outSize[0] = cd->draws.words * 4;
+    outSize[1] = (cd->section ? cd->section : 1) * WL_SECTIONS * 4;
+    for (i = 0; i < 4; i++)
         total += (inSize[i] + 15) & ~15u;
     SDL_zero(ti);
     ti.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
     ti.size = total;
     up = SDL_CreateGPUTransferBuffer(g_dev, &ti);
     SDL_zero(bi);
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 4; i++) {
         bi.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ;
         bi.size = inSize[i];
         inBuf[i] = SDL_CreateGPUBuffer(g_dev, &bi);
         if (!inBuf[i])
             abort();
     }
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 2; i++) {
         bi.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE;
         bi.size = outSize[i];
         outBuf[i] = SDL_CreateGPUBuffer(g_dev, &bi);
@@ -2505,7 +2431,7 @@ static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, flo
     }
     if (!up || !(bytes = SDL_MapGPUTransferBuffer(g_dev, up, false)))
         abort();
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 4; i++) {
         if (in[i] && inSize[i])
             memcpy(bytes + at, in[i], inSize[i]);
         at += (inSize[i] + 15) & ~15u;
@@ -2513,7 +2439,7 @@ static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, flo
     SDL_UnmapGPUTransferBuffer(g_dev, up);
     cmd = SDL_AcquireGPUCommandBuffer(g_dev);
     copy = SDL_BeginGPUCopyPass(cmd);
-    for (i = 0, at = 0; i < 5; i++) {
+    for (i = 0, at = 0; i < 4; i++) {
         SDL_GPUTransferBufferLocation src;
         SDL_GPUBufferRegion dst;
 
@@ -2529,22 +2455,20 @@ static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, flo
     fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
     SDL_WaitForGPUFences(g_dev, true, &fence, 1);
     SDL_ReleaseGPUFence(g_dev, fence);
-    /* an empty command buffer, then one of the passes, by turns */
-    for (t = 0; t < 2 * TRIES; t++) {
+    /* an empty command buffer, the cull alone, then the cull and the compaction, by turns */
+    for (t = 0; t < 3 * TRIES; t++) {
         int64_t start, ns;
 
-        r = t & 1;
-
+        r = t % 3;
         cmd = SDL_AcquireGPUCommandBuffer(g_dev);
         for (n = 0; r && n < REPS; n++) {
-            SDL_GPUStorageBufferReadWriteBinding rw[2];
-            SDL_GPUBuffer *read[4];
+            SDL_GPUStorageBufferReadWriteBinding rw;
+            SDL_GPUBuffer *read[3];
             SDL_GPUComputePass *pass;
 
             SDL_zero(rw);
-            rw[0].buffer = outBuf[0];
-            rw[1].buffer = outBuf[1];
-            pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
+            rw.buffer = outBuf[0];
+            pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
             SDL_BindGPUComputePipeline(pass, g_cullPass);
             read[0] = inBuf[0];
             read[1] = inBuf[1];
@@ -2553,15 +2477,14 @@ static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, flo
             SDL_PushGPUComputeUniformData(cmd, 0, &u, sizeof u);
             SDL_DispatchGPUCompute(pass, groups[0][0], groups[0][1], 1);
             SDL_EndGPUComputePass(pass);
-            if (!groups[1][0])
+            if (r == 1 || !groups[1][0])
                 continue;
-            rw[0].buffer = outBuf[2];
-            pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
+            rw.buffer = outBuf[1];
+            pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
             SDL_BindGPUComputePipeline(pass, g_compactPass);
             read[1] = outBuf[0];
             read[2] = inBuf[3];
-            read[3] = inBuf[4];
-            SDL_BindGPUComputeStorageBuffers(pass, 0, read, 4);
+            SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
             SDL_PushGPUComputeUniformData(cmd, 0, &c, sizeof c);
             SDL_DispatchGPUCompute(pass, groups[1][0], groups[1][1], 1);
             SDL_EndGPUComputePass(pass);
@@ -2573,107 +2496,153 @@ static double gpu_cull_time(const struct WlCullRecord *cull, size_t records, flo
         took[r] = ns < took[r] ? ns : took[r];
         SDL_ReleaseGPUFence(g_dev, fence);
     }
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < 4; i++)
         SDL_ReleaseGPUBuffer(g_dev, inBuf[i]);
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 2; i++)
         SDL_ReleaseGPUBuffer(g_dev, outBuf[i]);
     SDL_ReleaseGPUTransferBuffer(g_dev, up);
-    return (double)(took[1] - took[0]) / REPS / 1e6;
+    *cullMs = (double)(took[1] - took[0]) / REPS / 1e6;
+    return (double)(took[2] - took[0]) / REPS / 1e6;
 }
 
-/* The view's cull, packed as the device packs it (render/world_layout.h): each run of the passes
-   drawn indirectly holds exactly the indices of the records sw_record_in_view keeps, their base
-   vertex added, one after the other in the records' order, and its command draws them; and so it
-   does with the dispatches split into rows of 3 and of 7 groups. */
-static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt)
+/* One run's command and indices, its records `rec` (count of them, the record's place in draw order
+   each, the kept ones keep[rec] != 0): the kept records' indices, base vertex added, one after the
+   other in the run's order from `start`, and a command that draws them. Answers whether they are. */
+static int run_drawn(const struct Map *map, const uint32_t *recs, uint32_t count, const unsigned char *keep,
+                     uint32_t start, const uint32_t *command, const uint32_t *drawn)
 {
-    static struct WlRecord *byId;
-    static struct WlCullRecord *cull;
-    static struct SwDrawRun *runs;
-    static struct WlRun *wlruns;
-    static uint32_t *indices, *places, *commands, *drawn, *places2, *commands2, *drawn2;
-    static struct WlChunk *chunks;
-    static size_t capacity, idCapacity, indexCapacity, drawnCapacity, chunkCapacity;
-    uint32_t total, k, records;
-    size_t i, nruns, m, nchunks;
-    int split;
+    uint32_t at = start, i, k;
 
-    if (capacity < map->recordCount + 1) {
-        capacity = map->recordCount + 1;
-        cull = realloc(cull, capacity * sizeof *cull);
-        runs = realloc(runs, capacity * sizeof *runs);
-        wlruns = realloc(wlruns, capacity * sizeof *wlruns);
-        places = realloc(places, capacity * sizeof *places);
-        places2 = realloc(places2, capacity * sizeof *places2);
-        commands = realloc(commands, capacity * 5 * sizeof *commands);
-        commands2 = realloc(commands2, capacity * 5 * sizeof *commands2);
-        if (!cull || !runs || !wlruns || !places || !places2 || !commands || !commands2)
-            abort();
+    for (i = 0; i < count; i++) {
+        const struct SwRecord *x = &map->records[recs[i]];
+
+        if (!keep[recs[i]])
+            continue;
+        for (k = 0; k < x->indexCount; k++)
+            if (drawn[at + k] != D.indices[x->firstIndex + k] + x->baseVertex)
+                return 0;
+        at += x->indexCount;
     }
-    byId = grow(byId, &idCapacity, D.idCount + 1, sizeof *byId);
-    indices = grow(indices, &indexCapacity, D.indexCount + 1, sizeof *indices);
-    wl_records(map->records, map->recordCount, byId, cull);
-    nruns = sw_draw_runs(map->records, map->recordCount, runs);
-    m = wl_runs(runs, nruns, wlruns, &total);
-    if (!m)
+    return command[0] == at - start && command[1] == 1 && command[2] == start && command[3] == 0 && command[4] == 0;
+}
+
+/* The cull, packed as the device packs it (render/world_layout.h): each of the view's runs holds
+   exactly the indices of the records sw_record_in_view keeps, their base vertex added, one after
+   the other in the records' order, and its command draws them; with the cascades' boxes, each
+   casters' run of each cascade those of the records sw_cull_cascade keeps, in its order, in the
+   cascade's section; and so it does with the dispatches split into rows of 3 and of 7 groups. */
+static void gpu_cull(struct Map *map, float (*placed)[12], const int *keptAt, const struct SwCascade *cascades)
+{
+    static struct CullData cd;
+    static uint32_t *indices, *draws, *drawn, *draws2, *drawn2, *recs, *cast;
+    static unsigned char *keep;
+    static size_t indexCapacity, drawsCapacity, drawnCapacity, recCapacity;
+    static struct ShadowFitGpuCascades boxes;
+    size_t i, records = map->recordCount, k;
+    int split, c, kind;
+
+    if (!records)
         return;
-    records = wlruns[m - 1].first + wlruns[m - 1].count;
-    if (drawnCapacity < (size_t)total + 1) {
-        drawnCapacity = (size_t)total + 1;
-        drawn = realloc(drawn, drawnCapacity * sizeof *drawn);
-        drawn2 = realloc(drawn2, drawnCapacity * sizeof *drawn2);
-        if (!drawn || !drawn2)
-            abort();
-    }
+    cull_data(map, &cd);
+    indices = grow(indices, &indexCapacity, D.indexCount + 1, sizeof *indices);
     for (i = 0; i < D.indexCount; i++)
         indices[i] = D.indices[i];
-    nchunks = wl_chunks(map->records, records, NULL);
-    chunks = grow(chunks, &chunkCapacity, nchunks + 1, sizeof *chunks);
-    if (wl_chunks(map->records, records, chunks) != nchunks)
-        FAIL("%s: the chunks counted are not the chunks written", map->name);
-    gpu_compact(cull, records, placed, wlruns, m, indices, chunks, nchunks, total, 0, places, commands, drawn);
-    if (g_cullTimeDue) {
-        g_cullTimeDue = 0;
-        printf("%s: the GPU's cull and compaction of the first view: %.3f ms (%zu runs, %u records, %zu chunks)\n",
-               map->name, gpu_cull_time(cull, records, placed, wlruns, m, indices, chunks, nchunks, total), m, records,
-               nchunks);
+    draws = grow(draws, &drawsCapacity, cd.draws.words + 1, sizeof *draws);
+    draws2 = realloc(draws2, drawsCapacity * sizeof *draws2);
+    if (drawnCapacity < (size_t)cd.section * WL_SECTIONS + 1) {
+        drawnCapacity = (size_t)cd.section * WL_SECTIONS + 1;
+        drawn = realloc(drawn, drawnCapacity * sizeof *drawn);
+        drawn2 = realloc(drawn2, drawnCapacity * sizeof *drawn2);
     }
-    for (i = 0; i < m; i++) {
-        const struct WlRun *r = &wlruns[i];
-        const uint32_t *c = &commands[i * 5];
-        uint32_t at = r->start, rec;
-        int differs = 0;
+    if (recCapacity < records + 1) {
+        recCapacity = records + 1;
+        recs = realloc(recs, recCapacity * sizeof *recs);
+        cast = realloc(cast, recCapacity * sizeof *cast);
+        keep = realloc(keep, recCapacity);
+    }
+    if (!draws2 || !drawn || !drawn2 || !recs || !cast || !keep)
+        abort();
+    for (c = 0; cascades && c < GFX_SHADOW_CASCADES; c++) {
+        struct SwFrustum box;
+        int p;
 
-        g_gpuStats.runs++;
-        for (rec = r->first; rec < r->first + r->count; rec++) {
-            const struct SwRecord *x = &map->records[rec];
+        sw_cascade_planes(&cascades[c], &box);
+        for (p = 0; p < 6; p++)
+            memcpy(boxes.planes[c * 6 + p], box.plane[p], sizeof boxes.planes[0]);
+    }
+    for (kind = 0; kind < (cascades ? 2 : 1); kind++) {
+        const struct ShadowFitGpuCascades *b = kind ? &boxes : NULL;
 
-            g_gpuStats.records++;
-            if (keptAt[rec] < 0)
-                continue;
-            g_gpuStats.kept++;
-            for (k = 0; k < x->indexCount && !differs; k++)
-                differs = drawn[at + k] != D.indices[x->firstIndex + k] + x->baseVertex;
-            at += x->indexCount;
+        gpu_compact(&cd, records, placed, indices, b, 0, draws, drawn);
+        if (g_cullTimeDue) {
+            double cullMs, ms = gpu_cull_time(&cd, records, placed, indices, b, &cullMs);
+
+            printf("%s: the GPU's cull and compaction of the first %s: %.3f ms, the cull %.3f (%zu runs, %zu records, "
+                   "%zu chunks)\n",
+                   map->name, kind ? "frame's cascades" : "view", ms, cullMs, kind ? cd.ncasters * WL_CASCADES : cd.m,
+                   records, cd.nchunks);
         }
-        if (differs || c[0] != at - r->start || c[1] != 1 || c[2] != r->start || c[3] != 0 || c[4] != 0) {
-            if (g_gpuStats.runsDiffer++ < 5)
-                FAIL("%s: the GPU's cull of run %zu (pass %d) is not sw_record_in_view's (%u indices, the C %u)",
-                     map->name, i, runs[i].pass, c[0], at - r->start);
+        if (!kind) {
+            for (i = 0; i < records; i++)
+                keep[i] = keptAt[i] >= 0;
+            for (i = 0; i < cd.m; i++) {
+                const struct WlRun *r = &cd.runs[i];
+
+                for (k = 0; k < r->count; k++)
+                    recs[k] = r->first + (uint32_t)k;
+                g_gpuStats.runs++;
+                g_gpuStats.records += r->count;
+                for (k = 0; k < r->count; k++)
+                    g_gpuStats.kept += keep[r->first + k];
+                if (!run_drawn(map, recs, r->count, keep, r->start, &draws[wl_view_command((uint32_t)i) * 5], drawn)
+                    && g_gpuStats.runsDiffer++ < 5)
+                    FAIL("%s: the GPU's cull of the view's run %zu is not sw_record_in_view's", map->name, i);
+            }
+        } else {
+            for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
+                size_t n = sw_cull_cascade(map->records, records, (const float (*)[12])map->transforms, &cascades[c],
+                                           cast);
+
+                memset(keep, 0, records);
+                for (i = 0; i < n; i++)
+                    keep[cast[i]] = 1;
+                for (i = 0; i < cd.ncasters; i++) {
+                    const struct WlRun *r = &cd.casters[i];
+
+                    g_gpuStats.casterRuns++;
+                    for (k = 0; k < r->count; k++)
+                        g_gpuStats.casterKept += keep[cd.order[r->first + k]];
+                    if (!run_drawn(map, cd.order + r->first, r->count, keep, (uint32_t)(c + 1) * cd.section + r->start,
+                                   &draws[wl_caster_command(cd.m, cd.ncasters, c, (uint32_t)i) * 5], drawn)
+                        && g_gpuStats.runsDiffer++ < 5)
+                        FAIL("%s: the GPU's cull of cascade %d's casters' run %zu is not sw_cull_cascade's", map->name, c,
+                             i);
+                }
+            }
+        }
+        /* the same, both dispatches split into rows of 3 groups, then of 7 */
+        for (split = 0; split < 2; split++) {
+            uint32_t first = kind ? 1u : 0u, sections = kind ? WL_CASCADES : 1u;
+            int same;
+
+            gpu_compact(&cd, records, placed, indices, b, split ? 7 : 3, draws2, drawn2);
+            same = !memcmp(draws + cd.draws.places + first * records, draws2 + cd.draws.places + first * records,
+                           sections * records * sizeof *draws);
+            for (i = 0; i < (kind ? cd.ncasters * WL_CASCADES : cd.m) && same; i++) {
+                uint32_t command = kind ? wl_caster_command(cd.m, cd.ncasters, (int)(i / cd.ncasters),
+                                                            (uint32_t)(i % cd.ncasters))
+                                        : wl_view_command((uint32_t)i);
+
+                same = !memcmp(&draws[command * 5], &draws2[command * 5], 5 * sizeof *draws)
+                       && !memcmp(&drawn[draws[command * 5 + 2]], &drawn2[draws[command * 5 + 2]],
+                                  draws[command * 5] * sizeof *drawn);
+            }
+            if (!same && g_gpuStats.runsDiffer++ < 5)
+                FAIL("%s: the GPU's cull split into rows of %d groups is not the one dispatch's", map->name,
+                     split ? 7 : 3);
         }
     }
-    /* the same, both dispatches split into rows of 3 groups, then of 7 */
-    for (split = 0; split < 2; split++) {
-        int same;
-
-        gpu_compact(cull, records, placed, wlruns, m, indices, chunks, nchunks, total, split ? 7 : 3, places2, commands2,
-                    drawn2);
-        same = !memcmp(places, places2, records * sizeof *places) && !memcmp(commands, commands2, m * 5 * sizeof *commands);
-        for (i = 0; i < m && same; i++)
-            same = !memcmp(&drawn[wlruns[i].start], &drawn2[wlruns[i].start], commands[i * 5] * sizeof *drawn);
-        if (!same && g_gpuStats.runsDiffer++ < 5)
-            FAIL("%s: the GPU's cull split into rows of %d groups is not the one dispatch's", map->name, split ? 7 : 3);
-    }
+    g_cullTimeDue = 0;
 }
 
 /* the water's quads over every cell of the map: the reference's to the bit */
@@ -2825,14 +2794,13 @@ struct Stats {
     size_t todayOnly, todayOnlySeen;
     size_t keptOnly, keptOnlySeen, keptOnlySeenLeaf, keptOnlySeenBox, keptOnlySeenGround;
     double keptOnlyMostArea;
-    size_t casts, castKept, castBoth, castTodayOnly, castTodayOnlyTouching, castKeptOnly, castKeptOnlyTouching;
-    size_t castKeptOnlyTouchingGround;
-    double castKeptOnlyMostArea;
-    size_t keptOnlySeenAnimated, castKeptOnlyTouchingAnimated, pairsBoth, pairsFlipped, exactFlipped;
+    size_t castKept[GFX_SHADOW_CASCADES];
+    size_t keptOnlySeenAnimated, pairsBoth, pairsFlipped, exactFlipped;
     size_t sequenceDiffers, tieOrder, alphaOrdered;
     size_t mismatches, viewsDiffer;
-    size_t clientCasts, clientAlpha, clientAlphaKeyed, clientAlphaOnly, clientWater, referenceWater;
-    size_t untickedMoving, tickedByView;
+    size_t clientAlpha, clientAlphaKeyed, clientAlphaOnly, clientWater, referenceWater;
+    size_t untickedMoving, untickedCasting, tickedByView, tickedByShadow, inLight, outOfLight;
+    double lightRoom;
 };
 
 static int device_pass(const struct DeviceDraw *d)
@@ -2946,19 +2914,6 @@ static void leaves_hold(const struct SceneGraphNode *node, int level, const stru
 #define MAX_DRAWS (1u << 20)
 static uint32_t g_out[MAX_DRAWS], g_cast[MAX_DRAWS];
 
-struct Range {
-    uint32_t first, count;
-};
-
-static int by_range(const void *a, const void *b)
-{
-    const struct Range *x = a, *y = b;
-
-    if (x->first != y->first)
-        return x->first < y->first ? -1 : 1;
-    return (x->count > y->count) - (x->count < y->count);
-}
-
 /* render/crenderer.c's keyed_less on the client's entries: the order an alpha list draws in */
 static unsigned char client_keyed_less(const void *a, const void *b, void *pred)
 {
@@ -2971,51 +2926,20 @@ static unsigned char client_keyed_less(const void *a, const void *b, void *pred)
     return x->order < y->order;
 }
 
-/* the casters, the alpha-blended records and the water the client's view_on_render queued, against
-   the reference's and the records' cull: the casters in the reference's order, the alpha-blended
-   records in the order the renderer draws them, that of the reference's draws to the entry */
+/* the alpha-blended records and the water the client's view_on_render queued, against the
+   reference's and the records' cull: the alpha-blended records in the order the renderer draws
+   them, that of the reference's draws to the entry */
 static void client_queues(struct Map *map, struct Stats *st, const int *keptAt, const struct DeviceDraw **drawOf)
 {
-    static struct Range *client, *reference;
-    static size_t clientCapacity, referenceCapacity;
     static struct RenderEntry *sorted;
     static size_t sortedCapacity;
     static long *mine, *theirs;
     static size_t mineCapacity, theirsCapacity;
     static float *waterKeys;
     static size_t waterCapacity;
-    const struct RenderQueue *q = &g_renderer->queues[RENDER_SHADOW_CASTERS];
-    size_t n = 0, m = 0, i, alpha = 0;
+    const struct RenderQueue *q;
+    size_t i, alpha = 0;
     int list;
-
-    /* the casters: every reference caster, a record's run or a block, once, in its order */
-    for (i = 0; i < q->count; i++) {
-        const struct RPWorldDraw *w = q->items[i].primitive;
-
-        if (!q->items[i].world || w->kind != RP_WORLD_CAST)
-            continue;
-        client = grow(client, &clientCapacity, n + 1, sizeof *client);
-        client[n].first = w->firstIndex;
-        client[n].count = w->count;
-        n++;
-    }
-    for (i = 0; i < g_drawCount; i++) {
-        const struct DeviceDraw *d = &g_draws[i];
-        const struct Source *s;
-
-        if (d->cascade < 0)
-            continue;
-        s = mesh_source(map, d->mesh);
-        if (!s)
-            continue;
-        reference = grow(reference, &referenceCapacity, m + 1, sizeof *reference);
-        reference[m].first = s->place.firstIndex + (uint32_t)d->draw.first;
-        reference[m].count = (uint32_t)d->draw.count;
-        m++;
-    }
-    st->clientCasts += n;
-    if (n != m || (n && memcmp(client, reference, n * sizeof *client)))
-        FAIL("%s: the client queues %zu casters, the reference %zu, not the same in the same order", map->name, n, m);
 
     /* the alpha-blended records: those the records' cull keeps, keyed to the bit as the reference
        keyed its draws, and drawn in the reference's order where it drew them, ties too */
@@ -3062,7 +2986,7 @@ static void client_queues(struct Map *map, struct Stats *st, const int *keptAt, 
             const struct Source *s;
             long rec;
 
-            if (d->cascade >= 0 || d->phase != phases[list] || device_pass(d) != pass)
+            if (d->phase != phases[list] || device_pass(d) != pass)
                 continue;
             s = mesh_source(map, d->mesh);
             rec = s ? record_at(map, s->place.firstIndex + (uint32_t)d->draw.first) : -1;
@@ -3131,11 +3055,15 @@ static void transforms_now(const struct Map *map, float (*out)[12])
 }
 
 /* The models that animate (an animated slot or a turning texture) with a record the view keeps as
-   they stand now, before the frame's ticks: marked (slot 3) with the frame. */
+   they stand now, before the frame's ticks: marked (slot 3) with the frame; and those with a record
+   in the box whatever can shade the view lies in (render/renderer.h, renderer_shadow_reach), as the
+   cascades' cull would keep it: marked (slot 5). */
 static void mark_moving_in_view(struct Map *map)
 {
     static float (*now)[12];
     static size_t capacity;
+    struct SwFrustum reach;
+    int shadows = renderer_shadow_reach(g_renderer, &reach);
     size_t i;
 
     now = grow(now, &capacity, D.slotCount + 1, sizeof *now);
@@ -3154,6 +3082,9 @@ static void mark_moving_in_view(struct Map *map)
 
         if (a && *mark(a, 4) == g_tickFrame && sw_record_in_view(&map->records[i], (const float (*)[12])now, &D.frustum))
             *mark(a, 3) = g_tickFrame;
+        if (a && *mark(a, 4) == g_tickFrame && shadows
+            && sw_record_in_view(&map->records[i], (const float (*)[12])now, &reach))
+            *mark(a, 5) = g_tickFrame;
     }
 }
 
@@ -3161,7 +3092,7 @@ static void pose_models(int pose);
 
 static void run_pose(struct Map *map, struct Stats *st, struct View *view, int pose)
 {
-    static int *todayAt, *keptAt, *castToday, *castKept;
+    static int *todayAt, *keptAt;
     static size_t capacity;
     static uint32_t *seq[SW_PASS_COUNT];
     static size_t seqCount[SW_PASS_COUNT], seqCapacity;
@@ -3176,10 +3107,8 @@ static void run_pose(struct Map *map, struct Stats *st, struct View *view, int p
         capacity = map->recordCount;
         todayAt = realloc(todayAt, capacity * sizeof(int));
         keptAt = realloc(keptAt, capacity * sizeof(int));
-        castToday = realloc(castToday, capacity * sizeof(int));
-        castKept = realloc(castKept, capacity * sizeof(int));
         drawOf = realloc((void *)drawOf, capacity * sizeof *drawOf);
-        if (!todayAt || !keptAt || !castToday || !castKept || !drawOf)
+        if (!todayAt || !keptAt || !drawOf)
             abort();
     }
     if (seqCapacity < map->recordCount) {
@@ -3190,27 +3119,40 @@ static void run_pose(struct Map *map, struct Stats *st, struct View *view, int p
     }
     for (i = 0; i < map->recordCount; i++) {
         todayAt[i] = keptAt[i] = -1;
-        castToday[i] = 0;
         drawOf[i] = NULL;
     }
     memset(seqCount, 0, sizeof seqCount);
 
     /* the client's frame: view_on_render ticks the models it reaches and the ones whose moving part
-       the view holds, queues the casters, the water and the alpha-blended records and gives the
-       device the frame (gfx_world_frame) */
+       the view holds or whose shadow can fall into it, queues the water and the alpha-blended
+       records and gives the device the frame (gfx_world_frame) */
     pose_models(pose);
     g_tickFrame++;
     g_logTicks = 1;
     r->frame++;
     view_on_render(view);
     g_logTicks = 0;
-    if (r->shadowPending) {
-        cascadeCount = r->shadow.cascades;
+    /* four cascades' boxes along the frame's light, each a square about the middle of the view's
+       reach for casters, the last as wide as the reach, the smaller nested in it as the GPU's fit
+       nests them about the near slices: the boxes the GPU's cull takes its casters with */
+    if (r->shadowSet) {
+        static const float scale[GFX_SHADOW_CASCADES] = {0.125f, 0.25f, 0.5f, 1.0f};
+        const struct ShadowFitFrame *f = &r->shadow.fit;
+
+        cascadeCount = GFX_SHADOW_CASCADES;
         for (c = 0; c < cascadeCount; c++) {
-            memcpy(cascades[c].axis, r->shadowReach.axis, sizeof cascades[c].axis);
-            memcpy(cascades[c].lo, r->shadowReach.lo[c], sizeof cascades[c].lo);
-            memcpy(cascades[c].hi, r->shadowReach.hi[c], sizeof cascades[c].hi);
-            memcpy(cascades[c].depth, r->shadowReach.depth, sizeof cascades[c].depth);
+            int a;
+
+            memcpy(cascades[c].axis, f->axis, sizeof cascades[c].axis);
+            for (a = 0; a < 2; a++) {
+                float mid = (r->shadowReach.lo[a] + r->shadowReach.hi[a]) * 0.5f;
+                float half = (r->shadowReach.hi[a] - r->shadowReach.lo[a]) * 0.5f * scale[c];
+
+                cascades[c].lo[a] = mid - half;
+                cascades[c].hi[a] = mid + half;
+            }
+            cascades[c].depth[0] = f->lightNear;
+            cascades[c].depth[1] = f->lightNear + f->lightRange;
         }
     }
     frame_transforms(map, view->viewMatrix);
@@ -3233,31 +3175,6 @@ static void run_pose(struct Map *map, struct Stats *st, struct View *view, int p
 
         if (!s) {
             FAIL("%s: a reference draw of a mesh that has no records", map->name);
-            continue;
-        }
-        if (d->cascade >= 0) {
-            /* casters: a ground block's as one draw of all its runs */
-            uint32_t first = s->place.firstIndex + (uint32_t)d->draw.first, end = first + (uint32_t)d->draw.count;
-
-            for (rec = record_at(map, first); rec >= 0 && map->records[rec].firstIndex < end;
-                 rec = record_at(map, map->records[rec].firstIndex + map->records[rec].indexCount)) {
-                const struct SwRecord *rr = &map->records[rec];
-
-                castToday[rec] = 1;
-                if (!s->block) {
-                    static const float identity[6] = {1, 0, 0, 1, 0, 0};
-                    const float *uv = rr->uv == SW_NONE ? identity : D.uv[rr->uv];
-                    struct Texture *layer = rr->textureArray == SW_NO_ARRAY ? NULL
-                                                                            : D.layers[rr->textureArray][rr->textureLayer];
-
-                    if (rr->firstIndex != first || rr->indexCount != (uint32_t)d->draw.count
-                        || (layer ? layer != d->texture[0] : d->texture[0]->base.surface != NULL)
-                        || memcmp(uv, d->draw.uv, sizeof d->draw.uv) || rr->pass == SW_PASS_GROUND)
-                        mismatch(map, st, "the caster", rr);
-                } else if (d->texture[0] || rr->pass != SW_PASS_GROUND) {
-                    mismatch(map, st, "the ground caster", rr);
-                }
-            }
             continue;
         }
         p = device_pass(d);
@@ -3293,26 +3210,56 @@ static void run_pose(struct Map *map, struct Stats *st, struct View *view, int p
     st->poses++;
     st->kept += n;
 
-    /* the ticks: no record the view keeps of a model that animates belongs to one the frame did not
-       tick, and the frame ticked no model beyond those the reference reached but one that animates
-       and held a record in view before the frame */
+    /* the ticks: no record the view keeps of a model that animates, nor one in the box whatever can
+       shade the view lies in, belongs to one the frame did not tick, and the frame ticked no model
+       beyond those the reference reached but one that animates and held a record in view before
+       the frame, or in that box */
     for (i = 0; i < map->recordCount; i++) {
         struct C3dActor *a = map->recordActors[i];
 
-        if (keptAt[i] < 0 || !a || *mark(a, 4) != g_tickFrame || *mark(a, 2) == g_tickFrame)
+        if (!a || *mark(a, 4) != g_tickFrame || *mark(a, 2) == g_tickFrame)
             continue;
-        if (st->untickedMoving++ < 5)
+        if (keptAt[i] >= 0 && st->untickedMoving++ < 5)
             FAIL("%s: pose %zu: a model that animates shows a record the frame did not tick", map->name, st->poses - 1);
+        if (*mark(a, 5) == g_tickFrame && st->untickedCasting++ < 5)
+            FAIL("%s: pose %zu: a model that animates can shade the view with a record the frame did not tick",
+                 map->name, st->poses - 1);
+    }
+    /* the shadows' depth along the light holds every record the device has, an animated one in the
+       frame's pose: the maps clip nothing that receives or casts */
+    if (D.shadowSet) {
+        const struct ShadowFitFrame *f = &D.shadow.fit;
+
+        for (i = 0; i < D.recordCount; i++) {
+            float centre[3], half[3];
+            double mid, reach, room;
+
+            if (!sw_record_bounds(&D.records[i], (const float (*)[12])map->transforms, centre, half)
+                || !(half[0] < 1e30f && half[1] < 1e30f && half[2] < 1e30f))
+                continue;
+            mid = (double)centre[0] * f->axis[2][0] + (double)centre[1] * f->axis[2][1]
+                  + (double)centre[2] * f->axis[2][2];
+            reach = fabs(f->axis[2][0]) * half[0] + fabs(f->axis[2][1]) * half[1] + fabs(f->axis[2][2]) * half[2];
+            room = fmin(mid - reach - f->lightNear, (double)f->lightNear + f->lightRange - mid - reach);
+            st->lightRoom = room < st->lightRoom ? room : st->lightRoom;
+            st->inLight++;
+            if (room < 0.0 && st->outOfLight++ < 5)
+                FAIL("%s: pose %zu: a record lies %.3f units outside the shadows' depth along the light", map->name,
+                     st->poses - 1, -room);
+        }
     }
     for (i = 0; i < g_world.models.count; i++) {
         struct C3dActor *a = g_world.models.data[i];
 
         if (*mark(a, 2) != g_tickFrame || *mark(a, 0) == g_refFrame)
             continue;
-        st->tickedByView++;
-        if (*mark(a, 3) != g_tickFrame)
-            FAIL("%s: pose %zu: the frame ticked a model the walk does not reach that shows nothing moving",
-                 map->name, st->poses - 1);
+        if (*mark(a, 3) == g_tickFrame)
+            st->tickedByView++;
+        else if (*mark(a, 5) == g_tickFrame)
+            st->tickedByShadow++;
+        else
+            FAIL("%s: pose %zu: the frame ticked a model the walk does not reach that shows nothing moving, nor its "
+                 "shadow", map->name, st->poses - 1);
     }
 
     for (p = 0; p < SW_PASS_COUNT; p++) {
@@ -3422,48 +3369,17 @@ static void run_pose(struct Map *map, struct Stats *st, struct View *view, int p
         }
     }
 
-    /* the cascades' casters: the reference cast into every cascade; the records' cull of each */
-    for (i = 0; i < map->recordCount; i++)
-        st->casts += castToday[i] != 0;
-    for (c = 0; c < cascadeCount; c++) {
-        size_t cast = sw_cull_cascade(map->records, map->recordCount, (const float (*)[12])map->transforms,
-                                      &cascades[c], g_cast);
-
-        for (i = 0; i < map->recordCount; i++)
-            castKept[i] = 0;
-        for (i = 0; i < cast; i++)
-            castKept[g_cast[i]] = 1;
-        st->castKept += cast;
-        for (i = 0; i < map->recordCount; i++) {
-            const struct SwRecord *rr = &map->records[i];
-
-            if (castKept[i] && castToday[i]) {
-                st->castBoth++;
-            } else if (castKept[i]) {
-                double area = record_cascade_area(map, rr, &cascades[c]);
-
-                st->castKeptOnly++;
-                if (area > 0) {
-                    st->castKeptOnlyTouching++;
-                    st->castKeptOnlyTouchingAnimated += (rr->flags & SW_ANIMATED) != 0;
-                    st->castKeptOnlyTouchingGround += source_of(map, rr->firstIndex)->block != NULL;
-                    st->castKeptOnlyMostArea = area > st->castKeptOnlyMostArea ? area : st->castKeptOnlyMostArea;
-                }
-            } else if (castToday[i]) {
-                st->castTodayOnly++;
-                if (record_cascade_area(map, rr, &cascades[c]) > 0) {
-                    st->castTodayOnlyTouching++;
-                    FAIL("%s: cascade %d leaves out a caster that reaches it", map->name, c);
-                }
-            }
-        }
-    }
+    /* the cascades' casters: the records each box keeps (sw_cull_cascade), which the GPU's cull keeps
+       too (gpu_cull) */
+    for (c = 0; c < cascadeCount; c++)
+        st->castKept[c] += sw_cull_cascade(map->records, map->recordCount, (const float (*)[12])map->transforms,
+                                           &cascades[c], g_cast);
 
     /* the GPU's passes on the same frame */
     if (g_dev) {
         float (*placed)[12] = gpu_transforms(map, view->viewMatrix);
 
-        gpu_cull(map, placed, keptAt);
+        gpu_cull(map, placed, keptAt, cascadeCount ? cascades : NULL);
         gpu_water(map, view->viewMatrix);
     }
     view_frustum_clear(&leaves);
@@ -3664,7 +3580,7 @@ static int load_map(struct Map *map, const char *name)
         wrap_ops(g_world.models.data[i]);
     map->rsw = rsw;
     map->lighting = lighting;
-    map->blockMeshes = calloc((size_t)(ground->gpuCols * ground->gpuRows) + 1, sizeof *map->blockMeshes);
+    map->blockMeshes = calloc((size_t)(block_cols(ground) * block_rows(ground)) + 1, sizeof *map->blockMeshes);
     if (!map->blockMeshes)
         abort();
     map_sources(map);
@@ -3693,7 +3609,7 @@ static void free_map(struct Map *map)
     int b;
 
     world_gpu_free(&g_world);
-    for (b = 0; b < g_world.ground->gpuCols * g_world.ground->gpuRows; b++)
+    for (b = 0; b < block_cols(g_world.ground) * block_rows(g_world.ground); b++)
         ref_mesh_free(map->blockMeshes ? map->blockMeshes[b] : NULL);
     free(map->blockMeshes);
     node_meshes_free();
@@ -4119,12 +4035,8 @@ static void report_map(const struct Map *map, const struct Stats *st)
            map->name, st->poses, st->today, st->kept, st->both, st->todayOnly, st->todayOnlySeen, st->keptOnly,
            st->keptOnlySeen, st->keptOnlySeenGround, st->keptOnlySeenLeaf, st->keptOnlySeenBox,
            st->keptOnlySeenAnimated, st->keptOnlyMostArea);
-    printf("%s: casters the reference cast %zu over the poses, each into every cascade, the client the same %zu; by "
-           "cascade: records %zu, both %zu, reference only %zu (reaching: %zu), records only %zu (reaching: %zu, "
-           "ground %zu, animated %zu; most %.3g units)\n",
-           map->name, st->casts, st->clientCasts, st->castKept, st->castBoth, st->castTodayOnly,
-           st->castTodayOnlyTouching, st->castKeptOnly, st->castKeptOnlyTouching, st->castKeptOnlyTouchingGround,
-           st->castKeptOnlyTouchingAnimated, st->castKeptOnlyMostArea);
+    printf("%s: casters over the poses, of %zu records each, in four nested cascades' boxes: %zu, %zu, %zu, %zu\n",
+           map->name, map->recordCount, st->castKept[0], st->castKept[1], st->castKept[2], st->castKept[3]);
     {
         size_t seen = 0, both = 0;
 
@@ -4142,9 +4054,12 @@ static void report_map(const struct Map *map, const struct Stats *st)
     printf("%s: the client queued %zu alpha records (%zu the reference drew, keyed as it keyed them; %zu of models "
            "it did not draw) and %zu cells of water, of which the reference drew %zu\n",
            map->name, st->clientAlpha, st->clientAlphaKeyed, st->clientAlphaOnly, st->clientWater, st->referenceWater);
-    printf("%s: ticks: models ticked for a moving part in view the walk does not reach %zu; records of models that "
-           "animate shown unticked %zu; the streamed models built and sent in %.2f ms\n",
-           map->name, st->tickedByView, st->untickedMoving, map->streamMs);
+    printf("%s: ticks: models ticked for a moving part in view the walk does not reach %zu, for their shadow %zu; "
+           "records of models that animate shown unticked %zu, that can shade the view unticked %zu; the streamed "
+           "models built and sent in %.2f ms\n",
+           map->name, st->tickedByView, st->tickedByShadow, st->untickedMoving, st->untickedCasting, map->streamMs);
+    printf("%s: the shadows' depth along the light held %zu records, %zu outside, with %.2f units of room at least\n",
+           map->name, st->inLight, st->outOfLight, st->inLight ? st->lightRoom : 0.0);
 }
 
 static int g_trapsChecked;
@@ -4158,6 +4073,7 @@ static void check_map(const char *name)
 
     memset(&map, 0, sizeof map);
     memset(&st, 0, sizeof st);
+    st.lightRoom = 1e300;
     if (!load_map(&map, name)) {
         FAIL("%s: does not load", name);
         return;
@@ -4470,11 +4386,11 @@ int main(int argc, char **argv)
     }
     if (g_dev)
         printf("static_world_maps: on the GPU, slots %zu (not the C's %zu), draws %zu (clip space not the reference's "
-               "%zu), runs culled %zu of %zu records, %zu kept (runs not as sw_record_in_view %zu), cells of water %zu "
-               "(drawn %zu; not the reference's %zu)\n",
+               "%zu), runs culled %zu of %zu records, %zu kept, casters' runs culled %zu, %zu kept (runs not as "
+               "sw_record_in_view or sw_cull_cascade %zu), cells of water %zu (drawn %zu; not the reference's %zu)\n",
                g_gpuStats.slots, g_gpuStats.slotsDiffer, g_gpuStats.draws, g_gpuStats.drawsDiffer, g_gpuStats.runs,
-               g_gpuStats.records, g_gpuStats.kept, g_gpuStats.runsDiffer, g_gpuStats.cells, g_gpuStats.cellsDrawn,
-               g_gpuStats.cellsDiffer);
+               g_gpuStats.records, g_gpuStats.kept, g_gpuStats.casterRuns, g_gpuStats.casterKept,
+               g_gpuStats.runsDiffer, g_gpuStats.cells, g_gpuStats.cellsDrawn, g_gpuStats.cellsDiffer);
     close_gpu();
     if (g_failures)
         printf("static_world_maps: %d failures\n", g_failures);

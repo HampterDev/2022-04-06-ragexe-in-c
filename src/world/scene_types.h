@@ -29,10 +29,6 @@ struct SceneGraphNode {
     int groundCell[4];
     struct C3dAttr *attr;
     int attrCell[4];
-    /* custom: a leaf's box around the surfaces of its ground's cells, walls included, which with
-       its models' boxes is where the frame's shadows can fall (view_shadow_boxes); empty, with
-       groundMin above groundMax, where it has none */
-    float groundMin[3], groundMax[3];
 };
 
 struct RayPicker {

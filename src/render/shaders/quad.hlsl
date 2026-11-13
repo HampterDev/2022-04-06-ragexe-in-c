@@ -13,6 +13,7 @@
 #include "quad.hlsli"
 #include "exact.hlsli"
 
+StructuredBuffer<View> views : register(t2, space0);
 StructuredBuffer<uint4> quads : register(t3, space0);
 
 #include "instances.hlsli"

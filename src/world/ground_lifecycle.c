@@ -22,14 +22,12 @@ void gnd_lightmap_set_reset(struct GndLightmapSet *self)
     self->pageCount = self->count = 0;
 }
 
-/* custom: the ground's place in the static world (world/ground.h); world/world_gpu.c makes it */
-void ground_gpu_free(struct C3dGround15 *self)
+/* custom: the ground's cells hold no place among the static world's water (render/gfx.h,
+   gfx_world_water) until world/world_gpu.c gives them theirs (c3d_ground15_water_cells) */
+void ground_forget_water(struct C3dGround15 *self)
 {
     size_t i;
 
-    free(self->gpuBlocks);
-    self->gpuBlocks = NULL;
-    self->gpuCols = self->gpuRows = 0;
     for (i = 0; i < self->cellCount && self->cells; i++)
         self->cells[i].water = -1;
 }
@@ -59,7 +57,6 @@ void ground_set_attribute_map(struct C3dGround15 *ground, struct C3dAttr *attr)
 
 void c3d_ground15_clear(struct C3dGround15 *self)
 {
-    ground_gpu_free(self);
     free(self->waters);
     free(self->cells);
     free(self->colours);

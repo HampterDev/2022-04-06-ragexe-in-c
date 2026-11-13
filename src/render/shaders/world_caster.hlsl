@@ -1,27 +1,25 @@
-// A shadow caster's depth from the light (render/gfx.h, gfx_world_cast): triangles of the static
-// world drawn into one cascade's map, through the cascade's view of their transform slot
-// (world_transform.hlsl), their depth negative for a model's; texels the opaque lists' alpha test
-// (0xcf) drops cast nothing, and the ground casts without its texture.
+// A shadow caster's depth from the light: the static world's records a cascade's cull kept
+// (world_cull.hlsl), drawn into that cascade's map through their slot's place in the world
+// (world_transform.hlsl) and the cascade's light space as the shadow fit left it on the GPU
+// (cascades.hlsli), their depth negative for a model's; texels the opaque lists' alpha test (0xcf)
+// drops cast nothing, and the ground casts without its texture. One pipeline draws every record of
+// a texture array, whatever its pass and cull mode: casters are drawn from both sides.
 #include "records.hlsli"
 #include "world.hlsli"
+#include "cascades.hlsli"
 
 StructuredBuffer<WorldRecord> records : register(t0, space0);
-StructuredBuffer<float4x4> casterViews : register(t1, space0);  // four a slot, one a cascade
+StructuredBuffer<float4> placed : register(t1, space0);  // a slot's 4x3 in three float4 (render/gfx.h)
 StructuredBuffer<float4> uvs : register(t2, space0);
+StructuredBuffer<Cascades> fit : register(t3, space0);
 
 cbuffer VertexDraw : register(b0, space1)
 {
-    uint4 vertexDraw;  // x: unused, y: the cascade
+    uint4 vertexDraw;  // y: the cascade
 };
 
 [[vk::combinedImageSampler]] Texture2DArray<float4> colourMaps : register(t0, space2);
 [[vk::combinedImageSampler]] SamplerState colourSampler : register(s0, space2);
-StructuredBuffer<Draw> fragmentDraws : register(t1, space2);
-
-cbuffer FragmentDraw : register(b0, space3)
-{
-    uint4 fragmentDraw;  // x: the draw's record
-};
 
 struct CasterIn
 {
@@ -42,8 +40,13 @@ struct CasterOut
 CasterOut vs_main(CasterIn i)
 {
     WorldRecord rec = records[i.record];
+    uint slot = record_slot(rec);
+    float4 a = placed[slot * 3], b = placed[slot * 3 + 1], c = placed[slot * 3 + 2];
+    // the client's 4x3: x * m[0..2] + y * m[3..5] + z * m[6..8] + m[9..11]
+    float3 world = i.position.x * a.xyz + i.position.y * float3(a.w, b.xy) + i.position.z * float3(b.zw, c.x)
+                   + c.yzw;
     CasterOut o;
-    o.position = transform(i.position, casterViews[record_slot(rec) * 4 + vertexDraw.y]);
+    o.position = mul(float4(world, 1), fit[0].world[vertexDraw.y]);
     o.depth = o.position.z;
     uint uvSlot = record_uv(rec);
     float4 uvU = uvSlot != WORLD_NO_UV ? uvs[uvSlot * 2] : float4(1, 0, 0, 0);
@@ -56,11 +59,9 @@ CasterOut vs_main(CasterIn i)
 
 float4 fs_main(CasterOut i) : SV_Target0
 {
-    Draw d = fragmentDraws[fragmentDraw.x];
-    float alpha = colourMaps.Sample(colourSampler, float3(stage_uv(i.uv, d.uvScale.xy, d.uvLimit.xy), i.layer.x)).a;
-    if (i.layer.y == 0)
-        alpha = 1.0;
-    if (alpha < 207.0 / 255)
+    // the opaque lists' alpha test, on the alpha rounded to 0 to 255 as theirs (records.hlsli,
+    // alpha_passes) and the depth pass's (world_depth.hlsl) round it
+    if (i.layer.y != 0 && floor(colourMaps.Sample(colourSampler, float3(i.uv, i.layer.x)).a * 255 + 0.5) < 207.0)
         discard;
     return float4(i.depth * (i.layer.z != 0 ? -1 : 1), 0, 0, 1);
 }

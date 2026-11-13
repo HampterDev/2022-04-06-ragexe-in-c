@@ -1,8 +1,8 @@
 /* custom: the static world's rules (render/static_world.h): the shared buffers' layout, the draw
    records, the records of the vertices, their order (a merge of sorted lists giving what a sort of
    them all gives) and the runs the indirect draws take, the cull against the projection
-   (render/rp_screen.c) and world/frustum.c and against renderer_shadow_reaches
-   (render/rp_project.c), and the texture arrays. Fuzzed with a fixed seed.
+   (render/rp_screen.c) and world/frustum.c, the cascades' cull against the boxes worked out in
+   double, and the texture arrays. Fuzzed with a fixed seed.
    tests/test_static_world_maps.c checks the records against the draws the Direct3D 9 client's code
    made on real maps, and the GPU's cull against these rules. */
 #include "render/static_world.h"
@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* what render/rp_project.c uses beside renderer_shadow_reaches */
+/* what render/rp_project.c uses beside the projection */
 struct Renderer *g_renderer;
 float g_fogNear, g_fogFar;
 DWORD g_fogColor;
@@ -626,10 +626,36 @@ static void test_animated(void)
     }
 }
 
-/* against renderer_shadow_reaches with the cascade as the frame's only one */
+/* Whether a box reaches a cascade, worked out in double: its extent along each of the cascade's
+   axes overlaps the square across the light and the depth along it. 1 or 0 where it does or does
+   not by more than a thousandth of a unit, -1 within that, where floats may round either way. */
+static int box_reaches(const struct SwCascade *c, const float *centre, const float *half)
+{
+    double lo[3], hi[3], least = 1e300;
+    int a, k;
+
+    for (a = 0; a < 3; a++) {
+        double mid = 0.0, ext = 0.0;
+
+        for (k = 0; k < 3; k++) {
+            mid += (double)centre[k] * c->axis[a][k];
+            ext += (double)half[k] * fabs((double)c->axis[a][k]);
+        }
+        lo[a] = mid - ext;
+        hi[a] = mid + ext;
+    }
+    for (a = 0; a < 3; a++) {
+        double from = a < 2 ? c->lo[a] : c->depth[0], to = a < 2 ? c->hi[a] : c->depth[1];
+        double over = (hi[a] < to ? hi[a] : to) - (lo[a] > from ? lo[a] : from);
+
+        least = over < least ? over : least;
+    }
+    return least > 1e-3 ? 1 : least < -1e-3 ? 0 : -1;
+}
+
+/* the casters a cascade keeps: those whose boxes reach it, in record order */
 static void test_cascade(void)
 {
-    static struct Renderer renderer;
     static struct SwRecord r[64];
     static uint32_t out[64];
     int round, i, a, k;
@@ -654,13 +680,6 @@ static void test_cascade(void)
         }
         c.depth[0] = uniform(-3000, 0);
         c.depth[1] = c.depth[0] + uniform(10, 5000);
-        memset(&renderer, 0, sizeof renderer);
-        renderer.shadowPending = 1;
-        renderer.shadow.cascades = 1;
-        memcpy(renderer.shadowReach.axis, c.axis, sizeof c.axis);
-        memcpy(renderer.shadowReach.lo[0], c.lo, sizeof c.lo);
-        memcpy(renderer.shadowReach.hi[0], c.hi, sizeof c.hi);
-        memcpy(renderer.shadowReach.depth, c.depth, sizeof c.depth);
         for (i = 0; i < 64; i++) {
             float centre[3], half[3];
 
@@ -669,13 +688,13 @@ static void test_cascade(void)
         }
         n = sw_cull_cascade(r, 64, NULL, &c, out);
         for (i = 0; i < 64; i++) {
-            int reaches = renderer_shadow_reaches(&renderer, r[i].centre, r[i].half, NULL);
+            int reaches = box_reaches(&c, r[i].centre, r[i].half);
 
             if (j < n && out[j] == (uint32_t)i) {
-                assert(reaches);
+                assert(reaches != 0);
                 j++;
             } else {
-                assert(!reaches);
+                assert(reaches != 1);
             }
         }
         assert(j == n);

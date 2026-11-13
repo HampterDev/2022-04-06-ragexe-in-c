@@ -121,6 +121,8 @@ def compare(golden_path, actual_path, diff_path, tolerance):
 
 def run_scene(args, script, out):
     env = dict(os.environ, RAGEXE_SCENE=os.path.abspath(script), RAGEXE_SCENE_OUT=os.path.abspath(out))
+    if args.shadow_fit:
+        env["RAGEXE_SCENE_SHADOW_FIT"] = "1"
     # Scenes are silent: SDL's dummy audio driver, unless the caller chose a driver (SDL 3 reads
     # SDL_AUDIO_DRIVER, and SDL_AUDIODRIVER when that is not set).
     if not env.get("SDL_AUDIO_DRIVER") and not env.get("SDL_AUDIODRIVER"):
@@ -150,12 +152,15 @@ def main():
     parser.add_argument("--tolerance", type=int, default=0, help="per-channel difference still counted equal")
     parser.add_argument("--max-pixels", type=int, default=0, help="differing pixels still accepted")
     parser.add_argument("--timeout", type=int, default=600, help="seconds per scene")
+    parser.add_argument("--shadow-fit", action="store_true",
+                        help="check every capture's shadow fit against render/shadow_fit.c (RAGEXE_SCENE_SHADOW_FIT=1)")
     parser.add_argument("scenes", nargs="*", help="scene names (default: every script)")
     args = parser.parse_args()
     if args.update and not args.golden:
         parser.error("--update needs --golden")
 
-    scripts = sorted(f for f in os.listdir(args.scripts) if f.endswith(".lua"))
+    # a script whose name starts with _ is a helper the others load, not a scene
+    scripts = sorted(f for f in os.listdir(args.scripts) if f.endswith(".lua") and not f.startswith("_"))
     if args.scenes:
         scripts = [f for f in scripts if os.path.splitext(f)[0] in args.scenes]
     os.makedirs(args.out, exist_ok=True)

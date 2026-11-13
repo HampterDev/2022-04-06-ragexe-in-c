@@ -171,42 +171,6 @@ static void flush_alpha_keyed_lists(struct Renderer *self, int clampMode, int wr
     flush_keyed(self, RENDER_ALPHA_WRAP, 1, 0);
 }
 
-/* custom: draws a queue's casters of the static world into the shadow map cascade chosen
-   (render/gfx.h, gfx_world_cast) */
-static void draw_shadow_casters(struct Renderer *self, int list)
-{
-    struct RenderQueue *l = &self->queues[list];
-
-    for (size_t i = 0; i < l->count; ++i) {
-        const struct RPWorldDraw *w = l->items[i].primitive;
-
-        gfx_world_cast(w->firstIndex, w->count, w->baseVertex, w->textureArray, w->ids);
-    }
-}
-
-/* custom: the shadow maps of this frame's casters, models and ground, which every mesh draw of
-   the frame then receives (self->shadowDrawn) */
-static void draw_shadow_maps(struct Renderer *self)
-{
-    int cascade;
-
-    self->shadowDrawn = 0;
-    if (!self->shadowPending)
-        return;
-    self->shadowPending = 0;
-    if (!self->queues[RENDER_SHADOW_CASTERS].count)
-        return;
-    if (!gfx_shadow_begin(&self->shadow))
-        return;
-    for (cascade = 0; cascade < self->shadow.cascades; ++cascade) {
-        if (!gfx_shadow_cascade(cascade))
-            continue;
-        draw_shadow_casters(self, RENDER_SHADOW_CASTERS);
-        self->shadowDrawn = 1;
-    }
-    gfx_shadow_end();
-}
-
 /* custom: the opaque models of the static world (render/gfx.h, gfx_world_draw) come first in their
    lists, in the order of their textures, then the lists' quads in theirs. The renderer sorted both
    together by the textures' creation order: a quad whose texture was made before a model's (a Granny
@@ -214,8 +178,6 @@ static void draw_shadow_maps(struct Renderer *self)
    where the two lie at the same depth. */
 static void flush_opaque_lists(struct Renderer *self)
 {
-    draw_shadow_maps(self);
-    gfx_shadow_receive(self->shadowDrawn);
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     if (self->worldSet)
         gfx_world_draw(SW_PASS_OPAQUE_CLAMP, &self->worldModels);
@@ -333,7 +295,6 @@ static void renderer_draw_lists(struct Renderer *self)
     TIMED(PERF_L_OVERLAY_ORDERED, flush_keyed(self, RENDER_OVERLAY_ORDERED, 0, 0));
     TIMED(PERF_L_BLENDED_OVERLAY, flush_effects(self, RENDER_BLENDED_OVERLAY, DRAW_EFFECT_OVERLAY,
                                                 DRAW_BLEND_SRCALPHA, DRAW_BLEND_INVSRCALPHA, 1));
-    gfx_shadow_receive(0);
     self->worldSet = 0;
 }
 

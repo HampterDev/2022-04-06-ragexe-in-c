@@ -1,10 +1,12 @@
 /* custom: the static world as the device's shaders read it (render/world_layout.h): every field of
    a record packed where world.hlsli, world_cull.hlsl and world_compact.hlsl read it and back, ids no
-   record has left alone; the runs the cull compacts, those of the passes up to the ground, each
-   behind the one before and none past 2^32 - 1 indices; the chunks the compaction copies, every
-   index of every record of those runs in one chunk, in order, and none of the others', up to a
-   record of 2^32 - 1 indices; the slots' links; the projection a view-space point lands on the
-   screen through, at the pixel renderer_project_vertex puts it on; the uniforms; and the
+   record has left alone; the view's runs the cull compacts, every pass's, each behind the one before
+   and none past a section's indices; the casters' runs, a run for each texture array in their
+   order, each record in one of them in draw order, behind one another; the chunks the compaction
+   copies, every index of every record in one chunk, in order, up to a record of 2^32 - 1 indices;
+   where the cull's data and its output lie, and the commands of each view; the slots' links; the
+   projection a view-space point lands on the screen through, at the pixel renderer_project_vertex
+   puts it on; the uniforms of the view's and the cascades' cull and of the compaction; and the
    dispatches' groups split across and down, to the last of 2^32 - 1.
    Fuzzed with a fixed seed. tests/test_static_world_maps.c runs the shaders on what this packs. */
 #include "render/world_layout.h"
@@ -97,15 +99,19 @@ static void test_runs(void)
 {
     static struct SwRecord records[300];
     static struct SwDrawRun runs[300];
-    static struct WlRun out[300];
+    static struct WlRun out[300], casters[300];
     static struct WlChunk chunks[300 * 3];
+    static uint32_t order[300];
     int round, i;
 
     for (round = 0; round < 200; round++) {
         int n = (int)(next() % 300);
-        size_t nruns, m, indirect = 0, nchunks, c = 0, held;
-        uint32_t total, at = 0, groups[2], rec;
+        size_t nruns, m, ncasters, nchunks, c = 0, held, placed = 0;
+        uint32_t total, casterTotal, at = 0, groups[2], rec;
+        static unsigned char seen[300];
         struct WlCompactFrame u;
+        struct WlCullLayout cl;
+        struct WlDrawLayout dl;
 
         for (i = 0; i < n; i++) {
             random_record(&records[i], (uint32_t)i);
@@ -116,17 +122,41 @@ static void test_runs(void)
         sw_records_sort(records, (size_t)n);
         nruns = sw_draw_runs(records, (size_t)n, runs);
         m = wl_runs(runs, nruns, out, &total);
-        while (indirect < nruns && runs[indirect].pass <= SW_PASS_GROUND)
-            indirect++;
-        assert(m == indirect);
+        assert(m == nruns);
         for (i = 0; i < (int)m; i++) {
             assert(out[i].first == runs[i].first && out[i].count == runs[i].count);
             assert(out[i].start == at && out[i].indices == runs[i].indices);
             at += runs[i].indices;
         }
         assert(total == at);
-        /* the chunks of the runs' records: each record's indices 64 at a time, in order */
-        held = m ? out[m - 1].first + out[m - 1].count : 0;
+        /* the casters' runs: one a texture array, in the arrays' order, each record once, in draw
+           order within its run, the runs' indices one behind the other and as many as the view's */
+        ncasters = wl_caster_runs(records, (size_t)n, order, &held, casters, &casterTotal);
+        assert(held == (size_t)n && casterTotal == total);
+        memset(seen, 0, sizeof seen);
+        at = 0;
+        for (i = 0; i < (int)ncasters; i++) {
+            uint32_t k, sum = 0;
+
+            assert(casters[i].first == placed && casters[i].count && casters[i].start == at);
+            for (k = casters[i].first; k < casters[i].first + casters[i].count; k++) {
+                const struct SwRecord *r = &records[order[k]];
+
+                assert(!seen[order[k]]);
+                seen[order[k]] = 1;
+                assert(r->textureArray == records[order[casters[i].first]].textureArray);
+                assert(k == casters[i].first || order[k] > order[k - 1]);
+                sum += r->indexCount;
+            }
+            if (i)
+                assert(records[order[casters[i].first]].textureArray > records[order[casters[i - 1].first]].textureArray);
+            assert(casters[i].indices == sum);
+            placed += casters[i].count;
+            at += sum;
+        }
+        assert(placed == (size_t)n);
+        /* the chunks of every record: each record's indices 64 at a time, in order */
+        held = (size_t)n;
         nchunks = wl_chunks(records, held, NULL);
         assert(wl_chunks(records, held, chunks) == nchunks);
         for (rec = 0; rec < held; rec++) {
@@ -138,10 +168,19 @@ static void test_runs(void)
             }
         }
         assert(c == nchunks);
-        /* the compaction: a group for each chunk */
-        wl_compact_frame((uint32_t)nchunks, &u, groups);
-        assert(u.counts[0] == nchunks && groups[0] == nchunks && groups[1] == (nchunks ? 1u : 0u));
-        assert(u.counts[1] == groups[0] && !u.counts[2] && !u.counts[3]);
+        /* where the cull's data and output lie: one part behind the other, the commands of each
+           view's runs behind one another */
+        wl_cull_layout((size_t)n, m, ncasters, held, nchunks, &cl);
+        assert(cl.runs == (uint32_t)n * 12 && cl.casterRuns == cl.runs + m * 4 && cl.order == cl.casterRuns + ncasters * 4);
+        assert(cl.chunks == cl.order + held && cl.words == cl.chunks + nchunks * 2);
+        wl_draw_layout((size_t)n, m, ncasters, &dl);
+        assert(!dl.commands && dl.places == (m + ncasters * WL_CASCADES) * 5 && dl.words == dl.places + n * WL_SECTIONS);
+        assert(wl_view_command(3) == 3 && wl_caster_command(m, ncasters, 2, 5) == m + 2 * ncasters + 5);
+        /* the compaction: a group for each chunk in each section */
+        wl_compact_frame((uint32_t)nchunks, 1, WL_CASCADES, &cl, &dl, (uint32_t)n, &u, groups);
+        assert(u.counts[0] == nchunks && groups[0] == nchunks * WL_CASCADES && groups[1] == (nchunks ? 1u : 0u));
+        assert(u.counts[1] == groups[0] && u.counts[2] == WL_CASCADES && u.counts[3] == 1);
+        assert(u.layout[0] == cl.chunks && u.layout[1] == dl.places && u.layout[2] == (uint32_t)n);
     }
     /* a record of 2^32 - 1 indices: 2^26 chunks, the last of 63 indices, the count not wrapping */
     {
@@ -153,16 +192,28 @@ static void test_runs(void)
         huge.indexCount = 0;
         assert(wl_chunks(&huge, 1, NULL) == 0);
     }
-    /* runs whose indices would pass 2^32 - 1 are left out */
+    /* runs and casters whose indices would pass a section's are left out, and those after them */
     {
         struct SwDrawRun big[3];
+        struct SwRecord heavy[3];
+        uint32_t indices;
+        size_t held;
 
         memset(big, 0, sizeof big);
-        big[0].indices = 0x80000000u;
-        big[1].indices = 0x7fffffffu;
+        big[0].indices = WL_SECTION_INDICES - 10;
+        big[1].indices = 10;
         big[2].indices = 1;
-        assert(wl_runs(big, 3, out, &(uint32_t){0}) == 2);
-        assert(out[1].start == 0x80000000u);
+        assert(wl_runs(big, 3, out, &indices) == 2 && indices == WL_SECTION_INDICES);
+        assert(out[1].start == WL_SECTION_INDICES - 10);
+        memset(heavy, 0, sizeof heavy);
+        heavy[0].indexCount = WL_SECTION_INDICES - 9;
+        heavy[0].textureArray = 1;
+        heavy[1].indexCount = 9;
+        heavy[1].textureArray = 0;
+        heavy[2].indexCount = 1;
+        heavy[2].textureArray = 1;
+        assert(wl_caster_runs(heavy, 3, order, &held, casters, &indices) == 2 && held == 2);
+        assert(indices == WL_SECTION_INDICES && order[0] == 1 && order[1] == 0 && casters[1].start == 9);
     }
 }
 
@@ -212,34 +263,43 @@ static void test_projection(void)
     }
 }
 
+/* the view's cull: its frustum, its runs from the view's in draw order, its commands first and its
+   places in the first section; the cascades' cull: a group for each casters' run of each cascade,
+   their order, their commands behind the view's and their places from the second section */
 static void test_uniforms(void)
 {
     struct SwFrustum f;
     struct WlCullFrame c;
+    struct WlCullLayout cl;
+    struct WlDrawLayout dl;
     struct WlTransformFrame t;
-    float camera[12], projection[16], from[WL_CASCADES][16];
+    float camera[12], projection[16];
     uint32_t groups[2];
     int k;
 
     for (k = 0; k < 24; k++)
         f.plane[k / 4][k % 4] = (float)k;
-    wl_cull_frame(&f, 17, &c, groups);
+    wl_cull_layout(100, 17, 5, 100, 200, &cl);
+    wl_draw_layout(100, 17, 5, &dl);
+    wl_cull_frame(&f, 17, &cl, &dl, 17, 100, 777, &c, groups);
     assert(!memcmp(c.planes, f.plane, sizeof c.planes) && c.counts[0] == 17 && c.counts[1] == 17);
-    assert(groups[0] == 17 && groups[1] == 1 && !c.counts[2] && !c.counts[3]);
-    wl_cull_frame(&f, 70000, &c, groups);
+    assert(groups[0] == 17 && groups[1] == 1 && c.counts[2] == 1 && !c.counts[3]);
+    assert(c.layout[0] == cl.runs && c.layout[1] == WL_NO_ORDER && c.layout[2] == 0 && c.layout[3] == dl.places);
+    assert(c.sections[0] == 0 && c.sections[1] == 777 && c.sections[2] == 100);
+    wl_cull_frame(NULL, 5, &cl, &dl, 17, 100, 777, &c, groups);
+    assert(c.counts[0] == 5 && groups[0] == 5 * WL_CASCADES && c.counts[2] == WL_CASCADES && c.counts[3] == 1);
+    assert(c.layout[0] == cl.casterRuns && c.layout[1] == cl.order && c.layout[2] == 17 && c.sections[0] == 1);
+    for (k = 0; k < 24; k++)
+        assert(c.planes[k / 4][k % 4] == 0.0f);
+    wl_cull_frame(&f, 70000, &cl, &dl, 70000, 100, 777, &c, groups);
     assert(c.counts[0] == 70000 && c.counts[1] == WL_GROUPS_ACROSS && groups[1] == 2);
     for (k = 0; k < 12; k++)
         camera[k] = (float)k;
     for (k = 0; k < 16; k++)
         projection[k] = (float)-k;
-    for (k = 0; k < WL_CASCADES * 16; k++)
-        from[k / 16][k % 16] = (float)k + 0.5f;
-    wl_transform_frame(camera, projection, (const float (*)[16])from, 3, 99, &t);
+    wl_transform_frame(camera, projection, 99, &t);
     assert(!memcmp(t.camera, camera, sizeof camera) && !memcmp(t.projection, projection, sizeof projection));
-    assert(!memcmp(t.fromView, from, 3 * sizeof from[0]) && t.fromView[3][0] == 0.0f);
-    assert(t.counts[0] == 99 && t.counts[1] == 3);
-    wl_transform_frame(camera, projection, (const float (*)[16])from, 9, 1, &t);
-    assert(t.counts[1] == WL_CASCADES && t.fromView[3][0] == from[3][0]);
+    assert(t.counts[0] == 99 && !t.counts[1]);
 }
 
 /* a dispatch's groups across and down: as few rows as hold them, none past the limit, numbered
@@ -265,11 +325,18 @@ static void test_groups(void)
         assert(whole >= n && whole - g[0] < n);
         assert(g[1] == 1 ? g[0] == n : g[0] == WL_GROUPS_ACROSS);
     }
-    wl_compact_frame(0, &u, g);
-    assert(!u.counts[0] && !u.counts[1] && !g[0] && !g[1]);
-    wl_compact_frame(0x4000001u, &u, g);
-    assert(u.counts[0] == 0x4000001u && u.counts[1] == WL_GROUPS_ACROSS && g[0] == WL_GROUPS_ACROSS);
-    assert((uint64_t)g[0] * g[1] >= 0x4000001u && (uint64_t)g[0] * (g[1] - 1) < 0x4000001u);
+    {
+        struct WlCullLayout cl;
+        struct WlDrawLayout dl;
+
+        wl_cull_layout(1, 1, 1, 1, 1, &cl);
+        wl_draw_layout(1, 1, 1, &dl);
+        wl_compact_frame(0, 0, 1, &cl, &dl, 1, &u, g);
+        assert(!u.counts[0] && !u.counts[1] && !g[0] && !g[1]);
+        wl_compact_frame(0x4000001u, 0, 1, &cl, &dl, 1, &u, g);
+        assert(u.counts[0] == 0x4000001u && u.counts[1] == WL_GROUPS_ACROSS && g[0] == WL_GROUPS_ACROSS);
+        assert((uint64_t)g[0] * g[1] >= 0x4000001u && (uint64_t)g[0] * (g[1] - 1) < 0x4000001u);
+    }
 }
 
 int main(void)
@@ -280,6 +347,6 @@ int main(void)
     test_projection();
     test_uniforms();
     test_groups();
-    puts("world_layout: records, runs, chunks, slots, projection, uniforms and groups passed");
+    puts("world_layout: records, runs, casters' runs, chunks, layouts, slots, projection, uniforms and groups passed");
     return 0;
 }

@@ -257,8 +257,7 @@ void sw_frustum(struct SwFrustum *out, const struct SwProjection *p, const float
     view_plane(out->plane[5], view, 0, 0.0f, -1.0f, p->farZ);
 }
 
-/* a record's box in the world: an animated record's moved by its transform */
-static int world_box(const struct SwRecord *r, const float (*transforms)[12], float *centre, float *half)
+int sw_record_bounds(const struct SwRecord *r, const float (*transforms)[12], float *centre, float *half)
 {
     const float *m;
     int k;
@@ -301,35 +300,35 @@ int sw_record_in_view(const struct SwRecord *record, const float (*transforms)[1
 {
     float centre[3], half[3];
 
-    return world_box(record, transforms, centre, half) && !outside_frustum(frustum, centre, half);
+    return sw_record_bounds(record, transforms, centre, half) && !outside_frustum(frustum, centre, half);
 }
 
-static int reaches(const struct SwCascade *c, const float *centre, const float *half)
+void sw_cascade_planes(const struct SwCascade *cascade, struct SwFrustum *out)
 {
-    float mid[3], ext[3];
-    int a;
+    int a, k;
 
     for (a = 0; a < 3; a++) {
-        mid[a] = centre[0] * c->axis[a][0] + centre[1] * c->axis[a][1] + centre[2] * c->axis[a][2];
-        ext[a] = half[0] * fabsf(c->axis[a][0]) + half[1] * fabsf(c->axis[a][1]) + half[2] * fabsf(c->axis[a][2]);
+        float lo = a < 2 ? cascade->lo[a] : cascade->depth[0], hi = a < 2 ? cascade->hi[a] : cascade->depth[1];
+
+        for (k = 0; k < 3; k++) {
+            out->plane[a * 2][k] = cascade->axis[a][k];
+            out->plane[a * 2 + 1][k] = -cascade->axis[a][k];
+        }
+        out->plane[a * 2][3] = -lo;
+        out->plane[a * 2 + 1][3] = hi;
     }
-    if (mid[2] + ext[2] < c->depth[0] || mid[2] - ext[2] > c->depth[1])
-        return 0;
-    return mid[0] + ext[0] >= c->lo[0] && mid[0] - ext[0] <= c->hi[0] && mid[1] + ext[1] >= c->lo[1]
-           && mid[1] - ext[1] <= c->hi[1];
 }
 
 size_t sw_cull_cascade(const struct SwRecord *records, size_t count, const float (*transforms)[12],
                        const struct SwCascade *cascade, uint32_t *out)
 {
+    struct SwFrustum box;
     size_t n = 0, i;
 
-    for (i = 0; i < count; i++) {
-        float centre[3], half[3];
-
-        if (world_box(&records[i], transforms, centre, half) && reaches(cascade, centre, half))
+    sw_cascade_planes(cascade, &box);
+    for (i = 0; i < count; i++)
+        if (sw_record_in_view(&records[i], transforms, &box))
             out[n++] = (uint32_t)i;
-    }
     return n;
 }
 

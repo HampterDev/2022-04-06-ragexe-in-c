@@ -36,12 +36,13 @@ enum perf_phase {
 /* Counted whether the overlay is on or not; with RAGEXE_OVERLAY on the overlay starts them again
    every half second, the scene harness with every frame it draws and shows
    (tests/scenes/README.md). They count, for the states the client sets:
-   - draws and prims: the draws the device makes of the client's quads and triangles (after
-     batching) and of the static world (an indirect draw of a run of records counts one, with every
-     primitive of the run's records, whether the GPU's cull keeps them or not), the shadow maps'
-     included; drawCalls: the gfx_draw_quad, gfx_draw_vertices, gfx_world_draw,
-     gfx_world_draw_record, gfx_world_draw_water and gfx_world_cast calls. Blits drawn as quads
-     count as blitQuads alone.
+   - draws: the draws the device makes of the client's quads and triangles (after batching) and of
+     the static world, the depth pass's and the shadow maps' included, which the device draws for
+     the frame's shadows itself; indirectDraws: those of them whose primitives the GPU's cull
+     chooses (a run of the static world's records), which the CPU never knows; prims: the
+     primitives of the others; drawCalls: the gfx_draw_quad, gfx_draw_vertices, gfx_world_draw,
+     gfx_world_draw_record and gfx_world_draw_water calls. Blits drawn as quads count as blitQuads
+     alone.
    - modesSent and modesSkipped: gfx_set_mode, gfx_set_effect and gfx_set_fog calls that change what
      the device draws with (render/gfx.h), which ends a batch, and that leave it as it was; texSets:
      gfx_set_texture calls that change a stage's texture.
@@ -60,6 +61,7 @@ enum perf_phase {
    the resource manager's lock. The rest only go up on the thread that draws. */
 struct perf_counters {
     unsigned draws;
+    unsigned indirectDraws;
     unsigned prims;
     unsigned modesSent;
     unsigned modesSkipped;

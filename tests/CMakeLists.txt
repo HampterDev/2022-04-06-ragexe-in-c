@@ -166,8 +166,8 @@ rage_client_warnings(1 actor/map_type_table.c contents/body_layer_maps.c core/by
 rage_client_warnings(4 contents/byte_queue.c core/abstract_method.c core/cstr.c core/fatal.c core/hex.c
     core/numeric.c core/once_win32.c core/text_markup.c core/utf8.c effects/durations.c game/broadcast_text.c
     game/scream_text.c login/password_encode.c navi/navi_text_lines.c platform/code_page_win32.c
-    render/shadow_fit.c render/text_runs.c std/list.c std/tree.c std/vec.c ui/chat/speaker_name.c
-    ui/controls/item_id_tag.c)
+    render/shadow_fit.c render/shadow_fit_gpu.c render/text_runs.c std/list.c std/tree.c std/vec.c
+    ui/chat/speaker_name.c ui/controls/item_id_tag.c)
 
 # ---- Test programs ----
 # Paths are relative to the repository root.
@@ -427,10 +427,14 @@ rage_test(quads W4 CLIENT render/quads.c)
 rage_test(screen_wobble W4 CLIENT render/screen_wobble.c)
 rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
 rage_test(world_layout W4 CLIENT render/world_layout.c render/static_world.c)
-rage_test(static_world W4 CLIENT render/math3d.c render/rp_project.c render/rp_screen.c render/static_world.c
-    world/frustum.c)
-# Against the CPU's shadow fit (render/rp_project.c), which it is to replace.
-rage_test(shadow_fit W4 tests/shadow_fit_scenes.c CLIENT render/shadow_fit.c render/rp_project.c render/math3d.c)
+rage_test(static_world W4 CLIENT render/math3d.c render/rp_project.c render/rp_screen.c render/shadow_fit.c
+    render/static_world.c world/frustum.c)
+# Against the CPU's fit to boxes that it replaced (tests/fixtures/shadow_box_fit.c); its motions over
+# the scenes, which take half a minute, as a test of their own labelled long (ctest -LE long leaves
+# them out).
+rage_test(shadow_fit W4 tests/shadow_fit_scenes.c tests/fixtures/shadow_box_fit.c CLIENT render/shadow_fit.c)
+rage_test_run(shadow_fit_motions COMMAND test_shadow_fit --motions LABELS long)
+rage_test(shadow_fit_gpu_packing W4 CLIENT render/shadow_fit.c render/shadow_fit_gpu.c)
 rage_test(frame_timer W1 NO_WX CLIENT contents/frame_timer.c)
 rage_test(string W4)
 rage_test(touch CLIENT core/touch.c)
@@ -758,8 +762,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         src/effects/effect_objects.c src/effects/effect_sound.c src/actor/effect_launch.c src/actor/position.c
         src/effects/skills/ez2str_effect_files.c src/effects/effect_data.c src/effects/rag/rag_str_bindings.c
         src/fileio/resource_path.c src/platform/code_page_win32.c src/core/utf8.c ${RAGE_EFFECT_DATA_C}
-        src/render/math3d.c src/render/rp_project.c src/session/session_effect_state.c src/std/list.c
-        src/std/vec.c src/std/string.c src/std/container_memory.c FORCE_INCLUDE tests/effect_trace_rand.h
+        src/render/math3d.c src/render/rp_project.c src/render/shadow_fit.c src/render/static_world.c
+        src/session/session_effect_state.c
+        src/std/list.c src/std/vec.c src/std/string.c src/std/container_memory.c FORCE_INCLUDE
+        tests/effect_trace_rand.h
         OPTIONS /Oy- /GS /Gd LIBS rage_json)
     rage_test(emblem_cache src/session/session_state.c src/platform/filesystem_win32.c
         src/contents/guild_emblem_name.c src/std/string.c src/std/list.c src/std/container_memory.c
@@ -797,8 +803,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
     # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c render/draw_modes.c render/quads.c render/static_world.c render/vertex_fog.c
-        render/world_layout.c
+        CLIENT platform/thread_win32.c render/draw_modes.c render/quads.c render/shadow_fit.c
+        render/shadow_fit_gpu.c render/static_world.c render/vertex_fog.c render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_present COMMAND test_gfx_gpu 1 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
@@ -810,8 +816,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(quad_instances tests/fixtures/quad_reference.c src/render/gfx_gpu.c src/render/texel_convert.c
         CLIENT actor/sprite_quad.c effects/particle.c effects/sprite_particle.c platform/thread_win32.c
         render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c render/rp_screen.c
-        render/static_world.c render/vertex_fog.c render/world_layout.c LIBS SDL3::SDL3
-        ARGS 1 20261112 300000 17000000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+        render/shadow_fit.c render/shadow_fit_gpu.c render/static_world.c render/vertex_fog.c render/world_layout.c
+        LIBS SDL3::SDL3 ARGS 1 20261112 300000 17000000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 0 30
         ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(quad_instances quad_instances_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 180)
@@ -1011,7 +1017,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(prim_creation CLIENT effects/effect_objects.c effects/rag/rag_prim_launch.c)
     rage_test(private_airplane WE4013 CLIENT core/memory.c std/string.c GENERATED private_airplane)
     rage_test(projection tests/fixtures/projection_reference.c CLIENT render/math3d.c render/rp_project.c
-        render/rp_screen.c resources/attr_queries.c)
+        render/rp_screen.c render/shadow_fit.c render/static_world.c resources/attr_queries.c)
     rage_test(quest_journal CLIENT ui/quests/quest_journal_layout.c)
     rage_test(quest_loading)
     rage_test(quest_packets CLIENT contents/quest_value.c game/quest_hunting.c game/quest_list.c
@@ -1051,7 +1057,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(rodex_send CLIENT core/cstr.c std/container_memory.c std/std_comdats.c std/string.c std/vec.c)
     rage_test(rsx_owner ARGS ${PROJECT_SOURCE_DIR}/tests/fixtures/rsx_records.bin)
     rage_test(scene_bounds CLIENT world/scene_bounds.c)
-    rage_test(scene_ground_box)
     rage_test(scene_lifecycle)
     rage_test(scene_storage CLIENT world/ray_picker.c world/scene_geometry.c)
     rage_test(schedule_ids CLIENT contents/schedule_ids.c)
@@ -1067,9 +1072,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(session_text CLIENT core/owned_text.c json/json_tree.c json/service_json.c platform/win_utf8.c
         std/container_memory.c std/string.c OBJECTS rage_test_json_test_support LIBS rage_json)
     # The shadow fit's compute passes (src/render/shaders/shadow_*.hlsl) on this machine's GPU,
-    # against render/shadow_fit.c; skipped without a GPU.
-    rage_test(shadow_fit_gpu W4 tests/shadow_fit_scenes.c CLIENT render/shadow_fit.c LIBS SDL3::SDL3
-        ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    # against render/shadow_fit.c; skipped without a GPU (cmake/Client.cmake declares it elsewhere).
+    rage_test(shadow_fit_gpu W4 tests/shadow_fit_scenes.c CLIENT render/shadow_fit.c render/shadow_fit_gpu.c
+        LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(shadow_fit_gpu PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     rage_test(shortcut_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
     rage_test(shorten_text W1 CLIENT core/utf8.c ui/controls/window_shorten.c)
@@ -1100,7 +1105,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         fileio/res_cache.c fileio/res_get.c fileio/resource_cache_store.c fileio/resource_errors.c
         fileio/resource_path.c ${platform_files} render/anim_mesh.c render/crenderer.c render/draw_modes.c
         render/keyframes.c render/math3d.c render/rp_pool.c render/rp_project.c render/rp_screen.c
-        render/static_world.c render/world_layout.c resources/attr.c resources/attr_queries.c resources/bitmap.c
+        render/shadow_fit.c render/static_world.c render/world_layout.c resources/attr.c resources/attr_queries.c resources/bitmap.c
         resources/bitmap_codecs.c resources/bitmap_gif.c resources/bitmap_jpeg.c resources/bitmap_png.c
         resources/bitmap_storage.c resources/gnd.c resources/jpeg_codec.c resources/jpeg_storage.c resources/model_mesh.c
         resources/model_res_base.c resources/model_res_load.c resources/model_res_parts.c

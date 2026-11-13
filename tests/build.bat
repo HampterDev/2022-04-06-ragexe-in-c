@@ -5,7 +5,8 @@ REM and runs the tests on every core; then the oracle tests, 32-bit, in build\or
 REM (tests\oracle), when the original executable is there (ORACLE_EXE, by default
 REM ..\client-files\2022-04-06_Ragexe_1648707856.exe beside the checkout). Arguments go to both
 REM ctest runs, for example -R chat_tabs (tests by name) or -L render (the tests of one library of
-REM tools\libraries.txt). Tests labelled interactive, which need a real window, are left out.
+REM tools\libraries.txt). Tests labelled interactive, which need a real window, are left out. Tests
+REM labelled long take half a minute or more; -LE long leaves them out of a quick run.
 setlocal
 for %%i in ("%~dp0..") do set "ROOT=%%~fi"
 set "JOBS=%NUMBER_OF_PROCESSORS%"

@@ -86,8 +86,6 @@ struct C3dActor {
     float bboxMin[3];
     float bboxMax[3];
     int lastFrame;
-    /* custom: the frame whose shadow maps have the actor's casters (world/view_camera.c) */
-    int castFrame;
     /* custom: its place among the static world's models (world/world_gpu.c), made for the device's
        world of generation gpuGeneration (-1: none), and the stamp of the last walk that found it in
        a leaf of the scene graph */

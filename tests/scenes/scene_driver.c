@@ -6,7 +6,8 @@
    client's map server requests.
 
    Environment: RAGEXE_SCENE=<script.lua>, RAGEXE_SCENE_OUT=<directory for captures>,
-   RAGEXE_SCENE_TRACE=1 for the packets and mode changes. See tests/scenes/README.md. */
+   RAGEXE_SCENE_TRACE=1 for the packets and mode changes, RAGEXE_SCENE_SHADOW_FIT=1 to check each
+   capture's shadow fit on the GPU against render/shadow_fit.c. See tests/scenes/README.md. */
 #include "core/app.h"
 #include "core/drive_state.h"
 #include "core/user_input.h"
@@ -15,7 +16,10 @@
 #include "contents/account_settings_internal.h"
 #include "diag/perf.h"
 #include "effects/rag/rag_effect_types.h"
+#include "game/camera.h"
+#include "game/context.h"
 #include "game/gamemode.h"
+#include "game/mode_msg.h"
 #include "game/packet_ids.h"
 #include "game/packets_entry.h"
 #include "login/char_info.h"
@@ -26,6 +30,7 @@
 #include "platform/window.h"
 #include "render/device.h"
 #include "render/gfx.h"
+#include "render/shadow_fit.h"
 #include "session/character_name.h"
 #include "session/state.h"
 #include "std/list.h"
@@ -38,6 +43,7 @@
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -253,7 +259,9 @@ static const char *opt_str(lua_State *L, int table, const char *key, const char 
 }
 
 /* scene.enter_map(map, x, y, {dir, job, sex, hair, hair_color, name, level, weapon, shield, head_top,
-   head_mid, head_bottom, robe, body_palette}) — from the login screen straight into a map. */
+   head_mid, head_bottom, robe, body_palette, distance, latitude}) — from the login screen straight
+   into a map; with distance and latitude, the free camera's (game/camera.c) in place of the saved
+   options' (Outdoor_ViewDistance, Outdoor_ViewLatitude). */
 static int l_enter_map(lua_State *L)
 {
     const char *map = luaL_checkstring(L, 1);
@@ -298,6 +306,16 @@ static int l_enter_map(lua_State *L)
     if (g_accountUserDataMgr) {
         g_accountUserDataMgr->loaded = 1;
         g_accountUserDataMgr->path[0] = 0;
+    }
+    if (opts && lua_istable(L, opts)) {
+        lua_getfield(L, opts, "distance");
+        if (lua_isnumber(L, -1))
+            g_freeViewDistance = (float)lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_getfield(L, opts, "latitude");
+        if (lua_isnumber(L, -1))
+            g_freeViewPitch = (float)lua_tonumber(L, -1);
+        lua_pop(L, 1);
     }
     S.enter_x = x;
     S.enter_y = y;
@@ -496,16 +514,199 @@ static int write_counters(const char *name)
     if (!file)
         return 0;
     ok = fprintf(file,
-                 "{\n  \"frame\": %u,\n  \"draws\": %u,\n  \"draw_calls\": %u,\n  \"primitives\": %u,\n"
-                 "  \"modes_sent\": %u,\n  \"modes_skipped\": %u,\n  \"texture_binds\": %u,\n"
+                 "{\n  \"frame\": %u,\n  \"draws\": %u,\n  \"indirect_draws\": %u,\n  \"draw_calls\": %u,\n"
+                 "  \"primitives\": %u,\n  \"modes_sent\": %u,\n  \"modes_skipped\": %u,\n  \"texture_binds\": %u,\n"
                  "  \"vertex_bytes\": %u,\n  \"instance_bytes\": %u,\n  \"texture_bytes\": %u,\n"
                  "  \"draw_scene_ms\": %.3f,\n  \"view_render_ms\": %.3f,\n  \"present_ms\": %.3f\n}\n",
-                 S.frame, c->draws, c->drawCalls, c->prims, c->modesSent, c->modesSkipped, c->texSets,
+                 S.frame, c->draws, c->indirectDraws, c->drawCalls, c->prims, c->modesSent, c->modesSkipped, c->texSets,
                  c->vertexBytes, c->instanceBytes, c->textureBytes, (double)c->drawSceneNs / 1e6,
                  (double)c->viewRenderNs / 1e6, (double)c->presentNs / 1e6) > 0;
     if (fclose(file))
         ok = 0;
     return ok;
+}
+
+/* how many units in the last place two floats lie apart */
+static unsigned ulps_apart(float a, float b)
+{
+    int32_t x, y;
+    memcpy(&x, &a, 4);
+    memcpy(&y, &b, 4);
+    x = x < 0 ? INT32_MIN - x : x;
+    y = y < 0 ? INT32_MIN - y : y;
+    return x > y ? (unsigned)(x - y) : (unsigned)(y - x);
+}
+
+/* <out>/<name>.shadow_fit.json: the GPU's shadow fit of the frame a capture shows
+   (gfx_read_shadow_fit) against render/shadow_fit.c, each step given the GPU's input to it: the
+   range, the range kept and the extents to the bit, the split within the rounding of a division
+   and two square roots, the squares, the sizes kept and the snapped translations to the bit, and
+   the matrices, lookups and far depths within 1e-5 of the largest element of their row. A frame
+   without shadows writes nothing. A mismatch fails the scene. Answers the mismatches, -1 where the
+   frame drew no shadows. */
+static int check_shadow_fit(const char *name)
+{
+    static struct GfxShadowFitRead g;
+    static float *front, *back;
+    static size_t room;
+    const struct ShadowFitGpuRead *f = &g.fit;
+    struct ShadowFitRange range, kept;
+    struct ShadowFitDepths depths;
+    struct ShadowFitExtent extents[SHADOW_FIT_CASCADES];
+    struct ShadowFitCascades c;
+    float split[SHADOW_FIT_CASCADES + 1], gpuSplit[SHADOW_FIT_CASCADES + 1];
+    double worst = 0.0;
+    unsigned splitUlps = 0;
+    int mismatches = 0, k, i, j, receiving = 0;
+    char path[1200];
+    FILE *file;
+    /* the size first, then the buffers with it */
+    g.front = g.back = NULL;
+    if (gfx_read_shadow_fit(&g) < 0)
+        return -1;
+    if ((size_t)g.width * (size_t)g.height > room) {
+        free(front);
+        free(back);
+        room = (size_t)g.width * (size_t)g.height;
+        front = malloc(room * sizeof *front);
+        back = malloc(room * sizeof *back);
+        if (!front || !back) {
+            room = 0;
+            mismatches = 1;
+        }
+    }
+    g.front = front;
+    g.back = back;
+    if (mismatches || gfx_read_shadow_fit(&g) < 0) {
+        fprintf(stderr, "scene: the GPU's shadow fit of %s could not be read\n", name);
+        S.failures++;
+        return 1;
+    }
+    depths.front = g.front;
+    depths.back = g.back;
+    depths.width = g.width;
+    depths.height = g.height;
+    for (i = 0; i < g.width * g.height; i++)
+        receiving += g.front[i] >= g.frame.nearZ && g.front[i] <= g.frame.reach;
+    shadow_fit_range(&range, &g.frame, &depths);
+    if (range.nearest <= range.farthest ? memcmp(&range, &f->range, sizeof range)
+                                        : !(f->range.nearest == HUGE_VALF && f->range.farthest == 0.0f))
+        mismatches++;
+    shadow_fit_keep(&kept, &f->range, &f->previousRange, &g.frame);
+    mismatches += memcmp(&kept, &f->kept, sizeof kept) != 0;
+    shadow_fit_split(split, &f->kept);
+    gpuSplit[0] = split[0];
+    memcpy(gpuSplit + 1, f->cascades.farDepth, sizeof f->cascades.farDepth);
+    for (k = 1; k <= SHADOW_FIT_CASCADES; k++)
+        splitUlps = ulps_apart(split[k], gpuSplit[k]) > splitUlps ? ulps_apart(split[k], gpuSplit[k]) : splitUlps;
+    mismatches += splitUlps > 8;
+    shadow_fit_extents(extents, &g.frame, gpuSplit, &depths);
+    if (memcmp(extents, f->extents, sizeof extents))
+        mismatches++;
+    shadow_fit_cascades(&c, &g.frame, gpuSplit, f->extents, f->previous);
+    mismatches += c.cascades != f->cascades.cascades;
+    for (k = 0; k < SHADOW_FIT_CASCADES; k++) {
+        const float *rows[2] = { c.world[k], c.fromView[k] }, *gpu[2] = { f->cascades.world[k], f->cascades.fromView[k] };
+        float lookups[4] = { c.farDepth[k], c.offset[k], c.blur[k], c.slant[k] };
+        float gpuLookups[4] = { f->cascades.farDepth[k], f->cascades.offset[k], f->cascades.blur[k], f->cascades.slant[k] };
+        if (memcmp(c.lo[k], f->cascades.lo[k], sizeof c.lo[k]) || memcmp(c.hi[k], f->cascades.hi[k], sizeof c.hi[k])
+            || c.kept[k] != f->cascades.kept[k] || memcmp(&c.world[k][12], &f->cascades.world[k][12], 2 * sizeof(float)))
+            mismatches++;
+        for (i = 0; i < 2; i++)
+            for (j = 0; j < 16; j += 4) {
+                double scale = 0.0, d;
+                int e;
+                for (e = 0; e < 4; e++)
+                    scale = fmax(scale, fabs(rows[i][j + e]));
+                for (e = 0; e < 4; e++) {
+                    d = fabs((double)rows[i][j + e] - gpu[i][j + e]) / (scale > 0.0 ? scale : 1.0);
+                    worst = d > worst ? d : worst;
+                }
+            }
+        for (i = 0; i < 4; i++) {
+            double d = fabs((double)lookups[i] - gpuLookups[i]) / fmax(fabs(lookups[i]), 1e-30);
+            worst = d > worst ? d : worst;
+        }
+    }
+    mismatches += worst > 1e-5;
+    snprintf(path, sizeof path, "%s/%s.shadow_fit.json", S.out, name);
+    file = fopen(path, "w");
+    if (file) {
+        fprintf(file, "{\n  \"frame\": %u,\n  \"pixels\": %d,\n  \"receiving\": %d,\n  \"cascades\": %d,\n"
+                      "  \"nearest\": %.9g,\n  \"farthest\": %.9g,\n  \"kept\": [%.9g, %.9g],\n  \"split_ulps\": %u,\n"
+                      "  \"worst_relative\": %.3g,\n  \"radius\": [%g, %g, %g, %g],\n  \"previous\": [%g, %g, %g, %g],\n"
+                      "  \"mismatches\": %d\n}\n",
+                S.frame, g.width * g.height, receiving, f->cascades.cascades, f->range.nearest, f->range.farthest,
+                f->kept.nearest, f->kept.farthest, splitUlps, worst,
+                (f->cascades.hi[0][0] - f->cascades.lo[0][0]) * 0.5f, (f->cascades.hi[1][0] - f->cascades.lo[1][0]) * 0.5f,
+                (f->cascades.hi[2][0] - f->cascades.lo[2][0]) * 0.5f, (f->cascades.hi[3][0] - f->cascades.lo[3][0]) * 0.5f,
+                f->previous[0], f->previous[1], f->previous[2], f->previous[3], mismatches);
+        fclose(file);
+    }
+    if (mismatches) {
+        fprintf(stderr, "scene: the GPU's shadow fit of %s is not render/shadow_fit.c's\n", name);
+        S.failures++;
+    }
+    return mismatches;
+}
+
+/* scene.shadow_fit(): the shadows of the frame just shown as the GPU fitted them
+   (gfx_read_shadow_fit), or nil without: a table of the cascades (4, or 0 where nothing receives),
+   the range of view depths the slices were cut from (`nearest`, `farthest`) and, by cascade, its
+   square's half size (`radius`), the size it keeps (`kept`), its far view depth (`far`) and its
+   centre across the light (`x`, `y`). */
+static int l_shadow_fit(lua_State *L)
+{
+    static struct GfxShadowFitRead g;
+    static const char *const names[5] = { "radius", "kept", "far", "x", "y" };
+    const struct ShadowFitCascades *c = &g.fit.cascades;
+    int k, f;
+    if (gfx_read_shadow_fit(&g) < 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_newtable(L);
+    lua_pushinteger(L, c->cascades);
+    lua_setfield(L, -2, "cascades");
+    lua_pushnumber(L, g.fit.kept.nearest);
+    lua_setfield(L, -2, "nearest");
+    lua_pushnumber(L, g.fit.kept.farthest);
+    lua_setfield(L, -2, "farthest");
+    for (f = 0; f < 5; f++) {
+        lua_newtable(L);
+        for (k = 0; k < SHADOW_FIT_CASCADES; k++) {
+            float v = f == 0 ? (c->hi[k][0] - c->lo[k][0]) * 0.5f
+                    : f == 1 ? c->kept[k]
+                    : f == 2 ? c->farDepth[k]
+                             : (c->lo[k][f - 3] + c->hi[k][f - 3]) * 0.5f;
+            lua_pushnumber(L, v);
+            lua_rawseti(L, -2, k + 1);
+        }
+        lua_setfield(L, -2, names[f]);
+    }
+    return 1;
+}
+
+/* scene.shadow_fit_check(name): the GPU's shadow fit of the frame just shown against
+   render/shadow_fit.c, as a capture checks it with RAGEXE_SCENE_SHADOW_FIT=1: writes
+   <out>/<name>.shadow_fit.json and fails the scene where they differ; answers the mismatches, or
+   nil where the frame drew no shadows */
+static int l_shadow_fit_check(lua_State *L)
+{
+    int mismatches = check_shadow_fit(luaL_checkstring(L, 1));
+    if (mismatches < 0)
+        lua_pushnil(L);
+    else
+        lua_pushinteger(L, mismatches);
+    return 1;
+}
+
+/* scene.quake([ms]): the camera shakes as an effect shakes it (game/msg_misc.c, the game message
+   the effects send): for 650 ms, or for ms where that is more */
+static int l_quake(lua_State *L)
+{
+    game_send_message(MODE_MSG_QUAKE, (intptr_t)luaL_optinteger(L, 1, 0), 0, 0, 0);
+    return 0;
 }
 
 /* scene.capture(name[, {w, h, x, y, jpeg}]): the whole frame, or a w x h part of it whose top
@@ -572,6 +773,8 @@ static int l_capture(lua_State *L)
     if (!write_counters(name))
         return luaL_error(L, "capture: cannot write the counters of %s", path);
     printf("scene: captured %s (frame %u, %u shown)\n", path, S.frame, S.shown);
+    if (getenv("RAGEXE_SCENE_SHADOW_FIT"))
+        check_shadow_fit(name);
     return 0;
 }
 
@@ -637,6 +840,7 @@ static const luaL_Reg scene_api[] = {
     {"chat", l_chat}, {"send", l_send}, {"key_event", l_key_event}, {"text", l_text}, {"mouse", l_mouse},
     {"button", l_button}, {"open", l_open}, {"resize", l_resize}, {"capture", l_capture}, {"effects", l_effects}, {"frame", l_frame},
     {"mode", l_mode}, {"wait", l_wait}, {"wait_ready", l_wait_ready}, {"fail", l_fail},
+    {"shadow_fit", l_shadow_fit}, {"shadow_fit_check", l_shadow_fit_check}, {"quake", l_quake},
     {NULL, NULL},
 };
 

@@ -7,15 +7,31 @@
 #include "water.hlsli"
 #include "quad.hlsli"
 
-StructuredBuffer<WaterCell> cells : register(t3, space0);
-StructuredBuffer<Water> waters : register(t4, space0);
-StructuredBuffer<float> sines : register(t5, space0);  // render/math3d.c, g_sinTable
+// the cells (struct GpuWaterCell, three uint4 each), then the table of sines by whole degree,
+// render/math3d.c's g_sinTable, four floats a uint4
+StructuredBuffer<uint4> cells : register(t2, space0);
+StructuredBuffer<Water> waters : register(t3, space0);
 
 cbuffer WaterFrame : register(b0, space1)
 {
-    uint4 frame;          // x: the draw's record, y: the waves the frame has
+    uint4 frame;          // x: the draw's record, y: the waves the frame has, z: the cells
     WaterCamera camera;   // the view the CPU tested and keyed the quads in
+    float4x4 toClip;      // the camera's view to clip space (records.hlsli, View)
 };
+
+WaterCell cell_at(uint i)
+{
+    WaterCell c;
+    c.cell = cells[i * 3];
+    c.corners01 = asfloat(cells[i * 3 + 1]);
+    c.corners23 = asfloat(cells[i * 3 + 2]);
+    return c;
+}
+
+float sine(int degrees)
+{
+    return asfloat(cells[frame.z * 3 + (uint)degrees / 4][(uint)degrees % 4]);
+}
 
 struct WaterIn
 {
@@ -30,14 +46,14 @@ static const uint strip[6] = {0, 1, 2, 2, 1, 3};
 Varyings vs_main(WaterIn i, uint vertex : SV_VertexID)
 {
     Draw d = draws[frame.x];
-    WaterCell c = cells[i.cell];
+    WaterCell c = cell_at(i.cell);
     bool waved = c.cell.z < frame.y;  // a cell of a block the frame has no wave of draws nothing
     Water w = waters[waved ? c.cell.z : 0];
     uint corner = strip[vertex % 6];
     int diagonal = (int)c.cell.x + (int)c.cell.y;
-    float3 heights = float3(wave_height(w, sines[wave_degrees(w, diagonal - 1)]),
-                            wave_height(w, sines[wave_degrees(w, diagonal)]),
-                            wave_height(w, sines[wave_degrees(w, diagonal + 1)]));
+    float3 heights = float3(wave_height(w, sine(wave_degrees(w, diagonal - 1))),
+                            wave_height(w, sine(wave_degrees(w, diagonal))),
+                            wave_height(w, sine(wave_degrees(w, diagonal + 1))));
     WaterQuad q = water_quad(c, camera, heights);
     Varyings o;
     o.draw = frame.x;
@@ -48,7 +64,7 @@ Varyings vs_main(WaterIn i, uint vertex : SV_VertexID)
         o.fogQ = 0;
         return o;
     }
-    o.position = transform(q.p[corner], views[d.mode.w].toClip);
+    o.position = transform(q.p[corner], toClip);
     float q1 = 1 / o.position.w;
     // the original's quarters of the texture: ((float)(x % 4) + 1.0f) * 0.25f and so on
     precise float u = (float)(c.cell.x % 4) + ((corner & 1) != 0 ? 1.0 : 0.0);

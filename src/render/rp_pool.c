@@ -421,35 +421,13 @@ void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWo
 
     if (!draw)
         return;
-    switch (queue) {
-    case RENDER_ALPHA_CLAMP:
-    case RENDER_ALPHA_WRAP:
-    case RENDER_ALPHA_WRITE_DEPTH:
-        if (draw->kind == RP_WORLD_CAST)
-            return;
-        break;
-    case RENDER_SHADOW_CASTERS:
-        if (draw->kind != RP_WORLD_CAST)
-            return;
-        break;
-    default:
+    if (queue != RENDER_ALPHA_CLAMP && queue != RENDER_ALPHA_WRAP && queue != RENDER_ALPHA_WRITE_DEPTH)
         return;
-    }
     copy = pool_take(&self->storage->world_draws, 1);
     *copy = *draw;
     q = &self->queues[queue];
     queue_append(q, copy, key, texture, NULL);
     q->items[q->count - 1].world = 1;
-}
-
-void rp_quad_set_vertex_pos(struct RPQuad *self, int i, const struct TexDrawVertex *vertex)
-{
-    struct TexDrawVertex *v = (struct TexDrawVertex *)self->verts;
-
-    v[i].x = vertex->x;
-    v[i].y = vertex->y;
-    v[i].z = vertex->z;
-    v[i].rhw = vertex->rhw;
 }
 
 void renderer_destroy_all_rp_list(struct Renderer *self)

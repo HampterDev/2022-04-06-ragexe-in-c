@@ -7,6 +7,7 @@
 #include "render/gfx_format.h"
 #include "render/draw_modes.h"
 #include "render/quads.h"
+#include "render/shadow_fit_gpu.h"
 #include "render/static_world.h"
 #include <stddef.h>
 
@@ -220,10 +221,66 @@ struct GfxWaterWave {
    (render/math3d.c, get_sin_deg) */
 int gfx_world_water(const struct GfxWaterCell *cells, size_t count, const float *sines);
 
+/* custom: cascaded shadow maps for the static world, GFX_SHADOW_CASCADES of GFX_SHADOW_SIZE texels
+   square along the map's light, which the device fits, culls and draws itself in a frame whose
+   world frame (gfx_world_frame) has them: it draws the view depth of the ground and the models the
+   view's cull keeps (the receivers), fits the cascades to them on the GPU (render/shadow_fit.h, from
+   `fit`, the frame's constants the CPU works out; the range the slices are cut from and the
+   squares kept from frame to frame in a buffer gfx_world_clear empties), culls each cascade's
+   casters from the records and draws them into the cascades' maps, before the frame's first pass.
+   A device that cannot make what the shadows need draws none (gfx_shadows_supported), and a frame
+   whose shadow passes cannot all be recorded draws as without them. The casters are every record,
+   from both sides, texels the opaque lists' alpha test (0xcf) drops casting nothing, the ground
+   without its texture.
+   Every draw of the world in that frame then receives: a pixel that lies more than the bias behind
+   the nearest caster is drawn in shadow, a model's with its own lit colour times darkness, but no
+   darker than ambient times its share of the light (what a face turned from the light has),
+   before the ground's light is added; the ground's as described below. A pixel is looked up in the
+   first cascade whose far depth lies beyond its view depth, from a point moved off the surface
+   towards the light by 1.5 of that cascade's texels times the sine of the angle between the
+   surface and the light (the surface's normal comes from the vertex's), as the share of 16 points
+   spread over a disc of half a unit that are lit, so that shadow edges fade over a fixed width.
+   Over that disc, and over the cascade's texels, a surface at a slant to the light moves along it,
+   so the bias grows by what a texel spans along the light times the tangent of that slant, up to 8
+   times. On a GFX_MESH_GROUND draw the shadow maps take the place of the lightmap's alpha, the
+   shadows the map's editor baked into it: down to darkness that alpha counts as lit, and the shadow
+   maps darken to darkness; a texel darker still keeps its own. Where a model's surface lies within
+   the bias in front of the ground, or as far behind it as that slant reaches, the maps cannot tell
+   whether it shades it, and the ground keeps the lightmap's alpha there (the shadow pass keeps the
+   models' depths negative). Where nothing on screen receives, the draws look as without shadows. */
+#define GFX_SHADOW_SIZE 2048
+#define GFX_SHADOW_CASCADES 4
+
+struct GfxShadow {
+    struct ShadowFitFrame fit;
+    float darkness;    /* what remains of the light in a shadow, 0 to 1 */
+    float ambient[3];  /* the map's ambient light, 0 to 1 */
+};
+
+/* whether the device draws shadows at all: RAGEXE_SHADOWS=0 turns them off, and so does a format,
+   shader, pipeline, buffer or texture they need that the device cannot make */
+int gfx_shadows_supported(void);
+
+/* custom: the shadows of the last frame recorded as the GPU fitted them, downloaded when asked
+   after everything recorded before it (which fits them where the frame has not gone up yet), for
+   the scene harness and the tests to check against render/shadow_fit.c: the frame's constants, the
+   depth pass's two buffers (where front and back are given, with room for width * height floats
+   each, the screen's pixels row by row as render/shadow_fit.h has them), and what the fit found,
+   kept and left (render/shadow_fit_gpu.h). 0, or -1 where that frame drew no shadows (its fit
+   could not be recorded, or the world was made again since), the room is short (width and height
+   then say what is needed) or a download failed. */
+struct GfxShadowFitRead {
+    struct ShadowFitFrame frame;
+    int width, height;
+    float *front, *back;
+    struct ShadowFitGpuRead fit;
+};
+int gfx_read_shadow_fit(struct GfxShadowFitRead *out);
+
 /* The frame (gfx_world_frame): the camera's view and the frustum of its projection (sw_frustum), the
    matrices of animated slots (GfxWorldSlot.animated), the texture-coordinate matrices by uv slot
-   (SwRecord.uv), each (u, v) -> (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]), and
-   the waves by block. */
+   (SwRecord.uv), each (u, v) -> (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]), the
+   waves by block, and its shadows (NULL: none). */
 struct GfxWorldFrame {
     struct GfxWorldView camera;
     struct SwFrustum frustum;
@@ -233,6 +290,7 @@ struct GfxWorldFrame {
     size_t uvCount;
     const struct GfxWaterWave *waves;
     size_t waveCount;
+    const struct GfxShadow *shadow;
 };
 void gfx_world_frame(const struct GfxWorldFrame *frame);
 
@@ -273,58 +331,6 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour);
    through */
 void gfx_set_world_camera(const struct GfxWorldView *view);
 
-/* custom: cascaded shadow maps for the static world, each GFX_SHADOW_SIZE texels square. Between
-   gfx_shadow_begin and gfx_shadow_end, gfx_world_cast draws the world's depth from the light into
-   the cascade gfx_shadow_cascade chose instead of colour, testing the record's texture, where it
-   has one, for alpha at its texture coordinates: texels the opaque lists' alpha test (0xcf) drops
-   cast nothing.
-   fromView[c] takes the view space of the draws' world views to cascade c's light space, row
-   vectors: x and y from -1 to 1 across its map, z from 0 to 1 along the light. While
-   gfx_shadow_receive is on, a pixel that lies more than bias behind the nearest caster is drawn
-   in shadow: a model's with its own lit colour times darkness, but no darker than ambient times
-   its share of the light (what a face turned from the light has), before the ground's light is
-   added; the ground's as described below. A pixel is looked up in the first cascade whose
-   farDepth (a view depth) lies beyond it,
-   from a point moved off the surface towards the light by offset[c] (view units) times the sine of
-   the angle between the surface and the light (lightView: towards the light, view space; the
-   surface's normal comes from the vertex's), as the share of 16 points spread over a disc of
-   radius blur[c] (texture units of the cascade's map) that are lit, so that shadow edges fade over
-   a fixed width. Over that disc, and over the cascade's texels, a surface at a slant to the light
-   moves along it, so the bias grows by slant[c] (light depth) times the tangent of that slant, up
-   to 8 times. On a GFX_MESH_GROUND draw the shadow maps take the place of the lightmap's alpha,
-   the shadows the map's editor baked into it: down to darkness that alpha counts as lit, and the
-   shadow maps darken to darkness; a texel darker still keeps its own. Where a model's surface lies
-   within the bias in front of the ground, or as far behind it as that slant reaches, the maps
-   cannot tell whether it shades it, and the ground keeps the lightmap's alpha there (the shadow
-   pass keeps the models' depths negative). gfx_shadow_begin answers 0 where the device cannot
-   draw shadows; gfx_shadow_receive(0) turns receiving off, and the draws then look as without
-   shadows. */
-#define GFX_SHADOW_SIZE 2048
-#define GFX_SHADOW_CASCADES 4
-
-struct GfxShadow {
-    int cascades;
-    float fromView[GFX_SHADOW_CASCADES][16];
-    float farDepth[GFX_SHADOW_CASCADES];
-    float offset[GFX_SHADOW_CASCADES];
-    float blur[GFX_SHADOW_CASCADES];
-    float lightView[3];
-    float slant[GFX_SHADOW_CASCADES];
-    float bias, darkness;
-    float ambient[3];
-};
-
-/* whether the device draws shadows at all: where it answers 0, gfx_shadow_begin does too */
-int gfx_shadows_supported(void);
-int gfx_shadow_begin(const struct GfxShadow *shadow);
-int gfx_shadow_cascade(int cascade);
-void gfx_shadow_end(void);
-void gfx_shadow_receive(int receiver);
-/* A caster: `count` indices from firstIndex, after baseVertex, the triangles of one record or of all
-   the records of a ground block, which share textureArray (SW_NO_ARRAY: none) and whose ids lie
-   below `ids`; a ground's records cast without their texture. */
-void gfx_world_cast(uint32_t firstIndex, uint32_t count, uint32_t baseVertex, uint8_t textureArray, uint32_t ids);
-
 /* custom: the screen wobble (render/screen_wobble.h): the screen as drawn so far, multisampled or
    not, drawn again with row y showing row rows[y].source moved right by rows[y].shift pixels, the
    pixels left of that keeping row y's own, for the screen's first `count` rows; what is drawn after
@@ -341,6 +347,14 @@ int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *conte
    rectangle that is empty or reaches outside the screen, a pitch narrower than its rows, or a
    download that failed. */
 int gfx_read_frame(const RECT *r, void *out, size_t pitch);
+
+/* custom: for the tests, a mipmap level of a texture as the device holds it (its own texture, or its
+   layer of an array of layered textures), or of a layer of the static world's array `array`
+   (gfx_world_texture), downloaded after everything recorded before it: max(1, width >> level) by
+   max(1, height >> level) texels of B8G8R8A8, row by row. 0, or -1 where the device holds no such
+   level or a download failed. */
+int gfx_read_texture_level(gfx_surface *texture, int level, void *out);
+int gfx_read_world_level(uint8_t array, uint16_t layer, int level, void *out);
 
 unsigned gfx_content_version(gfx_surface *s);
 
