@@ -250,7 +250,7 @@ int texture_blit_rect(struct Texture *self, struct Surface *src, int sx, int sy,
     return texture_update_mip_chain(self, &all);
 }
 
-int texture_recreate(struct Texture *self, int width, int height, int format)
+static int recreate(struct Texture *self, int width, int height, int format, int layered)
 {
     unsigned actual_width, actual_height;
     gfx_surface *handle;
@@ -262,7 +262,8 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
     if (!actual_width || !actual_height || actual_width > INT_MAX || actual_height > INT_MAX)
         return 0;
     ensure_format(format);
-    handle = gfx_create_texture(actual_width, actual_height, format);
+    handle = layered ? gfx_create_layer_texture(actual_width, actual_height, format)
+                     : gfx_create_texture(actual_width, actual_height, format);
     if (!handle)
         return 0;
     surface_reset(&self->base);
@@ -273,6 +274,27 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
     fit(width, self->base.width, &self->reqWidth);
     fit(height, self->base.height, &self->reqHeight);
     return 1;
+}
+
+int texture_recreate(struct Texture *self, int width, int height, int format)
+{
+    return recreate(self, width, height, format, 0);
+}
+
+struct Texture *texture_create_layer(int width, int height, int format)
+{
+    struct Texture *texture;
+    if (width <= 0 || height <= 0)
+        return NULL;
+    texture = calloc(1, sizeof *texture);
+    if (!texture)
+        return NULL;
+    texture_start(texture);
+    if (!recreate(texture, width, height, format, 1)) {
+        free(texture);
+        return NULL;
+    }
+    return texture;
 }
 
 void texture_lock(struct Texture *self)

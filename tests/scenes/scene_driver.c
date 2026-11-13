@@ -498,11 +498,11 @@ static int write_counters(const char *name)
     ok = fprintf(file,
                  "{\n  \"frame\": %u,\n  \"draws\": %u,\n  \"draw_calls\": %u,\n  \"primitives\": %u,\n"
                  "  \"modes_sent\": %u,\n  \"modes_skipped\": %u,\n  \"texture_binds\": %u,\n"
-                 "  \"vertex_bytes\": %u,\n  \"texture_bytes\": %u,\n"
+                 "  \"vertex_bytes\": %u,\n  \"instance_bytes\": %u,\n  \"texture_bytes\": %u,\n"
                  "  \"draw_scene_ms\": %.3f,\n  \"view_render_ms\": %.3f,\n  \"present_ms\": %.3f\n}\n",
                  S.frame, c->draws, c->drawCalls, c->prims, c->modesSent, c->modesSkipped, c->texSets,
-                 c->vertexBytes, c->textureBytes, (double)c->drawSceneNs / 1e6, (double)c->viewRenderNs / 1e6,
-                 (double)c->presentNs / 1e6) > 0;
+                 c->vertexBytes, c->instanceBytes, c->textureBytes, (double)c->drawSceneNs / 1e6,
+                 (double)c->viewRenderNs / 1e6, (double)c->presentNs / 1e6) > 0;
     if (fclose(file))
         ok = 0;
     return ok;

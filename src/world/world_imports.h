@@ -48,7 +48,6 @@ struct Vec;
 struct Tree;
 struct Texture;
 struct RPQuad;
-struct RPTwoTex;
 struct TexDrawVertex;
 struct C3dAttr;
 struct AttrCell;

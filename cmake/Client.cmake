@@ -119,8 +119,9 @@ endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
     # The GPU backend on this machine's GPU (tests/CMakeLists.txt declares it for Windows).
-    add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/gfx_batch.c
-        src/render/texel_convert.c src/render/draw_modes.c src/render/vertex_fog.c src/platform/thread_posix.c)
+    add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/quads.c
+        src/render/texel_convert.c src/render/draw_modes.c src/render/vertex_fog.c src/render/static_world.c
+        src/render/world_layout.c src/platform/thread_posix.c)
     target_include_directories(test_gfx_gpu PRIVATE ${PROJECT_SOURCE_DIR}/src)
     target_compile_definitions(test_gfx_gpu PRIVATE _DEFAULT_SOURCE)
     target_link_libraries(test_gfx_gpu PRIVATE SDL3::SDL3 Threads::Threads m)
@@ -128,6 +129,18 @@ if(BUILD_TESTING AND NOT ANDROID)
     add_test(NAME gfx_gpu COMMAND test_gfx_gpu 1)
     add_test(NAME gfx_gpu_msaa COMMAND test_gfx_gpu 4)
     add_test(NAME gfx_gpu_present COMMAND test_gfx_gpu 1)
+    # The client's quads as instances against the CPU's (tests/CMakeLists.txt says more).
+    add_executable(test_quad_instances tests/test_quad_instances.c tests/fixtures/quad_reference.c
+        src/render/gfx_gpu.c src/render/quads.c src/render/texel_convert.c src/render/draw_modes.c
+        src/render/vertex_fog.c src/render/static_world.c src/render/world_layout.c src/platform/thread_posix.c
+        src/actor/sprite_quad.c src/effects/particle.c src/effects/sprite_particle.c src/render/rp_project.c
+        src/render/rp_screen.c src/render/math3d.c)
+    target_include_directories(test_quad_instances PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests)
+    target_compile_definitions(test_quad_instances PRIVATE _DEFAULT_SOURCE)
+    target_link_libraries(test_quad_instances PRIVATE SDL3::SDL3 Threads::Threads m)
+    rage_enable_assertions(test_quad_instances)
+    add_test(NAME quad_instances COMMAND test_quad_instances 1 20261112 300000 17000000 30)
+    add_test(NAME quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 0 30)
     # The link check of the library table (tools/libraries.txt) on the client's objects, through nm.
     add_test(NAME library_links COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/depmap/check_links.py
         --nm ${CMAKE_BINARY_DIR}/CMakeFiles/ragexe.dir --strict)
@@ -139,6 +152,8 @@ if(BUILD_TESTING AND NOT ANDROID)
         ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
     set_tests_properties(gfx_gpu_present PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60
         ENVIRONMENT "SDL_AUDIO_DRIVER=dummy;SDL_VIDEO_DRIVER=offscreen")
+    set_tests_properties(quad_instances quad_instances_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600
+        ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
     set_tests_properties(library_links PROPERTIES ENVIRONMENT "${RAGE_TEST_ENVIRONMENT}")
 
     # The scene captures need game data; with RAGE_SCENE_GOLDEN they are compared with golden images.

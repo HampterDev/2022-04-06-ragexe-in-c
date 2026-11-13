@@ -72,6 +72,14 @@ note    The original's vertex fog as pure logic (render/vertex_fog.c): the step 
 uses
 paths   render/vertex_fog.*
 
+library quads
+note    The client's quads and triangles as instances, as pure logic (render/quads.c): what an
+        instance holds, and the record of each that the quad shader makes its vertices from, made
+        from an instance or from a primitive of the client's vertices. Uses nothing else of the
+        client.
+uses
+paths   render/quads.*
+
 library screen-wobble
 note    The screen wobble as pure logic (render/screen_wobble.c): for each frame of it, which row of
         the frame each row shows and how far it is moved, drawing the C runtime's random numbers as
@@ -137,7 +145,7 @@ library render
 note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
-uses    fileio display-options texel-convert draw-modes vertex-fog screen-wobble font-finder world-layout
+uses    fileio display-options texel-convert draw-modes vertex-fog quads screen-wobble font-finder world-layout
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 

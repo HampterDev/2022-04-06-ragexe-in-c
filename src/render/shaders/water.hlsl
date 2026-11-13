@@ -23,7 +23,8 @@ struct WaterIn
     [[vk::location(1)]] float4 diffuse : TEXCOORD1; // per instance: the bytes of its D3DCOLOR: b, g, r, a
 };
 
-// a strip of four corners as triangles 0 1 2 and 2 1 3 (render/gfx_batch.c, batch_strip_list)
+// a quad's corners as triangles 0 1 2 and 2 1 3, as the client's quads are drawn (render/gfx_gpu.c,
+// quad_triangles)
 static const uint strip[6] = {0, 1, 2, 2, 1, 3};
 
 Varyings vs_main(WaterIn i, uint vertex : SV_VertexID)
@@ -40,6 +41,7 @@ Varyings vs_main(WaterIn i, uint vertex : SV_VertexID)
     WaterQuad q = water_quad(c, camera, heights);
     Varyings o;
     o.draw = frame.x;
+    o.layer = 0;
     if (!waved || !q.drawn) {
         o.position = float4(2, 2, 2, 1);
         o.diffuse = o.uv = 0;

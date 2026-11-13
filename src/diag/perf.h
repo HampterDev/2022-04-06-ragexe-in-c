@@ -36,17 +36,19 @@ enum perf_phase {
 /* Counted whether the overlay is on or not; with RAGEXE_OVERLAY on the overlay starts them again
    every half second, the scene harness with every frame it draws and shows
    (tests/scenes/README.md). They count, for the states the client sets:
-   - draws and prims: the draws the device makes of gfx_draw's vertices (after batching) and of
-     the static world (an indirect draw of a run of records counts one, with every primitive of the
-     run's records, whether the GPU's cull keeps them or not), the shadow maps' included;
-     drawCalls: the gfx_draw, gfx_world_draw, gfx_world_draw_record, gfx_world_draw_water and
-     gfx_world_cast calls. Blits drawn as quads count as blitQuads alone.
+   - draws and prims: the draws the device makes of the client's quads and triangles (after
+     batching) and of the static world (an indirect draw of a run of records counts one, with every
+     primitive of the run's records, whether the GPU's cull keeps them or not), the shadow maps'
+     included; drawCalls: the gfx_draw_quad, gfx_draw_vertices, gfx_world_draw,
+     gfx_world_draw_record, gfx_world_draw_water and gfx_world_cast calls. Blits drawn as quads
+     count as blitQuads alone.
    - modesSent and modesSkipped: gfx_set_mode, gfx_set_effect and gfx_set_fog calls that change what
      the device draws with (render/gfx.h), which ends a batch, and that leave it as it was; texSets:
      gfx_set_texture calls that change a stage's texture.
-   - vertexBytes: the vertices and indices a draw of gfx_draw's vertices gives the device, those of
-     a static world mesh (with each vertex's record) when gfx_world_mesh gives them, and the cells
-     a draw of the water names.
+   - vertexBytes: the vertices and indices of a static world mesh (with each vertex's record) when
+     gfx_world_mesh gives them, and the cells a draw of the water names; instanceBytes: the records
+     of the quads and triangles drawn, their offsets, the matrices they are projected with and the
+     client's vertices they name, that the frame's upload gives the device.
    - textureBytes: the texels written by texture_upload_pixels, surface_fill_pixels and
      texture_draw_sprite_frame (the sprite atlas), at the texture's or surface's own depth.
    - drawSceneNs, viewRenderNs and presentNs: the time spent in renderer_draw_scene, in
@@ -63,6 +65,7 @@ struct perf_counters {
     unsigned modesSkipped;
     unsigned texSets;
     unsigned vertexBytes;
+    unsigned instanceBytes;
     unsigned textureBytes;
     int64_t drawSceneNs;
     int64_t viewRenderNs;

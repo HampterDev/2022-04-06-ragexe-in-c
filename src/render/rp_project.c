@@ -526,9 +526,14 @@ float renderer_project_depth(float rhw)
     return (1.0f / rhw - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * rhw;
 }
 
+static float view_z(const Vec3 *v, const float *m)
+{
+    return m[2] * v->x + m[5] * v->y + m[8] * v->z + m[11];
+}
+
 static float depth_rhw(const Vec3 *v, const float *m)
 {
-    return 1.0f / (m[2] * v->x + m[5] * v->y + m[8] * v->z + m[11]);
+    return 1.0f / view_z(v, m);
 }
 
 static float view_x(const Vec3 *v, const float *m)
@@ -590,14 +595,16 @@ void renderer_project_vertex(struct Renderer *self, const Vec3 *v, const float *
     out->y = point.y;
 }
 
-void renderer_project_multitex_vertex(struct Renderer *self, const Vec3 *v,
-                                      const float *m, struct RPTwoTexVertex *out)
+float renderer_project_rhw(const Vec3 *v, const float *m)
 {
-    struct ScreenPoint point = project_vertex(self, v, m);
-    out->rhw = point.rhw;
-    out->x = point.x;
-    out->z = point.z;
-    out->y = point.y;
+    return depth_rhw(v, m);
+}
+
+void renderer_project_view(const Vec3 *v, const float *m, float *out)
+{
+    out[0] = view_x(v, m);
+    out[1] = view_y(v, m);
+    out[2] = view_z(v, m);
 }
 
 void renderer_cursor_ray(struct Renderer *self, int x, int y, const Vec3 *eye, const float *m,

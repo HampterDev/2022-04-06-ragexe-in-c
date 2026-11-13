@@ -608,11 +608,13 @@ released within a frame, the alpha test, the fog (the quads' at the first rhw of
 one before it, against the original's CPU formula), blending, the effect modes' blending and the 16
 effect presets against Direct3D 9's texture stages, two textures, the ground's records with and
 without lightmaps, two-pass alpha, effects behind depth, composites into a target's texture and that
-texture drawn, clears inside a pass, the overlays drawn as one batch, mipmaps, render targets, a
-composited window's target drawn as its quad draws it (every pixel its own texel), system-surface
-blits, copies between targets, the screen wobble recorded between other passes of a frame, the
-screen read whole and in part, world vertices, the static world's records (each cull mode, one by
-one and culled by the GPU, from an odd index), its transform slots, animated ones too, its
+texture drawn, clears inside a pass, the overlays drawn as one batch, mipmaps, layered textures read
+as the same texels in plain ones (filtered and with mipmaps, several layers one draw, a layer given
+up and taken again, arrays of 16 MB), lists of triangles, render targets, a composited window's
+target drawn as its quad draws it (every pixel its own texel), system-surface blits, copies between
+targets, the screen wobble recorded between other passes of a frame, the screen read whole and in
+part, world vertices (Granny's lists of triangles), the static world's records (each cull mode, one
+by one and culled by the GPU, from an odd index), its transform slots, animated ones too, its
 texture-coordinate matrices and texture arrays, the water's cells, the GPU's cull of a pass run by
 run against a frustum narrower than the screen (an animated record moved into it and out), the
 world's buffers and arrays grown while holding what earlier frames put up, an array layer's mipmaps
@@ -638,51 +640,74 @@ the library `vertex-fog`), since a GPU's division need not round as the CPU's do
 
 A frame is recorded, not drawn. Each draw becomes a record of what its mode and the draw give the
 shaders (the combination, the alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes
-into a list of passes, one per target or shadow cascade; its vertices and indices, and the texels of
-the textures it uses that changed since they last went up, widened to B8G8R8A8
-(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. When the frame is
-presented, or the screen's picture is read (`gfx_read_frame`: screenshots and the scene harness's
-captures, after the frame is presented), one command buffer copies all of it through one transfer
-buffer in one copy pass (the static world's meshes and textures went up before it, through a stream
-of their own, below), runs the static world's compute passes (below) and replays the passes, then
-presents, fitted into the window by `present_fit`, or downloads the screen
-(`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else is read back: a render target's pixels
-never reach the CPU (`gfx_lock` takes only textures and system surfaces, and `gfx_blit` copies from
-a target only into a target). The shaders read the records from storage buffers, finding a draw's
-through an instance-rate vertex attribute that holds its index (a draw's first instance), or for the
-static world's draws through a uniform, never through the instance ID. Textures keep their pixels on
-the CPU in the client's own format, so the model loader's thread creates, locks and fills them
-without calling SDL; the main thread uploads them when a draw first uses them after a change, and a
-texture changed after a draw used it in the same frame takes its new texels in a copy pass of its
-own between the render passes, so that the earlier draw keeps the old ones. Mipmaps are made on the
-GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up. The
-windows that composite (the menu icons, the party plates) draw into a render target of their own,
-which their quad reads as a texture (`texture_create_target`, `render/render_clients.c`). The screen
-wobble (the player's status 0x108) is a step of the frame: a copy of the screen's picture so far,
-then a pass over the whole screen that draws it again with each row taken from the row and the shift
-a table gives (`gfx_wobble`, `src/render/shaders/rows.hlsl`), every sample of a pixel alike, so that
-a multisampled screen resolves to the texels exactly; the CPU computes the table from the same
-random numbers, drawn in the same order, as the original's loop over the locked frame
-(`render/screen_wobble.c`, the `screen-wobble` library); where the device cannot draw the wobble,
-the table is not computed, so no random number is drawn, as the original drew none when it could not
-lock the frame. The device claims its window, and makes a swapchain for it, at the first present
-while the window is shown, not minimized and of a size in pixels, and a claim counts once SDL keeps
-the window (SDL 3.4's Vulkan driver answers a claim of a window whose surface has no size, a
-minimized one on Windows, with success but keeps nothing of it); a claim that fails or is not kept
-is tried again at the next present (on Android the window has no surface while the app is in the
-background). A window never shown (the scene harness's) has no swapchain, its frames are drawn, end
-at each present and can be read all the same, and a fence on each frame keeps the CPU at most two
-frames ahead of the GPU with or without one. A transfer buffer far larger than the frames have
-needed for 120 flushes in a row is made again as large as they need, and the staging texels' memory
-given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
-waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits for the window:
-SDL's acquire of a picture waits for the presentation engine even when told not to block, so such a
-frame asks for one only once a refresh of the display (60 Hz where its mode does not say) has passed
-since the last picture, and otherwise is drawn but not shown, as Direct3D 9's flip without waiting
-left a frame the screen had no room for. The device asks Vulkan for none of the features it does not
-use (depth clamping, clip distances, indirect draws from a first instance), so GPUs without them run
-it. A GPU device is never lost: the client has no lost-device handling, and a window size the device
-has no memory for is tried again when the size changes.
+into a list of passes, one per target or shadow cascade; what it draws, and the texels of the
+textures it uses that changed since they last went up, widened to B8G8R8A8
+(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. Every quad and
+triangle the client draws, the static world aside, is an instance (`render/gfx.h`, `gfx_draw_quad`
+and `gfx_draw_vertices`): a record of the frame's quads (`render/quads.c`, the library `quads`) from
+which the quad shader's vertex shader makes the vertices the client's C code made before, to the
+bit: a sprite's from its quad's rows, their rhw and its turn (`render_object_submit_spr_quad`'s
+vertices); a particle's by projecting its points as `renderer_project_vertex` did; and the rest from
+the client's own vertices, an axis-aligned rectangle with one rhw and colour into a short record of
+its own. The frame's quads, one storage buffer, hold the records and what they name: the matrices
+particles are projected with and the client's vertices. A draw is a run of instances made with the
+same mode, effect, fog, textures and target, all flat or none, drawn as one instanced draw of the
+triangles (0, 1, 2) and (2, 1, 3) of their corners. The sprite atlas's pages are layered textures
+(`gfx_create_layer_texture`), which the device places as layers of texture arrays when a draw first
+reads them, so that sprites of several pages are one draw; the fragment shader reads stage 0 from
+the array where the draw's record says so, at the layer the instance gives. An array holds pages of
+one size and number of mipmap levels, as many as make 16 MB and no more than 64 (64 of the atlas's
+256 by 256 pages; one of 2048 by 2048 or more, as large as it would be alone), another is made when
+it is full, and it goes with its last page: on a map change only the arrays holding the atlas's
+spare pages (up to 50, kept from map to map) stay. A texture or array the GPU has no memory for is
+not tried again: its quads read white. When the frame is presented, or the screen's picture is read
+(`gfx_read_frame`: screenshots and the scene harness's captures, after the frame is presented), one
+command buffer copies all of it through one transfer buffer in one copy pass (the static world's
+meshes and textures went up before it, through a stream of their own, below), runs the static
+world's compute passes (below) and replays the passes, then presents, fitted into the window by
+`present_fit`, or downloads the screen (`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else
+is read back: a render target's pixels never reach the CPU (`gfx_lock` takes only textures and
+system surfaces, and `gfx_blit` copies from a target only into a target). The shaders read the
+records from storage buffers, at most six a shader stage (`STORAGE_BUFFERS_MAX`; SDL tells nothing
+of a device's limits, so the device refuses a shader that reads more): every Vulkan device takes
+four, which the quad shader keeps to, while the static world's shaders read five and six, so a
+device that takes fewer than six draws no world. A quad finds its draw's record through the header
+of its own record, a draw of the static world through a uniform, the wobble through an instance-rate
+vertex attribute that holds its index (a draw's first instance), never through the instance ID.
+Textures keep their pixels on the CPU in the client's own format, so the model loader's thread
+creates, locks and fills them without calling SDL; the main thread uploads them when a draw first
+uses them after a change, and a texture changed after a draw used it in the same frame takes its new
+texels in a copy pass of its own between the render passes, so that the earlier draw keeps the old
+ones. Mipmaps are made on the GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a
+texture that has them go up; a layered texture's go up whole into a scratch texture of their own,
+whose levels SDL makes so, and are then copied into the layer, so that a layer's levels are a
+texture's on every backend. The windows that composite (the menu icons, the party plates) draw into
+a render target of their own, which their quad reads as a texture (`texture_create_target`,
+`render/render_clients.c`). The screen wobble (the player's status 0x108) is a step of the frame: a
+copy of the screen's picture so far, then a pass over the whole screen that draws it again with each
+row taken from the row and the shift a table gives (`gfx_wobble`, `src/render/shaders/rows.hlsl`),
+every sample of a pixel alike, so that a multisampled screen resolves to the texels exactly; the CPU
+computes the table from the same random numbers, drawn in the same order, as the original's loop
+over the locked frame (`render/screen_wobble.c`, the `screen-wobble` library); where the device
+cannot draw the wobble, the table is not computed, so no random number is drawn, as the original
+drew none when it could not lock the frame. The device claims its window, and makes a swapchain for
+it, at the first present while the window is shown, not minimized and of a size in pixels, and a
+claim counts once SDL keeps the window (SDL 3.4's Vulkan driver answers a claim of a window whose
+surface has no size, a minimized one on Windows, with success but keeps nothing of it); a claim that
+fails or is not kept is tried again at the next present (on Android the window has no surface while
+the app is in the background). A window never shown (the scene harness's) has no swapchain, its
+frames are drawn, end at each present and can be read all the same, and a fence on each frame keeps
+the CPU at most two frames ahead of the GPU with or without one. A transfer buffer far larger than
+the frames have needed for 120 flushes in a row is made again as large as they need, and the staging
+texels' memory given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client
+shows without waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits
+for the window: SDL's acquire of a picture waits for the presentation engine even when told not to
+block, so such a frame asks for one only once a refresh of the display (60 Hz where its mode does
+not say) has passed since the last picture, and otherwise is drawn but not shown, as Direct3D 9's
+flip without waiting left a frame the screen had no room for. The device asks Vulkan for none of the
+features it does not use (depth clamping, clip distances, indirect draws from a first instance), so
+GPUs without them run it. A GPU device is never lost: the client has no lost-device handling, and a
+window size the device has no memory for is tried again when the size changes.
 
 Pixels: every vertex lands where Direct3D 9 put it. Every pass's viewport is its target moved by
 half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's
@@ -709,9 +734,10 @@ texture. Multisampling (`RAGEXE_MSAA`: 2, 4 or 8 samples, 4 when unset, 1 for no
 does not take falls to the next lower one it does) resolves the screen at the end of each pass on
 it, and alpha-tested draws without blending use alpha to coverage. Direct3D 9 drew flat draws (every
 vertex the same rhw: the UI, sprites) without multisampling, which SDL's GPU API cannot switch off
-for a draw: in a multisampled pass a flat draw's vertices move onto the pixel boundaries that keep
-the pixels Direct3D 9 covered, with the values their triangle has there, so edges along the pixel
-rows and columns come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
+for a draw: in a multisampled pass the vertex shader moves a flat draw's corners onto the pixel
+boundaries that keep the pixels Direct3D 9 covered, with the values their triangle has there, as the
+CPU moved them before (`render/shaders/instances.hlsli`, `snapped`), so edges along the pixel rows
+and columns come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
 transparency anti-aliasing was the driver's (`SSAA` or `ATOC`); on NVIDIA its supersampling shaded
 every sample of each alpha-tested draw without blending, which the ground's and the models' are, so
 with multisampling on their textures were read at each sample, where alpha to coverage reads them
@@ -751,28 +777,51 @@ it, the indirect draws having no first instance to tell it (the device asks for 
 out where the world was made again before it went up; uploads that fail make the world again, and
 after two in a row the device takes no more of it until the next map. The water's cells are kept likewise, and the vertex shader raises
 each by the frame's waves (`water.hlsli`). The passes that must give the CPU's floats follow the
-exact rules (`exact.hlsli`: `precise` on every operation, assigned to a variable, no `mad`, `mul`
-or `dot`, a correctly rounded division), and `test_static_world_maps` checks that their SPIR-V
-has no float operation without `NoContraction`, and their results against the C on real maps.
+rules of `exact.hlsli` (below), and `test_static_world_maps` checks that their SPIR-V has no float
+operation the rules forbid, and their results against the C on real maps.
 
-The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, with the texture stages'
-combinations and the vertex fog; `world.hlsl` for the static world's records with their shadows,
-`world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the water, `rows.hlsl` for
-the screen wobble, and the compute passes `world_transform.hlsl`, `world_cull.hlsl` and
-`world_compact.hlsl`; `shadow_range.hlsl`, `shadow_extents.hlsl` and `shadow_cascades.hlsl`, the
-shadow fit of phase 5's second half, which only `test_shadow_fit_gpu` runs yet; and what they share
-in `records.hlsli`, `quad.hlsli`, `world.hlsli`, `water.hlsli`, `shadow_fit.hlsli` and
-`exact.hlsli`; test programs' own shaders in `tests/shaders`). `tools\shaders\build.bat` compiles
-each with the Vulkan SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into
-MSL through SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes
-`<name>.h` beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo`
-needs, the compilers' versions, and hashes of the source with its includes, of the tool's own source
-(which holds the flags and the binding rules) and of the arrays. The tool fails when a resource is
-not where SDL's binding rules put it. The headers are committed, so builds need no shader compiler;
-`tools/shaders/check.py` (in `build.bat check`, and the test `shader_sources`) fails when a source
-or the tool changed and the headers were not made again, or when a header was edited. Run the tool
-after changing a shader; it needs the Vulkan SDK (`VULKAN_SDK`) and Visual Studio's C compiler. The
-MSL has not been compiled by a Metal compiler yet.
+The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, which builds their vertices
+from their records, `instances.hlsli`; `world.hlsl` for the static world's records with their
+shadows, `world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the water, which
+draws its pixels as the quads draw theirs (`quad.hlsli`: the texture stages' combinations, an atlas
+layer, the vertex fog and the alpha test); `rows.hlsl` for the screen wobble, `rounding.hlsl` for
+the device's check of the GPU's rounding, and the compute passes `world_transform.hlsl`,
+`world_cull.hlsl` and `world_compact.hlsl`; `shadow_range.hlsl`, `shadow_extents.hlsl` and
+`shadow_cascades.hlsl`, the shadow fit of phase 5's second half, which only `test_shadow_fit_gpu`
+runs yet; and what they share in `records.hlsli`, `quad.hlsli`, `instances.hlsli`, `world.hlsli`,
+`water.hlsli`, `shadow_fit.hlsli` and `exact.hlsli`; test programs' own shaders in `tests/shaders`).
+A shader that must give the CPU's floats bit for bit (the quads' vertices, the static world's views
+and cull, the water's quads) follows the rules of `exact.hlsli`: `precise` on every operation,
+assigned to a variable first; no fused multiply-add, `mul()` or dot product; division through a
+correctly rounded helper; constants given by their bits. They rest on the GPU rounding an addition,
+subtraction or multiplication to nearest, ties to even: Vulkan promises the rounding correct but
+leaves its mode to the device, unless the shader declares RoundingModeRTE, which shaders for Vulkan
+1.0 cannot; every GPU they have run on does. The device checks it when it is made (`check_rounding`,
+`render/shaders/rounding.hlsl`: sums, differences, products and quotients that tell the modes apart,
+against the CPU's) and logs where a GPU does not, whose quads and world then land a pixel apart from
+Direct3D 9's now and then. They rest on the C code too: each of its float operations must round
+once, in the order written. MSVC's `/fp:precise` contracts nothing on x64; GCC and Clang contract
+unless compiled with `-ffp-contract=off`, which the CMake builds pass (above). On Metal SDL compiles
+the MSL with fast math, under which `div_rn`'s test for an infinite quotient is not assured.
+`tests/test_quad_instances.c` checks the quad shader's SPIR-V for an operation the rules forbid (an
+unmarked one, scalar or vector, a division not `div_rn`'s, a fused multiply-add, a matrix or dot
+product), runs the quad shader's `quad_vertex` on the GPU against the CPU code it replaced
+(`tests/fixtures/quad_reference.c`: the sprites', the particles' and the sprite particles' vertices
+and `snap_flat`) for millions of records and every divisor from 1 to 2, the instances made by the
+client's own functions, and draws scenes through `render/gfx_gpu.c` both as instances and as the
+reference's vertices, pixel for pixel. The quad vertex shader is large (256 KB of SPIR-V): its 147
+pipelines take about a second to make where the driver has none of them cached (980 ms on a GTX
+970), 4 ms where it has. `tools\shaders\build.bat` compiles each with the Vulkan SDK's `dxc` to
+SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through SPIRV-Cross's C API
+with the resource indices SDL's Metal driver binds, and writes `<name>.h` beside the source: both as
+byte arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the compilers' versions, and
+hashes of the source with its includes, of the tool's own source (which holds the flags and the
+binding rules) and of the arrays. The tool fails when a resource is not where SDL's binding rules
+put it. The headers are committed, so builds need no shader compiler; `tools/shaders/check.py` (in
+`build.bat check`, and the test `shader_sources`) fails when a source or the tool changed and the
+headers were not made again, or when a header was edited. Run the tool after changing a shader; it
+needs the Vulkan SDK (`VULKAN_SDK`) and Visual Studio's C compiler. The MSL has not been compiled by
+a Metal compiler yet.
 
 ### What was verified
 

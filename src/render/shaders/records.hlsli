@@ -1,17 +1,20 @@
 // The records render/gfx_gpu.c writes for a frame, read as storage buffers (structs GpuDraw,
 // GpuView and GpuShadow there, the same layout: only 16-byte vectors and row-major matrices,
-// compiled with -Zpr). A draw finds its record through the instance-rate attribute that holds its
-// index; its view and shadow records through the indices in the draw record.
+// compiled with -Zpr). A quad's draw finds its record through the quad's record in the frame's
+// quads (instances.hlsli), a draw of the static world's and the water's through their uniform, the
+// wobble's through the instance-rate attribute that holds its index; its view and shadow records
+// through the indices in the draw record.
 
 struct Draw
 {
-    uint4 mode;       // the kind (KIND_*), the alpha test (ALPHA_*), fog on, the view (the wobble's:
+    uint4 mode;       // -, the alpha test (ALPHA_*), fog on, the view (the wobble's:
                       // its first row in the row tables, rows.hlsl)
     float4 target;    // the alpha test's reference (0 to 255), half the target's width and height, alpha
                       // to coverage
     uint4 stages;     // the combination (render/draw_modes.h, enum DrawCombine), the stages that read
-                      // opaque black outside 0 to 1 (bit 0 stage 0, bit 1 stage 1), the ground's
-                      // lightmap, the quads' fog table (64 float4 each, render/vertex_fog.h)
+                      // opaque black outside 0 to 1 (bit 0 stage 0, bit 1 stage 1) and whether stage
+                      // 0 reads a layer of an atlas array (bit 2, quad.hlsli), the ground's lightmap,
+                      // the quads' fog table (64 float4 each, render/vertex_fog.h)
     float4 fog;       // the quads' fog: its table's base, direction and count
     float4 fogColour;
     float4 colour;    // a world draw's colour (render/gfx.h, GfxWorldDraw)
@@ -73,9 +76,6 @@ float2 snapped_ndc(float2 window, float2 half)
     float2 p = round(window * 256) / 256 + 1.0 / 1024;
     return float2(p.x / half.x - 1, 1 - p.y / half.y);
 }
-
-// Draw.mode.x, the kind of draw (render/gfx_gpu.c, KIND_*), where a shader tells them apart:
-#define KIND_WORLD 1       // GFX_VTX_WORLD: world coordinates through the camera's view
 
 // render/draw_modes.h, enum DrawAlphaTest
 #define ALPHA_AT_LEAST 1

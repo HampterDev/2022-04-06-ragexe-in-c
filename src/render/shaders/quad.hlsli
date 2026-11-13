@@ -1,7 +1,8 @@
 // What the client's quads (quad.hlsl) and the water (water.hlsl) share: the resources their
 // vertex shaders read first, the varyings, the vertex fog, and the pixels (quad_pixel): the texture
-// stages' combination of the draw's mode (render/draw_modes.h, enum DrawCombine), the fog and the
-// alpha test, as Direct3D 9 drew them.
+// stages' combination of the draw's mode (render/draw_modes.h, enum DrawCombine), stage 0 read from
+// a layer of an atlas array where the draw's record says so, the fog and the alpha test, as
+// Direct3D 9 drew them.
 #include "records.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
@@ -12,7 +13,9 @@ StructuredBuffer<float4> fogTables : register(t2, space0);
 [[vk::combinedImageSampler]] SamplerState sampler0 : register(s0, space2);
 [[vk::combinedImageSampler]] Texture2D<float4> texture1 : register(t1, space2);
 [[vk::combinedImageSampler]] SamplerState sampler1 : register(s1, space2);
-StructuredBuffer<Draw> fragmentDraws : register(t2, space2);
+[[vk::combinedImageSampler]] Texture2DArray<float4> atlas : register(t2, space2);
+[[vk::combinedImageSampler]] SamplerState sampler2 : register(s2, space2);
+StructuredBuffer<Draw> fragmentDraws : register(t3, space2);
 
 // Each varying times q, and q: 1 / w, interpolated in screen space and divided per pixel.
 struct Varyings
@@ -22,6 +25,8 @@ struct Varyings
     [[vk::location(1)]] noperspective float4 uv : TEXCOORD1;
     [[vk::location(2)]] noperspective float2 fogQ : TEXCOORD2;  // the fog's share kept, times q; q
     [[vk::location(3)]] nointerpolation uint draw : TEXCOORD3;
+    [[vk::location(4)]] nointerpolation uint layer : TEXCOORD4; // the layer of the atlas array, where
+                                                                // the draw reads one (Draw.stages.y)
 };
 
 // The share of its colour a vertex of this rhw keeps from the fog (render/gfx.h, GfxFog): the step
@@ -73,8 +78,12 @@ float4 quad_pixel(Varyings i)
 {
     Draw d = fragmentDraws[i.draw];
     float4 diffuse = i.diffuse / i.fogQ.y, uv = i.uv / i.fogQ.y;
-    float4 t = bordered(texture0.Sample(sampler0, stage_uv(uv.xy, d.uvScale.xy, d.uvLimit.xy)), uv.xy,
-                        (d.stages.y & 1) != 0);
+    float2 at0 = stage_uv(uv.xy, d.uvScale.xy, d.uvLimit.xy);
+    // stage 0 reads a layer of an atlas array where the draw's record says so, its texture
+    // otherwise; the same within a draw, so every pixel of it takes the same branch
+    float4 read0 = (d.stages.y & 4) != 0 ? atlas.Sample(sampler2, float3(at0, (float)i.layer))
+                                         : texture0.Sample(sampler0, at0);
+    float4 t = bordered(read0, uv.xy, (d.stages.y & 1) != 0);
     float4 u = bordered(texture1.Sample(sampler1, stage_uv(uv.zw, d.uvScale.zw, d.uvLimit.zw)), uv.zw,
                         (d.stages.y & 2) != 0);
     float4 c = combine(d.stages.x, t, u, diffuse);

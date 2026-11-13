@@ -134,22 +134,28 @@ void gfx_set_texture(int stage, gfx_surface *surface)
     bound_surfaces[stage] = surface;
     word(3); word(stage); word(surface ? surface->id : 0);
 }
-void gfx_draw(int primitive, int kind, const void *vertices, int count, const WORD *indices, int index_count)
+void gfx_draw_vertices(const struct TexDrawVertex *vertices, int count, int strip, int world)
 {
-    assert(count > 0 && (count <= 4 || capture_projection) && (!index_count || indices));
+    assert(count > 0 && (count <= 4 || capture_projection));
     assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_INTO_SCREEN));
     if (capture_projection) {
-        assert(primitive == GFX_PT_TRIANGLELIST && kind == GFX_VTX_TEX1 && count == 6);
-        assert(!index_count && projection_draw_count < 2);
+        assert(!strip && !world && count == 6 && projection_draw_count < 2);
         memcpy(projection_draws[projection_draw_count++], vertices, sizeof projection_draws[0]);
     }
-    word(5); word(primitive); word(kind); word(count); word(index_count);
-    bytes(vertices, (size_t)count * (kind == GFX_VTX_TEX1 ? sizeof(struct TexDrawVertex) : sizeof(struct RPTwoTexVertex)));
-    if (index_count) bytes(indices, (size_t)index_count * sizeof *indices);
+    word(5); word((unsigned)strip); word((unsigned)world); word((unsigned)count);
+    bytes(vertices, (size_t)count * sizeof *vertices);
     sample_textures();
     ++draws;
     if (count_quads)
         world_call('Q', (unsigned)count);
+}
+void gfx_draw_quad(const struct GfxQuad *quad)
+{
+    assert(quad && quad->kind == GFX_QUAD_WORLD && quad->world.stage2);
+    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_INTO_SCREEN));
+    word(8); bytes(quad, sizeof *quad);
+    sample_textures();
+    ++draws;
 }
 /* the static world's draws (render/gfx.h), in the order the renderer made them: a pass of records
    ('P', pass), one record ('R', its id) or a run of water cells ('W'), with the mode and the texture
@@ -207,8 +213,7 @@ int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT
 static void growth(void)
 {
     struct Renderer renderer = {0};
-    struct TexDrawPrim *first;
-    struct RPTwoTexQuad *two;
+    struct TexDrawPrim *first, *instance;
     struct RPQuad *quad;
     struct TexDrawVertex *vertices;
     unsigned pass, i, allocations = 0;
@@ -231,14 +236,49 @@ static void growth(void)
         assert(quad->verts == vertices);
         assert(!renderer_new_tex_draw_vertices(&renderer, -1));
         assert(!renderer_new_tex_draw_vertices(&renderer, 0));
-        for (i = 1; i < 1100; ++i) assert(renderer_new_quad(&renderer)->nindices == 0);
-        two = renderer_new_two_tex_quad(&renderer);
-        assert(two->prim.verts == two->quad && two->prim.nverts == 4);
-        for (i = 1; i < 8200; ++i) assert(renderer_new_two_tex_quad(&renderer)->prim.nverts == 4);
+        for (i = 1; i < 1100; ++i) assert(!renderer_new_quad(&renderer)->instance);
+        instance = renderer_new_multi_tex_quad(&renderer);
+        assert(instance->base.instance == &instance->instance);
+        instance->instance.kind = GFX_QUAD_WORLD;
+        for (i = 1; i < 2100; ++i) assert(renderer_new_multi_tex_quad(&renderer)->base.instance);
+        assert(instance->instance.kind == GFX_QUAD_WORLD);
         if (pass) assert(allocation_calls == allocations);
         allocations = allocation_calls;
         renderer_destroy_all_rp_list(&renderer);
     }
+    renderer_destruct(&renderer);
+    assert(!outstanding);
+}
+
+/* The quads of sprites and sprite particles are the primitives pool's, taken in the order the
+   client asks for them, as when the CPU made their vertices: the quad of the same place in a later
+   frame finds the header the last user left there (renderer_new_prim), instance or vertices. */
+static void shared_slots(void)
+{
+    struct Renderer renderer = {0};
+    struct TexDrawPrim *a, *b, *c;
+    assert(renderer_construct(&renderer));
+    a = renderer_new_prim(&renderer);
+    b = renderer_new_prim_instance(&renderer);
+    c = renderer_new_prim(&renderer);
+    assert(b == a + 1 && c == b + 1);
+    assert(!a->base.instance && b->base.instance == &b->instance && !c->base.instance);
+    a->base.stageMode = 7; a->base.srcBlend = 1; a->base.world = 1;
+    b->base.alpha_mode = 0; b->base.srcBlend = 5; b->base.destBlend = 2;
+    b->base.texture = (struct Texture *)&renderer;
+    memset(&b->instance, 0x5a, sizeof b->instance);
+    renderer_destroy_all_rp_list(&renderer);
+    /* a sprite's quad where an STR effect's was, a quad of vertices where the sprite's was */
+    c = renderer_new_prim_instance(&renderer);
+    assert(c == a && c->base.instance == &c->instance && !c->base.world);
+    assert(c->base.stageMode == 7 && c->base.srcBlend == 1 && c->base.alpha_mode == 1);
+    assert(c->instance.kind == 0 && c->instance.world.viewSpace == 0 && c->instance.world.stage2 == 0);
+    c = renderer_new_prim(&renderer);
+    assert(c == b && !c->base.instance);
+    assert(c->base.alpha_mode == 0 && c->base.srcBlend == 5 && c->base.destBlend == 2);
+    assert(c->base.texture == (struct Texture *)&renderer);
+    assert(c->base.verts == c->quad && c->base.nverts == 4 && c->base.prim == RP_STRIP);
+    renderer_destroy_all_rp_list(&renderer);
     renderer_destruct(&renderer);
     assert(!outstanding);
 }
@@ -265,7 +305,7 @@ static void render_trace(void)
     static const int flags[] = {0,0x20,0x101,1,0x201,0x21,0x8001,0x103,3,0x203,5,0xd,0x209,0x11,0x205};
     struct Renderer renderer = {0};
     struct TexDrawPrim quads[96];
-    struct RPTwoTexQuad pairs[8];
+    struct TexDrawPrim pairs[8];
     struct Texture textures[4] = {0};
     struct gfx_surface surfaces[4] = {{1},{2},{3},{4}};
     unsigned scenario, i, j;
@@ -290,10 +330,13 @@ static void render_trace(void)
             renderer_add_prim(&renderer, &q->base, flags[i % (sizeof flags / sizeof flags[0])]);
         }
         for (i = 0; i < 8; ++i) {
-            memset(pairs + i, 0, sizeof pairs[i]); rp_two_tex_quad_construct(pairs + i);
-            pairs[i].prim.tex0 = textures + (i % 4); pairs[i].prim.tex1 = textures + ((i + 1) % 4);
-            for (j = 0; j < 4; ++j) { pairs[i].quad[j].rhw = 0.00125f; pairs[i].quad[j].diffuse = i + 1; }
-            renderer_add_multi_tex_batch(&renderer, &pairs[i].prim);
+            rp_instance_construct(pairs + i);
+            pairs[i].base.texture = textures + (i % 4);
+            pairs[i].instance.kind = GFX_QUAD_WORLD;
+            pairs[i].instance.world.stage2 = 1;
+            pairs[i].instance.world.colour = i + 1;
+            for (j = 0; j < 4; ++j) pairs[i].instance.world.point[j][2] = 800.0f;
+            renderer_add_multi_tex_batch(&renderer, &pairs[i].base, textures + ((i + 1) % 4));
         }
         current_mode = -1; trace = UINT64_C(1469598103934665603); draws = 0;
         renderer_draw_lists(&renderer);
@@ -324,27 +367,39 @@ BYTE c3d_ground15_get_attr_quad_half(struct C3dGround15 *ground, int x, int y, f
     }
     return 1;
 }
-void renderer_project_multitex_vertex(struct Renderer *renderer, const Vec3 *in,
-    const float *view, struct RPTwoTexVertex *out)
+float renderer_project_rhw(const Vec3 *in, const float *view)
 {
-    assert(renderer == g_renderer && !memcmp(view, test_view, sizeof test_view));
-    out->x = in->x + 0.5f; out->y = in->y - 0.5f; out->z = in->z; out->rhw = 0.00125f;
+    assert(!memcmp(view, test_view, sizeof test_view));
     ++projected_vertices;
+    return in->z == 0.0f ? 0.00125f : 0.0025f;
 }
 struct Particle *particle_construct(struct Particle *particle, Vec3 pos, int flags)
 { (void)pos; (void)flags; memset(particle, 0, sizeof *particle); return particle; }
 void particle_reset(struct Particle *particle) { assert(particle); }
+
+/* the instance of a multitexture particle's quad and its second texture's sort key in the list */
+static const struct GfxQuad *multitex_queued(struct Renderer *renderer, size_t n, const struct RPQuad **quad,
+                                             unsigned *second)
+{
+    const struct RenderEntry *e = renderer->queues[RENDER_MULTITEXTURE].items + n;
+    *quad = e->primitive;
+    *second = e->textures[1].sort_key;
+    return (*quad)->instance;
+}
 
 static void multitex_frame_vertices(void)
 {
     struct Renderer renderer = {0};
     struct MultiTexParticle particle;
     struct Texture textures[3] = {0};
-    struct RPTwoTex *first, *second;
-    struct RPTwoTexVertex saved[4];
+    const struct RPQuad *first, *second;
+    const struct GfxQuad *q, *r;
+    struct GfxQuad saved;
     Vec3 origin = {0};
-    unsigned allocations, i, before_projection;
+    unsigned allocations, i, before_projection, key;
     assert(renderer_construct(&renderer)); g_renderer = &renderer;
+    renderer.proj[0] = 5.0f; renderer.proj[1] = 6.0f; renderer.centreX = 7; renderer.centreY = 8;
+    for (i = 0; i < 3; ++i) textures[i].serial = 100 + i;
     allocations = allocation_calls;
     memset(&particle, 0xa5, sizeof particle);
     assert(multi_tex_particle_construct(&particle, origin, -1) == &particle);
@@ -364,43 +419,50 @@ static void multitex_frame_vertices(void)
     assert(projected_vertices == before_projection && allocation_calls == allocations);
     assert(!renderer.queues[RENDER_MULTITEXTURE].count);
     multi_tex_particle_render_on_cell(&particle, 10, 20);
-    first = renderer.queues[RENDER_MULTITEXTURE].items[0].primitive;
-    assert(first->nverts == 4 && first->prim == 5 && !first->indices && !first->nindices);
-    assert(first->tex0 == textures && first->tex1 == textures + 1);
+    q = multitex_queued(&renderer, 0, &first, &key);
+    /* the cell's corners for the device to project through the view, z nudged towards the camera,
+       both stages' coordinates; flat only where every corner's rhw is the same (the stub gives the
+       first corner, at height 0, another) */
+    assert(q && q->kind == GFX_QUAD_WORLD && !q->world.viewSpace && q->world.stage2);
+    assert(first->texture == textures && key == 101 && first->instance == q);
+    assert(!memcmp(q->world.view, test_view, sizeof test_view));
+    assert(q->world.proj[0] == 5.0f && q->world.proj[1] == 6.0f);
+    assert(q->world.centre[0] == 7.0f && q->world.centre[1] == 8.0f);
+    assert(q->world.rhw == GFX_RHW_PROJECTED && q->world.depth == GFX_DEPTH_ADD);
+    assert(q->world.depthValue == -k_multitexDepthNudge && !q->world.flat);
+    assert(q->world.colour == 0xffffffff);
     assert(projected_vertices == before_projection + 4);
     for (i = 0; i < 4; ++i) {
-        const struct RPTwoTexVertex *v = first->verts + i;
-        assert(v->x == 10.5f + i && v->y == 19.5f - i);
-        assert(v->z == (float)i / 4 - k_multitexDepthNudge && v->rhw == 0.00125f);
-        assert(v->diffuse == 0xffffffff);
-        assert(v->u0 == particle.uv0[i].u + 0.25f && v->v0 == particle.uv0[i].v + 0.5f);
-        assert(v->u1 == particle.uv1[i].u && v->v1 == particle.uv1[i].v);
+        assert(q->world.point[i][0] == (float)(10 + i) && q->world.point[i][1] == (float)(20 - (int)i));
+        assert(q->world.point[i][2] == (float)i / 4);
+        assert(q->world.u[i] == particle.uv0[i].u + 0.25f && q->world.v[i] == particle.uv0[i].v + 0.5f);
+        assert(q->world.u1[i] == particle.uv1[i].u && q->world.v1[i] == particle.uv1[i].v);
     }
-    memcpy(saved, first->verts, sizeof saved);
+    saved = *q;
     particle.texture0 = textures + 2; particle.texture1 = NULL;
     particle.u_scroll = 2; expected_cell_x = 30; expected_cell_y = 40;
     multi_tex_particle_render_on_cell(&particle, 30, 40);
-    second = renderer.queues[RENDER_MULTITEXTURE].items[1].primitive;
-    assert(first != second && second->verts != first->verts);
-    assert(second->tex0 == textures + 2 && !second->tex1 && second->verts[0].u0 == 2);
-    assert(first->tex0 == textures && first->tex1 == textures + 1 && !memcmp(saved, first->verts, sizeof saved));
+    r = multitex_queued(&renderer, 1, &second, &key);
+    assert(first != second && r != q);
+    assert(second->texture == textures + 2 && key == 0 && r->world.u[0] == 2);
+    assert(first->texture == textures && !memcmp(&saved, q, sizeof saved));
     multi_tex_particle_reset(&particle);
     assert(!particle.texture0 && !particle.texture1 && !particle.u_scroll && !particle.v_scroll);
     for (i = 0; i < 8300; ++i) multi_tex_particle_render_on_cell(&particle, 30, 40);
     memset(&particle, 0xdd, sizeof particle);
     assert(renderer.queues[RENDER_MULTITEXTURE].count == 8302);
-    assert(first->tex0 == textures && first->tex1 == textures + 1 && !memcmp(saved, first->verts, sizeof saved));
+    assert(first->texture == textures && !memcmp(&saved, q, sizeof saved));
     renderer_destroy_all_rp_list(&renderer);
     allocations = allocation_calls;
     multi_tex_particle_construct(&particle, origin, -1);
     memset(particle.uv0, 0, sizeof particle.uv0); memset(particle.uv1, 0, sizeof particle.uv1);
     multi_tex_particle_render_on_cell(&particle, 30, 40);
     assert(allocation_calls == allocations && renderer.queues[RENDER_MULTITEXTURE].count == 1);
-    second = renderer.queues[RENDER_MULTITEXTURE].items[0].primitive;
-    assert(!second->tex0 && !second->tex1 && !second->verts[0].u0 && !second->verts[0].v1);
+    r = multitex_queued(&renderer, 0, &second, &key);
+    assert(!second->texture && !key && !r->world.u[0] && !r->world.v1[0]);
     renderer_destroy_all_rp_list(&renderer); renderer_destruct(&renderer);
     assert(!outstanding && !g_renderer);
-    puts("Multitexture particles: frame-owned quads, projection inputs, skipped cells, UVs, fog, repeated draws, particle reuse and pool growth passed.");
+    puts("Multitexture particles: frame-owned instances, projection inputs, skipped cells, UVs, repeated draws, particle reuse and pool growth passed.");
 }
 
 /* The static world among the lists: its opaque passes and its ground once a frame while it is set,
@@ -509,7 +571,7 @@ int main(int argc, char **argv)
         return 99;
     }
     if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); granny_projection_ownership(); world_entries(); }
-    growth(); routing(); render_trace();
+    growth(); shared_slots(); routing(); render_trace();
     assert(!outstanding && atlas_starts && atlas_ends && frame_ends == effect_ends);
     if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes, real draw passes and the static world's draws among them passed.");
     return 0;

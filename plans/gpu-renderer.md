@@ -1,14 +1,15 @@
 # One renderer on SDL's GPU API
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
-resolution. Phases 2 to 4 are done on Windows. On Linux their unit tests and scene harness have run
-in WSL with Mesa's lavapipe, but no one has played on it. The Android client of phase 2 builds for
-both ABIs and draws the login screen on the x86_64 emulator (the host's GPU through gfxstream, and
-SwiftShader); no map has been drawn on Android. The macOS client has not been built or run on it,
-and no Metal compiler has seen its shaders. The first half of phase 5, the static world drawn from
-records the GPU culls, is done on Windows. The second half of phase 5 (the shadows) and phases 6 and
-7 are to do; parts of them are built ahead on branches of their own (see those phases). File
-references drift as the code changes. Sizes are judgement, not measurement.
+resolution. Phases 2 to 4, the first half of phase 5 (the static world drawn from records the GPU
+culls) and the first part of phase 6 (sprites, effects and the UI as instances) are done on
+Windows. On Linux the unit tests and scene harness of phases 2 to 4 have run in WSL with Mesa's
+lavapipe, but no one has played on it. The Android client of phase 2 builds for both ABIs and draws
+the login screen on the x86_64 emulator (the host's GPU through gfxstream, and SwiftShader); no map
+has been drawn on Android. The macOS client has not been built or run on it, and no Metal compiler
+has seen its shaders. The second half of phase 5 (the shadows), the second part of phase 6 (Granny)
+and phase 7 are to do; parts of them are built ahead on branches of their own (see those phases).
+File references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
 
@@ -50,8 +51,13 @@ references drift as the code changes. Sizes are judgement, not measurement.
   pipelines when it starts; the effect lists' quads carry their own D3DBLEND factors and
   texture-stage preset, and their modes have a pipeline for each pair of the screen's blend
   factors. One quad shader runs the stage combinations, chosen by the draw's record. Fog is
-  computed in the vertex shaders from view depth. Pre-transformed vertices (`GFX_VTX_TEX1/TEX2`,
-  xyz-rhw) carry most of what is drawn.
+  computed in the vertex shaders from view depth.
+- **Quads and triangles are instances** (phase 6, first part). Everything the client draws but the
+  static world is a record of the frame's quads (`render/quads.c`), from which the quad shader's
+  vertex shader makes the vertices the CPU made before, bit for bit (`render/shaders/exact.hlsli`):
+  a sprite's from its quad's rows, rhw and turn; a particle's by projecting its points as
+  `renderer_project_vertex` did; everything else, the UI, STR effects, effect primitives and
+  Granny's vertices, from the client's own vertices, copied once into the frame's upload.
 - **The static world on the GPU** (phase 5, first half): a map's ground blocks and RSM model nodes
   in one vertex and one index buffer, their textures and lightmap pages in texture arrays of one
   size and number of mipmap levels each, a draw record per (block or node, texture run) and a
@@ -64,20 +70,22 @@ references drift as the code changes. Sizes are judgement, not measurement.
   record the view holds is ticked though the walk does not reach it. The CPU culls the alpha-blended
   models' records itself and queues them among the sprites as the walk reaches their models, and
   still picks the shadow casters, drawn from the records. The water's cells stay on the GPU, raised
-  by the frame's waves in the vertex shader.
-- **Built on the CPU every frame:** actor sprites (projected on the CPU, `actor/sprite_quad.c`),
-  Granny actors (skinned, lit and projected per vertex, `actor/granny.c`), the water's key among the
-  sprites (one per cell in view), particles, STR effects, effect primitives, damage numbers and
-  every 2D quad. The shadow cascades are fitted on the CPU to per-leaf boxes of the ground and
-  models (`renderer_shadow_frame`, `view_shadow_boxes`), and the CPU picks the casters
+  by the frame's waves in the vertex shader. These shaders read up to six storage buffers a stage,
+  where every Vulkan device takes four, and the quad shader keeps to four.
+- **Built on the CPU every frame:** the quads of actor sprites (projected on the CPU,
+  `actor/sprite_quad.c`, their vertices made on the GPU), Granny actors (skinned, lit and projected
+  per vertex, `actor/granny.c`), the water's key among the sprites (one per cell in view), the
+  particles' points (projected on the GPU), STR effects, effect primitives, damage numbers and every
+  2D quad. The shadow cascades are fitted on the CPU to per-leaf boxes of the ground and models
+  (`renderer_shadow_frame`, `view_shadow_boxes`), and the CPU picks the casters
   (`view_cast_shadows`); so the CPU still walks the scene graph's leaves the view reaches, for the
   casters, the water's keys, the actors, and the models' ticks and the poses and alpha-blended
   records it takes from them for the device.
 - **How it reaches the device:** 18 queues (`render/draw_queue.h`), flushed in a fixed order by
   `renderer_draw_lists`, each in its draw mode (`render/crenderer.c`), with the static world's
-  passes drawn before the opaque lists' quads and the ground's after them. Draws that are not the
-  static world's go through `render/gfx_batch.c` (8,192 vertices), flushed on any texture change or
-  change of what they are drawn with into a draw of the recorded frame.
+  passes drawn before the opaque lists' quads and the ground's after them. Instances are batched
+  into one draw while what they are drawn with stays the same (the textures, or layers of one
+  array).
 - **No read-backs** (phase 4). Nothing comes back from the GPU while playing: the screen wobble
   is a step of the frame that copies the screen and draws it again with its rows moved
   (`gfx_wobble`), from a table the CPU computes with the original's random numbers
@@ -88,9 +96,11 @@ references drift as the code changes. Sizes are judgement, not measurement.
   harness has none.
 - **Textures:** 16-bit 4444/1555 converted on the CPU (`render/csurface.c`) and widened to
   B8G8R8A8 when they go up, magenta keyed to alpha 0, mips made on the GPU; sprite atlas pages
-  decoded from palette RLE on the CPU (`render/rp_atlas.c`); UI canvases re-uploaded as 256-pixel
-  tiles when they change. One texture per surface, but for the static world's, whose pixels go
-  into the layers of its texture arrays.
+  decoded from palette RLE on the CPU (`render/rp_atlas.c`) and kept as layers of texture arrays of
+  their size, placed by the main thread; UI canvases re-uploaded as 256-pixel tiles when they
+  change. The static world's textures and lightmap pages go into the layers of texture arrays of
+  its own, one per size and number of mipmap levels, made for the map; every other surface is a
+  texture of its own.
 - **Measured:** each scene capture writes its frame's counters (`tests/scenes/README.md`).
   `prontera_crowd` makes 1,174 draws (1,954 calls) and `camera_level_view` 3,345, as with Direct3D
   9; `docs/custom-review.md` has the baseline and phase 2's CPU times.
@@ -265,24 +275,24 @@ the tests that cover them.
 
 ### Sprites, actors and effects
 
-- Actor sprites, ground items and effect sprites become screen-quad instances, made by
-  `render_object_clip_to_quad` as today: the corners, the two rows' rhw, the flipped-screen offsets,
-  the rotation, the atlas layer and rectangle and the colour. The CPU keeps projecting them, since
-  picking builds its rectangles from the quads, name tags and balloons take the anchor, and callers
-  add depth tweaks of their own, some with doubles from Lua; the vertex shader does what building
-  the vertices, batching and the multisampled pixel snap do today. The UI's quads take the same
-  instance. Sprite atlas pages become one texture array.
-- Particles and STR quads hand over the world corners the CPU builds, and the vertex shader projects
-  them as `renderer_project_vertex` does.
+- Actor sprites, damage numbers, item and screen sprites, particles and STR effect quads become
+  instances whose vertices the vertex shader makes exactly as the CPU made them. The sprites'
+  projection stays on the CPU, which needs their screen quad anyway: picking builds its rectangles
+  from it, name tags and balloons take the anchor, and callers add depth tweaks
+  (`render_object_clip_to_quad`, `renderer_project_point`); a sprite's instance is that quad.
+  Particles hand over their points, which the shader projects; STR effects are built on the screen
+  around one projected anchor and drawn from their vertices. Sprite atlas pages become layers of
+  texture arrays.
 - Granny actors are skinned in the vertex shader from bone matrices in the frame's upload; bone
   and mesh matrices and the light vector stay on the CPU.
-- A shader that must reproduce the CPU's floats does so to the bit only under strict rules:
-  `precise` on every operation, assigned to a variable first; no fused multiply-add, `mul()` or dot
-  product; division through a correctly rounded helper; the C code's double expressions computed
-  exactly and rounded once; constants given by their bits. Under them a vertex shader puts sprites
-  on the CPU's pixels on NVIDIA's driver and Mesa's lavapipe alike (20 million vertices, pictures
-  equal at 1x and 4x); a shader written plainly moves about a pixel a scene to another sprite, ten
-  with multisampling, and samples another texel in about twenty.
+- A shader that must reproduce the CPU's floats does so to the bit only under strict rules
+  (`render/shaders/exact.hlsli`, which the quads', the static world's and the water's shaders
+  share): `precise` on every operation, assigned to a variable first; no fused multiply-add,
+  `mul()` or dot product; division through a correctly rounded helper; the C code's double
+  expressions computed exactly and rounded once; constants given by their bits. Under them a vertex
+  shader puts sprites on the CPU's pixels on NVIDIA's driver and Mesa's lavapipe alike (20 million
+  vertices, pictures equal at 1x and 4x); a shader written plainly moves about a pixel a scene to
+  another sprite, ten with multisampling, and samples another texel in about twenty.
 - What the CPU still builds per frame is a list of instances and a few matrices, uploaded once.
 
 ### 2D, UI and text
@@ -467,16 +477,32 @@ recorded.
 
 ### Phase 6: sprites, actors and effects as instances (large)
 
-- Screen-quad instances for sprites, ground items, effect sprites and the UI; particles and STR
-  quads projected in the vertex shader from their world corners; the sprite atlas as a texture
-  array; Granny skinning in the vertex shader. Built ahead on the branch `gpu-instance-study`: the
-  rules for exact shaders (`render/shaders/sprites.hlsli`), the sprite vertex shader and a test that
-  compares it with the CPU on 9 million records and in pictures, with a check that fails on a
-  shader breaking the rules.
-- Delete the vertex building of `render_object_submit_spr_quad`, `snap_flat` for instanced draws,
-  Granny's per-vertex CPU work, and `gfx_batch.c` and the pre-transformed vertex kinds once the UI is
-  instanced. `render_object_clip_to_quad` and `renderer_project_point` stay: they make the instances
-  and feed picking.
+- Sprites, damage numbers, particles and STR quads as instances whose vertices the vertex shader
+  makes as the CPU made them, the particles projected in it; the sprite atlas as texture arrays;
+  Granny skinning in the vertex shader.
+- Delete the CPU's vertex building for these (`render_object_submit_spr_quad`'s vertices, the
+  particles' projection, `snap_flat`), `gfx_batch.c` and the pre-transformed vertex kinds, and with
+  Granny's skinning its per-vertex projection and lighting. The sprites' projection
+  (`render_object_clip_to_quad`, `renderer_project_point` for anchors) stays on the CPU, which
+  needs the quad for picking, name tags and balloons.
+- First part (done): every quad and triangle is an instance. Sprites, ground items and effect
+  sprites hand the device the quad `render_object_clip_to_quad` makes, as before, and the vertex
+  shader makes `render_object_submit_spr_quad`'s vertices; particles hand over their points (in
+  view space where each has a matrix of its own) and the shader projects them as
+  `renderer_project_vertex` did, the CPU keeping only their rhw for the lists' order; the UI, STR
+  effects (built on the screen around one projected anchor, not from world corners), effect
+  primitives and Granny's vertices are drawn from the client's vertices, an axis-aligned rectangle
+  in a short record. In a multisampled pass the shader moves a flat draw's corners onto pixel
+  boundaries as `snap_flat` did on the CPU. The atlas's pages are layers of texture arrays of up
+  to 16 MB by size, each going with its last page. Sprites and sprite particles take the
+  renderer's quads as they did, so each keeps what the last one in its place left there, as in the
+  original. `gfx_batch.c`, `gfx_draw`, the device's vertex kinds (`GFX_VTX_*`), `snap_flat` and the
+  two-texture vertices are gone. The scene set, `window_resize`, the wobble and two new scenes, of
+  effects (`effects_instances`) and of a map that draws alpha in two passes (`two_pass_alpha`), are
+  phase 4's to the pixel, with and without multisampling.
+- Second part (to do): Granny skinned in the vertex shader, which deletes its CPU projection and
+  lighting and the record kind its triangles take through the camera's view (`QUAD_CAMERA`, the
+  world vertices of `gfx_draw_vertices`), which nothing else takes.
 
 ### Phase 7: measure and settle (small)
 
@@ -525,3 +551,16 @@ recorded.
   here; each is recorded as not needed, and fixes above `gfx.h` and the window layer still pick as
   before.
 - **Tests that stub `gfx_*`.** About 14 of them change with each API change in phases 2 to 4.
+- **Floats bit for bit on every GPU.** The instances' vertices and the static world's views, cull
+  and water are the CPU's only where the GPU rounds to nearest even, which Vulkan leaves to the
+  device (the device checks it when it is made), where the C code is compiled without contraction
+  (the CMake builds give GCC and Clang `-ffp-contract=off`), and on Metal only as far as SDL's
+  fast-math MSL keeps `div_rn`'s tests; no Metal compiler has run the shaders yet.
+- **Storage buffers a shader stage.** Every Vulkan device takes four
+  (`maxPerStageDescriptorStorageBuffers`), which the quad shader keeps to; the static world's
+  shaders read more: the water's vertex shader six (the draw records, views and fog tables, its
+  cells, waves and sines), the world's vertex shader five, each compute pass five. The device
+  refuses any shader that reads more than six (`STORAGE_BUFFERS_MAX`), so a device that takes
+  fewer draws no world, until what those shaders read is packed into four buffers a stage.
+- **Start-up with a cold driver cache.** The quad vertex shader is large: its 147 pipelines take
+  about a second to make the first time a driver sees them (980 ms on a GTX 970).

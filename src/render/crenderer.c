@@ -30,17 +30,13 @@ static void set_tex1(struct Renderer *self, gfx_surface *surface)
     self->boundTextures[1] = surface;
 }
 
+/* custom: an instance the client made, or the instances of its vertices (render/gfx.h) */
 static void draw_quad(const struct RPQuad *n)
 {
-    if (!n->nverts)
-        return;
-    gfx_draw(n->prim, n->world ? GFX_VTX_WORLD : GFX_VTX_TEX1, n->verts, n->nverts,
-             n->nindices ? (const WORD *)n->indices : NULL, n->nindices);
-}
-
-static void draw_twotex(const struct RPTwoTex *n)
-{
-    gfx_draw(n->prim, GFX_VTX_TEX2, n->verts, n->nverts, (const WORD *)n->indices, n->nindices);
+    if (n->instance)
+        gfx_draw_quad(n->instance);
+    else if (n->nverts)
+        gfx_draw_vertices(n->verts, n->nverts, n->prim == RP_STRIP, n->world);
 }
 
 static unsigned char keyed_less(const void *a, const void *b, void *pred)
@@ -238,12 +234,9 @@ static void flush_multitexture(struct Renderer *self)
     queue_sort(l, multitexture_less);
     gfx_set_mode(DRAW_MULTITEXTURE);
     for (size_t i = 0; i < l->count; ++i) {
-        struct RPTwoTex *n = l->items[i].primitive;
-        if (n->nverts <= 0)
-            continue;
         set_tex0(self, l->items[i].textures[0].surface);
         set_tex1(self, l->items[i].textures[1].surface);
-        draw_twotex(n);
+        draw_quad(l->items[i].primitive);
     }
     gfx_set_texture(1, NULL);
     self->boundTextures[1] = NULL;

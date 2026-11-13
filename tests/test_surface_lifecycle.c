@@ -22,7 +22,7 @@ static void *checked_calloc(size_t count, size_t size)
 #include "../src/render/render_clients.c"
 
 struct gfx_surface {
-    int width, height, format, live;
+    int width, height, format, live, layered;
     unsigned version;
     DWORD pixels[64 * 64];
 };
@@ -49,6 +49,12 @@ gfx_surface *gfx_create_texture(int w, int h, int format)
     return surface;
 }
 gfx_surface *gfx_create_surface(int w, int h) { return gfx_create_texture(w, h, GFX_FMT_8888); }
+gfx_surface *gfx_create_layer_texture(int w, int h, int format)
+{
+    gfx_surface *surface = gfx_create_texture(w, h, format);
+    if (surface) surface->layered = 1;
+    return surface;
+}
 gfx_surface *gfx_create_render_target(int w, int h) { return gfx_create_texture(w, h, GFX_FMT_8888); }
 /* the screen, the render target render_quads_to_texture takes and sets back */
 static gfx_surface screen_target;
@@ -255,6 +261,24 @@ static void test_failures(void)
     fail_create = 0; assert(!outstanding && !handles);
     surface_destroy(NULL); texture_destroy(NULL);
 }
+/* a sprite atlas page: a layered texture of its size and format, or none where it cannot be made */
+static void test_layer(void)
+{
+    struct Texture *page;
+    unsigned point;
+    page = texture_create_layer(16, 8, GFX_FMT_1555);
+    assert(page && page->base.surface->layered && page->base.width == 16 && page->base.height == 8);
+    assert(page->reqWidth == 16 && page->reqHeight == 8 && page->format == GFX_FMT_1555);
+    texture_destroy(page); assert(!handles && !outstanding);
+    assert(!texture_create_layer(0, 8, GFX_FMT_1555) && !texture_create_layer(16, -1, GFX_FMT_1555));
+    for (point = 1; point <= 2; ++point) {
+        fail_at = allocation_calls + point; assert(!texture_create_layer(4, 4, GFX_FMT_1555));
+        assert(!outstanding && !handles);
+    }
+    fail_at = 0; fail_create = 1;
+    assert(!texture_create_layer(4, 4, GFX_FMT_1555));
+    fail_create = 0; assert(!outstanding && !handles);
+}
 static void test_replacement(void)
 {
     struct Surface surface, saved_surface;
@@ -428,10 +452,10 @@ int main(void)
     g_3dDevice.maxTexW = g_3dDevice.maxTexH = 16;
     g_3dDevice.rBits = g_3dDevice.gBits = g_3dDevice.bBits = 3;
     g_3dDevice.rShift = 10; g_3dDevice.gShift = 5;
-    test_texture(); test_target(); test_composite(); test_surface(); test_failures(); test_replacement(); test_pixels();
+    test_texture(); test_target(); test_composite(); test_surface(); test_failures(); test_layer(); test_replacement(); test_pixels();
     test_upload_failure(); test_sprite_upload(); test_cache_upload();
     assert(releases && !handles && !outstanding);
-    puts("Surface ownership: typed callbacks, render-target textures, composited windows' targets, four pixel formats, downsampling, wallpaper, transactional recreation, allocation/driver failures and repeated cleanup passed");
+    puts("Surface ownership: typed callbacks, render-target textures, sprite atlas layers, composited windows' targets, four pixel formats, downsampling, wallpaper, transactional recreation, allocation/driver failures and repeated cleanup passed");
     return 0;
 }
 

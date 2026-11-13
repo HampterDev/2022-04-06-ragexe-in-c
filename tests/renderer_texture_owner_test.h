@@ -39,6 +39,8 @@ gfx_surface *gfx_create_texture(int width, int height, int format)
 }
 int gfx_texture_format_ok(int format) { (void)format; return 1; }
 void gfx_world_clear(void) {}
+gfx_surface *gfx_create_layer_texture(int width, int height, int format)
+{ (void)width; (void)height; (void)format; abort(); }
 int gfx_get_size(gfx_surface *surface, int *width, int *height)
 { assert(surface && surface->refs); *width = surface->width; *height = surface->height; return 0; }
 int gfx_lock(gfx_surface *surface, const RECT *rect, struct gfx_lock *out)
@@ -179,7 +181,7 @@ static void queued_all_routes(struct Renderer *renderer)
     struct Texture *texture = texture_create(1, 1, GFX_FMT_8888);
     gfx_surface *surface = texture->base.surface;
     struct TexDrawPrim *quad = renderer_new_prim(renderer);
-    struct RPTwoTexQuad *pair = renderer_new_two_tex_quad(renderer);
+    struct TexDrawPrim *pair = renderer_new_multi_tex_quad(renderer);
     struct PrimTriangle triangle = {0};
     struct RPWorldDraw draw;
     unsigned flags, mode, i, submissions = 0;
@@ -189,9 +191,10 @@ static void queued_all_routes(struct Renderer *renderer)
         quad->base.alpha_mode = (BYTE)mode;
         for (flags = 0; flags < 65536; ++flags) { renderer_add_prim(renderer, &quad->base, flags); ++submissions; }
     }
-    pair->prim.tex0 = pair->prim.tex1 = texture;
-    for (i = 0; i < 4; ++i) pair->quad[i].rhw = 0.00125f;
-    renderer_add_multi_tex_batch(renderer, &pair->prim);
+    pair->base.texture = texture;
+    pair->instance.kind = GFX_QUAD_WORLD;
+    pair->instance.world.stage2 = 1;
+    renderer_add_multi_tex_batch(renderer, &pair->base, texture);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
     memset(&draw, 0, sizeof draw);
     draw.kind = RP_WORLD_CAST;

@@ -1,42 +1,48 @@
-// The client's quads (render/gfx.h, gfx_draw): the texture stages' combination of the draw's mode
-// (render/draw_modes.h, enum DrawCombine), the vertex fog and the alpha test, as Direct3D 9 drew
-// them.
-// Pre-transformed vertices keep Direct3D 9's pixels: the rasterizer gets x and y snapped as
+// The client's quads and triangles (render/gfx.h, gfx_draw_quad and gfx_draw_vertices): every
+// one is an instance, a record of the frame's quads (render/quads.c, instances.hlsli), from which
+// this vertex shader makes the vertices the client's C code made for it before, bit for bit
+// (exact.hlsli, quad_vertex); the fragment shader draws the texture stages' combination of the
+// draw's mode (render/draw_modes.h, enum DrawCombine), the vertex fog and the alpha test, as
+// Direct3D 9 drew them (quad.hlsli, quad_pixel).
+// Vertices on the screen keep Direct3D 9's pixels: the rasterizer gets x and y snapped as
 // Direct3D 9 snapped them (snapped_ndc), and covers pixels with Direct3D's top-left rule. Their w
 // stays 1 so that nothing divides the position; the varyings are interpolated perspective-correct
-// by hand, with the rhw, as Direct3D 9 interpolates them. GFX_VTX_WORLD vertices go through the
+// by hand, with the rhw, as Direct3D 9 interpolates them. QUAD_CAMERA's world points go through the
 // camera's view to the same pixels, which the GPU divides and moves by the viewport as Direct3D 9
 // did.
 #include "quad.hlsli"
+#include "exact.hlsli"
 
-// One layout for every quad: a vertex with one texture's coordinates takes them for both.
-struct VertexIn
+StructuredBuffer<uint4> quads : register(t3, space0);
+
+#include "instances.hlsli"
+
+struct QuadIn
 {
-    [[vk::location(0)]] float4 position : TEXCOORD0;  // x, y, z, rhw; or world x, y, z
-    [[vk::location(1)]] float4 diffuse : TEXCOORD1;   // the bytes of a D3DCOLOR: b, g, r, a
-    [[vk::location(2)]] float2 uv0 : TEXCOORD2;
-    [[vk::location(3)]] float2 uv1 : TEXCOORD3;
-    [[vk::location(4)]] uint draw : TEXCOORD4;        // per instance: the draw's record
+    [[vk::location(0)]] uint corner : TEXCOORD0;  // per vertex: 0 top left, 1 top right, 2 bottom left, 3 bottom right
+    [[vk::location(1)]] uint at : TEXCOORD1;      // per instance: the row its record starts at in quads
 };
 
-Varyings vs_main(VertexIn i)
+Varyings vs_main(QuadIn i)
 {
-    Draw d = draws[i.draw];
+    uint4 h = quads[i.at];
+    Draw d = draws[h.y];
+    QuadVertex v = quad_vertex(i.at, i.corner);
     Varyings o;
     float q;
-    if (d.mode.x == KIND_WORLD) {
-        o.position = transform(i.position.xyz, views[d.mode.w].toClip);
+    if ((h.x & QUAD_KIND) == QUAD_CAMERA) {
+        o.position = transform(float3(v.x, v.y, v.z), views[d.mode.w].toClip);
         q = 1 / o.position.w;
     } else {
-        o.position = float4(snapped_ndc(i.position.xy, d.target.yz), i.position.z, 1);
-        q = i.position.w > 0 ? i.position.w : 1;
+        o.position = float4(snapped_ndc(float2(v.x, v.y), d.target.yz), v.z, 1);
+        q = v.rhw > 0 ? v.rhw : 1;
     }
-    o.diffuse = i.diffuse.zyxw * q;
-    o.uv = float4(i.uv0, i.uv1) * q;
-    // the fog of a vertex in world coordinates by the rhw the CPU's projection gave it, as the
-    // original's
-    o.fogQ = float2(d.mode.z != 0 ? vertex_fog(i.position.w, d.fog, d.stages.w) * q : q, q);
-    o.draw = i.draw;
+    o.diffuse = v.colour * q;
+    o.uv = v.uv * q;
+    // the fog by the rhw: a world point's the one the CPU's projection gave it, as the original's
+    o.fogQ = float2(d.mode.z != 0 ? vertex_fog(v.rhw, d.fog, d.stages.w) * q : q, q);
+    o.draw = h.y;
+    o.layer = h.x >> 16;
     return o;
 }
 

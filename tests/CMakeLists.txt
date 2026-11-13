@@ -423,6 +423,7 @@ rage_test(present_fit W4)
 rage_test(texel_convert W4 CLIENT render/texel_convert.c)
 rage_test(draw_modes W4 CLIENT render/draw_modes.c)
 rage_test(vertex_fog W4 CLIENT render/vertex_fog.c)
+rage_test(quads W4 CLIENT render/quads.c)
 rage_test(screen_wobble W4 CLIENT render/screen_wobble.c)
 rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
 rage_test(world_layout W4 CLIENT render/world_layout.c render/static_world.c)
@@ -790,19 +791,30 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         world/mode_dispatch.c world/mode_draw.c world/mode_lifetime.c)
     rage_test(gauge_sources tests/gauge_sources_support.c CLIENT ui/character/bar_graph.c
         ui/character/gauge_value.c ui/character/gauges.c ui/items/homun_bar.c)
-    rage_test(gfx_batch CLIENT platform/thread_win32.c render/gfx_batch.c)
     # The GPU backend (render/gfx_gpu.c) on this machine's GPU, in a hidden window of the platform's
     # video driver (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
     # gfx_gpu_present runs under the offscreen video driver, which shows its window nowhere, so that
     # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
     # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
-    rage_test(gfx_gpu src/render/gfx_gpu.c src/render/gfx_batch.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c render/draw_modes.c render/static_world.c render/vertex_fog.c
+    rage_test(gfx_gpu src/render/gfx_gpu.c src/render/texel_convert.c
+        CLIENT platform/thread_win32.c render/draw_modes.c render/quads.c render/static_world.c render/vertex_fog.c
         render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_present COMMAND test_gfx_gpu 1 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
     set_tests_properties(gfx_gpu gfx_gpu_msaa gfx_gpu_present PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
+    # The client's quads as instances (render/shaders/quad.hlsl) on this machine's GPU, bit for bit
+    # against the client's C code, and drawn through render/gfx_gpu.c; skipped without a GPU. Its
+    # arguments: RAGEXE_MSAA for the pictures, the seed, records per kind of case, exact operations
+    # (2^24 and more takes every divisor from 1 to 2), scenes drawn both ways.
+    rage_test(quad_instances tests/fixtures/quad_reference.c src/render/gfx_gpu.c src/render/texel_convert.c
+        CLIENT actor/sprite_quad.c effects/particle.c effects/sprite_particle.c platform/thread_win32.c
+        render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c render/rp_screen.c
+        render/static_world.c render/vertex_fog.c render/world_layout.c LIBS SDL3::SDL3
+        ARGS 1 20261112 300000 17000000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    rage_test_run(quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 0 30
+        ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(quad_instances quad_instances_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 180)
     rage_test(gm_name_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
     rage_test(granny_models MAIN tests/test_granny_model_storage.c tests/granny_model_geometry.c CLIENT
         core/fatal.c core/memory.c render/math3d.c std/vec.c)
@@ -1016,7 +1028,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/render_operations_boundaries.h)
     rage_test(renderer_storage CLIENT core/utf8.c fileio/resource_path.c platform/clock_win32.c
         platform/code_page_win32.c platform/filesystem_win32.c platform/system_memory_win32.c
-        platform/thread_win32.c platform/window_sdl.c render/draw_modes.c std/std_sort.c)
+        platform/thread_win32.c platform/window_sdl.c render/draw_modes.c render/quads.c std/std_sort.c)
     rage_test_run(renderer_storage_growth_failure COMMAND test_renderer_storage growth_failure EXIT 3)
     rage_test_run(renderer_storage_queue_failure COMMAND test_renderer_storage queue_failure EXIT 3)
     rage_test(renew_quest_text CLIENT contents/renew_quest_text.c core/memory.c core/utf8.c std/string.c)

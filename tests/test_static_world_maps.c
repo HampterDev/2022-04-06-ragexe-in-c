@@ -300,9 +300,10 @@ void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
 void gfx_set_mode(int mode) { (void)mode; }
 void gfx_set_effect(int srcBlend, int destBlend, int combine) { (void)srcBlend; (void)destBlend; (void)combine; }
 void gfx_set_fog(const struct GfxFog *fog) { (void)fog; }
-void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
+void gfx_draw_quad(const struct GfxQuad *quad) { (void)quad; }
+void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip, int world)
 {
-    (void)prim; (void)vertexKind; (void)verts; (void)nverts; (void)indices; (void)nindices;
+    (void)v; (void)n; (void)strip; (void)world;
 }
 int gfx_begin_scene(void) { return 0; }
 void gfx_end_scene(void) {}

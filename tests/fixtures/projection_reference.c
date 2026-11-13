@@ -75,12 +75,6 @@ void reference_CRenderer_ProjectVertex(struct Renderer *self, const float *v, co
     reference_project_vertex(self, v, m, &out->x);
 }
 
-void reference_CRenderer_ProjectMultiTexVertex(struct Renderer *self, const float *v,
-                                                 const float *m, float *out)
-{
-    reference_project_vertex(self, v, m, out);
-}
-
 void reference_CRenderer_CursorRay(struct Renderer *self, int x, int y, const float *eye, const float *m,
                                     float *out)
 {

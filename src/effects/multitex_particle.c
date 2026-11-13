@@ -30,30 +30,47 @@ void multi_tex_particle_reset(struct MultiTexParticle *self)
     self->v_scroll = 0;
 }
 
+/* custom: the cell's half quad as an instance whose corners the device projects as
+   renderer_project_vertex did them through the view (render/gfx.h, GFX_QUAD_WORLD), z nudged
+   towards the camera, with each stage's texture coordinates; the CPU finds the corners' rhw alone,
+   which say whether the quad lies flat on the screen. */
 void multi_tex_particle_render_on_cell(struct MultiTexParticle *self, int cell_x, int cell_y)
 {
     struct C3dGround15 *ground = game_current_ground();
     float corners[12] = {0};
-    float view[12];
-    struct RPTwoTexQuad *quad;
+    float view[12], rhw[4];
+    struct TexDrawPrim *quad;
+    struct GfxQuad *q;
     int i;
 
     if (!ground || !game_copy_view_matrix(view) || !c3d_ground15_get_attr_quad_half(ground, cell_x, cell_y, corners))
         return;
-    quad = renderer_new_two_tex_quad(g_renderer);
-    quad->prim.tex0 = self->texture0;
-    quad->prim.tex1 = self->texture1;
+    quad = renderer_new_multi_tex_quad(g_renderer);
+    quad->base.texture = self->texture0;
+    q = &quad->instance;
+    q->kind = GFX_QUAD_WORLD;
     for (i = 0; i < 4; i++) {
-        struct RPTwoTexVertex *v = &quad->quad[i];
         Vec3 corner = {corners[i * 3], corners[i * 3 + 1], corners[i * 3 + 2]};
 
-        renderer_project_multitex_vertex(g_renderer, &corner, view, v);
-        v->z -= k_multitexDepthNudge;
-        v->diffuse = 0xffffffff;
-        v->u0 = self->u_scroll + self->uv0[i].u;
-        v->v0 = self->v_scroll + self->uv0[i].v;
-        v->u1 = self->uv1[i].u;
-        v->v1 = self->uv1[i].v;
+        q->world.point[i][0] = corner.x;
+        q->world.point[i][1] = corner.y;
+        q->world.point[i][2] = corner.z;
+        rhw[i] = renderer_project_rhw(&corner, view);
+        q->world.u[i] = self->u_scroll + self->uv0[i].u;
+        q->world.v[i] = self->v_scroll + self->uv0[i].v;
+        q->world.u1[i] = self->uv1[i].u;
+        q->world.v1[i] = self->uv1[i].v;
     }
-    renderer_add_multi_tex_batch(g_renderer, &quad->prim);
+    memcpy(q->world.view, view, sizeof q->world.view);
+    q->world.proj[0] = g_renderer->proj[0];
+    q->world.proj[1] = g_renderer->proj[1];
+    q->world.centre[0] = (float)g_renderer->centreX;
+    q->world.centre[1] = (float)g_renderer->centreY;
+    q->world.rhw = GFX_RHW_PROJECTED;
+    q->world.depth = GFX_DEPTH_ADD;
+    q->world.depthValue = -k_multitexDepthNudge;
+    q->world.colour = 0xffffffff;
+    q->world.stage2 = 1;
+    q->world.flat = quad_rhw_flat(rhw, 4);
+    renderer_add_multi_tex_batch(g_renderer, &quad->base, self->texture1);
 }
