@@ -80,6 +80,11 @@ Dangling pointers and races:
   deleted before its clone's tick.
 - Hiding the UI (F11) no longer leaves the player's status-icon
   effect pointer dangling. With the UI hidden, using an item from a hotkey read freed memory.
+- A draw queued for the frame holds a reference to its texture's surface until the frame is
+  drawn, and draws with the surface the texture had when the draw was queued. The original
+  queued only the primitive and read its texture's surface when it drew the lists, so a texture
+  freed after its draw was queued was read after it was freed, and one reloaded in between drew
+  with its new surface.
 
 Uninitialized values:
 
