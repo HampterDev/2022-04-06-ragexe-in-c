@@ -3,7 +3,10 @@
 #include "render/math3d.h"
 #include "session/state.h"
 #include "ui/window_access.h"
+#include <float.h>
+#include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include "game/camera.h"
 #include "game/client.h"
 #include "session/session_names.h"
@@ -150,6 +153,12 @@ struct PACKET_ZC_VIEW_CAMERAINFO {
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_VIEW_CAMERAINFO, 15);
 
+static int camera_value_within(unsigned bits, float limit, float *value)
+{
+    memcpy(value, &bits, sizeof *value);
+    return isfinite(*value) && fabsf(*value) <= limit;
+}
+
 void game_mode_camera_info(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_VIEW_CAMERAINFO *packet = (const struct PACKET_ZC_VIEW_CAMERAINFO *)pkt;
@@ -167,8 +176,16 @@ void game_mode_camera_info(struct GameMode *self, const unsigned char *pkt)
         return;
     }
     if (self->view != 0) {
-        *(unsigned *)&self->view->destDistance = packet->distance;
-        *(unsigned *)&self->view->destLongitude = packet->heading;
-        *(unsigned *)&self->view->destLatitude = packet->pitch;
+        float value;
+
+        if (camera_value_within(packet->distance, FLT_MAX / 2.0f, &value))
+            self->view->destDistance = value;
+        if (camera_value_within(packet->heading, FLT_MAX, &value)) {
+            if ((value >= 360.0f && value - 360.0f == value) || (value < 0.0f && value + 360.0f == value))
+                value = fmodf(value, 360.0f);
+            self->view->destLongitude = value;
+        }
+        if (camera_value_within(packet->pitch, FLT_MAX / 2.0f, &value))
+            self->view->destLatitude = value;
     }
 }

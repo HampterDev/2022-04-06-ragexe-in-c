@@ -249,6 +249,8 @@ call "%~dp0build_gm_name_packets.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_graffiti_text.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_camera_info.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_text_viewer_links.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_item_collection_toggle.bat"

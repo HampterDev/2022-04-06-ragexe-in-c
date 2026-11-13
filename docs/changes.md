@@ -241,6 +241,13 @@ Data, time and leaks:
   original read the same bytes forever and hung; 1 to 3 put every later packet out of step. A
   variable packet shorter than its table minimum is read as the original reads it, but the
   bytes up to the minimum are zero instead of an earlier packet's.
+- A camera from the server (`ZC_VIEW_CAMERAINFO`) whose distance, heading or pitch is infinite or
+  not a number, or whose distance or pitch is larger than half the largest float, leaves that
+  value as it was, and a heading so large that adding or subtracting 360 no longer changes it is
+  taken as its remainder of 360. The original took the three values as raw bits: an infinite
+  heading, or one that large, hung the client in the loop that brings the view's heading into
+  0 to 360; a value that is not a number made the view black, and so did a pitch or
+  distance far from the one before it (-3e38, then 3e38), whose difference overflowed.
 - The list of items a store cannot take (`ZC_MCSTORE_NOTMOVEITEM_LIST`, 0x08b1) shows as many
   whole names as fit in 511 bytes, and an empty list shows none. The original joined the names
   with `sprintf` into a 512-byte stack buffer, so a long list from the server overran the
