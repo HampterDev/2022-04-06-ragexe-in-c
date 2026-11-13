@@ -318,6 +318,41 @@ static void test_cache_upload(void)
     texture_destroy(texture); assert(!handles && !outstanding);
 }
 
+static unsigned address_slot(const struct Texture *texture)
+{
+    return (((unsigned)(uintptr_t)texture >> 4) * 2654435761u) & 8191u;
+}
+
+static void test_upload_records(void)
+{
+    static __declspec(align(16)) unsigned char spread[9 * 0x20000];
+    DWORD pixels[16] = {0xff102030, 0xff405060};
+    struct Texture *crowd[9];
+    unsigned i, before;
+    for (i = 0; i < 9; ++i) {
+        crowd[i] = (struct Texture *)(spread + i * 0x20000);
+        assert(address_slot(crowd[i]) == address_slot(crowd[0]));
+    }
+    for (i = 0; i < 9; ++i) {
+        texture_init(crowd[i], 4, 4, GFX_FMT_8888);
+        assert(crowd[i]->base.surface);
+        before = locks;
+        assert(texture_upload(crowd[i], 0, 0, 4, 4, pixels, 0, 0));
+        assert(locks == before + 1);
+    }
+    for (i = 0; i < 9; ++i) {
+        before = locks;
+        assert(texture_upload(crowd[i], 0, 0, 4, 4, pixels, 0, 0));
+        assert(locks == before && crowd[i]->base.surface->pixels[1] == pixels[1]);
+    }
+    pixels[1] = 0xff708090;
+    before = locks;
+    assert(texture_upload(crowd[8], 0, 0, 4, 4, pixels, 0, 0));
+    assert(locks == before + 1 && crowd[8]->base.surface->pixels[1] == pixels[1]);
+    for (i = 0; i < 9; ++i) surface_reset(&crowd[i]->base);
+    assert(!handles && !outstanding);
+}
+
 int main(void)
 {
     g_3dDevice.width = g_3dDevice.height = 8;
@@ -326,7 +361,7 @@ int main(void)
     g_3dDevice.rShift = 10; g_3dDevice.gShift = 5;
     g_gfxCaps.bumpEnv = g_gfxCaps.bumpEnvLuminance = 1;
     test_texture(); test_surface(); test_failures(); test_replacement(); test_pixels();
-    test_upload_failure(); test_sprite_upload(); test_cache_upload();
+    test_upload_failure(); test_sprite_upload(); test_cache_upload(); test_upload_records();
     assert(releases && !handles && !outstanding);
     puts("Surface ownership: typed callbacks, four pixel formats, downsampling, wallpaper, transactional recreation, allocation/driver failures and repeated cleanup passed");
     return 0;

@@ -331,7 +331,9 @@ Data, time and leaks:
 - A blended draw with the same texture-stage mode as the previous one
   skips the mode switch.
 - A sprite or UI texture rebuild that would upload the same pixels
-  into an unchanged texture is skipped. In a loaded town that is nearly all of them.
+  into an unchanged texture is skipped. In a loaded town that is nearly all of them. Each
+  texture remembers its own last upload, so which rebuilds are skipped does not depend on where
+  the texture lies in memory.
 - The frame no longer locks the render target for values nothing reads.
   The lock made the CPU wait for the GPU every frame.
 - The game loop yields (`Sleep(0)`) after each frame instead of sleeping a

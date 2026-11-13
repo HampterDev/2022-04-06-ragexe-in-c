@@ -11,6 +11,14 @@ struct Surface {
     gfx_surface *surface;
 };
 
+struct TextureUpload {
+    gfx_surface *surface;
+    unsigned version;
+    DWORD hash[4];
+    int x, y, w, h, pitch;
+    BYTE colorKeyed;
+};
+
 struct Texture {
     struct Surface base;
     int format;
@@ -20,6 +28,7 @@ struct Texture {
     int lockCount;
     DWORD lastUse;
     BYTE fullSize;
+    struct TextureUpload lastUpload;
 };
 
 #endif
