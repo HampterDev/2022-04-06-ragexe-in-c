@@ -20,7 +20,6 @@
 #include "session/session_jobs.h"
 #include "session/session_lua.h"
 #include "session/session_names.h"
-#include "session/session_party.h"
 #include "session/session_talk.h"
 
 const char monster_spr_fmt[] = "몬스터\\%s.spr";
@@ -489,15 +488,9 @@ void npc_set_job_and_sex(struct GameActor * base_actor, int job, int sex)
 {
     struct Npc * self = (struct Npc *)base_actor;
 
-    char name[64];
-
     game_actor_set_job((struct GameActor *)self, job);
     game_actor_set_sex((struct GameActor *)self, sex);
     self->body_palette = 0;
-    if (session_named_body_palettes_enabled(&g_session1)) {
-        self->body_palette = 1;
-        string_assign_cstr(&self->body_pal_name, name);
-    }
 }
 
 void npc_set_spr_job_(struct GameActor * base_actor, int job)

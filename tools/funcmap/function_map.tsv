@@ -2264,7 +2264,6 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 66b440	sub_66b440	text/contents_0000.inc:2532-2573		guild_expelled_construct			cited	high	contents/guild_lists.c
 66be70	sub_66be70				guild_info_set_member_position		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 66bf50	sub_66bf50				guild_info_remove_relation		oracle	high	tests/oracle/test_packet_handlers.c, stood in
-66c010	CSession__GetJobName	text/contents_0000.inc:3624-3631		CSession_GetJobName	session_get_job_name	session/session_names.c:307	label	high	session/a/session_names.c
 66c3d0	sub_66c3d0				guild_info_reset		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 66ca70	sub_66ca70				guild_info_set_member_status		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 66cb00	sub_66cb00				guild_info_set_member_online		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3443,6 +3442,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 82a980	lookup_table_82a9ac	text/actor_0001.inc:3086-3087		CNpc__OnProcess			label_inside	low	actor/npc.c
 82aad1	CNumEffect__OnProcess	text/actor_0001.inc:3089-3152	CNumEffect	CNumEffect__OnProcess			label_inside	low	actor/small_actors.c
 82b2cd	CHalluNPC__Render	text/actor_0001.inc:3733-3869	CHalluNPC	CHalluNPC__Render			label_inside	low	actor/small_draws.c
+82c820	sub_82c820				npc_set_job_and_sex		oracle	high	tests/oracle/test_npc_job_and_sex.c
 82c8fc	CNpc__SetSprJob_	text/actor_0001.inc:5779-5870			npc_set_spr_job_	actor/npc.c:503	ustr_inside	low	
 82e350	sub_82e350	text/actor_0001.inc:8330-8464		CGrannyPc_Construct			cited	high	actor/granny_pc.c
 82e5e0	sub_82e5e0				pc_construct		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3577,7 +3577,6 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 867930	sub_867930				is_effect_state_cloaking		oracle	high	tests/oracle/test_packet_handlers.c
 867a80	sub_867a80				effect_state_bit6		oracle	high	tests/oracle/test_packet_handlers.c
 867d40	CSession__IsExistIndexInMyChangeList	text/session_0000.inc:55203-55230		CSession_IsExistIndexInMyChangeList	session_is_exist_index_in_my_change_list	session/session_exchange.c:75	label_inside	low	session/a/session_exchange.c
-8680f0	sub_8680f0	text/session_0000.inc:55610-55612		CNpc_SetJobAndSex	npc_set_job_and_sex	actor/npc.c:488	cited	high	actor/npc.c
 8682a0	sub_8682a0				session_is_admin_option		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 868522	CSession__GetPetAccActName	text/session_0000.inc:56072-56095		CSession__GetPetAccActName			label_inside	low	session/a/session_job_rules.c
 8699b0	sub_8699b0				session_is_pc_job		oracle	high	tests/oracle/skill_oracle.h, stood in

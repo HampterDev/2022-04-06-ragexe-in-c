@@ -193,12 +193,6 @@ int session_is_guild_member_char_id(struct Session *self, int id)
     return found;
 }
 
-BYTE session_named_body_palettes_enabled(struct Session *self)
-{
-    (void)self;
-    return 0;
-}
-
 BYTE session_is_account_char_name(struct Session *self, struct String name)
 {
     const struct String *s;

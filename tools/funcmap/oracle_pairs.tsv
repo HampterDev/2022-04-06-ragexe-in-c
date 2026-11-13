@@ -269,3 +269,4 @@ b05de0	clientinfo_is_yellow_aid	tests/oracle/test_packet_handlers.c, stood in
 66cb70	guild_info_set_master	tests/oracle/test_packet_handlers.c, stood in
 8f1b80	player_name_lookup	tests/oracle/test_packet_handlers.c, stood in
 7f6000	game_mode_on_actor_guild	tests/oracle/test_packet_handlers.c
+82c820	npc_set_job_and_sex	tests/oracle/test_npc_job_and_sex.c

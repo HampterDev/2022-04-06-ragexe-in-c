@@ -101,7 +101,7 @@ def main():
         if a in pair_addrs and r['final_name'] not in {n for pa, n, _, _, _ in pairs if pa == a}:
             dropped.append((r['addr'], r['final_name'], f'{pair_addrs[a]} pairs this address with another function'))
             continue
-        if r['final_name'] in pair_names and a not in pair_addrs and (r['confidence'] == 'low' or pair_names[r['final_name']] != 'the oracle'):
+        if r['final_name'] in pair_names and a not in pair_addrs:
             dropped.append((r['addr'], r['final_name'], f'{pair_names[r["final_name"]]} pairs this function with another address'))
             continue
         final_rows.append(r)

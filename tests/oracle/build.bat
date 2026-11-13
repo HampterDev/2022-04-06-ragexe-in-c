@@ -40,6 +40,14 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_job_lookups.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\npc_job_and_sex.inc" ^
+  "src/actor/npc.c::void npc_set_job_and_sex("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_npc_job_and_sex.c" "%ROOT%\tests\oracle\oracle_image.c" /Fe:test_npc_job_and_sex.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_npc_job_and_sex.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 cl %CFLAGS% "%ROOT%\tests\oracle\test_ground_skill.c" "%ROOT%\tests\oracle\oracle_image.c" "%ROOT%\src\actor\ground_skill.c" "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" /Fe:test_ground_skill.exe %LFLAGS%
 if errorlevel 1 (popd & exit /b 1)
 .\test_ground_skill.exe "%ORACLE_EXE%"

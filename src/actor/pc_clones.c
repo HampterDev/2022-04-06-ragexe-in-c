@@ -3,7 +3,6 @@
 #include "actor/actor.h"
 #include "actor/pc.h"
 #include "actor/sprite_render.h"
-#include "session/session_party.h"
 
 #define PC_LAYERS 9
 
@@ -165,17 +164,6 @@ struct Npc *npc_construct(struct Npc *self)
     return self;
 }
 
-static void npc_job_palette(struct Npc *self)
-{
-    char name[64];
-
-    self->body_palette = 0;
-    if (session_named_body_palettes_enabled(&g_session1)) {
-        self->body_palette = 1;
-        string_assign_cstr(&self->body_pal_name, name);
-    }
-}
-
 struct HalluNPC *hallu_npc_construct(struct HalluNPC *self, struct GameActor *src)
 {
     int sex;
@@ -205,9 +193,7 @@ struct HalluNPC *hallu_npc_construct(struct HalluNPC *self, struct GameActor *sr
     self->body_palette = 0;
     self->effect_state = game_actor_get_effect_state((struct RenderObject *)src);
     sex = src->sex;
-    game_actor_set_job((struct GameActor *)self, game_actor_get_job(src));
-    game_actor_set_sex((struct GameActor *)self, sex);
-    npc_job_palette((struct Npc *)self);
+    npc_set_job_and_sex((struct GameActor *)self, game_actor_get_job(src), sex);
     self->guild_id = game_actor_get_guild_id(src);
     self->aid = 0;
     self->fade_level = 0;
@@ -248,9 +234,7 @@ struct HalluPlant *hallu_plant_construct(struct HalluPlant *self)
     self->spr_angle = 0;
     self->body_palette = 0;
     self->effect_state = 0;
-    game_actor_set_job((struct GameActor *)self, game_actor_get_job((struct GameActor *)self));
-    game_actor_set_sex((struct GameActor *)self, sex);
-    npc_job_palette((struct Npc *)self);
+    npc_set_job_and_sex((struct GameActor *)self, game_actor_get_job((struct GameActor *)self), sex);
     self->guild_id = 0;
     self->aid = 0;
     self->frames = 0;
