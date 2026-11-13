@@ -491,11 +491,18 @@ void view_on_render(struct View *self)
     if (g_session1.homun_ai_flags[0] && g_session1.homun_command[1] && g_session1.homun_command[2])
         c3d_ground15_render_attr_tile(self->world->ground, view,
                                                           g_session1.homun_command[1], g_session1.homun_command[2], (int)0xfeff0000);
-    for (n = self->world->gameObjects.head->next; n != self->world->gameObjects.head; n = n->next) {
-        struct GameObject *object = *LIST_VALUE(n, struct GameObject *);
-        game_object_render(object, view);
+    {
+        /* custom: the objects' and the effects' parts timed for the counters (diag/perf.h) */
+        int64_t objects_start = platform_stopwatch_ns(), effects_start;
+        for (n = self->world->gameObjects.head->next; n != self->world->gameObjects.head; n = n->next) {
+            struct GameObject *object = *LIST_VALUE(n, struct GameObject *);
+            game_object_render(object, view);
+        }
+        effects_start = platform_stopwatch_ns();
+        g_perf.objectsRenderNs += effects_start - objects_start;
+        effect_mgr_render(g_effectMgr);
+        g_perf.effectsRenderNs += platform_stopwatch_ns() - effects_start;
     }
-    effect_mgr_render(g_effectMgr);
 
     view_frustum_clear(&self->frustum);
     g_perf.viewRenderNs += platform_stopwatch_ns() - start;

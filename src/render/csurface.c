@@ -495,7 +495,9 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
     RECT r;
     BYTE *dst;
     const BYTE *src;
-    int row = 0, run = 0;
+    int row = 0, run = 0, ok;
+    /* custom: timed for the counters (diag/perf.h) */
+    int64_t start = platform_stopwatch_ns();
     if (!self || !self->base.surface || !spr || !spr->pixels || !palette
         || spr->width <= 0 || spr->height <= 0 || w < spr->width || h < spr->height
         || x < 0 || y < 0 || x > self->base.width || y > self->base.height
@@ -542,7 +544,9 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
     r.top = y;
     r.right = x + w;
     r.bottom = y + h;
-    return texture_update_mip_chain(self, &r);
+    ok = texture_update_mip_chain(self, &r);
+    g_perf.atlasNs += platform_stopwatch_ns() - start;
+    return ok;
 }
 
 struct Surface *c3d_device_new_wallpaper_surface(struct C3dDevice *self, unsigned w, unsigned h)

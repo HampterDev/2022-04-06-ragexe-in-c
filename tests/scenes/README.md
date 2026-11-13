@@ -98,20 +98,22 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | call | does |
 |------|------|
 | `enter_map(map, x, y, opts)` | from the login screen straight into a map. `opts`: `name, job, sex, hair, hair_color, body_palette, level, job_level, hp, sp, weapon, shield, head_top, head_mid, head_bottom, robe, dir` |
-| `spawn{...}` | an actor appears (`ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state, guild, emblem` (guild id and emblem version; when the client asks for the emblem, the fake map server sends a generated 24×24 one in the guild's colour) |
+| `spawn{...}` | an actor appears (`ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state, option, boss, guild, emblem` (`option` is the option bits: carts, Peco Pecos, falcons, dragons, mado gears; `boss` is the entry's boss flag, 1 for MVPs and the Emperium; guild id and emblem version: when the client asks for the emblem, the fake map server sends a generated 24×24 one in the guild's colour) |
 | `vanish(aid[, how])` | the actor leaves |
 | `say(aid, "Name : text")` | chat over an actor |
 | `chat(text)` | a line in the player's own chat |
 | `send(bytes)` | any packet, as the map server would send it |
 | `wait([frames])`, `wait_ready([timeout])` | let frames pass; wait until the map is loaded |
-| `mouse(x, y)`, `button(x, y, down[, "right"])`, `click(x, y[, "right"])` | the mouse, through `core/user_input.h` as every platform's input goes |
+| `mouse(x, y)`, `button(x, y, down[, "right"])`, `click(x, y[, "right"])`, `wheel(delta)` | the mouse, through `core/user_input.h` as every platform's input goes; the wheel turns by `delta` (120 a notch, positive away from the player) |
 | `key(vk[, scan])`, `key_event(vk, scan, down)`, `alt_key(vk[, scan])` | keys, through `core/user_input.h`; a key pressed while the script holds Alt (`0x12`) down comes with Alt, as `alt_key` presses it; `scene.VK` names a few virtual keys |
 | `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
 | `resize(w, h)` | the windowed client area becomes `w`×`h` pixels, as when the player drags the window's frame, no smaller than 1024×664; the game follows on the next frame |
-| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame just shown, downloaded from the GPU, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)) |
+| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame just shown, downloaded from the GPU, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)). An error while a measure runs |
+| `measure(frames, name)`, `measuring()` | the [counters](#counters) of each of the next `frames` frames drawn and shown, a line of JSON each, in `<out>/<name>.frames.jsonl`; the script goes on at once. Until the last of them is shown, a capture or another measure is an error, since reading the frame back stalls the GPU. `measuring()` answers the frames still to come. A run that ends before the last one fails |
 | `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
-| `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
+| `frame()`, `mode()`, `ticks()` | the frame number; `"login"` or `"game"`; the client's clock in milliseconds, which the times in the map server's packets (a walk's start) are on |
+| `dir` | the script's directory, with its separator, for the files it loads (`dofile(scene.dir .. "lib/load.lua")`) |
 | `fail(message)` | marks the scene failed and goes on |
 
 A script error, a map that does not finish loading, or `fail` ends the run with exit status 1.
@@ -127,11 +129,15 @@ hotkeys off), guild emblems, and the player's own chat line, which it says back 
 
 Every capture writes `<out>/<name>.counters.json` beside the image: the renderer's counters
 (`src/diag/perf.h`, which says exactly what each counts) for the frame the capture shows, from the
-moment the frame before it was shown to the moment it was. The file is one JSON object of numbers:
+moment the frame before it was shown to the moment it was. The file is one JSON object of numbers,
+and each line of a measure's `<name>.frames.jsonl` is one too, of a frame of its own:
 
 | key | counts |
 |-----|--------|
 | `frame` | the frame number the capture's log line gives |
+| `frame_ms` | the client's whole frame: real time from the moment the frame before it was shown to the moment it was, less the harness's own work: the script's steps (`script_ms`) and writing the counters of the frame before |
+| `script_ms` | the scene script's steps in the frame: its Lua, the packets it builds and hands to the client (`scene.send`, `scene.spawn`, ...) and a capture's download; a real client has none of it, so `frame_ms` leaves it out |
+| `objects` | the objects in the world's object list: actors, the effects and damage numbers attached to them, ground skills |
 | `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives (an indirect draw of a run of the static world's records counts every primitive of the run, whether the GPU's cull keeps it or not) |
 | `draw_calls` | `gfx_draw_quad` and `gfx_draw_vertices` calls and the static world's draw calls (`gfx_world_draw`, `gfx_world_draw_record`, `gfx_world_draw_water`, `gfx_world_cast`) |
 | `modes_sent`, `modes_skipped` | `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what the device draws with, and calls that left it as it was |
@@ -141,13 +147,111 @@ moment the frame before it was shown to the moment it was. The file is one JSON 
 | `texture_bytes` | texels written into textures and surfaces (texture builds, surface uploads, the sprite atlas) |
 | `draw_scene_ms`, `view_render_ms` | time spent in `renderer_draw_scene` and in `view_on_render` |
 | `present_ms` | time spent presenting the frame (`c3d_device_show_frame`), where the device submits the frame's recorded draws, and waits while the GPU is two frames behind |
+| `packets_ms` | handling the map server's packets (`game_mode_poll_network_msg`): actors appearing and moving, skills launching their effects |
+| `effects_ms`, `actors_ms` | stepping the effect manager's effects (`effect_mgr_process`) and the world's objects (`world_process_actors`: actors walking and animating, the effects and damage numbers attached to them) |
+| `objects_render_ms`, `effects_render_ms` | the parts of `view_render_ms` that build the world's objects' quads (`game_object_render`: sprites, shadows, names, damage numbers, Granny models' bones) and the effect manager's (`effect_mgr_render`: STR and RagEffect primitives, particles) |
+| `ui_ms` | drawing the windows (`ui_window_mgr_render`, `ui_window_mgr_render_windows`): shop signs, chat rooms and chat balloons among them |
+| `atlas_ms` | decoding sprite frames from their palette runs into the sprite atlas (`texture_draw_sprite_frame`) |
+| `texels_ms` | widening the client's texels to the GPU's B8G8R8A8 for an upload (`render/gfx_gpu.c`) |
 
-The counts are the same in every run. The three times are real time (`platform_stopwatch_ns`, the
-one clock the harness leaves running), taken from that one frame and not averaged, and differ by
-about a fifth from run to run, so compare several runs; `present_ms` also grows when another program
-keeps the GPU busy. Scene runs load models on the main thread, so the textures a frame loads count
+Some times lie within others, so they do not add up to the frame:
+
+- `frame_ms` holds every other time but `script_ms`. `packets_ms`, `effects_ms`, `actors_ms`,
+  `view_render_ms`, `ui_ms`, `draw_scene_ms` and `present_ms` do not overlap; what the frame does
+  besides them (the input, the camera's step, the weather's particles, the minimap, the mouse
+  cursor) has no time of its own.
+- `objects_render_ms` and `effects_render_ms` lie within `view_render_ms`.
+- `atlas_ms` lies within the time of whatever draws the sprite: `objects_render_ms` for the world's
+  objects, `effects_render_ms` for sprite particles, `ui_ms` for windows, none of the others for the
+  mouse cursor and what it drags.
+- `texels_ms` lies within the time of whatever sends a texture's new texels to the device:
+  `draw_scene_ms` for the renderer's lists, `ui_ms` for a window drawn into a texture of its own,
+  `present_ms` for the static world's textures, which go up with the frame.
+- The fake map server's answers to the client's requests (a guild emblem) are made while the client
+  sends them and count as the client's; they take microseconds.
+
+The counts are the same in every run. The times are real time (`platform_stopwatch_ns`, the one
+clock the harness leaves running), taken from that one frame and not averaged, and differ by about a
+fifth from run to run, so compare several runs; `present_ms` also grows when another program keeps
+the GPU busy. Scene runs load models on the main thread, so the textures a frame loads count
 in that frame. The harness starts the counters again with every frame it shows, so the overlay
 (`RAGEXE_OVERLAY`) shows nothing useful in a scene run.
+
+## Load scenes
+
+The scenes in `load/` stage what players see on busy servers, to measure the client under real load
+rather than to compare pictures: dozens to two hundred players with real jobs, equipment, mounts,
+carts, guild emblems and chat, and the skills their fights are made of, sent as rAthena sends them
+for this client's packet version. Every scene moves: actors walk (`ZC_NOTIFY_MOVE`), the camera
+turns (the right button dragged) and zooms (the wheel) as a player's does, and skills keep firing
+for the whole measured stretch. A run of one takes up to half a minute, and they are measured
+several runs each, so they live outside `scripts/` and neither `run.py` nor the `scenes` ctest
+runs them.
+
+| scene | map | what it stages |
+|-------|-----|----------------|
+| `woe_emperium` | `prtg_cas01` | the War of Emperium in the Emperium room: 113 players of three guilds (36 defending, 77 attacking) (`lib/woe.lua`), the Emperium and its guardians (Granny models) hit all the time and breaking every 400 frames, Storm Gust, Lord of Vermilion, Meteor Storm, Ice Wall, Sanctuary, Magnus Exorcismus, Pneuma, Safety Wall, Land Protector, songs' and dances' cells, Asura Strike, players dying and standing up again |
+| `woe_choke` | `prtg_cas01` | the same war at the last choke: the defenders hold the portal to the Emperium room |
+| `mvp_baphomet`, `mvp_randgris` | `prt_maze03`, `odin_tem03` | an MVP and its slaves against a party of 19 or 23 (`lib/mvp.lua`): the boss's skills, Earthquake every 150 frames among them, heals and buffs going up, players dying and resurrected, the fight going on through the whole measured stretch; right after it the boss dies and the MVP is announced, which the last capture shows; a first capture `<scene>_quake` is taken while an Earthquake shakes the camera |
+| `bombers_ifrit` | `thor_v03` | 30 creators and geneticists casting Acid Demonstration and Cart Cannon on Ifrit, a cast landing nearly every frame, Ifrit's Earthquakes on all of them; Ifrit dies after the measured stretch as the MVPs do |
+| `aoe_orc_dungeon` | `orcsdun01` | the player, a high wizard, with a pack of 50 monsters: two Storm Gusts for every Lord of Vermilion, monsters freezing, dying, vanishing and walking in again |
+| `town_prontera` | `prontera` | 180 players and 20 pets on the main street (`lib/town.lua`): 60 vending shops with their signs, 15 chat rooms, people walking past, talking and pulling faces |
+| `arrive_prontera`, `arrive_castle` | `prontera`, `prtg_cas01` | the player warps (`ZC_NPCACK_MAPMOVE`) into the town of `town_prontera` or the war of `woe_emperium`, which appears at once once the map has loaded, every sprite and emblem new; the measured stretch, 300 frames, starts with that frame, for the hitch of the first frames |
+| `snow_lutie` | `xmas` | a Christmas crowd of 100 under Lutie's snow, the weather's particles over the crowd |
+
+`load/lib/load.lua` has what the scenes share: the packets, players dressed by job (`load.CLASS`),
+ground skills' cells in rAthena's shapes, a deterministic random source that leaves the client's
+`rand()` alone, the fight that keeps who stands where and what follows later (`load.fight`), the
+frame's size, the camera and `load.measured`, which runs a scene's warm-up, its measured stretch
+(`scene.measure`) and its capture after it. Every scene makes the frame 1600×900 (`scene.resize`)
+once its first map has loaded, whatever the game folder's options say, so that two machines measure
+the same frame. `RAGEXE_LOAD_FRAMES` sets the measured frames of every scene (by default 600, the
+arrive scenes 300) for a quick look. The scenes need this harness's calls (`scene.measure`,
+`scene.measuring`, `scene.resize`, `scene.wheel`, `scene.ticks`, `scene.dir`, spawn's `option` and
+`boss`).
+
+`load.py` runs them several times, since the times differ by about a fifth from run to run, and
+reports per scene the counts (objects, draws, instance, vertex and texture bytes) and, pooled over
+the runs' measured frames, the median and the worst frame of every time of the
+[counters](#counters) (with the number of the run and the frame of the stretch it was), the spread
+of the runs' medians and the first measured frame. It prints the report and writes `summary.md` and
+`summary.json` into `--out`, beside each run's captures, log, frames and `run.json`. A scene run
+again replaces its earlier runs when every new run ends well; otherwise the earlier runs stay and
+the new ones are kept in `<scene>.failed`. The report covers every scene `--out` has runs of
+(`--summary-only` writes it without running anything):
+
+```sh
+python3 tests/scenes/load.py --exe build/ragexe_scenes --game ~/ro --out /tmp/load            # 3 runs, RAGEXE_MSAA=4
+python3 tests/scenes/load.py ... --runs 5 woe_emperium town_prontera                          # some scenes
+python3 tests/scenes/load.py ... --msaa 1 --runs 1 --out /tmp/load-pictures                   # pictures to compare
+python3 tests/scenes/load.py --compare /tmp/load-old /tmp/load-new                            # two summaries
+```
+
+### Against the Direct3D 9 client
+
+Phase 7 of `plans/gpu-renderer.md` compares these numbers with those of the Direct3D 9 client the
+GPU renderer replaced: commit `02fc9e5e`, built with FreeType's text, which the GPU renderer's
+client draws too. Its harness has none of the calls the load scenes need, so
+`load/d3d9_baseline.patch` adds them to it as they are here, with the counters' times, and the
+two crash fixes the scenes need on a 64-bit client (a broadcast's speaker narrowed to an int on its
+way to the chat window, a bottle thrown at its own cell). Its `scene.resize` cannot resize the
+Direct3D 9 device: it only checks that the frame is the size asked for, so run that client from a
+game folder whose options (`SaveData/OptionInfo.lua`: `WIDTH`, `HEIGHT`) give 1600×900. On
+Windows, beside this checkout:
+
+```bat
+git worktree add ..\d3d9-baseline 02fc9e5e
+cd ..\d3d9-baseline
+git apply <this checkout>\tests\scenes\load\d3d9_baseline.patch
+build.bat freetype
+tests\scenes\build.bat freetype
+python <this checkout>\tests\scenes\load.py --exe build\ragexe_scenes_ft.exe --game <game dir> --out <dir>
+```
+
+Its counters are its device's: `states_sent` and `states_skipped` where the GPU renderer has
+`modes_sent` and `modes_skipped`, `vertex_bytes` every vertex it is given, and no `instance_bytes`
+or `texels_ms` (always 0): it draws from vertex buffers and keeps textures in their own 16- and
+32-bit formats.
 
 ## Effect gallery
 

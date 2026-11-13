@@ -46,6 +46,7 @@
 #include "render/shaders/rows.h"
 #include "render/shaders/rounding.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 #include <SDL3/SDL.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -855,16 +856,19 @@ static int stage_texels(struct gfx_surface *s, const RECT *r, uint32_t *offset)
     int bytes = s->kind == K_SYSMEM ? 4 : texel_bytes(s->fmt);
     long at;
     const unsigned char *src;
+    int64_t start;
     if (w <= 0 || h <= 0 || !s->pixels)
         return 0;
     at = bytes_add(&G.texels, (size_t)w * h * 4, 16);
     if (at < 0)
         return 0;
     src = s->pixels + (size_t)r->top * s->width * bytes + (size_t)r->left * bytes;
+    start = platform_stopwatch_ns();
     if (s->kind == K_SYSMEM)
         texel_rows_keyed_to_bgra(src, (long)s->width * 4, w, h, s->key, G.texels.data + at, (long)w * 4);
     else
         texel_rows_to_bgra(s->fmt, src, (long)s->width * bytes, w, h, G.texels.data + at, (long)w * 4);
+    g_perf.texelsNs += platform_stopwatch_ns() - start;
     *offset = (uint32_t)at;
     return 1;
 }
@@ -2586,10 +2590,13 @@ static int world_stream(int textures)
         for (; textures && mesh == W.nmeshUploads && texture < W.ntextureUploads; texture++) {
             struct gfx_surface *s = W.textureUploads[texture].surface;
             uint32_t n = stream_bytes(&W.textureUploads[texture], 1);
+            int64_t start;
             if (n > W.streamSize - used)
                 break;
+            start = platform_stopwatch_ns();
             texel_rows_to_bgra(s->fmt, s->pixels, (long)s->width * texel_bytes(s->fmt), s->width, s->height,
                                mapped + used, (long)s->width * 4);
+            g_perf.texelsNs += platform_stopwatch_ns() - start;
             used += (n + 15u) & ~15u;
         }
         SDL_UnmapGPUTransferBuffer(G.dev, W.stream);
