@@ -300,7 +300,7 @@ static void draw(struct Renderer *r)
     gfx_set_mode(DRAW_PANEL);
     gfx_set_texture(0, P.tex);
     gfx_set_texture(1, NULL);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_texture(0, NULL);
     gfx_set_texture(1, NULL);
     r->boundTextures[0] = NULL;

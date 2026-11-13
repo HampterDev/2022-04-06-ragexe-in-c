@@ -16045,8 +16045,8 @@ the static world casts: no Granny model or sprite ever went into the casters' qu
   result; the compaction reads the words, the draws and the indices and writes the frame's indices;
   the water keeps its cells and the table of sines in one buffer and takes its clip matrix as a
   uniform; the transform pass no longer writes each slot's view in every cascade, which the casters
-  take from the slot's place and the fit. The quad shader keeps its four. The screen wobble's
-  pipeline takes its one vertex buffer at slot 0, where a draw binds it.
+  take from the slot's place and the fit. The quad shader was within four already. The screen
+  wobble's pipeline takes its one vertex buffer at slot 0, where a draw binds it.
 - **Texture arrays' mipmaps.** The world's arrays made a layer's mipmaps level by level with
   linear blits, the sprite atlas's in a texture of their own. Both take the atlas's way now: a
   layer's pixels go up into a scratch texture of their size, SDL makes its levels
@@ -16301,3 +16301,271 @@ targets cannot be made and a frame whose shadow passes fail to record (no test m
 the GPU's time pass by pass, presenting into a window on this machine (where SDL's driver also
 takes back caches at each submit that presents), how often a frame in play still fills a new
 descriptor cache, and a game played by hand.
+
+## Granny's actors skinned on the GPU (2026-11-13)
+
+The second part of phase 6 of `plans/gpu-renderer.md`. The CPU skinned, lit and projected every
+vertex of every Granny actor (the emperium, the castle guardians, the treasure boxes, the guild
+flags) every frame and handed the device three pre-transformed corners a triangle, 28 bytes each, in
+world coordinates as well while the camera's view drew them. Now a model's meshes stay on the GPU,
+the CPU hands the device one pose an actor, and the vertex shader skins, lights and projects. With
+it the last vertices the CPU projected for drawing went to the GPU: the effect primitives' triangles
+of the world and the ground's cell tiles.
+
+- **The models on the GPU** (`render/gfx.h`'s `gfx_create_skin`, `gfx_skin_addref`,
+  `gfx_skin_release`). When a model loads, `granny_model_res_skin` (`resources/granny_mesh.c`) packs
+  its meshes one behind the other into one vertex array and one array of 32-bit indices: each vertex
+  its position, normal, texture coordinates and up to four bones of the skeleton with their weights
+  (`struct SkinVertex`, 56 bytes; a rigid mesh's vertex on the mesh's one bone, marked rigid), each
+  mesh's whole triangles with its first vertex added, so that a draw may run on from one mesh into
+  the next. A mesh without a triangle is left out; an index of a triangle past its mesh fails the
+  load, as data that cannot be drawn. The device makes the model's vertex and index buffer on the
+  drawing thread when a draw first takes the model and copies them from the model's arrays into that
+  frame's transfer buffer; it keeps the arrays, as a texture keeps its pixels, so that a device made
+  again puts them up again. One pair of buffers a model, not one buffer for all of them, because a
+  model lives as long as its resource, across maps, where the static world's buffers are made again
+  with each map; draws of different models never join, so a shared buffer would buy no draw and cost
+  an allocator of its own. The shim reads a converted file's joints as bone 0 where the skeleton has
+  no such bone, compared unsigned, so that a joint of 2^31 or more cannot turn negative and make a
+  rigid mesh skinned (`tests/test_granny_gltf.c`, a file made for it).
+- **The pose** (`render/skin_layout.c`, the library `skin-layout`, pure, with `skin_pose_rows`).
+  Each frame an actor's playback poses its bones as before, and the CPU hands the device its pose
+  among the frame's quads (`gfx_skin_pose`): a header (the bone count, the guild flag's rule that
+  rigid meshes lie as they are, the alpha, the bytes the colour adds, the light's offset), the
+  meshes' matrix into view space (the model matrix times the view, the matrix the CPU projected each
+  vertex through), the light's direction in the meshes' space and its scale, the projection
+  (`renderer_project_vertex`'s scale, centre, near plane and depth scale), then three rows a bone
+  (Granny's composite matrices), 16 bytes a row. How each kind of actor is lit (the lit model, the
+  corpse, the guild flag) is `skin_pose_kind`, which `actor/granny.c` and the tests both call. Each
+  mesh is queued as its triangles were, in the opaque list by texture (`renderer_add_skin`,
+  `struct RPSkinDraw`). A draw's instance is a 16-byte header among the quads (its pose and its
+  draw's record) and a 4-byte offset, found as the quads find theirs.
+- **The shader** (`render/shaders/skin.hlsl`, `skin.hlsli`). The vertex shader sums a vertex's
+  weighted bones as Granny's deformer did, a weight of 0 skipped (its bone not read, so that a bone
+  the file left not a number moves no vertex that does not weight it; a rigid mesh's vertex its
+  bone, its normal as it lies), takes the point into view space, lights it (the clamped cosine with
+  the light, times the scale plus the offset, cut to a whole number, plus the actor's colour bytes
+  modulo 256, as each of the three loops of `actor/granny.c` did) and projects it to the pixel and
+  depth `renderer_project_vertex` gave the CPU's corner, the fog taken from the rhw as the quads
+  take it; the fragment shader is the quads'. Unlike the quads it is plain arithmetic, not the CPU's
+  floats to the bit: the plan allowed a tolerance for it. The pose carries the CPU's own matrix into
+  view space, not a model matrix and the camera's view: a world point with coordinates in the
+  thousands taken through the camera's view loses to cancellation in the GPU's float sums what that
+  one matrix keeps.
+- **The same draws.** A draw joins the batch before it when it takes the same model, mode and
+  textures and either runs on in the model's indices in the same pose (an actor's meshes) or draws
+  the same range in another pose (one mesh of several actors, instanced); nothing else changes the
+  order of what is drawn (`skin_batch_join`). Draws, draw calls and primitives are the same as
+  before in every capture. Only the screen takes them, where the scene's lists are drawn; the shadow
+  pass draws no Granny actor, as before. The blind player's tint never touched Granny's actors and
+  does not now; both faces of a triangle are drawn, as the pre-transformed ones were; the dead and
+  dying actors' alpha is the pose's, under multisampling with alpha to coverage as the opaque list's
+  quads have it. No Granny actor is mirrored: `actor/granny.c` turns and moves its model and nothing
+  else, and with both faces drawn a mirror could not change what is drawn.
+- **The effect primitives' triangles and the ground's cell tiles.** The effect primitives
+  (`effects/rag`) projected the corners of their triangles of the world on the CPU, one
+  `renderer_project_vertex` a corner, and the ground drew its cell tiles (the cursor's cell, ground
+  skills' areas, the navigation path and its marker, `world/ground_draw.c`) from corners projected
+  likewise. Both now hand the device points in the world, which the quad shader projects as it
+  projects the particles', bit for bit (`render/shaders/instances.hlsli`). A cell tile is a
+  `GFX_QUAD_WORLD` quad, its z moved by the tile's bias (`GFX_DEPTH_ADD`). An effect primitive's
+  triangles name corners of a set (`render/quads.h`, `struct GfxCorners`, `GFX_QUAD_CORNERS`): up to
+  twelve corners (x, y, z, u, v), one colour and the rules the original applied to the projected
+  vertices (`PRIM_QUAD_DEPTH_BIAS`'s rhw plus 4.5e-5, `PRIM_QUAD_IN_FRONT`'s rhw 1 and z 1e-9,
+  `PRIM_QUAD_UPRIGHT`'s quad stood up on the screen around the primitive's point, which the shader
+  computes in plain arithmetic whose products by 0.5 and by 1 or -1 are exact), the corners the
+  triangles of one call have in common held once (`prim_add_world_triangles`: a quad's two
+  triangles, the four faces of a pyramid). The device puts a set among the frame's quads, with its
+  view matrix, when the first triangle that names it is drawn, and each triangle is a 16-byte header
+  (the set, its three corners) and a 4-byte offset: a quad's two triangles take 136 bytes where
+  their vertices took 208 (two times 84 and a header and offset each), a pyramid's four faces 336
+  where they took 416. The device keeps the last matrix of each kind it put up (a projection alone,
+  the particles'; a view and projection), so that particles and corner sets drawn in turn do not put
+  theirs up again. Each triangle is still its own entry in its list, keyed by the rhw of its first
+  two corners as its vertices were, which the CPU computes (`renderer_project_rhw`) with whether it
+  lies flat on the screen; the CPU projects no corner. Deleted with them: `effect_prim_draw.c`'s
+  `set_vertex` and `quad_depth`, `prim_kinds_090_101.c`'s `set_vertex`, `prim_set_vertex`, and the
+  tiles' vertex projection.
+- **What the CPU still projects** is a point an object needs, not a vertex it draws: an anchor
+  around which a picture is built on the screen (a sprite's and an STR effect's quad, a sprite
+  particle's, an effect's screen position (`prim_project_vertex` of its master, the screen card, the
+  beam of `cane_of_evil_eye_effect.c`), a character preview's), the effect streak's two ends
+  (`prim_streak_render`: a line a pixel wide built on the screen between them, its second corner a
+  pixel beside the first, which no point in the world gives), Granny's screen box for picking and
+  its name's anchor, and the keys the sorted lists order by (the water's cells' and the alpha
+  models' records' rhw). `gfx_draw_vertices` still draws what the client builds on the screen: the
+  interface, the STR effects' quads, the screen-space effect primitives (`prim_screen_sprites.c`,
+  the screen card, the streak), the cooldown pies and the counters overlay.
+- **A model the device does not take.** A skeleton of more than 256 bones, for which the shim
+  samples no animation, makes no device model and is not drawn (no model in the game folder has
+  one); a model whose buffers the GPU has no memory for is logged, not tried again with that device
+  and not drawn.
+- **Deleted:** the CPU's per-vertex skinning, lighting and projection: the shim's deformer
+  (`_GrannyDeformVertices` and its deformer type), its PNT332 vertices and
+  `_GrannyCopyMeshVertices`, `_GrannyGetMeshVertexType`, `_GrannyGetMeshVertices`,
+  `_GrannyGetMeshBytesPerIndex`, `_GrannyGetMeshIndices` and `_GrannyGetWorldPoseComposite4x4`,
+  which only it used; each actor's buffers of deformed vertices and its meshes' poses
+  (`GrannyMeshVertex`, `GrannyVertexBuffer`, `GrannyMeshPose`, `GrannyHairPivot`,
+  `c3d_granny_model_res_mesh_to_draw`; an actor's model state is now its resource, playback and
+  bounds); the three per-vertex loops of `actor/granny.c` with `light_term` and `world_corner`;
+  `actor/granny_projection.c` and its test; the record kind the corners took through the camera's
+  view (`QUAD_CAMERA`, the quad shader's camera branch, so that the quad shader reads three storage
+  buffers, not four), `RPQuad.world`, `renderer_world_quads` and the world flag of
+  `gfx_draw_vertices` and `quad_vertex_words`, which nothing else took; the shim's mesh binding of a
+  skinned mesh (the client binds rigid meshes alone, for their bone); and what nothing used:
+  `tex_draw_vertex_construct`, `rp_quad_set_vertex_pos`, and fields written and never read: the
+  actors' `color` and `GrannyCorpse3d.color`, and `shadow_tex` and `shadow_points`, a 35 by 35
+  texture made for every actor and a list of points filled every frame.
+- **Counters.** `instance_bytes` counts the poses, the instances' headers and offsets and the corner
+  sets; `vertex_bytes` a model's buffers when they go up; `draw_calls` counts `gfx_draw_skin`
+  (`tests/scenes/README.md`).
+
+Tests: `test_skin_layout` (new, pure) checks the vertices' and indices' packing, a pose's rows where
+the shader reads them, `skin_vertex_position` against the deformer's code to the bit, and fuzzed
+sequences of draws joined into batches against the triangles in the order given.
+`test_skin_instances` (new, on the GPU, label `client-files`) runs the vertex stage alone
+(`tests/shaders/skin_probe.hlsl`) on every corner of every model in the game folder's converted
+files, in every pose of their animations and in fuzzed poses, against the CPU code it replaced
+(`tests/fixtures/granny_reference.c`, which keeps the deformer and the three loops as they were):
+the pixel within 1/16 of the CPU's, the rhw within 1e-5 of the CPU's relative, the texture
+coordinates within 1/4096, each colour byte within one step, and a corner that is not a number where
+the CPU's is one counted wrong. The depth is held to 1e-5 of the CPU's own from twice the near plane
+on (a view depth of 20, a depth of 0.5) and to 1e-5 of the depth range nearer than that: near 0 a
+bound relative to the depth would measure the CPU's own cancellation (the view depth there is the
+small sum of large terms), and a depth buffer compares absolute depths. Every other fuzzed pose
+leaves each bone no vertex of the model weights not a number, which a weight of 0 on such a bone
+must not read (the shader without the skip fails every such corner). It then draws actors both ways
+through `render/gfx_gpu.c`, by the device from the models the client makes and as the CPU's corners
+pre-transformed, with a texture of gentle gradients, every other scene fogged, and holds the
+pictures to the captures' budget (below), in their animations' poses only, since fuzzed bones fold a
+mesh into itself where its faces z-fight. Largest differences:
+
+| run | corners | pixel | rhw | depth (nearer: of the range) | colour | weight 0 on a bone not a number | pictures: more than a step |
+|---|---|---|---|---|---|---|---|
+| `skin_instances` (1 sample, 20 fuzzed poses a model, 20 scenes) | 4,251,609 | 0.0027 | 9.0e-7 | 1.9e-7 (none nearer) | 1 step | 258,570 | 2 a scene at most, groups of 1 |
+| `skin_instances_msaa` (4 samples, 4 fuzzed poses, 20 scenes) | 3,782,889 | 0.0135 | 8.8e-7 | 1.5e-7 (6.2e-8) | 1 step | 51,714 | 8 a scene (0.0009 %), groups of 2 |
+| 300 fuzzed poses a model, 100 scenes, 1 sample (seed 31) | 12,454,209 | 0.0048 | 2.0e-6 | 2.6e-7 (4.4e-7) | 1 step | 3,878,550 | 4 a scene, groups of 2 |
+| 300 fuzzed poses a model, 100 scenes, 4 samples (seed 32) | 12,454,209 | 0.0037 | 1.8e-6 | 2.9e-7 (3.7e-6) | 1 step | 3,878,550 | 9 a scene (0.0010 %), groups of 3 |
+
+The texture coordinates came back exact in every run. The six models and their 15 animation files
+are the folder's. `test_gfx_gpu` draws skinned models through the device: an actor's meshes that run
+on as one draw, one mesh in two poses as one instanced draw, rigid meshes on their bone and lying
+still in one instanced draw, a bone a vertex weights by 0 that is not a number, the modes and
+targets that take no Granny draw, a model given up while its draw is recorded, and the fog of
+skinned squares at the first rhw of every step of both fog tables and the rhw before it, one
+instanced draw, within a step of the original's; and the effect primitives' corner sets (two
+triangles of one set one draw, the set put among the frame's quads once a frame, bytes counted, a
+corner the set does not have drawing nothing). `test_quad_instances` reads the effect primitives'
+triangles as `prim_draw_quad` makes them now, in each of its modes, and the ground's cell tiles as
+`world/ground_draw.c` makes them, on the GPU's vertex stage, against the code that projected them
+before (`tests/fixtures/quad_reference.c`): 900,000 records of each, realistic, at the edges and
+fuzzed, every corner bit for bit as made and as snapped in a multisampled pass, sort keys and
+flatness the same. `test_granny_gltf` (new) reads a file made for it whose joints are 32-bit, past
+the skeleton and of 2^31 or more. `test_granny_vertices` checks the models the client makes (meshes
+without triangles left out, a skeleton the device does not take, an index past its mesh and every
+failed allocation failing the load with nothing left behind) and the effect's vertex;
+`test_renderer_storage` the queued poses and draws, and their failures; `test_quads` the corner
+sets' words; `test_granny_model_storage`, `test_resource_lifecycle`, `test_static_world_maps`,
+`test_perf_overlay` and `test_particle_pools` follow the changes; `test_effect_trace`'s digest is
+unchanged (an effect primitive's triangle keeps its size).
+
+Captures: the merged line's scene client (5ea7b76b) and this one, run one right after the other with
+`RAGEXE_VSYNC=0` and SDL's dummy audio, over the 16 scene scripts (37 captures), with
+`RAGEXE_MSAA=1` and 4. A new scene, `granny_actions`, shows what `granny_models` does not: eight
+guardians of one model turned to the eight directions, one monster walking, two attacking the
+player, and four at the screen's edges, partly off it (one behind a roof and the minimap), captured
+twice half a second apart. The budget: pixels more than a colour step apart at most 0.05 % of the
+screen (720 of 1,600 by 900), in groups of touching pixels of at most 16. The 30 captures without a
+Granny actor are the same to the pixel, the effect primitives' triangles and the cursor's cell tile
+among them; the seven with them:
+
+| capture | 1 sample: differ, more than a step, largest group, largest difference | 4 samples |
+|---|---|---|
+| `granny_actions` | 119, 4, 1, 252 | 154, 27, 1, 63 |
+| `granny_actions_later` | 309, 6, 1, 213 | 348, 21, 1, 64 |
+| `granny_dead` | 44, 5, 1, 214 | 55, 14, 2, 56 |
+| `granny_dying` | 106, 6, 1, 255 | 133, 7, 2, 64 |
+| `granny_models` | 254, 3, 1, 5 | 274, 11, 1, 40 |
+| `guild_flags` | 8, 1, 1, 46 | 9, 3, 1, 43 |
+| `guild_flags_later` | 13, 0, 0, 1 | 17, 5, 1, 43 |
+
+Every differing pixel was looked at in a crop. The ones a step apart lie inside the actors'
+textured, lit faces, alone or in loose clusters of up to 19 within two pixels of each other, where
+texture coordinates or colour interpolated a hair apart round the other way; four of them are a
+guardian seen through the translucent minimap. The ones more than a step apart stand alone (two
+touching at most, with multisampling) and every one lies on an actor's outline against the ground or
+where its parts overlap: the toe of a boot, a sword's edge, an arm across the body, a treasure box's
+lid, the foot of each of four guild flags' cloth (the same pixel on each). There an edge a hundredth
+of a pixel from where the CPU put it covers the pixel's centre, or one of its samples, on the other
+side, and the difference is the whole contrast between the actor and the ground: up to 255 steps
+with one sample, 64 (a quarter of the samples) with four. None lies away from an actor.
+
+The effect primitives cover many effects the scene set does not show, so the effect gallery
+(`tools/effect_gallery.py`, PNG captures of frames 1, 8, 16, 32 and 64, `RAGEXE_MSAA=1`) ran with
+the merged line's scene client and this one, one right after the other, over the 575 RagEffect IDs
+whose primitives draw triangles of the world (574) or the ground's cell tiles (1, ID 513's kind
+112): the IDs whose run in `tests/test_effect_trace.c`'s trace makes a primitive of a kind whose
+render function reaches those draws. All 2,875 frames are the same to the pixel, with the same draws
+and draw calls. The gallery itself is not the same from run to run for a few IDs: two runs of the
+merged line's client over 68 IDs differed in 9 frames (IDs 31 and 838), where this client and that
+one, run one right after the other, gave the same 340 frames.
+
+Counters: the counts the same in every run, the times the median of four runs one after the other,
+before against after:
+
+| capture | draws | draw calls | bytes (vertex + instance) | scene ms | view ms |
+|---|---|---|---|---|---|
+| `granny_actions` | 1,277 / 1,277 | 1,141 / 1,141 | 1,432,796 / 36,104 | 0.26 / 0.03 | 1.11 / 0.34 |
+| `granny_actions_later` | 1,278 / 1,278 | 1,143 / 1,143 | 1,432,964 / 36,272 | 0.31 / 0.04 | 1.31 / 0.36 |
+| `granny_dead` | 1,263 / 1,263 | 1,071 / 1,071 | 304,832 / 13,264 | 0.07 / 0.03 | 0.36 / 0.26 |
+| `granny_dying` | 1,263 / 1,263 | 1,071 / 1,071 | 304,832 / 13,264 | 0.07 / 0.04 | 0.40 / 0.35 |
+| `granny_models` | 1,270 / 1,270 | 1,078 / 1,078 | 338,660 / 16,700 | 0.08 / 0.03 | 0.48 / 0.28 |
+| `guild_flags` | 1,252 / 1,252 | 1,062 / 1,062 | 64,904 / 12,588 | 0.03 / 0.05 | 0.29 / 0.30 |
+| `guild_flags_later` | 1,252 / 1,252 | 1,062 / 1,062 | 64,904 / 12,588 | 0.06 / 0.03 | 0.36 / 0.27 |
+
+The bytes of a scene with Granny actors fall by 95 to 97 % (`guild_flags`, whose two flags have few
+triangles, by 81 %). The CPU's time in `renderer_draw_scene` falls to 0.03 or 0.04 ms where there
+are Granny actors to draw (`granny_actions`, 15 of them, from 0.26 ms; the guild flags', small
+before, stay within what runs move by), and `view_on_render` gives back 0.8 to 1.0 ms a frame in
+`granny_actions` and 0.05 to 0.2 ms in the scenes with a few actors. The frame as a whole does not
+get faster on this machine: `present_ms` grows by what the view gives back (`granny_actions` from
+1.0 to 1.9 ms), and the frames of these scenes, with Granny actors or without (`prontera_crowd`,
+0.08 against 0.09 ms in the scene and 0.35 against 0.34 in the view), take 2.1 to 2.4 ms from the
+view's start to the present's end, which the GPU or the presentation sets; `granny_actions` takes
+2.28 ms where it took 2.12, within the 0.5 ms its four runs before spread over. The GPU's own time
+is not measured.
+
+The effect primitives' triangles and the ground's tiles take fewer bytes than their vertices did,
+with the same draws and draw calls (instance bytes, before / after):
+
+| capture | instance bytes |
+|---|---|
+| `effects_instances` | 21,288 / 19,848 (-6.8 %) |
+| `two_pass_alpha` | 65,052 / 60,308 (-7.3 %) |
+| `two_pass_alpha_fewer` | 64,052 / 59,308 (-7.4 %) |
+| `prontera_crowd` | 93,972 / 89,068 (-5.2 %) |
+| `camera_level_view` (the cursor's cell tile) | 2,204 / 2,188 |
+| `hunter_traps`, `effects_flipped` (no such triangle) | 7,172 / 7,172; 17,892 / 17,892 |
+| the effect gallery's 2,875 frames | 41,146,164 / 28,217,124 (-31.4 %) |
+
+Of the gallery's 575 IDs 526 take fewer bytes, 43 the same and 6 more: 788 to 790 and 940 by 24
+bytes a frame and 905 by 8, whose frames draw one quad of a rule (upright, in front) and save less
+on it (40 or 56 bytes) than the one view matrix (64 bytes) the corner sets of a frame go through.
+Effect 513 draws 128 cell tiles a frame in 2,048 bytes fewer.
+
+`build.bat check` passes (the include check over 1,860 files in 34 libraries, the link check over
+1,147 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 335 tests and the oracle's 7. Not checked: Linux (lavapipe), macOS and Android, which
+were not built, `test_skin_instances` and `test_quad_instances` in the Linux CMake build, and the
+MSL of the changed shaders, which no Metal compiler has seen; a rigid mesh in a capture (the game
+folder's two, of one model, have no material and are drawn by no actor; `test_skin_instances`
+compares their corners and draws them with its own texture, and `test_gfx_gpu` draws rigid meshes
+lying still); the effect job 0x49d's start vertex on a real model (no model in the folder has 29
+meshes); the ground skills' areas (`effects/skills/ground_scope.c`, `graffi_skill.c`) and the
+navigation path's tiles in a picture (no scene shows them; the same tile code draws effect 513's
+tiles in the gallery and the cursor's tile in `camera_level_view`, the same to the pixel, and
+`test_quad_instances` holds their corners to the bit); that the gallery's frames show an upright
+effect quad (IDs 788 to 790 and 940 save the 40 bytes a frame one upright quad's triangles save, but
+no frame was looked at for one; its corners are held to the bit); why the gallery is not the same
+from run to run for a few IDs; a device made again while playing; the GPU's time; and a game played
+by hand.

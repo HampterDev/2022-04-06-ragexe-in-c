@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "render/rp_pool.h"
+#include "render/skin_layout.h"
 #include "platform/clock.h"
 
 void (*g_renderBeforeClearLists)(void);
@@ -16,7 +17,6 @@ struct RPQuad *rp_quad_construct(struct RPQuad *self)
     self->nverts = 0;
     self->texture = NULL;
     self->alpha_mode = 1;
-    self->world = 0;
     self->srcBlend = 0;
     self->destBlend = 0;
     self->stageMode = 0;
@@ -37,12 +37,6 @@ static void tex_vertex_default(struct TexDrawVertex *v)
     v->v = 0.0f;
 }
 
-struct TexDrawVertex *tex_draw_vertex_construct(struct TexDrawVertex *self)
-{
-    tex_vertex_default(self);
-    return self;
-}
-
 static void tex_draw_prim_header(struct TexDrawPrim *self)
 {
     struct RPQuad *h = &self->base;
@@ -54,7 +48,6 @@ static void tex_draw_prim_header(struct TexDrawPrim *self)
     h->instance = NULL;
     h->rhw[0] = h->rhw[1] = 0.0f;
     h->alpha_mode = 1;
-    h->world = 0;
     h->srcBlend = 0;
     h->destBlend = 0;
     h->stageMode = 0;
@@ -90,7 +83,8 @@ struct RenderPool {
 };
 
 struct RenderStorage {
-    struct RenderPool quads, primitives, multitexture_quads, vertices, world_draws;
+    struct RenderPool quads, primitives, multitexture_quads, triangles, corner_sets, vertices, world_draws, skin_draws,
+        skin_poses, skin_rows;
 };
 
 static void pool_free(struct RenderPool *pool)
@@ -158,7 +152,7 @@ static void pool_rewind(struct RenderPool *pool)
 
 static void initialize_quad(void *item) { rp_quad_construct(item); }
 static void initialize_primitive(void *item) { rp_quad_batch_construct(item); }
-static void initialize_multitexture_quad(void *item) { rp_instance_construct(item); }
+static void initialize_instance(void *item) { rp_instance_construct(item); }
 
 static void queue_clear(struct RenderQueue *queue)
 {
@@ -169,6 +163,8 @@ static void queue_clear(struct RenderQueue *queue)
             gfx_surface *surface = queue->items[i].textures[stage].surface;
             if (surface) gfx_release(surface);
         }
+        if (queue->items[i].kind == RP_ENTRY_SKIN)
+            gfx_skin_release(((struct RPSkinDraw *)queue->items[i].primitive)->model);
     }
     queue->count = 0;
 }
@@ -183,8 +179,13 @@ static void renderer_storage_free(struct Renderer *renderer)
         pool_free(&storage->quads);
         pool_free(&storage->primitives);
         pool_free(&storage->multitexture_quads);
+        pool_free(&storage->triangles);
+        pool_free(&storage->corner_sets);
         pool_free(&storage->vertices);
         pool_free(&storage->world_draws);
+        pool_free(&storage->skin_draws);
+        pool_free(&storage->skin_poses);
+        pool_free(&storage->skin_rows);
         free(storage);
         renderer->storage = NULL;
     }
@@ -208,9 +209,14 @@ struct Renderer *renderer_construct(struct Renderer *self)
     if (!storage) return NULL;
     if (!pool_init(&storage->quads, sizeof(struct RPQuad), 1024, initialize_quad)
         || !pool_init(&storage->primitives, sizeof(struct TexDrawPrim), 512, initialize_primitive)
-        || !pool_init(&storage->multitexture_quads, sizeof(struct TexDrawPrim), 1024, initialize_multitexture_quad)
+        || !pool_init(&storage->multitexture_quads, sizeof(struct TexDrawPrim), 1024, initialize_instance)
+        || !pool_init(&storage->triangles, sizeof(struct TexDrawPrim), 1024, initialize_instance)
+        || !pool_init(&storage->corner_sets, sizeof(struct GfxCornerSet), 512, NULL)
         || !pool_init(&storage->vertices, sizeof(struct TexDrawVertex), 10240, NULL)
-        || !pool_init(&storage->world_draws, sizeof(struct RPWorldDraw), 256, NULL)) {
+        || !pool_init(&storage->world_draws, sizeof(struct RPWorldDraw), 256, NULL)
+        || !pool_init(&storage->skin_draws, sizeof(struct RPSkinDraw), 256, NULL)
+        || !pool_init(&storage->skin_poses, sizeof(struct RPSkinPose), 64, NULL)
+        || !pool_init(&storage->skin_rows, sizeof(float[4]), 4096, NULL)) {
         renderer_storage_free(self);
         return NULL;
     }
@@ -258,7 +264,6 @@ void renderer_save_frame(struct Renderer *self)
 struct TexDrawPrim *renderer_new_prim(struct Renderer *renderer)
 {
     struct TexDrawPrim *prim = pool_take(&renderer->storage->primitives, 1);
-    prim->base.world = 0;
     prim->base.instance = NULL;
     return prim;
 }
@@ -279,11 +284,25 @@ struct TexDrawPrim *renderer_new_multi_tex_quad(struct Renderer *renderer)
     return quad;
 }
 
+struct TexDrawPrim *renderer_new_triangle_instance(struct Renderer *renderer)
+{
+    struct TexDrawPrim *triangle = pool_take(&renderer->storage->triangles, 1);
+    memset(&triangle->instance, 0, sizeof triangle->instance);
+    triangle->base.instance = &triangle->instance;
+    return triangle;
+}
+
+struct GfxCornerSet *renderer_new_corner_set(struct Renderer *renderer)
+{
+    struct GfxCornerSet *set = pool_take(&renderer->storage->corner_sets, 1);
+    memset(set, 0, sizeof *set);
+    set->row = -1;
+    return set;
+}
+
 struct RPQuad *renderer_new_quad(struct Renderer *renderer)
 {
-    struct RPQuad *quad = pool_take(&renderer->storage->quads, 1);
-    quad->world = 0;
-    return quad;
+    return pool_take(&renderer->storage->quads, 1);
 }
 
 struct TexDrawVertex *renderer_new_tex_draw_vertices(struct Renderer *renderer, int count)
@@ -322,7 +341,7 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     queue->items[queue->count].order = (unsigned)queue->count;
     queue->items[queue->count].textures[0] = retain_texture(texture0);
     queue->items[queue->count].textures[1] = retain_texture(texture1);
-    queue->items[queue->count].world = 0;
+    queue->items[queue->count].kind = RP_ENTRY_QUAD;
     ++queue->count;
 }
 
@@ -427,7 +446,47 @@ void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWo
     *copy = *draw;
     q = &self->queues[queue];
     queue_append(q, copy, key, texture, NULL);
-    q->items[q->count - 1].world = 1;
+    q->items[q->count - 1].kind = RP_ENTRY_WORLD;
+}
+
+struct RPSkinPose *renderer_skin_pose(struct Renderer *self, const struct SkinPose *pose)
+{
+    struct RPSkinPose *p;
+    struct SkinPose projected = *pose;
+    size_t n = skin_pose_size(pose->boneCount);
+
+    if (!n)
+        return NULL;
+    projected.proj[0] = self->proj[0];
+    projected.proj[1] = self->proj[1];
+    projected.centre[0] = (float)self->centreX;
+    projected.centre[1] = (float)self->centreY;
+    projected.nearZ = RENDER_NEAR_Z;
+    projected.depthScale = RENDER_DEPTH_SCALE;
+    p = pool_take(&self->storage->skin_poses, 1);
+    p->rows = pool_take(&self->storage->skin_rows, n);
+    p->rowCount = skin_pose_rows(&projected, p->rows);
+    p->row = -1;
+    return p;
+}
+
+void renderer_add_skin(struct Renderer *self, struct RPSkinPose *pose, gfx_skin *model, uint32_t first,
+                       uint32_t count, struct Texture *texture)
+{
+    struct RPSkinDraw *d;
+    struct RenderQueue *q;
+
+    if (!pose || !model || !texture || !count)
+        return;
+    d = pool_take(&self->storage->skin_draws, 1);
+    d->pose = pose;
+    d->model = model;
+    d->first = first;
+    d->count = count;
+    gfx_skin_addref(model);
+    q = &self->queues[RENDER_OPAQUE_CLAMP];
+    queue_append(q, d, 0.0f, texture, NULL);
+    q->items[q->count - 1].kind = RP_ENTRY_SKIN;
 }
 
 void renderer_destroy_all_rp_list(struct Renderer *self)
@@ -442,8 +501,13 @@ void renderer_destroy_all_rp_list(struct Renderer *self)
         pool_rewind(&storage->quads);
         pool_rewind(&storage->primitives);
         pool_rewind(&storage->multitexture_quads);
+        pool_rewind(&storage->triangles);
+        pool_rewind(&storage->corner_sets);
         pool_rewind(&storage->vertices);
         pool_rewind(&storage->world_draws);
+        pool_rewind(&storage->skin_draws);
+        pool_rewind(&storage->skin_poses);
+        pool_rewind(&storage->skin_rows);
     }
     sprite_atlas_finish_frame(self);
 }

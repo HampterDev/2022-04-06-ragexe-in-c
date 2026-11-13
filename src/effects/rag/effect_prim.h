@@ -172,7 +172,15 @@ void prim_quad_turn(Vec3 *p0, Vec3 *p1, Vec3 *p2, Vec3 *p3, short yaw, short pit
 
 unsigned char prim_is_visible(struct EffectPrim *self);
 
+/* A point's screen position (an effect's anchor), as renderer_project_vertex gives it */
 struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float *matrix, Vec3 pos);
+
+/* custom: queues the triangles tri[0] to tri[count - 1], in that order, each with its texture and
+   blending into the lists of `flags` (renderer_add_prim), keyed by the rhw of its first two corners
+   as its vertices were: instances whose corners in the world (tri->world) the device projects
+   through `view` as renderer_project_vertex projected them, the corners they have in common put up
+   once (render/quads.h, GFX_QUAD_CORNERS). */
+void prim_add_world_triangles(const struct PrimTriangle *tri, int count, const float *view, int flags);
 
 void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3,
                                const float *matrix, short blend, char texture, unsigned char in_world,
@@ -262,11 +270,12 @@ static __inline Vec3 prim_mat_apply(const float *m, float x, float y, float z)
     return r;
 }
 
-static __inline void prim_set_vertex(struct TexDrawVertex *out, const float *view, Vec3 pos, unsigned color, float u,
-                                     float v)
+/* custom: a corner of a triangle in the world (struct PrimTriangle's world) */
+static __inline void prim_set_corner(struct PrimCorner *out, Vec3 pos, float u, float v)
 {
-    prim_project_vertex(out, view, pos);
-    out->diffuse = color;
+    out->pos[0] = pos.x;
+    out->pos[1] = pos.y;
+    out->pos[2] = pos.z;
     out->u = u;
     out->v = v;
 }

@@ -93,9 +93,6 @@ void gfx_release(gfx_surface *surface)
 }
 static int capture_draws;
 static unsigned sampled_count;
-static int capture_projection;
-static unsigned projection_draw_count;
-static struct TexDrawVertex projection_draws[2][6];
 static struct { unsigned id[2]; DWORD pixel[2]; } sampled[64];
 static void sample_textures(void)
 {
@@ -134,15 +131,11 @@ void gfx_set_texture(int stage, gfx_surface *surface)
     bound_surfaces[stage] = surface;
     word(3); word(stage); word(surface ? surface->id : 0);
 }
-void gfx_draw_vertices(const struct TexDrawVertex *vertices, int count, int strip, int world)
+void gfx_draw_vertices(const struct TexDrawVertex *vertices, int count, int strip)
 {
-    assert(count > 0 && (count <= 4 || capture_projection));
+    assert(count > 0 && count <= 4);
     assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_INTO_SCREEN));
-    if (capture_projection) {
-        assert(!strip && !world && count == 6 && projection_draw_count < 2);
-        memcpy(projection_draws[projection_draw_count++], vertices, sizeof projection_draws[0]);
-    }
-    word(5); word((unsigned)strip); word((unsigned)world); word((unsigned)count);
+    word(5); word((unsigned)strip); word((unsigned)count);
     bytes(vertices, (size_t)count * sizeof *vertices);
     sample_textures();
     ++draws;
@@ -196,6 +189,38 @@ void renderer_world_view(const struct Renderer *renderer, const float *view, str
 {
     assert(renderer == g_renderer);
     memset(out, 0, sizeof *out); memcpy(out->view, view, sizeof out->view);
+}
+/* Granny's models (render/gfx.h, gfx_skin_*): what the queues hold of them, the poses put among the
+   frame's quads ('S', their first word) and the draws made ('D', the first index) */
+struct gfx_skin { int refs; };
+static int skin_refs_taken, skin_refs_given;
+static int skin_pose_rows_given[8], skin_pose_count;
+static float skin_pose_projection[8][4];
+static struct { int pose; unsigned first, count, texture, mode; struct gfx_skin *model; } skin_draws[16];
+static int skin_draw_count;
+void gfx_skin_addref(gfx_skin *k) { assert(k); ++k->refs; ++skin_refs_taken; }
+void gfx_skin_release(gfx_skin *k) { assert(k && k->refs > 0); --k->refs; ++skin_refs_given; }
+int gfx_skin_pose(const float (*rows)[4], size_t count)
+{
+    uint32_t bones;
+    assert(skin_pose_count < 8);
+    memcpy(&bones, &rows[0][0], sizeof bones);
+    assert(count == skin_pose_size(bones));
+    skin_pose_rows_given[skin_pose_count] = (int)rows[1][3];
+    memcpy(skin_pose_projection[skin_pose_count], rows[5], sizeof rows[5]);
+    return 100 * ++skin_pose_count;
+}
+void gfx_draw_skin(gfx_skin *k, uint32_t first, uint32_t count, int pose)
+{
+    assert(k && k->refs > 0 && skin_draw_count < 16);
+    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_MESHES));
+    skin_draws[skin_draw_count].pose = pose;
+    skin_draws[skin_draw_count].first = first;
+    skin_draws[skin_draw_count].count = count;
+    skin_draws[skin_draw_count].texture = bound_surfaces[0] ? bound_surfaces[0]->id : 0;
+    skin_draws[skin_draw_count].mode = (unsigned)current_mode;
+    skin_draws[skin_draw_count++].model = k;
+    word(9); word(first); word(count);
 }
 int gfx_begin_scene(void) { abort(); }
 void gfx_end_scene(void) { abort(); }
@@ -257,14 +282,14 @@ static void shared_slots(void)
     c = renderer_new_prim(&renderer);
     assert(b == a + 1 && c == b + 1);
     assert(!a->base.instance && b->base.instance == &b->instance && !c->base.instance);
-    a->base.stageMode = 7; a->base.srcBlend = 1; a->base.world = 1;
+    a->base.stageMode = 7; a->base.srcBlend = 1;
     b->base.alpha_mode = 0; b->base.srcBlend = 5; b->base.destBlend = 2;
     b->base.texture = (struct Texture *)&renderer;
     memset(&b->instance, 0x5a, sizeof b->instance);
     renderer_destroy_all_rp_list(&renderer);
     /* a sprite's quad where an STR effect's was, a quad of vertices where the sprite's was */
     c = renderer_new_prim_instance(&renderer);
-    assert(c == a && c->base.instance == &c->instance && !c->base.world);
+    assert(c == a && c->base.instance == &c->instance);
     assert(c->base.stageMode == 7 && c->base.srcBlend == 1 && c->base.alpha_mode == 1);
     assert(c->instance.kind == 0 && c->instance.world.viewSpace == 0 && c->instance.world.stage2 == 0);
     c = renderer_new_prim(&renderer);
@@ -532,10 +557,87 @@ static void world_entries(void)
     renderer_destruct(&renderer); assert(!outstanding);
 }
 
+/* Granny's meshes among the opaque list's quads: a pose packed once, with the renderer's projection,
+   and put among the frame's quads when the first of its meshes is drawn, each mesh drawn in it by
+   its texture's order with the quads (renderer_add_prim's flags 0), its model held by the queue
+   until it is cleared, a mesh without a pose, model or texture not queued, and a pose of too many
+   bones none. */
+static void skin_entries(void)
+{
+    float bones[2][16];
+    struct Renderer renderer = {0};
+    struct Texture textures[2] = {0};
+    struct gfx_surface surfaces[2] = {{31}, {32}};
+    struct gfx_skin model = {1}, other = {1};
+    struct SkinPose pose;
+    struct RPSkinPose *a, *b;
+    static struct TexDrawPrim quad;
+    unsigned frame, k;
+    assert(renderer_construct(&renderer));
+    g_renderer = &renderer;
+    renderer.proj[0] = 9.0f;
+    renderer.proj[1] = 8.0f;
+    renderer.centreX = 7;
+    renderer.centreY = 6;
+    textures[0].base.surface = &surfaces[0];
+    textures[0].serial = 2;
+    textures[1].base.surface = &surfaces[1];
+    textures[1].serial = 1;
+    memset(bones, 0, sizeof bones);
+    memset(&pose, 0, sizeof pose);
+    pose.bones = &bones[0][0];
+    pose.boneCount = 2;
+    for (k = 0; k < 12; ++k)
+        pose.view[k] = (float)k;
+    pose.proj[0] = pose.proj[1] = pose.centre[0] = pose.centre[1] = -1.0f;
+    for (frame = 0; frame < 2; ++frame) {
+        skin_pose_count = skin_draw_count = 0;
+        a = renderer_skin_pose(&renderer, &pose);
+        pose.view[9] = 90.0f;
+        b = renderer_skin_pose(&renderer, &pose);
+        pose.view[9] = 9.0f;
+        assert(a && b && a->rowCount == SKIN_POSE_HEADER + 6 && a->row < 0);
+        renderer_add_skin(&renderer, a, &model, 0, 6, textures);
+        renderer_add_skin(&renderer, a, &model, 6, 3, textures + 1);
+        renderer_add_skin(&renderer, b, &other, 0, 6, textures);
+        renderer_add_skin(&renderer, NULL, &model, 0, 6, textures);
+        renderer_add_skin(&renderer, a, NULL, 0, 6, textures);
+        renderer_add_skin(&renderer, a, &model, 0, 6, NULL);
+        renderer_add_skin(&renderer, a, &model, 0, 0, textures);
+        rp_quad_batch_construct(&quad);
+        quad.base.texture = textures + 1;
+        renderer_add_prim(&renderer, &quad.base, 0);
+        assert(renderer.queues[RENDER_OPAQUE_CLAMP].count == 4 && model.refs == 3 && other.refs == 2);
+        pose.boneCount = SKIN_BONES_MAX + 1;
+        assert(!renderer_skin_pose(&renderer, &pose));
+        pose.boneCount = 2;
+        current_mode = -1; world_call_count = 0; count_quads = 1;
+        renderer_draw_lists(&renderer);
+        count_quads = 0;
+        /* by texture: the second (serial 1) first, the quad among them, then the first */
+        assert(skin_draw_count == 3 && skin_pose_count == 2 && world_call_count == 1);
+        assert(skin_draws[0].first == 6 && skin_draws[0].count == 3 && skin_draws[0].texture == 32);
+        assert(skin_draws[0].pose == 100 && skin_draws[0].model == &model && skin_draws[0].mode == DRAW_OPAQUE_CLAMP);
+        assert(skin_pose_projection[0][0] == 9.0f && skin_pose_projection[0][1] == 8.0f);
+        assert(skin_pose_projection[0][2] == 7.0f && skin_pose_projection[0][3] == 6.0f);
+        assert(skin_draws[1].texture == 31 && skin_draws[2].texture == 31);
+        assert((skin_draws[1].pose == 100 && skin_draws[1].model == &model && skin_draws[2].pose == 200
+                && skin_draws[2].model == &other)
+               || (skin_draws[1].pose == 200 && skin_draws[1].model == &other && skin_draws[2].pose == 100
+                   && skin_draws[2].model == &model));
+        assert(skin_pose_rows_given[0] == 9 && skin_pose_rows_given[1] == 90);
+        renderer_destroy_all_rp_list(&renderer);
+        assert(model.refs == 1 && other.refs == 1);
+    }
+    assert(skin_refs_taken == 6 && skin_refs_given == 6);
+    renderer_destruct(&renderer);
+    assert(!outstanding && !g_renderer);
+}
+
 static void failures(void)
 {
     struct Renderer renderer = {0}; unsigned point;
-    for (point = 1; point <= 9; ++point) {
+    for (point = 1; point <= 17; ++point) {
         fail_at = allocation_calls + point;
         assert(!renderer_construct(&renderer));
         assert(!outstanding && !renderer.storage);
@@ -548,7 +650,6 @@ static void failures(void)
 }
 
 #include "renderer_texture_owner_test.h"
-#include "renderer_granny_projection_test.h"
 
 int main(int argc, char **argv)
 {
@@ -567,9 +668,9 @@ int main(int argc, char **argv)
         }
         return 99;
     }
-    if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); granny_projection_ownership(); world_entries(); }
+    if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); skin_entries(); world_entries(); }
     growth(); shared_slots(); routing(); render_trace();
     assert(!outstanding && atlas_starts && atlas_ends && frame_ends == effect_ends);
-    if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes, real draw passes and the static world's draws among them passed.");
+    if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes, real draw passes, Granny's meshes and the static world's draws among them passed.");
     return 0;
 }

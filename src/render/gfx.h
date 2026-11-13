@@ -13,6 +13,7 @@
 
 typedef struct gfx_surface gfx_surface;
 struct C3dDevice;
+struct SkinVertex;
 struct WobbleRow;
 
 struct gfx_lock {
@@ -98,9 +99,10 @@ void gfx_set_effect(int srcBlend, int destBlend, int combine);
    1 - f of `colour`'s (a D3DCOLOR). For the quads f is the original's vertex fog, which it computed
    on the CPU into a vertex's specular alpha, to the bit: 1 - t in 1/255 steps rounded down,
    t = ((1 / rhw - origin) / span - start) / (end - start) clamped to 0..1, without the division
-   where end equals start, in single precision (render/vertex_fog.h; a vertex in world coordinates
-   by the rhw it carries, one whose rhw is not positive as at the smallest normal one). For
-   the meshes f is (b - vz) / (b - a) clamped to 0..1 for the view depth vz, a and b the view depths
+   where end equals start, in single precision (render/vertex_fog.h; a vertex whose rhw is not
+   positive as at the smallest normal one). Granny's meshes (gfx_draw_skin) take the same steps by
+   the rhw the GPU computes of their view depth, within a step of the CPU's. For the static world's
+   meshes f is (b - vz) / (b - a) clamped to 0..1 for the view depth vz, a and b the view depths
    start * span + origin and end * span + origin (origin and origin + span where end equals start),
    as the Direct3D 9 client's mesh shader computed it. The device starts without fog. */
 struct GfxFog {
@@ -121,20 +123,18 @@ void gfx_set_texture(int stage, gfx_surface *s);
    the order given, as Direct3D 9's draws were until a state changed. Direct3D 9 drew flat draws
    (every vertex the same rhw) without multisampling; in a multisampled pass their corners move
    onto the pixel boundaries that keep the pixels Direct3D 9 covered.
-   gfx_draw_quad draws one the client made (a sprite, a projected quad); gfx_draw_vertices one
-   of its primitives of n vertices: a strip of 4 (a quad) or a list of triangles. Pre-transformed
-   vertices are drawn as they are, flat when every one has the same rhw; with world set, a list of
-   triangles (Granny's) whose x, y and z are world coordinates, which the device takes through the
-   camera's world view (gfx_set_world_camera) to the pixel and depth a pre-transformed vertex would
-   have there, as Direct3D 9 drew them, and whose rhw is the CPU's projection's, which only the fog
-   reads. */
+   gfx_draw_quad draws one the client made (a sprite, a projected quad, a triangle of a set of
+   projected corners, the set put among the frame's quads by the first triangle that names it);
+   gfx_draw_vertices one
+   of its primitives of n pre-transformed vertices: a strip of 4 (a quad) or a list of triangles,
+   drawn as they are, flat when every one has the same rhw. */
 void gfx_draw_quad(const struct GfxQuad *quad);
-void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip, int world);
+void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip);
 
 /* custom: the static world (plans/gpu-renderer.md, "The static world, GPU-driven";
    render/static_world.h): one map's ground and models, which the device keeps and projects itself,
    where the quads above arrive on the screen, as instances whose vertices the vertex shader makes
-   as the CPU made them, or in the world for the camera's view (gfx_draw_vertices with world).
+   as the CPU made them.
    Its meshes lie one behind the other in two shared buffers (gfx_world_mesh), its textures in
    texture arrays of one size each (gfx_world_texture), its draw records (gfx_world_records) say
    what each run of a mesh draws with, and its transform slots (gfx_world_slots) where each model
@@ -327,9 +327,32 @@ void gfx_world_draw_record(const struct SwRecord *record, const struct GfxWorldD
    through the camera's world view (gfx_set_world_camera), with the colour (a D3DCOLOR) and stage
    0's texture, in the current mode. */
 void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour);
-/* custom: the camera's world view, which gfx_draw_vertices's world vertices and the water are drawn
-   through */
+/* custom: the camera's world view, which the water is drawn through */
 void gfx_set_world_camera(const struct GfxWorldView *view);
+
+/* custom: Granny's actors (actor/granny.c), skinned, lit and projected by the device's vertex shader
+   (src/render/shaders/skin.hlsl) as the CPU did each vertex before (render/skin_layout.h). A model
+   (gfx_create_skin) holds its meshes' vertices and indices, one mesh behind the other; they go up
+   in the frame's upload when a draw first takes the model and stay on the device, and a copy stays
+   on the CPU, as a texture's pixels do, for a device made again. Each frame an actor gives its pose
+   (gfx_skin_pose: skin_pose_rows' rows, among the frame's quads until the frame is presented or
+   read; it answers their first row, -1 where there is no memory for them, and a draw in pose -1
+   draws nothing), and each of its meshes is drawn in it (gfx_draw_skin): `count` indices from
+   `first` of the model, at the pixels and depths the pose projects them to (the original's vertex
+   fog by their rhw), in the current mode, which must draw meshes into the screen (render/draw_modes.h,
+   DRAW_MESHES; other modes and targets draw nothing), with stage 0's texture and both faces of
+   every triangle. Draws of one model, mode, fog and textures one after the other are one draw where
+   skin_batch_join joins them: an actor's meshes that run on in the model's indices, or one range in
+   several poses, instanced. A model goes when its last reference is released and no recorded draw
+   takes it. The actors take no part in the static world's shadows (GFX_SHADOW_CASCADES): they
+   neither cast into the maps nor receive from them. */
+typedef struct gfx_skin gfx_skin;
+gfx_skin *gfx_create_skin(const struct SkinVertex *vertices, uint32_t vertexCount, const uint32_t *indices,
+                          uint32_t indexCount);
+void gfx_skin_addref(gfx_skin *skin);
+void gfx_skin_release(gfx_skin *skin);
+int gfx_skin_pose(const float (*rows)[4], size_t count);
+void gfx_draw_skin(gfx_skin *skin, uint32_t first, uint32_t count, int pose);
 
 /* custom: the screen wobble (render/screen_wobble.h): the screen as drawn so far, multisampled or
    not, drawn again with row y showing row rows[y].source moved right by rows[y].shift pixels, the

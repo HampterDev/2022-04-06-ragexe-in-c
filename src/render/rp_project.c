@@ -145,11 +145,6 @@ void renderer_set_camera(struct Renderer *self, const float *view)
     self->cameraSet = 1;
 }
 
-int renderer_world_quads(const struct Renderer *self, const float *view)
-{
-    return self->cameraSet && !memcmp(self->cameraView, view, sizeof self->cameraView);
-}
-
 int renderer_shadow_reach(const struct Renderer *self, struct SwFrustum *out)
 {
     struct SwCascade reach;

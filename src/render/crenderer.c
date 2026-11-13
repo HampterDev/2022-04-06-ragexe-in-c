@@ -36,7 +36,18 @@ static void draw_quad(const struct RPQuad *n)
     if (n->instance)
         gfx_draw_quad(n->instance);
     else if (n->nverts)
-        gfx_draw_vertices(n->verts, n->nverts, n->prim == RP_STRIP, n->world);
+        gfx_draw_vertices(n->verts, n->nverts, n->prim == RP_STRIP);
+}
+
+/* custom: a Granny model's mesh in its actor's pose, the pose put among the frame's quads when the
+   first of the actor's meshes is drawn (render/gfx.h, gfx_draw_skin) */
+static void draw_skin(const struct RPSkinDraw *d)
+{
+    struct RPSkinPose *p = d->pose;
+
+    if (p->row < 0)
+        p->row = gfx_skin_pose((const float (*)[4])p->rows, p->rowCount);
+    gfx_draw_skin(d->model, d->first, d->count, p->row);
 }
 
 static unsigned char keyed_less(const void *a, const void *b, void *pred)
@@ -87,7 +98,7 @@ static size_t draw_world_entries(struct Renderer *self, const struct RenderQueue
     for (j = i; j < l->count; j++) {
         const struct RPWorldDraw *x = l->items[j].primitive;
 
-        if (!l->items[j].world || x->kind != RP_WORLD_WATER || l->items[j].textures[0].surface != l->items[i].textures[0].surface
+        if (l->items[j].kind != RP_ENTRY_WORLD || x->kind != RP_WORLD_WATER || l->items[j].textures[0].surface != l->items[i].textures[0].surface
             || x->colour != w->colour)
             break;
         if (!renderer_water_cells(self, n + 1))
@@ -110,7 +121,7 @@ static void flush_keyed(struct Renderer *self, int list, int sort, int skipNull)
     for (size_t i = 0; i < l->count; ++i) {
         e = l->items + i;
         struct RPQuad *n = e->primitive;
-        if (e->world) {
+        if (e->kind == RP_ENTRY_WORLD) {
             i = draw_world_entries(self, l, i) - 1;
             continue;
         }
@@ -131,7 +142,10 @@ static void flush_plain(struct Renderer *self, int list, int sort, int skipNull)
         if (skipNull && !n)
             continue;
         set_tex0(self, l->items[i].textures[0].surface);
-        draw_quad(n);
+        if (l->items[i].kind == RP_ENTRY_SKIN)
+            draw_skin(l->items[i].primitive);
+        else
+            draw_quad(n);
     }
 }
 

@@ -265,16 +265,17 @@ void prim_upright_quad_render(struct EffectPrim *self, const float *view)
     c2 = prim_mat_apply(self->matrix2, 0.0f, bottom, w);
     c3 = prim_mat_apply(self->matrix2, 0.0f, bottom, -w);
 
-    prim_set_vertex(&tri[0].v[0], view, vec3_add(self->base.pos, c0), self->argb, 0.0f, self->tex_v_top);
-    prim_set_vertex(&tri[0].v[1], view, vec3_add(self->base.pos, c1), self->argb, 1.0f, self->tex_v_top);
-    prim_set_vertex(&tri[0].v[2], view, vec3_add(self->base.pos, c2), self->argb, 0.0f, self->tex_v_bottom);
+    prim_set_corner(&tri[0].world.corner[0], vec3_add(self->base.pos, c0), 0.0f, self->tex_v_top);
+    prim_set_corner(&tri[0].world.corner[1], vec3_add(self->base.pos, c1), 1.0f, self->tex_v_top);
+    prim_set_corner(&tri[0].world.corner[2], vec3_add(self->base.pos, c2), 0.0f, self->tex_v_bottom);
+    tri[0].world.colour = self->argb;
     tri[0].texture = self->textures[self->base.motion];
-    prim_set_vertex(&tri[1].v[0], view, vec3_add(self->base.pos, c3), self->argb, 1.0f, self->tex_v_bottom);
-    prim_set_vertex(&tri[1].v[1], view, vec3_add(self->base.pos, c2), self->argb, 0.0f, self->tex_v_bottom);
-    prim_set_vertex(&tri[1].v[2], view, vec3_add(self->base.pos, c1), self->argb, 1.0f, self->tex_v_top);
+    prim_set_corner(&tri[1].world.corner[0], vec3_add(self->base.pos, c3), 1.0f, self->tex_v_bottom);
+    prim_set_corner(&tri[1].world.corner[1], vec3_add(self->base.pos, c2), 0.0f, self->tex_v_bottom);
+    prim_set_corner(&tri[1].world.corner[2], vec3_add(self->base.pos, c1), 1.0f, self->tex_v_top);
+    tri[1].world.colour = self->argb;
     tri[1].texture = self->textures[self->base.motion];
-    renderer_add_triangle(g_renderer, &tri[0], self->list_flags);
-    renderer_add_triangle(g_renderer, &tri[1], self->list_flags);
+    prim_add_world_triangles(tri, 2, view, self->list_flags);
 }
 
 void prim_crossed_quads_render(struct EffectPrim *self, const float *view)
@@ -301,16 +302,17 @@ void prim_crossed_quads_render(struct EffectPrim *self, const float *view)
         Vec3 c3 = prim_mat_apply(self->matrix, q[3].x, q[3].y, q[3].z);
         Vec3 c0 = prim_mat_apply(self->matrix, q[0].x, q[0].y, q[0].z);
 
-        prim_set_vertex(&tri[0].v[0], view, vec3_add(self->base.pos, c0), self->argb, 0.0f, 1.0f);
-        prim_set_vertex(&tri[0].v[1], view, vec3_add(self->base.pos, c1), self->argb, 1.0f, 1.0f);
-        prim_set_vertex(&tri[0].v[2], view, vec3_add(self->base.pos, c2), self->argb, 0.0f, 0.0f);
+        prim_set_corner(&tri[0].world.corner[0], vec3_add(self->base.pos, c0), 0.0f, 1.0f);
+        prim_set_corner(&tri[0].world.corner[1], vec3_add(self->base.pos, c1), 1.0f, 1.0f);
+        prim_set_corner(&tri[0].world.corner[2], vec3_add(self->base.pos, c2), 0.0f, 0.0f);
+        tri[0].world.colour = self->argb;
         tri[0].texture = self->textures[self->base.motion];
-        renderer_add_triangle(g_renderer, &tri[0], 1);
-        prim_set_vertex(&tri[1].v[0], view, vec3_add(self->base.pos, c3), self->argb, 1.0f, 0.0f);
-        prim_set_vertex(&tri[1].v[1], view, vec3_add(self->base.pos, c2), self->argb, 0.0f, 0.0f);
-        prim_set_vertex(&tri[1].v[2], view, vec3_add(self->base.pos, c1), self->argb, 1.0f, 1.0f);
+        prim_set_corner(&tri[1].world.corner[0], vec3_add(self->base.pos, c3), 1.0f, 0.0f);
+        prim_set_corner(&tri[1].world.corner[1], vec3_add(self->base.pos, c2), 0.0f, 0.0f);
+        prim_set_corner(&tri[1].world.corner[2], vec3_add(self->base.pos, c1), 1.0f, 1.0f);
+        tri[1].world.colour = self->argb;
         tri[1].texture = self->textures[self->base.motion];
-        renderer_add_triangle(g_renderer, &tri[1], 1);
+        prim_add_world_triangles(tri, 2, view, 1);
         tri += 2;
     }
 }
@@ -363,16 +365,17 @@ void prim_sphere_render(struct EffectPrim *self, const float *view)
                 p4 = vec3_add(p4, self->base.pos);
 
                 u2 = u + du;
-                prim_set_vertex(&tri[0].v[0], view, p1, self->argb, u, v_top);
-                prim_set_vertex(&tri[0].v[1], view, p2, self->argb, u, v_bottom);
-                prim_set_vertex(&tri[0].v[2], view, p3, self->argb, u2, v_top);
+                prim_set_corner(&tri[0].world.corner[0], p1, u, v_top);
+                prim_set_corner(&tri[0].world.corner[1], p2, u, v_bottom);
+                prim_set_corner(&tri[0].world.corner[2], p3, u2, v_top);
+                tri[0].world.colour = self->argb;
                 tri[0].texture = self->textures[0];
-                renderer_add_triangle(g_renderer, &tri[0], 1);
-                prim_set_vertex(&tri[1].v[0], view, p4, self->argb, u2, v_bottom);
-                prim_set_vertex(&tri[1].v[1], view, p3, self->argb, u2, v_top);
-                prim_set_vertex(&tri[1].v[2], view, p2, self->argb, u, v_bottom);
+                prim_set_corner(&tri[1].world.corner[0], p4, u2, v_bottom);
+                prim_set_corner(&tri[1].world.corner[1], p3, u2, v_top);
+                prim_set_corner(&tri[1].world.corner[2], p2, u, v_bottom);
+                tri[1].world.colour = self->argb;
                 tri[1].texture = self->textures[0];
-                renderer_add_triangle(g_renderer, &tri[1], 1);
+                prim_add_world_triangles(tri, 2, view, 1);
 
                 tri += 2;
                 index += 2;

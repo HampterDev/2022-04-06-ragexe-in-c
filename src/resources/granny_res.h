@@ -3,35 +3,28 @@
 #define RESOURCES_GRANNY_RES_H
 
 #include "fileio/resource_types.h"
+#include <stdint.h>
 #include "resources/granny_sdk.h"
 #include "render/vec3.h"
 
 struct Texture;
-
-struct GrannyMeshVertex {
-    Vec3 pos;
-    float nx, ny, nz;
-    float u, v;
-};
-SIZE_ASSERT(GrannyMeshVertex, 32);
-
-struct GrannyVertexBuffer {
-    size_t count;
-    struct GrannyMeshVertex vertices[];
-};
+struct gfx_skin;
 
 struct GrannyResTexture {
     const char *name;
     struct Texture *texture;
 };
 
+/* custom: a mesh and what it draws with: the texture of its first triangle group's material
+   (NULL: none, and it is not drawn, but for the guild flag's mesh 1, which actor/granny.c draws
+   with the guild's emblem whatever its own texture), its triangles in the model's indices on the device
+   (C3dGrannyModelRes.skin: firstIndex to firstIndex + indexCount, none where it has no triangle),
+   and the bone that moves it where it is rigid, -1 where it is skinned. */
 struct GrannyResMesh {
     granny_mesh *mesh;
-    granny_mesh_deformer *deformer;
-    unsigned short *indices;
-    struct GrannyMeshVertex *rigidVerts;
-    int materialCount;
-    struct GrannyResTexture **textures;
+    struct Texture *texture;
+    uint32_t firstIndex, indexCount;
+    int rigidBone;
 };
 
 struct GrannyResModel {
@@ -43,19 +36,6 @@ struct GrannyBounds {
     float center[3];
     float half_width;
     float half_height;
-};
-
-struct GrannyHairPivot {
-    int part;
-    int mesh;
-    float matrix[12];
-};
-SIZE_ASSERT(GrannyHairPivot, 0x38);
-
-struct GrannyMeshPose {
-    granny_world_pose *world;
-    granny_mesh_binding *binding;
-    struct GrannyHairPivot *hair;
 };
 
 struct C3dGrannyModelRes {
@@ -70,6 +50,10 @@ struct C3dGrannyModelRes {
     struct C3dGrannyBoneRes *boneRes;
     int id;
     granny_skeleton *skeleton;
+    /* custom: its meshes' vertices and indices on the device, which skins them (render/gfx.h,
+       gfx_create_skin); NULL where no mesh has a triangle or the skeleton has more bones than the
+       device takes (render/skin_layout.h, SKIN_BONES_MAX), and nothing of it is drawn */
+    struct gfx_skin *skin;
 };
 
 enum { GRANNY_BONE_JOB_COUNT = 10, GRANNY_BONE_ANIMATION_COUNT = 5 };
@@ -85,14 +69,17 @@ extern struct C3dGrannyBoneRes g_grannyBoneRes;
 BYTE c3d_granny_model_res_load(struct C3dGrannyModelRes *self, const char *name);
 void granny_model_resource_clear(struct C3dGrannyModelRes *self);
 void granny_model_resource_finish(struct C3dGrannyModelRes *self);
-struct GrannyVertexBuffer *granny_vertex_buffer_create(const struct C3dGrannyModelRes *model, int mesh);
-void granny_vertex_buffer_destroy(struct GrannyVertexBuffer *buffer);
-int granny_mesh_vertex_position(const struct C3dGrannyModelRes *model, int mesh,
-                               const struct GrannyMeshVertex *vertices, int vertex, Vec3 *out);
-const struct GrannyMeshVertex *c3d_granny_model_res_mesh_to_draw(struct C3dGrannyModelRes *self, int mesh,
-                                              struct Texture **tex, unsigned short **indices, int *tris,
-                                              float *matrix, const struct GrannyMeshPose *pose,
-                                              struct GrannyVertexBuffer *buffer);
+/* custom: the model's meshes on the device (C3dGrannyModelRes.skin) and each mesh's triangles
+   among them, from the meshes' vertices and indices as the file holds them (the whole triangles of
+   each; indices past the last whole one are neither drawn nor checked); 0 without memory or where an
+   index of a triangle names no vertex of its mesh (the load then fails), 1 where it made them or
+   makes none: no triangle, a skeleton of more than SKIN_BONES_MAX bones, or more than 2^32 - 1
+   vertices or indices in all (the model is then not drawn). */
+int granny_model_res_skin(struct C3dGrannyModelRes *self);
+/* Where Granny's deformer put vertex `vertex` of mesh `mesh` in the mesh's space, for the pose's
+   bones: 0 where the model, mesh or vertex is not there. */
+int granny_mesh_vertex_position(const struct C3dGrannyModelRes *model, int mesh, granny_world_pose *pose,
+                               int vertex, Vec3 *out);
 BYTE granny_bounds_screen_box(const struct GrannyBounds *bounds, struct ScreenBounds *box,
                                             const float *view, const float *r, const float *eye);
 

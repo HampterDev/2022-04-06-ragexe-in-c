@@ -199,16 +199,6 @@ void prim_light_box_render(struct EffectPrim *self, const float *view)
     }
 }
 
-static void set_vertex(struct TexDrawVertex *vx, const float *matrix, Vec3 pos, unsigned argb, float u, float v)
-{
-    struct TexDrawVertex tmp;
-
-    *vx = *prim_project_vertex(&tmp, matrix, pos);
-    vx->diffuse = argb;
-    vx->u = u;
-    vx->v = v;
-}
-
 void prim_rainbow_quad(struct EffectPrim *self, int *count, int seg, short alpha, Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3,
                        const float *matrix, unsigned char blend, unsigned char r, unsigned char g, unsigned char b)
 {
@@ -255,21 +245,22 @@ void prim_rainbow_quad(struct EffectPrim *self, int *count, int seg, short alpha
     tri = &self->triangles[*count];
     tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
-    set_vertex(&tri->v[0], matrix, p0, argb, 1.0f, v0);
-    set_vertex(&tri->v[1], matrix, p1, argb, 1.0f, v1);
-    set_vertex(&tri->v[2], matrix, p2, argb, 0.0f, v1);
+    prim_set_corner(&tri->world.corner[0], p0, 1.0f, v0);
+    prim_set_corner(&tri->world.corner[1], p1, 1.0f, v1);
+    prim_set_corner(&tri->world.corner[2], p2, 0.0f, v1);
+    tri->world.colour = argb;
     tri->texture = self->textures[0];
-    renderer_add_triangle(g_renderer, tri, self->list_flags);
     ++*count;
 
     tri = &self->triangles[*count];
     tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
-    set_vertex(&tri->v[0], matrix, p3, argb, 0.0f, v0);
-    set_vertex(&tri->v[1], matrix, p2, argb, 0.0f, v1);
-    set_vertex(&tri->v[2], matrix, p0, argb, 1.0f, v0);
+    prim_set_corner(&tri->world.corner[0], p3, 0.0f, v0);
+    prim_set_corner(&tri->world.corner[1], p2, 0.0f, v1);
+    prim_set_corner(&tri->world.corner[2], p0, 1.0f, v0);
+    tri->world.colour = argb;
     tri->texture = self->textures[0];
-    renderer_add_triangle(g_renderer, tri, self->list_flags);
+    prim_add_world_triangles(tri - 1, 2, matrix, self->list_flags);
     ++*count;
 }
 

@@ -40,9 +40,9 @@ struct Renderer {
     struct GfxShadow shadow;
     struct ShadowFitReach shadowReach;
     int shadowSet;
-    /* custom: the camera's view of the frame, which world-space quads are drawn with
-       (renderer_set_camera), and what the static world's ground and opaque models are drawn with
-       this frame (renderer_set_world; render/gfx.h, gfx_world_draw), while worldSet */
+    /* custom: the camera's view of the frame, which the water is drawn with (renderer_set_camera),
+       and what the static world's ground and opaque models are drawn with this frame
+       (renderer_set_world; render/gfx.h, gfx_world_draw), while worldSet */
     float cameraView[12];
     int cameraSet;
     struct GfxWorldDraw worldModels, worldGround;
@@ -77,15 +77,11 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, float dista
    the shadow maps along the light (render/shadow_fit.h, shadow_fit_bounds); a box that is empty or
    not finite leaves the frame without shadows. */
 void renderer_shadow_bounds(struct Renderer *self, const struct ShadowFitBox *bounds);
-/* custom: the camera's view matrix for the frame being queued, which quads with world-space
-   vertices (RPQuad.world) are drawn with */
+/* custom: the camera's view matrix for the frame being queued, which the water is drawn with */
 void renderer_set_camera(struct Renderer *self, const float *view);
 /* custom: the static world in this frame (render/gfx.h): its ground and opaque models are drawn
    where the original drew their lists, with these */
 void renderer_set_world(struct Renderer *self, const struct GfxWorldDraw *models, const struct GfxWorldDraw *ground);
-/* custom: whether quads drawn with the view matrix `view` can hand the device world coordinates
-   instead (RPQuad.world): `view` is the camera's for the frame */
-int renderer_world_quads(const struct Renderer *self, const float *view);
 /* custom: where the frame has shadows, the box whatever can shade what its view shows lies in, as
    planes (render/static_world.h, SwFrustum: the static world's records are tested against it as
    against the view's): across the light the shadows' reach (render/shadow_fit.h,

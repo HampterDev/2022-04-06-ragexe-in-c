@@ -31,13 +31,16 @@ struct RenderTexture {
     unsigned sort_key;
 };
 
-/* world: the primitive is a struct RPWorldDraw (custom) */
+/* What a queue's entry is: a struct RPQuad; custom, a draw of the static world (struct
+   RPWorldDraw) or of a Granny model's mesh (struct RPSkinDraw), render/primitive_types.h */
+enum { RP_ENTRY_QUAD, RP_ENTRY_WORLD, RP_ENTRY_SKIN };
+
 struct RenderEntry {
     void *primitive;
     float key;
     unsigned order;
     struct RenderTexture textures[2];
-    unsigned char world;
+    unsigned char kind;
 };
 
 struct RenderQueue {

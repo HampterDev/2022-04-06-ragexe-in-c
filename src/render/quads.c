@@ -6,15 +6,18 @@
 #define QUAD_RECT 2
 #define QUAD_SCREEN 3
 #define QUAD_WORLD 4
-#define QUAD_CAMERA 5
 #define QUAD_TRIANGLE 16u
 #define QUAD_SNAP 32u
 #define QUAD_TURNED 64u
 #define QUAD_STAGE2 128u
 #define QUAD_RHW_ADD 256u
-#define QUAD_Z_ZERO 1024u
+#define QUAD_RHW_VALUE 512u
+#define QUAD_Z_VALUE 1024u
 #define QUAD_Z_ADD 2048u
 #define QUAD_VIEW 4096u
+#define QUAD_UPRIGHT 8192u
+#define QUAD_RIGHT 16384u
+#define QUAD_CORNERS 5
 
 static uint32_t bits(float f)
 {
@@ -40,9 +43,52 @@ static void row(uint32_t *w, float a, float b, float c, float d)
     w[3] = bits(d);
 }
 
+/* the flags of an rhw and a depth rule (GFX_RHW_*, GFX_DEPTH_*) */
+static uint32_t rule_flags(int rhw, int depth)
+{
+    return (rhw == GFX_RHW_ADD ? QUAD_RHW_ADD : rhw == GFX_RHW_VALUE ? QUAD_RHW_VALUE : 0)
+         | (depth == GFX_DEPTH_VALUE ? QUAD_Z_VALUE : depth == GFX_DEPTH_ADD ? QUAD_Z_ADD : 0);
+}
+
+int quad_corner_words(const struct GfxCorners *c, uint32_t matrix, uint32_t *w)
+{
+    uint32_t flags = rule_flags(c->rhw, c->depth) | (c->upright ? QUAD_UPRIGHT : 0);
+    int n = 4, i;
+    if (c->count < 1 || c->count > GFX_CORNERS_MAX)
+        return 0;
+    if (flags) {
+        row(w + n, c->rhwValue, c->depthValue, c->lift, 0.0f);
+        n += 4;
+    }
+    if (c->upright) {
+        row(w + n, c->uprightPoint[0], c->uprightPoint[1], c->uprightPoint[2], 0.0f);
+        n += 4;
+    }
+    w[0] = flags;
+    w[1] = c->colour;
+    w[2] = matrix;
+    w[3] = (uint32_t)n;
+    for (i = 0; i < c->count; i++) {
+        w[n++] = bits(c->point[i][0]);
+        w[n++] = bits(c->point[i][1]);
+        w[n++] = bits(c->point[i][2]);
+        w[n++] = bits(c->u[i]);
+        w[n++] = bits(c->v[i]);
+    }
+    while (n % 4)
+        w[n++] = 0;
+    return n;
+}
+
 int quad_words(const struct GfxQuad *q, const struct QuadHeader *h, uint32_t *w)
 {
     int i;
+    if (q->kind == GFX_QUAD_CORNERS) {
+        const unsigned char *c = q->corners.corner;
+        header(w, QUAD_CORNERS, QUAD_TRIANGLE | (q->corners.right ? QUAD_RIGHT : 0), h, h->matrix,
+               (uint32_t)c[0] | (uint32_t)c[1] << 8 | (uint32_t)c[2] << 16);
+        return 4;
+    }
     if (q->kind == GFX_QUAD_SPRITE) {
         header(w, QUAD_SPRITE, q->sprite.turned ? QUAD_TURNED : 0, h, q->sprite.colour, 0);
         row(w + 4, q->sprite.x0, q->sprite.x1, q->sprite.top, q->sprite.bottom);
@@ -53,9 +99,8 @@ int quad_words(const struct GfxQuad *q, const struct QuadHeader *h, uint32_t *w)
     }
     if (q->kind == GFX_QUAD_WORLD) {
         int n = q->world.stage2 ? 36 : 28;
-        uint32_t flags = (q->world.rhw == GFX_RHW_ADD ? QUAD_RHW_ADD : 0)
-                       | (q->world.depth == GFX_DEPTH_ZERO ? QUAD_Z_ZERO : q->world.depth == GFX_DEPTH_ADD ? QUAD_Z_ADD : 0)
-                       | (q->world.stage2 ? QUAD_STAGE2 : 0) | (q->world.viewSpace ? QUAD_VIEW : 0);
+        uint32_t flags = rule_flags(q->world.rhw, q->world.depth) | (q->world.stage2 ? QUAD_STAGE2 : 0)
+                       | (q->world.viewSpace ? QUAD_VIEW : 0);
         header(w, QUAD_WORLD, flags, h, q->world.colour, h->matrix);
         for (i = 0; i < 4; i++) {
             const float *p = q->world.point[i];
@@ -113,13 +158,11 @@ static int rectangle(const struct TexDrawVertex *v)
         && same(v[2].v, v[3].v);
 }
 
-int quad_vertex_words(int n, int strip, int world, uint32_t first, int index, const struct QuadHeader *h,
-                      uint32_t *w)
+int quad_vertex_words(int n, int strip, uint32_t first, int index, const struct QuadHeader *h, uint32_t *w)
 {
-    if (index < 0 || index >= quad_instance_count(n, strip) || (world && strip))
+    if (index < 0 || index >= quad_instance_count(n, strip))
         return 0;
-    header(w, world ? QUAD_CAMERA : QUAD_SCREEN, strip ? 0 : QUAD_TRIANGLE, h, 0,
-           first + (uint32_t)(strip ? 0 : index * 3 * 7));
+    header(w, QUAD_SCREEN, strip ? 0 : QUAD_TRIANGLE, h, 0, first + (uint32_t)(strip ? 0 : index * 3 * 7));
     return 4;
 }
 

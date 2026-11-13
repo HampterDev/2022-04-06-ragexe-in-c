@@ -1,14 +1,15 @@
-// The records render/gfx_gpu.c writes for a frame (structs GpuDraw and GpuView there, the same
-// layout: only 16-byte vectors and row-major matrices, compiled with -Zpr), read as storage buffers
-// or, a draw of the static world's, as its uniform. A quad's draw finds its record through the
-// quad's record in the frame's quads (instances.hlsli), the water's through its uniform, the
-// wobble's through the instance-rate attribute that holds its index; its view record through the
-// index in the draw record.
+// The draw records render/gfx_gpu.c writes for a frame (struct GpuDraw there, the same layout: only
+// 16-byte vectors and row-major matrices, compiled with -Zpr), read as storage buffers or, a draw
+// of the static world's, as its uniform. A quad's draw finds its record through the quad's record
+// in the frame's quads (instances.hlsli), a Granny actor's through its instance's header among the
+// frame's quads (skin.hlsl), the water's through its uniform, the wobble's through the
+// instance-rate attribute that holds its index.
 
 struct Draw
 {
-    uint4 mode;       // -, the alpha test (ALPHA_*), fog on, the view (the wobble's:
-                      // its first row in the row tables, rows.hlsl)
+    uint4 mode;       // -, the alpha test (ALPHA_*), fog on, the water's view among the frame's,
+                      // which render/gfx_gpu.c hands it as its uniform (the wobble's: its first row
+                      // in the row tables, rows.hlsl)
     float4 target;    // the alpha test's reference (0 to 255), half the target's width and height, alpha
                       // to coverage
     uint4 stages;     // the combination (render/draw_modes.h, enum DrawCombine), the stages that read
@@ -22,11 +23,6 @@ struct Draw
     float4 uvLimit;   // target's texture is wider than the target (render/gfx_gpu.c, MARGIN), and a
                       // clamped read stays off the margin
     uint4 mesh;       // a model, its ground light, -, whether the frame has shadows (cascades.hlsli)
-};
-
-struct View
-{
-    float4x4 toClip;  // from the draw's space to clip space
 };
 
 // A stage's texture coordinates as its texture is sampled (Draw.uvScale).

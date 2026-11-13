@@ -1,8 +1,9 @@
-// What the client's quads (quad.hlsl) and the water (water.hlsl) share: the resources their
-// vertex shaders read first, the varyings, the vertex fog, and the pixels (quad_pixel): the texture
-// stages' combination of the draw's mode (render/draw_modes.h, enum DrawCombine), stage 0 read from
-// a layer of an atlas array where the draw's record says so, the fog and the alpha test, as
-// Direct3D 9 drew them.
+// What the client's quads (quad.hlsl), the water (water.hlsl) and Granny's actors (skin.hlsl)
+// share: the resources their vertex shaders read first (the draw records and the fog tables; what
+// each reads after them, each declares), the varyings, the vertex fog, and the pixels
+// (quad_pixel): the texture stages' combination of the draw's mode (render/draw_modes.h, enum
+// DrawCombine), stage 0 read from a layer of an atlas array where the draw's record says so, the
+// fog and the alpha test, as Direct3D 9 drew them.
 #include "records.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
@@ -72,7 +73,7 @@ float4 combine(uint which, float4 t, float4 u, float4 d)
     return float4(c, a);
 }
 
-// The pixel shader of both: fs_main in each source, which tools/shaders finds there.
+// The pixel shader of all three: fs_main in each source, which tools/shaders finds there.
 float4 quad_pixel(Varyings i)
 {
     Draw d = fragmentDraws[i.draw];

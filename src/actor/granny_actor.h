@@ -7,7 +7,6 @@
 #include "actor/types.h"
 #include "resources/granny_res.h"
 #include "resources/granny_playback.h"
-#include "actor/granny_projection.h"
 #include "actor/granny_model_storage.h"
 
 struct GrannyLight {
