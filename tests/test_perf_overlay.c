@@ -94,10 +94,10 @@ void font_text_out(FontHandle font, const struct FontTarget *target, int x, int 
 static int mode = -1;
 void gfx_set_mode(int m) { mode = m; }
 void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
-void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip, int world)
+void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip)
 {
     (void)v;
-    assert(n == 4 && strip && !world && mode == DRAW_PANEL);
+    assert(n == 4 && strip && mode == DRAW_PANEL);
     ++draws;
 }
 

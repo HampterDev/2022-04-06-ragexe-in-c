@@ -14,6 +14,10 @@
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include "game/context.h"
+#include "render/texture_types.h"
+#include "resources/attr.h"
+#include "world/ground.h"
+#include "world/ground_api.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -263,6 +267,177 @@ int reference_sprite_particle_vertices(struct SpriteParticle *self, struct TexDr
         }
     }
     return drawn;
+}
+
+/* effect_prim_draw.c's prim_project_vertex and set_vertex */
+static void prim_vertex(struct TexDrawVertex *vx, const float *matrix, const float *point, unsigned argb, float u,
+                        float v)
+{
+    struct TexDrawVertex projected;
+    Vec3 pos;
+
+    pos.x = point[0];
+    pos.y = point[1];
+    pos.z = point[2];
+    memset(&projected, 0, sizeof projected);
+    renderer_project_vertex(g_renderer, &pos, matrix, &projected);
+    *vx = projected;
+    vx->diffuse = argb;
+    vx->u = u;
+    vx->v = v;
+}
+
+void reference_prim_triangle(const float (*p)[3], const float *u, const float *v, unsigned argb, const float *view,
+                             unsigned char mode, const float *centrePoint, float scale, int second,
+                             struct TexDrawVertex *out)
+{
+    int i;
+
+    for (i = 0; i < 3; i++)
+        prim_vertex(&out[i], view, p[i], argb, u[i], v[i]);
+    /* quad_depth */
+    if (mode == 2) {
+        for (i = 0; i < 3; i++) {
+            out[i].rhw = out[i].rhw + 4.5e-5f;
+            out[i].z = renderer_project_depth(out[i].rhw);
+        }
+        return;
+    }
+    if (mode == 3) {
+        struct TexDrawVertex centre;
+        float half_width;
+
+        prim_vertex(&centre, view, centrePoint, 0, 0.0f, 0.0f);
+        half_width = (float)fabs((double)(out[0].x - out[1].x)) * 0.5f;
+        out[0].x = centre.x + half_width;
+        out[1].x = centre.x - half_width;
+        out[2].x = second ? centre.x + half_width : centre.x - half_width;
+        for (i = 0; i < 3; i++)
+            out[i].y = (float)(-30 * g_renderer->height / 480) * scale + out[i].y;
+        mode = 1;
+    }
+    if (mode == 1) {
+        for (i = 0; i < 3; i++) {
+            out[i].z = 1e-9f;
+            out[i].rhw = 1.0f;
+        }
+    }
+}
+
+int reference_attr_quad(struct C3dGround15 *self, const float *view, int ax, int ay, DWORD colour,
+                        struct Texture *texture, const float *uv, float bias, struct TexDrawVertex *out)
+{
+    float quad[12] = {0};
+    float su, sv;
+    int i;
+
+    if (!c3d_ground15_get_attr_quad(self, ax, ay, quad))
+        return 0;
+
+    for (i = 0; i < 4; i++) {
+        float *p = &quad[i * 3];
+        float x = p[0], z;
+
+        if (ax & 1) {
+            if (quad[3] > x)
+                p[0] = (quad[3] - x) * 0.5f + x;
+        } else {
+            if (x > quad[0])
+                p[0] = x - (x - quad[0]) * 0.5f;
+        }
+        z = p[2];
+        if (ay & 1) {
+            if (quad[8] > z)
+                p[2] = (quad[8] - z) * 0.5f + z;
+        } else {
+            if (z > quad[2])
+                p[2] = z - (z - quad[2]) * 0.5f;
+        }
+    }
+
+    for (i = 0; i < 4; i++) {
+        {
+            Vec3 world_point = {quad[i * 3], quad[i * 3 + 1], quad[i * 3 + 2]};
+            memset(&out[i], 0, sizeof out[i]);
+            renderer_project_vertex(g_renderer, &world_point, view, &out[i]);
+        }
+        out[i].z -= bias;
+    }
+    su = (float)(DWORD)texture->reqWidth / (float)(DWORD)texture->base.width;
+    sv = (float)(DWORD)texture->reqHeight / (float)(DWORD)texture->base.height;
+    out[0].u = uv[0] * su;
+    out[0].v = uv[1] * sv;
+    out[1].u = uv[2] * su;
+    out[1].v = uv[3] * sv;
+    out[2].u = uv[4] * su;
+    out[2].v = uv[5] * sv;
+    out[3].u = uv[6] * su;
+    out[3].v = uv[7] * sv;
+    for (i = 0; i < 4; i++)
+        out[i].diffuse = colour;
+    return 1;
+}
+
+int reference_attr_marker(struct C3dGround15 *self, const float *view, int ax, int ay, DWORD colour,
+                          struct TexDrawVertex *out)
+{
+    int cx = (int)((float)ax * 0.5f);
+    int cy = (int)((float)ay * 0.5f);
+    int ayOdd = ay % 2;
+    int width = self->width;
+    int halfW = (int)((float)width * 0.5f);
+    int halfH = (int)((float)self->height * 0.5f);
+    float half = self->zoom * 0.5f;
+    float quarter = half * 0.5f;
+    const struct AttrCell *c;
+    float quad[12], offX, offZ, x0, z0, left, right, front, back;
+    int i;
+
+    if (ax < 0 || cx >= width || ay < 0 || cy >= self->height)
+        return 0;
+    c = c3d_attr_get_cell(self->attr, ax, ay);
+    if (!c)
+        return 0;
+    offX = ax % 2 == 1 ? half : 0.0f;
+    offZ = 0.0f;
+    x0 = (float)(cx - halfW) * self->zoom + offX;
+    if (ayOdd == 1)
+        offZ = half;
+    z0 = (float)(cy - halfH) * self->zoom + offZ;
+    left = x0 - quarter;
+    right = x0 + half + quarter;
+    front = z0 - quarter;
+    back = z0 + half + quarter;
+    quad[0] = left;
+    quad[1] = c->height[0];
+    quad[2] = front;
+    quad[3] = right;
+    quad[4] = c->height[1];
+    quad[5] = front;
+    quad[6] = left;
+    quad[7] = c->height[2];
+    quad[8] = back;
+    quad[9] = right;
+    quad[10] = c->height[3];
+    quad[11] = back;
+
+    for (i = 0; i < 4; i++)
+        {
+            Vec3 world_point = {quad[i * 3], quad[i * 3 + 1], quad[i * 3 + 2]};
+            memset(&out[i], 0, sizeof out[i]);
+            renderer_project_vertex(g_renderer, &world_point, view, &out[i]);
+        }
+    out[0].u = 0.0f;
+    out[0].v = 0.0f;
+    out[1].u = 1.0f;
+    out[1].v = 0.0f;
+    out[2].u = 0.0f;
+    out[2].v = 1.0f;
+    out[3].u = 1.0f;
+    out[3].v = 1.0f;
+    for (i = 0; i < 4; i++)
+        out[i].diffuse = colour;
+    return 1;
 }
 
 void reference_widen(const struct TexDrawVertex *in, struct ReferenceVertex *out)

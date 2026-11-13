@@ -39,16 +39,18 @@ enum perf_phase {
    - draws and prims: the draws the device makes of the client's quads and triangles (after
      batching) and of the static world (an indirect draw of a run of records counts one, with every
      primitive of the run's records, whether the GPU's cull keeps them or not), the shadow maps'
-     included; drawCalls: the gfx_draw_quad, gfx_draw_vertices, gfx_world_draw,
+     included; drawCalls: the gfx_draw_quad, gfx_draw_vertices, gfx_draw_skin, gfx_world_draw,
      gfx_world_draw_record, gfx_world_draw_water and gfx_world_cast calls. Blits drawn as quads
      count as blitQuads alone.
    - modesSent and modesSkipped: gfx_set_mode, gfx_set_effect and gfx_set_fog calls that change what
      the device draws with (render/gfx.h), which ends a batch, and that leave it as it was; texSets:
      gfx_set_texture calls that change a stage's texture.
    - vertexBytes: the vertices and indices of a static world mesh (with each vertex's record) when
-     gfx_world_mesh gives them, and the cells a draw of the water names; instanceBytes: the records
-     of the quads and triangles drawn, their offsets, the matrices they are projected with and the
-     client's vertices they name, that the frame's upload gives the device.
+     gfx_world_mesh gives them, the cells a draw of the water names, and a Granny model's vertices
+     and indices when a draw first takes them up; instanceBytes: the records of the quads and
+     triangles drawn, their offsets, the matrices they are projected with and the corner sets and
+     client's vertices they name, and Granny's actors' poses with the headers and offsets of their
+     draws' instances, that the frame's upload gives the device.
    - textureBytes: the texels written by texture_upload_pixels, surface_fill_pixels and
      texture_draw_sprite_frame (the sprite atlas), at the texture's or surface's own depth.
    - drawSceneNs, viewRenderNs and presentNs: the time spent in renderer_draw_scene, in

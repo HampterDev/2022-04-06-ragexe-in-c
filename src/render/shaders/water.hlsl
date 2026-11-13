@@ -1,12 +1,12 @@
 // The map's water (render/gfx.h, gfx_world_draw_water): a quad over each cell the frame draws,
 // built here from the cell's place in the map's water and the waves' phase as the original built
-// it on the CPU each frame (water.hlsli), then drawn as the quads in world coordinates are
-// (quad.hlsl): through the camera's view, its colour and texture coordinates interpolated by hand,
-// with the quads' pixels, the fog by the rhw the CPU's projection gave its corners. A quad the CPU
-// left out lies outside the view.
+// it on the CPU each frame (water.hlsli), then drawn through the camera's view, its colour and
+// texture coordinates interpolated by hand, with the quads' pixels (quad.hlsli), the fog by the rhw
+// the CPU's projection gave its corners. A quad the CPU left out lies outside the view.
 #include "water.hlsli"
 #include "quad.hlsli"
 
+StructuredBuffer<View> views : register(t2, space0);
 StructuredBuffer<WaterCell> cells : register(t3, space0);
 StructuredBuffer<Water> waters : register(t4, space0);
 StructuredBuffer<float> sines : register(t5, space0);  // render/math3d.c, g_sinTable

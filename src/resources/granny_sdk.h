@@ -10,12 +10,11 @@ typedef struct granny_model_instance granny_model_instance;
 typedef struct granny_local_pose granny_local_pose;
 typedef struct granny_world_pose granny_world_pose;
 typedef struct granny_mesh_binding granny_mesh_binding;
-typedef struct granny_mesh_deformer granny_mesh_deformer;
 typedef struct granny_control granny_control;
 typedef struct granny_animation granny_animation;
 typedef struct granny_material granny_material;
-typedef struct granny_data_type_definition granny_data_type_definition;
 typedef struct granny_pixel_layout granny_pixel_layout;
+struct SkinSource;
 
 typedef struct granny_texture {
     const char *FromFileName;
@@ -93,7 +92,6 @@ typedef struct granny_file_info {
 
 #define GRANNY_COLOR_MAP_TEXTURE_TYPE   0
 #define GRANNY_DIFFUSE_COLOR_TEXTURE    2
-#define GRANNY_DEFORM_POSITION_NORMAL   2
 
 typedef struct GrannyClock { unsigned char bytes[16]; } GrannyClock;
 SIZE_ASSERT(GrannyClock, 16);
@@ -119,13 +117,9 @@ int _GrannyGetMeshIndexCount(granny_mesh *mesh);
 void _GrannyCopyMeshIndices(granny_mesh *mesh, int bytesPerIndex, void *out);
 int _GrannyGetMeshVertexCount(granny_mesh *mesh);
 BYTE _GrannyMeshIsRigid(granny_mesh *mesh);
-void _GrannyCopyMeshVertices(granny_mesh *mesh, const granny_data_type_definition *type,
-                             void *out);
-const granny_data_type_definition *_GrannyGetMeshVertexType(granny_mesh *mesh);
-granny_mesh_deformer *_GrannyNewMeshDeformer(const granny_data_type_definition *from,
-                                             const granny_data_type_definition *to,
-                                             int deformation);
-void _GrannyFreeMeshDeformer(granny_mesh_deformer *deformer);
+/* custom: vertices first to first + count of a mesh, at most its own, as the converted file holds
+   them, for the device to skin (render/skin_layout.h); the bones they name are the skeleton's. */
+void _GrannyCopyMeshSkinVertices(granny_mesh *mesh, int first, int count, struct SkinSource *out);
 granny_texture *_GrannyGetMaterialTextureByType(granny_material *material, int type);
 BYTE _GrannyTextureHasAlpha(granny_texture *texture);
 void _GrannyCopyTextureImage(granny_texture *texture, int image, int mip,
@@ -143,15 +137,8 @@ void _GrannyBuildWorldPose(granny_skeleton *skeleton, int first, int count,
                            granny_local_pose *localPose, const float *offset,
                            granny_world_pose *worldPose);
 float *_GrannyGetWorldPoseComposite4x4Array(granny_world_pose *worldPose);
-float *_GrannyGetWorldPoseComposite4x4(granny_world_pose *worldPose, int bone);
 int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *binding);
 int *_GrannyGetMeshTriangleGroups(granny_mesh *mesh);
-void *_GrannyGetMeshVertices(granny_mesh *mesh);
-void _GrannyDeformVertices(granny_mesh_deformer *deformer, const int *bones,
-                           const float *composite, int count, const void *from, void *to);
-int _GrannyGetMeshBytesPerIndex(granny_mesh *mesh);
-void *_GrannyGetMeshIndices(granny_mesh *mesh);
 extern const granny_pixel_layout *GrannyRGBA8888PixelFormat;
-extern const granny_data_type_definition *GrannyPNT332VertexType;
 
 #endif

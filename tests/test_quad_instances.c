@@ -1,22 +1,26 @@
 /* The client's quads and triangles as instances (render/gfx.h, gfx_draw_quad and
    gfx_draw_vertices; render/shaders/quad.hlsl) on this machine's GPU, against the CPU code they
    replaced (tests/fixtures/quad_reference.c: the vertices render_object_submit_spr_quad,
-   particle_render and sprite_particle_render made, and the multisampled pass's snap_flat, as they
-   were) and the client's own C code (renderer_project_vertex, renderer_project_depth):
+   particle_render, sprite_particle_render, the effect primitives' prim_draw_quad and the ground's
+   cell tiles made, and the multisampled pass's snap_flat, as they were) and the client's own C
+   code (renderer_project_vertex, renderer_project_depth):
 
    - The shaders' SPIR-V: no operation that would let the GPU round otherwise than the CPU in the
      code that must match it (render/shaders/instances.hlsli and exact.hlsli, which
-     tests/shaders/quad_probe.hlsl runs alone), and in quad.hlsl's vertex shader only the
-     operations phase 4's quad shader had too (bare_operations).
+     tests/shaders/quad_probe.hlsl runs alone) but the upright triangle's few (QUAD_PROBE_BARE),
+     which round alike in any order, and in quad.hlsl's vertex shader only those and the operations
+     phase 4's quad shader had too (bare_operations).
    - The exact operations alone against the C expressions they stand for: division over every
      divisor from 1 to 2 and beyond, renderer_project_depth, renderer_project_vertex.
    - Records of every kind, made as the client makes them (sprites by render_object_submit_spr_quad
      itself, actor/sprite_quad.c; particles by particle_render and sprite_particle_render,
-     effects/particle.c and sprite_particle.c; the rest by render/quads.c), realistic, edge and
-     fuzzed, read on the GPU's vertex stage by quad_vertex, the vertex the quad shader draws: every
-     corner's x, y, z, rhw, colour and both stages' coordinates bit for bit, as made and as moved
-     onto pixel boundaries (QUAD_SNAP), against the reference; and on the CPU the rhw the lists
-     sort sprites and particles by and whether a particle's quad is flat.
+     effects/particle.c and sprite_particle.c; the effect primitives' triangles by prim_draw_quad,
+     effects/rag/effect_prim_draw.c, in each of its modes; the ground's cell tiles by
+     world/ground_draw.c; the rest by render/quads.c), realistic, edge and fuzzed, read on the
+     GPU's vertex stage by quad_vertex, the vertex the quad shader draws: every corner's x, y, z,
+     rhw, colour and both stages' coordinates bit for bit, as made and as moved onto pixel
+     boundaries (QUAD_SNAP), against the reference; and on the CPU the rhw the lists sort sprites,
+     particles, triangles and tiles by and whether a projected one is flat.
    - Pictures through render/gfx_gpu.c itself: scenes of sprites drawn as the instances the client
      now makes them (from a layered texture, an array's layer) and as the reference's vertices (from
      a plain texture of the same texels), and of projected quads drawn as instances and as the
@@ -50,6 +54,12 @@
 #include "render/shaders/quad.h"
 #include "shaders/quad_probe.h"
 #include "fixtures/quad_reference.h"
+#include "effects/rag/rag_effect.h"
+#include "actor/attr_state.h"
+#include "actor/weather.h"
+#include "resources/attr.h"
+#include "world/ground.h"
+#include "world/ground_api.h"
 #include <SDL3/SDL.h>
 #include <math.h>
 #include <stdint.h>
@@ -114,6 +124,27 @@ struct TexDrawPrim *renderer_new_prim_instance(struct Renderer *self)
     return p;
 }
 
+struct TexDrawPrim *renderer_new_triangle_instance(struct Renderer *self)
+{
+    return renderer_new_prim_instance(self);
+}
+
+/* the corner sets the effect primitives' triangles share, as queued */
+static struct GfxCornerSet g_sets[QUEUE_MOST];
+static int g_setCount;
+
+struct GfxCornerSet *renderer_new_corner_set(struct Renderer *self)
+{
+    struct GfxCornerSet *set;
+    (void)self;
+    if (g_setCount >= QUEUE_MOST)
+        abort();
+    set = &g_sets[g_setCount++];
+    memset(set, 0, sizeof *set);
+    set->row = -1;
+    return set;
+}
+
 struct TexDrawPrim *rp_instance_construct(struct TexDrawPrim *self)
 {
     memset(self, 0, sizeof *self);
@@ -136,7 +167,7 @@ void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags)
 
 static void queue_clear(void)
 {
-    g_slotCount = g_queuedCount = 0;
+    g_slotCount = g_queuedCount = g_setCount = 0;
 }
 
 /* the camera particles see (game/context.h) */
@@ -177,6 +208,30 @@ void *res_mgr_get(struct ResMgr *self, const char *name) { (void)self; (void)nam
 void res_lock(struct Res *self) { (void)self; abort(); }
 void res_unlock(struct Res *self) { (void)self; abort(); }
 unsigned actres_frame_count(const struct ActRes *self, unsigned action) { (void)self; (void)action; abort(); }
+
+/* the ground's cell tiles (world/ground_draw.c): the cell's quad and the marker's heights the cases
+   set, and what its water and casters reach, which these cases never do */
+static float g_cellQuad[12];
+static struct AttrCell g_cell;
+struct Weather g_weather;
+int g_playerBlind;
+const float g_naviCellUVs[8] = {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f};
+BYTE c3d_ground15_get_attr_quad(struct C3dGround15 *self, int ax, int ay, float *quad)
+{
+    (void)self; (void)ax; (void)ay;
+    memcpy(quad, g_cellQuad, sizeof g_cellQuad);
+    return 1;
+}
+struct AttrCell *c3d_attr_get_cell(const struct C3dAttr *self, int x, int y)
+{
+    (void)self; (void)x; (void)y;
+    return &g_cell;
+}
+int c3d_ground15_water_block(struct C3dGround15 *self, int x, int y) { (void)self; (void)x; (void)y; abort(); }
+float ground_water_height(const struct GndWater *water, int64_t diagonal) { (void)water; (void)diagonal; abort(); }
+void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWorldDraw *draw, struct Texture *texture,
+                             float key)
+{ (void)self; (void)queue; (void)draw; (void)texture; (void)key; abort(); }
 
 /* ---- random numbers ---- */
 
@@ -694,16 +749,15 @@ static int sprite_case(int kind, struct Batch *b, struct Case *c, struct Tally *
     return 1;
 }
 
-/* A primitive of pre-transformed vertices: a rectangle, a strip or a triangle, flat or not, or a
-   triangle of world vertices (QUAD_CAMERA, `world`), which the shader hands on as they are for the
-   camera's view to take; answers how many cases it made */
-static int screen_case(int kind, int world, struct Batch *b, struct Case *c)
+/* A primitive of pre-transformed vertices: a rectangle, a strip or a triangle, flat or not;
+   answers how many cases it made */
+static int screen_case(int kind, struct Batch *b, struct Case *c)
 {
     struct QuadHeader h = {0, 0, 0, 0};
     struct TexDrawVertex v[4];
     struct ReferenceVertex r[4];
     uint32_t words[QUAD_WORDS_MAX];
-    int shape = irange(world ? 2 : 0, 2), corners = shape == 2 ? 3 : 4, flat = chance(70), i, n;
+    int shape = irange(0, 2), corners = shape == 2 ? 3 : 4, flat = chance(70), i, n;
     float rhw = some_rhw(kind);
     for (i = 0; i < 4; i++) {
         v[i].x = coordinate(kind, 1600);
@@ -735,14 +789,12 @@ static int screen_case(int kind, int world, struct Batch *b, struct Case *c)
         }
     } else {
         uint32_t first = batch_rows(b, v, (size_t)corners * 7) * 4;
-        n = quad_vertex_words(corners, corners == 4, world, first, 0, &h, words);
+        n = quad_vertex_words(corners, corners == 4, first, 0, &h, words);
     }
-    batch_case(b, words, n, !world);
+    batch_case(b, words, n, 1);
     for (i = 0; i < 4; i++)
         reference_widen(&v[i], &r[i]);
     expect_primitive(r, corners, c);
-    if (world)
-        memcpy(c->snapped, c->made, sizeof c->made);
     return 1;
 }
 
@@ -795,19 +847,26 @@ static void point_at(const struct View *s, float px, float py, float depth, floa
         out[i] = eye[i] + (m[3 * i + 2] + rx * m[3 * i] + ry * m[3 * i + 1]) * depth;
 }
 
+/* a matrix and projection as the device puts them among the quads (view NULL for points in view
+   space): the row it starts at */
+static uint32_t add_view(struct Batch *b, const float *view, const float *proj, const float *centre)
+{
+    float m[16];
+    if (view)
+        memcpy(m, view, 12 * sizeof *m);
+    else
+        memset(m, 0, 12 * sizeof *m);
+    m[12] = proj[0];
+    m[13] = proj[1];
+    m[14] = centre[0];
+    m[15] = centre[1];
+    return batch_rows(b, m, 16);
+}
+
 /* a GFX_QUAD_WORLD instance's matrix, as the device puts it among the quads: the row it starts at */
 static uint32_t add_matrix(struct Batch *b, const struct GfxQuad *q)
 {
-    float m[16];
-    if (q->world.viewSpace)
-        memset(m, 0, 12 * sizeof *m);
-    else
-        memcpy(m, q->world.view, 12 * sizeof *m);
-    m[12] = q->world.proj[0];
-    m[13] = q->world.proj[1];
-    m[14] = q->world.centre[0];
-    m[15] = q->world.centre[1];
-    return batch_rows(b, m, 16);
+    return add_view(b, q->world.viewSpace ? NULL : q->world.view, q->world.proj, q->world.centre);
 }
 
 /* A quad of points projected as renderer_project_vertex projects them (particles): world points
@@ -832,7 +891,7 @@ static int world_case(int kind, const struct View *s, struct Batch *b, struct Ca
     q.world.proj[1] = s->proj[1];
     q.world.centre[0] = s->centre[0];
     q.world.centre[1] = s->centre[1];
-    q.world.rhw = irange(0, 1);
+    q.world.rhw = irange(0, 2);
     q.world.depth = irange(0, 2);
     q.world.rhwValue = chance(30) ? 0.0f : uniform(-1e-4f, 1e-4f);
     q.world.depthValue = chance(50) ? uniform(-1e-4f, 1e-4f) : uniform(0.0f, 1.0f);
@@ -860,8 +919,10 @@ static int world_case(int kind, const struct View *s, struct Batch *b, struct Ca
         renderer_project_vertex((struct Renderer *)&s->renderer, &point, s->view, &v);
         if (q.world.rhw == GFX_RHW_ADD)
             v.rhw += q.world.rhwValue;
-        if (q.world.depth == GFX_DEPTH_ZERO)
-            v.z = 0.0f;
+        else if (q.world.rhw == GFX_RHW_VALUE)
+            v.rhw = q.world.rhwValue;
+        if (q.world.depth == GFX_DEPTH_VALUE)
+            v.z = q.world.depthValue;
         else {
             if (q.world.rhw != GFX_RHW_PROJECTED)
                 v.z = renderer_project_depth(v.rhw);
@@ -895,26 +956,34 @@ static void camera_of(struct View *s)
     g_pitch = uniform(-89.0f, -1.0f);
 }
 
-/* A queued particle quad against the vertices the reference made of it: sort keys and flatness
-   here, every corner on the GPU */
-static void particle_record(struct Tally *t, const struct Queued *q, const struct TexDrawVertex *v, struct Batch *b,
-                            struct Case *c)
+/* A queued instance of points projected, a GFX_QUAD_WORLD quad or a GFX_QUAD_CORNERS triangle (its
+   `corners` corners), against the vertices the reference made of it: sort keys and flatness here,
+   every corner on the GPU */
+static void world_record(struct Tally *t, const struct Queued *q, const struct TexDrawVertex *v, int corners,
+                         struct Batch *b, struct Case *c)
 {
     struct QuadHeader h = {0, 0, 0, 0};
     struct ReferenceVertex r[4];
     uint32_t words[QUAD_WORDS_MAX];
-    int i;
+    int i, flat = q->quad.kind == GFX_QUAD_CORNERS ? q->quad.corners.flat : q->quad.world.flat;
     check_keys(t, q, v);
-    if (q->quad.world.flat != quad_vertices_flat(v, 4)) {
+    if (flat != quad_vertices_flat(v, corners)) {
         t->flat++;
         if (t->printed++ < 16)
-            printf("  flat: cpu %d, instance %d\n", quad_vertices_flat(v, 4), q->quad.world.flat);
+            printf("  flat: cpu %d, instance %d\n", quad_vertices_flat(v, corners), flat);
     }
-    h.matrix = add_matrix(b, &q->quad);
+    if (q->quad.kind == GFX_QUAD_CORNERS) {
+        const struct GfxCorners *set = &q->quad.corners.set->corners;
+        uint32_t setWords[QUAD_CORNER_WORDS_MAX];
+        uint32_t matrix = add_view(b, set->view, set->proj, set->centre);
+        h.matrix = batch_rows(b, setWords, (size_t)quad_corner_words(set, matrix, setWords));
+    } else {
+        h.matrix = add_matrix(b, &q->quad);
+    }
     batch_case(b, words, quad_words(&q->quad, &h, words), 1);
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < corners; i++)
         reference_widen(&v[i], &r[i]);
-    expect_primitive(r, 4, c);
+    expect_primitive(r, corners, c);
 }
 
 /* A particle as particle_render draws it now, against the vertices it made: corners round the
@@ -960,7 +1029,7 @@ static int particle_case(int kind, struct View *s, struct Batch *b, struct Case 
         fprintf(stderr, "quad_instances: a particle drew %d quads\n", g_queuedCount);
         exit(1);
     }
-    particle_record(t, &g_queued[0], v, b, c);
+    world_record(t, &g_queued[0], v, 4, b, c);
     return 1;
 }
 
@@ -1022,18 +1091,147 @@ static int sprite_particle_case(int kind, struct View *s, struct Batch *b, struc
         exit(1);
     }
     for (i = 0; i < n; i++)
-        particle_record(t, &g_queued[i], v[i], b, c + i);
+        world_record(t, &g_queued[i], v[i], 4, b, c + i);
     return n;
+}
+
+/* An effect primitive's quad as prim_draw_quad draws it now (effects/rag/effect_prim_draw.c), two
+   triangles of the world, against the vertices it made of them: corners about the primitive's
+   point, given in the world or about it, in every mode (projected, in front, the depth biased,
+   standing up on the screen); answers how many cases it made */
+static int prim_quad_case(int kind, struct View *s, struct Batch *b, struct Case *c, struct Tally *t)
+{
+    static struct EffectPrim prim;
+    static struct RagEffect master;
+    static struct Texture *textures[1] = {&g_texture};
+    float p[4][3], at[3], u[2], v[2], size = kind == KIND_FUZZ ? uniform(0.0f, 2000.0f) : uniform(1.0f, 80.0f);
+    unsigned char mode = (unsigned char)irange(0, 3), inWorld = (unsigned char)chance(50);
+    short alpha = (short)irange(0, 255);
+    unsigned char red = (unsigned char)irange(0, 255), green = (unsigned char)irange(0, 255);
+    unsigned char blue = (unsigned char)irange(0, 255);
+    unsigned argb;
+    int count = 0, i, k;
+    Vec3 q[4];
+    camera_of(s);
+    point_at(s, uniform(-0.2f, 1.2f) * 2.0f * s->centre[0], uniform(-0.2f, 1.2f) * 2.0f * s->centre[1],
+             kind == KIND_REALISTIC ? uniform(30.0f, 3000.0f) : chance(10) ? uniform(-400.0f, 10.0f)
+                                                               : uniform(10.0f, 40000.0f), at);
+    master.color_r = master.color_g = master.color_b = master.dest_blend = -1;
+    prim.master = &master;
+    prim.textures = textures;
+    prim.list_flags = chance(50) ? 1 : 5;
+    prim.base.pos.x = at[0];
+    prim.base.pos.y = at[1];
+    prim.base.pos.z = at[2];
+    prim.base.scale = kind == KIND_FUZZ ? uniform(-4.0f, 4.0f) : uniform(0.5f, 2.0f);
+    /* q: the corners given, a quad lying about the primitive's point, in the world or about it;
+       p: the world points the reference projects, as prim_draw_quad makes them of q */
+    for (i = 0; i < 4; i++) {
+        float o[3];
+        for (k = 0; k < 3; k++)
+            o[k] = (kind == KIND_REALISTIC ? 0.0f : uniform(-size, size))
+                   + (k == 1 ? 0.0f : i & (k ? 2 : 1) ? size : -size);
+        q[i].x = inWorld ? at[0] + o[0] : o[0];
+        q[i].y = inWorld ? at[1] + o[1] : o[1];
+        q[i].z = inWorld ? at[2] + o[2] : o[2];
+        p[i][0] = inWorld ? q[i].x : prim.base.pos.x + q[i].x;
+        p[i][1] = inWorld ? q[i].y : prim.base.pos.y + q[i].y;
+        p[i][2] = inWorld ? q[i].z : prim.base.pos.z + q[i].z;
+    }
+    u[0] = uniform(-1.0f, 2.0f);
+    u[1] = uniform(-1.0f, 2.0f);
+    v[0] = uniform(-1.0f, 2.0f);
+    v[1] = uniform(-1.0f, 2.0f);
+    queue_clear();
+    prim_draw_quad(&prim, &count, alpha, q[0], q[1], q[2], q[3], s->view, PRIM_BLEND_ADDITIVE, 0, inWorld, red, green,
+                   blue, v[0], v[1], u[0], u[1], mode);
+    if (count != 2 || g_queuedCount != 2 || g_queued[0].quad.kind != GFX_QUAD_CORNERS
+        || g_queued[1].quad.corners.set != g_queued[0].quad.corners.set || g_sets[0].corners.count != 4) {
+        fprintf(stderr, "quad_instances: an effect quad drew %d triangles, not two of one set of four corners\n",
+                g_queuedCount);
+        exit(1);
+    }
+    argb = ((((unsigned)(int)alpha << 8) + red) << 8 | green) << 8 | blue;
+    for (k = 0; k < 2; k++) {
+        /* (p0, p1, p2), then (p3, p2, p0), with prim_draw_quad's texture coordinates */
+        static const int order[2][3] = {{0, 1, 2}, {3, 2, 0}};
+        float corner[3][3], cu[3], cv[3];
+        struct TexDrawVertex made[3];
+        for (i = 0; i < 3; i++) {
+            int n = order[k][i];
+            memcpy(corner[i], p[n], sizeof corner[i]);
+            cu[i] = n == 0 || n == 3 ? u[0] : u[1];
+            cv[i] = n == 0 || n == 1 ? v[1] : v[0];
+        }
+        reference_prim_triangle((const float (*)[3])corner, cu, cv, argb, s->view, mode, at, prim.base.scale, k, made);
+        world_record(t, &g_queued[k], made, 3, b, c + k);
+    }
+    return 2;
+}
+
+/* The ground's cell tiles as world/ground_draw.c draws them now: a quarter of a cell's quad (the
+   cursor's cell, a ground skill's area, the navigation path, raised), or the navigation marker,
+   against the vertices it made of them; answers how many cases it made */
+static int cell_case(int kind, struct View *s, struct Batch *b, struct Case *c, struct Tally *t)
+{
+    static struct C3dGround15 ground;
+    struct TexDrawVertex made[4];
+    float at[3], size = kind == KIND_FUZZ ? uniform(0.0f, 500.0f) : uniform(1.0f, 10.0f), uv[8];
+    int ax = irange(0, 799), ay = irange(0, 799), what = irange(0, 2), i, drawn;
+    DWORD colour = (DWORD)next();
+    camera_of(s);
+    point_at(s, uniform(-0.2f, 1.2f) * 2.0f * s->centre[0], uniform(-0.2f, 1.2f) * 2.0f * s->centre[1],
+             kind == KIND_REALISTIC ? uniform(30.0f, 3000.0f) : uniform(10.0f, 40000.0f), at);
+    for (i = 0; i < 4; i++) {
+        g_cellQuad[i * 3] = at[0] + (i & 1 ? size : 0.0f);
+        g_cellQuad[i * 3 + 1] = at[1] + (kind == KIND_REALISTIC ? uniform(-2.0f, 2.0f) : uniform(-size, size));
+        g_cellQuad[i * 3 + 2] = at[2] + (i & 2 ? size : 0.0f);
+        g_cell.height[i] = g_cellQuad[i * 3 + 1];
+        uv[i * 2] = uniform(0.0f, 1.0f);
+        uv[i * 2 + 1] = uniform(0.0f, 1.0f);
+    }
+    ground.width = ground.height = 400;
+    ground.zoom = kind == KIND_FUZZ ? uniform(1.0f, 50.0f) : 10.0f;
+    g_texture.reqWidth = irange(1, 256);
+    g_texture.reqHeight = irange(1, 256);
+    g_texture.base.width = (unsigned)irange(g_texture.reqWidth, 512);
+    g_texture.base.height = (unsigned)irange(g_texture.reqHeight, 512);
+    queue_clear();
+    if (what == 0) {
+        c3d_ground15_draw_attr_quad(&ground, s->view, ax, ay, colour, &g_texture, uv);
+        drawn = reference_attr_quad(&ground, s->view, ax, ay, colour, &g_texture, uv, 3.0517578e-5f, made);
+    } else if (what == 1) {
+        c3d_ground15_draw_attr_quad_raised(&ground, s->view, ax, ay, colour, &g_texture, uv);
+        drawn = reference_attr_quad(&ground, s->view, ax, ay, colour, &g_texture, uv, 0.10003052f, made);
+    } else {
+        c3d_ground15_draw_attr_marker(&ground, s->view, ax, ay, colour, &g_texture);
+        drawn = reference_attr_marker(&ground, s->view, ax, ay, colour, made);
+    }
+    if (drawn != g_queuedCount) {
+        fprintf(stderr, "quad_instances: a cell tile drew %d quads, its reference %d\n", g_queuedCount, drawn);
+        exit(1);
+    }
+    if (!drawn)
+        return 0;
+    world_record(t, &g_queued[0], made, 4, b, c);
+    return 1;
 }
 
 /* ---- the shaders' SPIR-V ---- */
 
-/* the operations quad.hlsl's vertex shader has outside instances.hlsli and exact.hlsli, those of
-   phase 4's quad shader: snapped_ndc's product, division and sum of both coordinates as vectors,
-   then the division and subtraction of each (7), the vertex fog's product, sum and division and
-   its product by q (4), QUAD_CAMERA's transform (a product, two fused multiply-adds and a sum) and
-   its division by w (5), and the colour and texture coordinates times q (2) */
-#define QUAD_VS_BARE 18
+/* the operations of instances.hlsli's upright triangles (QUAD_UPRIGHT), plain arithmetic:
+   upright_of's difference of two corners' x and its half (2), and at each of corner_of's seven uses
+   in quad_vertex and snapped the half times the corner's side, its sum with the point's x and the
+   lift's sum with y (21). A product by 0.5 or by a side of 1 or -1 is exact, so a multiply-add the
+   GPU may fuse of it rounds as the two operations do, and the corners come out bit for bit all the
+   same, which test_records checks. */
+#define QUAD_PROBE_BARE 23
+/* the operations quad.hlsl's vertex shader has outside exact.hlsli: instances.hlsli's
+   (QUAD_PROBE_BARE) and those of phase 4's quad shader: snapped_ndc's product, division and sum of
+   both coordinates as vectors, then the division and subtraction of each (7), the vertex fog's
+   product, sum and division and its product by q (4), and the colour and texture coordinates times
+   q (2) */
+#define QUAD_VS_BARE (QUAD_PROBE_BARE + 13)
 
 /* an operand by its value as far as div_rn's divisions go: |x| as x with the top bit, as dxc may
    make |x| more than once */
@@ -1250,9 +1448,10 @@ static int test_operations(struct Batch *b, float *out, long count)
 
 static int test_records(struct Batch *b, struct Case *cases, float *out, long perKind)
 {
-    enum { SPRITES, SCREEN, CAMERA, WORLD, PARTICLES, SPRITE_PARTICLES, WHAT_COUNT };
-    static const char *const names[WHAT_COUNT] = {"sprites", "screen vertices", "camera vertices", "projected points",
-                                                  "particles", "sprite particles"};
+    enum { SPRITES, SCREEN, WORLD, PARTICLES, SPRITE_PARTICLES, EFFECT_QUADS, CELLS, WHAT_COUNT };
+    static const char *const names[WHAT_COUNT] = {"sprites", "screen vertices", "projected points", "particles",
+                                                  "sprite particles", "effect primitives' triangles",
+                                                  "ground cell tiles"};
     static struct Tally tallies[WHAT_COUNT][KIND_COUNT];
     struct Renderer *client = g_renderer;
     int what, kind, ok = 1;
@@ -1269,14 +1468,18 @@ static int test_records(struct Batch *b, struct Case *cases, float *out, long pe
                 while (done + n < perKind && batch_room(b)) {
                     if (what == SPRITES)
                         n += sprite_case(kind, b, &cases[n], t);
-                    else if (what == SCREEN || what == CAMERA)
-                        n += screen_case(kind, what == CAMERA, b, &cases[n]);
+                    else if (what == SCREEN)
+                        n += screen_case(kind, b, &cases[n]);
                     else if (what == WORLD)
                         n += world_case(kind, &s, b, &cases[n]);
                     else if (what == PARTICLES)
                         n += particle_case(kind, &s, b, &cases[n], t);
-                    else
+                    else if (what == SPRITE_PARTICLES)
                         n += sprite_particle_case(kind, &s, b, &cases[n], t);
+                    else if (what == EFFECT_QUADS)
+                        n += prim_quad_case(kind, &s, b, &cases[n], t);
+                    else
+                        n += cell_case(kind, &s, b, &cases[n], t);
                     if (what >= WORLD && n % 64 == 0)
                         make_view(&s, kind);
                 }
@@ -1442,7 +1645,7 @@ static int test_pictures(int scenes)
                 for (i = 0; i < n; i++) {
                     gfx_set_texture(0, side ? plain[pages[i]] : layered[pages[i]]);
                     if (side)
-                        gfx_draw_vertices(verts[i], 4, 1, 0);
+                        gfx_draw_vertices(verts[i], 4, 1);
                     else
                         gfx_draw_quad(&quads[i]);
                 }
@@ -1470,7 +1673,7 @@ static int test_pictures(int scenes)
                 gfx_set_texture(0, plain[0]);
                 for (i = 0; i < n; i++) {
                     if (side)
-                        gfx_draw_vertices(verts[i], 4, 1, 0);
+                        gfx_draw_vertices(verts[i], 4, 1);
                     else
                         gfx_draw_quad(&quads[i]);
                 }
@@ -1543,9 +1746,11 @@ int main(int argc, char **argv)
            SDL_GetStringProperty(SDL_GetGPUDeviceProperties(g_dev), SDL_PROP_GPU_DEVICE_NAME_STRING, "?"),
            (unsigned long long)seed, argc > 1 ? argv[1] : "unset");
 
-    /* instances.hlsli and exact.hlsli, alone in the probe, keep every rule; quad.hlsl's vertex
-       shader adds to them only what phase 4's quad shader had too (QUAD_VS_BARE) */
-    ok = bare_operations("tests/shaders/quad_probe.hlsl", quad_probe_vs.spirv, quad_probe_vs.spirvSize) == 0;
+    /* instances.hlsli and exact.hlsli, alone in the probe, keep every rule but the upright
+       triangles' (QUAD_PROBE_BARE); quad.hlsl's vertex shader adds to them only what phase 4's
+       quad shader had too (QUAD_VS_BARE) */
+    ok = bare_operations("tests/shaders/quad_probe.hlsl", quad_probe_vs.spirv, quad_probe_vs.spirvSize)
+         == QUAD_PROBE_BARE;
     bare = bare_operations("render/shaders/quad.hlsl", quad_vs.spirv, quad_vs.spirvSize);
     ok = ok && bare == QUAD_VS_BARE;
 

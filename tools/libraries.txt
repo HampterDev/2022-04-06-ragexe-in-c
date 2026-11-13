@@ -109,6 +109,13 @@ note    The static world as the device's shaders read it, as pure packing (rende
 uses    static-world
 paths   render/world_layout.*
 
+library skin-layout
+note    Granny's actors as the skinning shader reads them, as pure packing (render/skin_layout.c): a
+        model's vertices and indices, an actor's pose for a frame, which draws of its meshes one draw
+        takes, and a vertex where Granny's deformer put it. Uses nothing else of the client.
+uses
+paths   render/skin_layout.*
+
 library shadow-fit
 note    The frame's shadow cascades fitted to the view depths of what it shows, as pure logic
         (render/shadow_fit.c): the steps of the GPU's fit, which its compute passes are checked
@@ -146,6 +153,7 @@ note    The 3D device, textures and surfaces, the renderer and its lists, text a
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
 uses    fileio display-options texel-convert draw-modes vertex-fog quads screen-wobble font-finder world-layout
+        skin-layout
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 
@@ -184,7 +192,7 @@ paths   contents/
         effects/stl/ iteminfo/ login/ session/ skills/ ui/character/ ui/chat/ ui/items/ ui/mail/
         web/ world/ actor/action.c actor/actor.h actor/actor_defaults.c actor/actor_path.*
         actor/actor_values.c actor/actorindex.c actor/getjob.c actor/granny_actor.h
-        actor/granny_model_storage.* actor/granny_projection.* actor/head_extent.c actor/job.h
+        actor/granny_model_storage.* actor/head_extent.c actor/job.h
         actor/layer_order.* actor/map_type_table.* actor/motion.c actor/motion_update.c
         actor/render_ops.h core/actor_slots.c core/drive_state.* core/startup_settings.c
         diag/crash_report_posix.c effects/durations.* effects/effect_data.* effects/effect_math.*

@@ -7,13 +7,11 @@
 // Vertices on the screen keep Direct3D 9's pixels: the rasterizer gets x and y snapped as
 // Direct3D 9 snapped them (snapped_ndc), and covers pixels with Direct3D's top-left rule. Their w
 // stays 1 so that nothing divides the position; the varyings are interpolated perspective-correct
-// by hand, with the rhw, as Direct3D 9 interpolates them. QUAD_CAMERA's world points go through the
-// camera's view to the same pixels, which the GPU divides and moves by the viewport as Direct3D 9
-// did.
+// by hand, with the rhw, as Direct3D 9 interpolates them.
 #include "quad.hlsli"
 #include "exact.hlsli"
 
-StructuredBuffer<uint4> quads : register(t3, space0);
+StructuredBuffer<uint4> quads : register(t2, space0);
 
 #include "instances.hlsli"
 
@@ -29,17 +27,10 @@ Varyings vs_main(QuadIn i)
     Draw d = draws[h.y];
     QuadVertex v = quad_vertex(i.at, i.corner);
     Varyings o;
-    float q;
-    if ((h.x & QUAD_KIND) == QUAD_CAMERA) {
-        o.position = transform(float3(v.x, v.y, v.z), views[d.mode.w].toClip);
-        q = 1 / o.position.w;
-    } else {
-        o.position = float4(snapped_ndc(float2(v.x, v.y), d.target.yz), v.z, 1);
-        q = v.rhw > 0 ? v.rhw : 1;
-    }
+    float q = v.rhw > 0 ? v.rhw : 1;
+    o.position = float4(snapped_ndc(float2(v.x, v.y), d.target.yz), v.z, 1);
     o.diffuse = v.colour * q;
     o.uv = v.uv * q;
-    // the fog by the rhw: a world point's the one the CPU's projection gave it, as the original's
     o.fogQ = float2(d.mode.z != 0 ? vertex_fog(v.rhw, d.fog, d.stages.w) * q : q, q);
     o.draw = h.y;
     o.layer = h.x >> 16;

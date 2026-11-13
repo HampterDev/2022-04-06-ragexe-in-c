@@ -361,14 +361,11 @@ struct C3dGrannyGameActor {
     float anim_time;
     float facing;
     unsigned char alpha;
-    unsigned color;
     int anim;
     char name[260];
     int hidden_state;
     int hidden_since;
     unsigned char first_frame;
-    struct Texture *shadow_tex;
-    struct Vec shadow_points;
 };
 
 struct GrannyCorpse3d {
@@ -381,7 +378,6 @@ struct GrannyCorpse3d {
     int frames;
     float facing;
     unsigned char alpha;
-    unsigned color;
     char name[264];
 };
 

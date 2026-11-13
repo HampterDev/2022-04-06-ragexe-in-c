@@ -301,10 +301,16 @@ void gfx_set_mode(int mode) { (void)mode; }
 void gfx_set_effect(int srcBlend, int destBlend, int combine) { (void)srcBlend; (void)destBlend; (void)combine; }
 void gfx_set_fog(const struct GfxFog *fog) { (void)fog; }
 void gfx_draw_quad(const struct GfxQuad *quad) { (void)quad; }
-void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip, int world)
+void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip)
 {
-    (void)v; (void)n; (void)strip; (void)world;
+    (void)v; (void)n; (void)strip;
 }
+/* Granny's models: no actor stands on these maps */
+void gfx_skin_addref(gfx_skin *k) { (void)k; abort(); }
+void gfx_skin_release(gfx_skin *k) { (void)k; abort(); }
+int gfx_skin_pose(const float (*rows)[4], size_t count) { (void)rows; (void)count; abort(); }
+void gfx_draw_skin(gfx_skin *k, uint32_t first, uint32_t count, int pose)
+{ (void)k; (void)first; (void)count; (void)pose; abort(); }
 int gfx_begin_scene(void) { return 0; }
 void gfx_end_scene(void) {}
 void gfx_addref(gfx_surface *s) { (void)s; }
@@ -2992,7 +2998,7 @@ static void client_queues(struct Map *map, struct Stats *st, const int *keptAt, 
     for (i = 0; i < q->count; i++) {
         const struct RPWorldDraw *w = q->items[i].primitive;
 
-        if (!q->items[i].world || w->kind != RP_WORLD_CAST)
+        if (q->items[i].kind != RP_ENTRY_WORLD || w->kind != RP_WORLD_CAST)
             continue;
         client = grow(client, &clientCapacity, n + 1, sizeof *client);
         client[n].first = w->firstIndex;
@@ -3037,7 +3043,7 @@ static void client_queues(struct Map *map, struct Stats *st, const int *keptAt, 
             const struct RPWorldDraw *w = sorted[i].primitive;
             long rec;
 
-            if (!sorted[i].world || w->kind != RP_WORLD_RECORD)
+            if (sorted[i].kind != RP_ENTRY_WORLD || w->kind != RP_WORLD_RECORD)
                 continue;
             alpha++;
             rec = record_at(map, w->record.firstIndex);
@@ -3094,7 +3100,7 @@ static void client_queues(struct Map *map, struct Stats *st, const int *keptAt, 
     for (i = 0; i < q->count; i++) {
         const struct RPWorldDraw *w = q->items[i].primitive;
 
-        if (!q->items[i].world || w->kind != RP_WORLD_WATER)
+        if (q->items[i].kind != RP_ENTRY_WORLD || w->kind != RP_WORLD_WATER)
             continue;
         if (w->cell >= D.cellCount || !isnan(waterKeys[w->cell]))
             FAIL("%s: a water cell queued twice or outside the map's", map->name);

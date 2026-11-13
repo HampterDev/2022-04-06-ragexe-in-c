@@ -5,8 +5,9 @@
 // to tests/test_quad_instances.c. The file that includes this one declares the frame's quads
 // (StructuredBuffer<uint4> quads) and includes exact.hlsli first.
 //
-// The frame's quads hold the records and what they name: the matrices of QUAD_WORLD records and
-// the vertices of QUAD_SCREEN and QUAD_CAMERA ones, each starting on a row of four words.
+// The frame's quads hold the records and what they name: the matrices of QUAD_WORLD records and of
+// corner sets, the corner sets of QUAD_CORNERS records and the vertices of QUAD_SCREEN ones, each
+// starting on a row of four words.
 
 // A record: a header, then what its kind holds (render/quads.c). The header: x the kind, its flags
 // and (bits 16 to 31) the layer of the atlas array its stage 0 reads; y the draw's record; z the
@@ -19,23 +20,33 @@
                         // x, y, z, rhw, the colour, u, v), corner i the i-th
 #define QUAD_WORLD 4    // points projected as renderer_project_vertex projects them, through the
                         // matrix whose first row is w (four rows: its view, then proj[0], proj[1],
-                        // centreX, centreY): (x, y, z, the rhw added), (x, y, z, the z added),
+                        // centreX, centreY): (x, y, z, the rhw value), (x, y, z, the z value),
                         // (x, y, z), (x, y, z); u and v of each corner, then the second stage's
                         // where QUAD_STAGE2
-#define QUAD_CAMERA 5   // world points through the camera's view (the draw's view, quad.hlsl), as
-                        // Direct3D 9 drew them: vertices as QUAD_SCREEN's, with the rhw the CPU
-                        // gave them
+#define QUAD_CORNERS 5  // a triangle of three corners of the set whose first row is z (render/quads.c,
+                        // quad_corner_words: x the rules' flags, y the colour, z the row of its
+                        // matrix, as QUAD_WORLD's, w the word of its first corner after the set's
+                        // first; the rules' values (the rhw's, the z's, the lift) where its rules
+                        // take any; the upright point (x, y, z) where QUAD_UPRIGHT; then x, y, z, u
+                        // and v of each corner), w the set's corners its corners 0 to 2 are, a byte
+                        // each
 #define QUAD_KIND 15
 #define QUAD_TRIANGLE 16   // corners 0 to 2 alone: corner 3 is corner 2 again
 #define QUAD_SNAP 32       // a flat draw in a multisampled pass: corners onto pixel boundaries
 #define QUAD_TURNED 64     // QUAD_SPRITE: turned about its centre
 #define QUAD_STAGE2 128    // QUAD_WORLD: the second stage's u and v of each corner follow
-#define QUAD_RHW_ADD 256   // QUAD_WORLD: the rhw is the projection's plus the one added
-#define QUAD_Z_ZERO 1024   // QUAD_WORLD: z is 0
-#define QUAD_Z_ADD 2048    //   or the depth of the rhw plus the z added; otherwise the depth of the rhw
+#define QUAD_RHW_ADD 256   // QUAD_WORLD, a corner set: the rhw is the projection's plus the value
+#define QUAD_RHW_VALUE 512 //   or the value; otherwise the projection's
+#define QUAD_Z_VALUE 1024  // QUAD_WORLD, a corner set: z is the value
+#define QUAD_Z_ADD 2048    //   or the depth of the rhw plus the value; otherwise the depth of the rhw
 #define QUAD_Z 3072
 #define QUAD_VIEW 4096     // QUAD_WORLD: the points are in view space already; the matrix gives the
                            // projection alone
+#define QUAD_UPRIGHT 8192  // a corner set: a triangle's corner's x is the upright point's, projected,
+                           // moved by half the distance between its corners 0 and 1 projected
+                           // (corner 0 right, corner 1 left, corner 2 right where QUAD_RIGHT), its y
+                           // the projection's plus the lift
+#define QUAD_RIGHT 16384   // QUAD_CORNERS: corner 2 of an upright triangle stands right
 
 // One vertex as the client made it: a pre-transformed vertex (render/quads.h, TexDrawVertex) with
 // its colour's bytes as numbers, in the D3DCOLOR's order in memory (b, g, r, a), and both stages'
@@ -62,9 +73,79 @@ uint quad_word(uint word)
     return quads[word >> 2][word & 3];
 }
 
-// The vertex at `corner` of the instance whose record starts at row `at`; nothing (zeros) for a
-// kind the shader does not know
-Corner corner_of(uint at, uint4 h, uint corner)
+// Point p projected through the matrix whose first row is m (in view space already: through its
+// projection alone)
+Projected projected(float3 p, uint m, bool viewSpace)
+{
+    if (viewSpace)
+        return project_view(p, quad_float4(m + 3));
+    Matrix43 view;
+    view.r0 = quad_float4(m);
+    view.r1 = quad_float4(m + 1);
+    view.r2 = quad_float4(m + 2);
+    return project_point(p, view, quad_float4(m + 3));
+}
+
+// Corner k of the set whose header row is `set` (s its header): its first word
+uint set_corner(uint set, uint4 s, uint k)
+{
+    return set * 4 + s.w + k * 5;
+}
+
+// Corner k of the set, projected
+Projected set_point(uint set, uint4 s, uint k)
+{
+    uint w = set_corner(set, s, k);
+    return projected(float3(asfloat(quad_word(w)), asfloat(quad_word(w + 1)), asfloat(quad_word(w + 2))), s.z,
+                     false);
+}
+
+// A projected point's rhw and depth by the rules of `flags` (QUAD_RHW_*, QUAD_Z_*) with their values
+void apply_rules(inout Corner o, Projected pr, uint flags, float rhwValue, float zValue)
+{
+    precise float rhw = pr.rhw;
+    if ((flags & QUAD_RHW_ADD) != 0)
+        rhw = pr.rhw + rhwValue;
+    else if ((flags & QUAD_RHW_VALUE) != 0)
+        rhw = rhwValue;
+    uint zmode = flags & QUAD_Z;
+    precise float z = zValue;
+    if (zmode == QUAD_Z_ADD)
+        z = project_depth(rhw) + zValue;
+    else if (zmode != QUAD_Z_VALUE)
+        z = project_depth(rhw);
+    o.x = pr.x;
+    o.y = pr.y;
+    o.z = z;
+    o.rhw = rhw;
+}
+
+// What an upright triangle's corners stand on (QUAD_UPRIGHT): its set's upright point's projected x
+// and half the distance between its corners 0's and 1's projected x; zeros for any other record.
+// Plain arithmetic: the products by 0.5 and by a side are exact, so a multiply-add the GPU may fuse
+// of them rounds as the two operations do.
+struct Upright
+{
+    float x, half;
+};
+
+Upright upright_of(uint4 h)
+{
+    Upright u;
+    u.x = u.half = 0.0;
+    if ((h.x & QUAD_KIND) == QUAD_CORNERS) {
+        uint4 s = quads[h.z];
+        if ((s.x & QUAD_UPRIGHT) != 0) {
+            u.x = projected(quad_float4(h.z + 2).xyz, s.z, false).x;
+            u.half = abs(set_point(h.z, s, h.w & 255).x - set_point(h.z, s, (h.w >> 8) & 255).x) * 0.5;
+        }
+    }
+    return u;
+}
+
+// The vertex at `corner` of the instance whose record starts at row `at` (u its upright_of);
+// nothing (zeros) for a kind the shader does not know
+Corner corner_of(uint at, uint4 h, uint corner, Upright u)
 {
     Corner o;
     uint kind = h.x & QUAD_KIND;
@@ -122,7 +203,7 @@ Corner corner_of(uint at, uint4 h, uint corner)
         o.v0 = low ? uv.w : uv.y;
         o.u1 = o.u0;
         o.v1 = o.v0;
-    } else if (kind == QUAD_SCREEN || kind == QUAD_CAMERA) {
+    } else if (kind == QUAD_SCREEN) {
         uint v = h.w + corner * 7;
         o.x = asfloat(quad_word(v));
         o.y = asfloat(quad_word(v + 1));
@@ -133,36 +214,37 @@ Corner corner_of(uint at, uint4 h, uint corner)
         o.v0 = asfloat(quad_word(v + 6));
         o.u1 = o.u0;
         o.v1 = o.v0;
-    } else if (kind == QUAD_WORLD) {
-        float4 p = quad_float4(at + 1 + corner);
-        uint m = h.w;
-        Projected pr;
-        if ((h.x & QUAD_VIEW) != 0) {
-            pr = project_view(p.xyz, quad_float4(m + 3));
+    } else if (kind == QUAD_WORLD || kind == QUAD_CORNERS) {
+        // the point, its matrix, its rules and their values, of the record or of its set; one
+        // projection for both
+        float3 p;
+        float4 values;
+        uint m, flags;
+        if (kind == QUAD_CORNERS) {
+            uint4 s = quads[h.z];
+            uint w = set_corner(h.z, s, (h.w >> (corner * 8)) & 255);
+            p = float3(asfloat(quad_word(w)), asfloat(quad_word(w + 1)), asfloat(quad_word(w + 2)));
+            m = s.z;
+            flags = s.x;
+            values = quad_float4(h.z + 1);
+            o.bytes = colour_bytes(s.y);
+            o.u0 = asfloat(quad_word(w + 3));
+            o.v0 = asfloat(quad_word(w + 4));
         } else {
-            Matrix43 view;
-            view.r0 = quad_float4(m);
-            view.r1 = quad_float4(m + 1);
-            view.r2 = quad_float4(m + 2);
-            pr = project_point(p.xyz, view, quad_float4(m + 3));
+            p = quad_float4(at + 1 + corner).xyz;
+            m = h.w;
+            flags = h.x;
+            values = float4(quad_float4(at + 1).w, quad_float4(at + 2).w, 0.0, 0.0);
+            o.u0 = quad_float4(at + 5)[corner];
+            o.v0 = quad_float4(at + 6)[corner];
         }
-        float add = quad_float4(at + 1).w, zAdd = quad_float4(at + 2).w;
-        precise float rhw = pr.rhw;
-        if ((h.x & QUAD_RHW_ADD) != 0)
-            rhw = pr.rhw + add;
-        uint zmode = h.x & QUAD_Z;
-        precise float z = 0.0;
-        if (zmode == QUAD_Z_ADD)
-            z = project_depth(rhw) + zAdd;
-        else if (zmode != QUAD_Z_ZERO)
-            z = project_depth(rhw);
-        o.x = pr.x;
-        o.y = pr.y;
-        o.z = z;
-        o.rhw = rhw;
-        o.u0 = quad_float4(at + 5)[corner];
-        o.v0 = quad_float4(at + 6)[corner];
-        if ((h.x & QUAD_STAGE2) != 0) {
+        apply_rules(o, projected(p, m, (flags & QUAD_VIEW) != 0), flags, values.x, values.y);
+        if ((flags & QUAD_UPRIGHT) != 0) {
+            float side = corner == 0 || (corner == 2 && (h.x & QUAD_RIGHT) != 0) ? 1.0 : -1.0;
+            o.x = u.x + side * u.half;
+            o.y = values.z + o.y;
+        }
+        if ((flags & QUAD_STAGE2) != 0) {
             o.u1 = quad_float4(at + 7)[corner];
             o.v1 = quad_float4(at + 8)[corner];
         } else {
@@ -190,20 +272,20 @@ float plane_byte(float a, float b, float c, float dx1, float dy1, float dx2, flo
 // triangle's values are affine on the screen), so each pixel centre reads what it read before. A
 // quad's triangles are (0, 1, 2) and (2, 1, 3); a vertex takes the plane of the first that has it,
 // unless that one has no area.
-Corner snapped(uint at, uint4 h, uint corner)
+Corner snapped(uint at, uint4 h, uint corner, Upright u)
 {
-    Corner mine = corner_of(at, h, corner);
-    Corner a = corner_of(at, h, corner == 3 ? 2 : 0);
-    Corner b = corner_of(at, h, 1);
-    Corner c = corner_of(at, h, corner == 3 ? 3 : 2);
+    Corner mine = corner_of(at, h, corner, u);
+    Corner a = corner_of(at, h, corner == 3 ? 2 : 0, u);
+    Corner b = corner_of(at, h, 1, u);
+    Corner c = corner_of(at, h, corner == 3 ? 3 : 2, u);
     precise float dx1 = b.x - a.x, dy1 = b.y - a.y, dx2 = c.x - a.x, dy2 = c.y - a.y;
     precise float det = dx1 * dy2 - dx2 * dy1;
     if (det > -F_FLAT_DET && det < F_FLAT_DET) {
         if (corner == 0 || corner == 3 || (h.x & QUAD_TRIANGLE) != 0)
             return mine;
         // the first triangle has no area: the second moves 1 and 2
-        a = corner_of(at, h, 2);
-        c = corner_of(at, h, 3);
+        a = corner_of(at, h, 2, u);
+        c = corner_of(at, h, 3, u);
         dx1 = b.x - a.x;
         dy1 = b.y - a.y;
         dx2 = c.x - a.x;
@@ -234,7 +316,7 @@ Corner snapped(uint at, uint4 h, uint corner)
 // right) of the instance whose record starts at row `at`: the vertex as the client made it, a
 // triangle's corner 3 being its corner 2, moved onto pixel boundaries where QUAD_SNAP; its colour as
 // Direct3D 9's vertex unit made floats of its bytes (r, g, b, a, each byte / 255); both stages'
-// coordinates. QUAD_CAMERA's x, y and z are a world point, which quad.hlsl takes through the view.
+// coordinates.
 struct QuadVertex
 {
     float x, y, z, rhw;
@@ -246,11 +328,12 @@ QuadVertex quad_vertex(uint at, uint corner)
 {
     uint4 h = quads[at];
     uint c = (h.x & QUAD_TRIANGLE) != 0 && corner == 3 ? 2 : corner;
+    Upright u = upright_of(h);
     Corner v;
     if ((h.x & QUAD_SNAP) != 0)
-        v = snapped(at, h, c);
+        v = snapped(at, h, c, u);
     else
-        v = corner_of(at, h, c);
+        v = corner_of(at, h, c, u);
     QuadVertex o;
     o.x = v.x;
     o.y = v.y;

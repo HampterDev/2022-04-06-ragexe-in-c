@@ -98,17 +98,13 @@ static void check_vertices(void)
     struct QuadHeader h = { 3, 41, 0, 0 };
     uint32_t words[QUAD_WORDS_MAX];
     /* a strip: QUAD_SCREEN, its vertices from word `first` on */
-    assert(quad_vertex_words(4, 1, 0, 100, 0, &h, words) == 4);
+    assert(quad_vertex_words(4, 1, 100, 0, &h, words) == 4);
     assert(words[0] == (3u | 3u << 16) && words[1] == 41 && words[2] == 0 && words[3] == 100);
-    assert(!quad_vertex_words(4, 1, 0, 100, 1, &h, words) && !quad_vertex_words(5, 1, 0, 100, 0, &h, words));
+    assert(!quad_vertex_words(4, 1, 100, 1, &h, words) && !quad_vertex_words(5, 1, 100, 0, &h, words));
     /* a list: triangles, each three vertices (21 words) on */
-    assert(quad_vertex_words(9, 0, 0, 100, 2, &h, words) == 4);
+    assert(quad_vertex_words(9, 0, 100, 2, &h, words) == 4);
     assert(words[0] == (3u | 16u | 3u << 16) && words[3] == 142);
-    assert(!quad_vertex_words(9, 0, 0, 100, 3, &h, words) && !quad_vertex_words(9, 0, 0, 100, -1, &h, words));
-    /* world vertices: QUAD_CAMERA, never snapped by the device (it gives snap 0); a list alone */
-    assert(quad_vertex_words(3, 0, 1, 7, 0, &h, words) == 4);
-    assert(words[0] == (5u | 16u | 3u << 16) && words[3] == 7);
-    assert(!quad_vertex_words(4, 1, 1, 7, 0, &h, words));
+    assert(!quad_vertex_words(9, 0, 100, 3, &h, words) && !quad_vertex_words(9, 0, 100, -1, &h, words));
 }
 
 static void check_sprite(void)
@@ -169,13 +165,82 @@ static void check_world(void)
     q.world.stage2 = 1;
     q.world.viewSpace = 0;
     q.world.rhw = GFX_RHW_PROJECTED;
-    q.world.depth = GFX_DEPTH_ZERO;
+    q.world.depth = GFX_DEPTH_VALUE;
     assert(quad_words(&q, &h, words) == 36);
     assert(words[0] == (4u | 128u | 1024u) && words[16] == bits(31));
     assert(words[28] == bits(300) && words[31] == bits(303) && words[32] == bits(400) && words[35] == bits(403));
+    /* the rhw's value */
+    q.world.stage2 = 0;
+    q.world.rhw = GFX_RHW_VALUE;
+    assert(quad_words(&q, &h, words) == 28 && words[0] == (4u | 512u | 1024u) && words[7] == bits(0.5f));
     /* a kind that is none */
     q.kind = 0;
     assert(!quad_words(&q, &h, words));
+}
+
+/* A set of corners: its header, the rules' values and the upright point where it has them, the
+   corners five words each from the word the header names, a whole number of rows; and a triangle of
+   three of them */
+static void check_corners(void)
+{
+    struct GfxCorners c;
+    struct GfxQuad q;
+    struct QuadHeader h = { 3, 6, 1, 40 };
+    uint32_t words[QUAD_CORNER_WORDS_MAX];
+    int i;
+    memset(&c, 0, sizeof c);
+    c.count = 4;
+    for (i = 0; i < 4; i++) {
+        c.point[i][0] = (float)(10 * i + 1);
+        c.point[i][1] = (float)(10 * i + 2);
+        c.point[i][2] = (float)(10 * i + 3);
+        c.u[i] = (float)(100 + i);
+        c.v[i] = (float)(200 + i);
+    }
+    c.colour = 0x11223344u;
+    /* projected: the corners from word 4 */
+    assert(quad_corner_words(&c, 12, words) == 24);
+    assert(words[0] == 0 && words[1] == 0x11223344u && words[2] == 12 && words[3] == 4);
+    assert(words[4] == bits(1) && words[6] == bits(3) && words[7] == bits(100) && words[8] == bits(200));
+    assert(words[9] == bits(11) && words[19] == bits(31) && words[22] == bits(103) && words[23] == bits(203));
+    /* three corners: 19 words, made a whole row */
+    c.count = 3;
+    assert(quad_corner_words(&c, 12, words) == 20 && words[18] == bits(202) && !words[19]);
+    /* in front and upright: the values' row, the point's row, then the corners from word 12 */
+    c.count = 4;
+    c.rhw = GFX_RHW_VALUE;
+    c.depth = GFX_DEPTH_VALUE;
+    c.rhwValue = 1.0f;
+    c.depthValue = 1e-9f;
+    c.upright = 1;
+    c.uprightPoint[0] = 5.0f;
+    c.uprightPoint[1] = 6.0f;
+    c.uprightPoint[2] = 7.0f;
+    c.lift = -30.0f;
+    assert(quad_corner_words(&c, 12, words) == 32);
+    assert(words[0] == (512u | 1024u | 8192u) && words[3] == 12);
+    assert(words[4] == bits(1.0f) && words[5] == bits(1e-9f) && words[6] == bits(-30.0f) && !words[7]);
+    assert(words[8] == bits(5) && words[10] == bits(7) && !words[11] && words[12] == bits(1) && words[31] == bits(203));
+    /* the rhw added, not upright: the values' row alone */
+    c.rhw = GFX_RHW_ADD;
+    c.depth = GFX_DEPTH_PROJECTED;
+    c.upright = 0;
+    assert(quad_corner_words(&c, 12, words) == 28 && words[0] == 256u && words[3] == 8 && words[8] == bits(1));
+    /* none, or more than a set holds: nothing */
+    c.count = 0;
+    assert(!quad_corner_words(&c, 12, words));
+    c.count = GFX_CORNERS_MAX + 1;
+    assert(!quad_corner_words(&c, 12, words));
+    /* a triangle of corners 3, 2 and 0, its corner 2 on the right, in a multisampled pass */
+    memset(&q, 0, sizeof q);
+    q.kind = GFX_QUAD_CORNERS;
+    q.corners.corner[0] = 3;
+    q.corners.corner[1] = 2;
+    q.corners.corner[2] = 0;
+    q.corners.right = 1;
+    assert(quad_words(&q, &h, words) == 4);
+    assert(words[0] == (5u | 16u | 32u | 16384u | 3u << 16) && words[1] == 6 && words[2] == 40);
+    assert(words[3] == (3u | 2u << 8));
 }
 
 int main(void)
@@ -185,6 +250,7 @@ int main(void)
     check_vertices();
     check_sprite();
     check_world();
+    check_corners();
     puts("Quads: primitives' instances, flatness, rectangles, and every kind's words in place passed.");
     return 0;
 }

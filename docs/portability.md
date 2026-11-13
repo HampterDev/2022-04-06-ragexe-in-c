@@ -453,8 +453,8 @@ Granny runtime but the game's 32-bit `granny2.dll`, so no build of the client us
 included. `tools/granny_export` converts the game's `.gr2` files once, with `granny2.dll` on
 Windows or under Wine, to glTF 2.0 files in `data\model\gltf`, named by the CRC-32 of the `.gr2`
 they came from; `resources/granny_gltf.c` implements the Granny calls the client makes (file info,
-poses, controls, skinning, textures) on those files, found by the CRC of the bytes the client
-loads. Without them the models are not drawn: each load shows the client's "Unable to load file
+poses, controls, the meshes' vertices with their bones and weights, textures) on those files, found
+by the CRC of the bytes the client loads; the device skins the vertices (*Renderer*). Without them the models are not drawn: each load shows the client's "Unable to load file
 .gr2 (C3dGrannyModelRes :: Load)" box, and the first also writes a line naming the missing file to
 the debug output (`OutputDebugString` on Windows, seen only with a debugger attached; stderr
 elsewhere).
@@ -613,7 +613,11 @@ as the same texels in plain ones (filtered and with mipmaps, several layers one 
 up and taken again, arrays of 16 MB), lists of triangles, render targets, a composited window's
 target drawn as its quad draws it (every pixel its own texel), system-surface blits, copies between
 targets, the screen wobble recorded between other passes of a frame, the screen read whole and in
-part, world vertices (Granny's lists of triangles), the static world's records (each cull mode, one
+part, Granny's models skinned by the device (an actor's meshes running on as one draw, one mesh
+in two poses as one instanced draw, rigid meshes on their bone or lying still, a bone a vertex
+weights by 0 that is not a number, modes and targets that take no meshes, a model given up while its
+draw is recorded, the fog by the vertices' depth within a step at every step of both fog tables),
+the static world's records (each cull mode, one
 by one and culled by the GPU, from an odd index), its transform slots, animated ones too, its
 texture-coordinate matrices and texture arrays, the water's cells, the GPU's cull of a pass run by
 run against a frustum narrower than the screen (an animated record moved into it and out), the
@@ -643,71 +647,79 @@ shaders (the combination, the alpha test, the fog, the viewport scale; `struct G
 into a list of passes, one per target or shadow cascade; what it draws, and the texels of the
 textures it uses that changed since they last went up, widened to B8G8R8A8
 (`render/texel_convert.c`, the `texel-convert` library), go into one staging area. Every quad and
-triangle the client draws, the static world aside, is an instance (`render/gfx.h`, `gfx_draw_quad`
-and `gfx_draw_vertices`): a record of the frame's quads (`render/quads.c`, the library `quads`) from
-which the quad shader's vertex shader makes the vertices the client's C code made before, to the
-bit: a sprite's from its quad's rows, their rhw and its turn (`render_object_submit_spr_quad`'s
-vertices); a particle's by projecting its points as `renderer_project_vertex` did; and the rest from
-the client's own vertices, an axis-aligned rectangle with one rhw and colour into a short record of
-its own. The frame's quads, one storage buffer, hold the records and what they name: the matrices
-particles are projected with and the client's vertices. A draw is a run of instances made with the
-same mode, effect, fog, textures and target, all flat or none, drawn as one instanced draw of the
-triangles (0, 1, 2) and (2, 1, 3) of their corners. The sprite atlas's pages are layered textures
-(`gfx_create_layer_texture`), which the device places as layers of texture arrays when a draw first
-reads them, so that sprites of several pages are one draw; the fragment shader reads stage 0 from
-the array where the draw's record says so, at the layer the instance gives. An array holds pages of
-one size and number of mipmap levels, as many as make 16 MB and no more than 64 (64 of the atlas's
-256 by 256 pages; one of 2048 by 2048 or more, as large as it would be alone), another is made when
-it is full, and it goes with its last page: on a map change only the arrays holding the atlas's
-spare pages (up to 50, kept from map to map) stay. A texture or array the GPU has no memory for is
-not tried again: its quads read white. When the frame is presented, or the screen's picture is read
-(`gfx_read_frame`: screenshots and the scene harness's captures, after the frame is presented), one
-command buffer copies all of it through one transfer buffer in one copy pass (the static world's
-meshes and textures went up before it, through a stream of their own, below), runs the static
-world's compute passes (below) and replays the passes, then presents, fitted into the window by
-`present_fit`, or downloads the screen (`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else
-is read back: a render target's pixels never reach the CPU (`gfx_lock` takes only textures and
-system surfaces, and `gfx_blit` copies from a target only into a target). The shaders read the
-records from storage buffers, at most six a shader stage (`STORAGE_BUFFERS_MAX`; SDL tells nothing
-of a device's limits, so the device refuses a shader that reads more): every Vulkan device takes
-four, which the quad shader keeps to, while the static world's shaders read five and six, so a
-device that takes fewer than six draws no world. A quad finds its draw's record through the header
-of its own record, a draw of the static world through a uniform, the wobble through an instance-rate
-vertex attribute that holds its index (a draw's first instance), never through the instance ID.
-Textures keep their pixels on the CPU in the client's own format, so the model loader's thread
-creates, locks and fills them without calling SDL; the main thread uploads them when a draw first
-uses them after a change, and a texture changed after a draw used it in the same frame takes its new
-texels in a copy pass of its own between the render passes, so that the earlier draw keeps the old
-ones. Mipmaps are made on the GPU (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a
-texture that has them go up; a layered texture's go up whole into a scratch texture of their own,
-whose levels SDL makes so, and are then copied into the layer, so that a layer's levels are a
-texture's on every backend. The windows that composite (the menu icons, the party plates) draw into
-a render target of their own, which their quad reads as a texture (`texture_create_target`,
-`render/render_clients.c`). The screen wobble (the player's status 0x108) is a step of the frame: a
-copy of the screen's picture so far, then a pass over the whole screen that draws it again with each
-row taken from the row and the shift a table gives (`gfx_wobble`, `src/render/shaders/rows.hlsl`),
-every sample of a pixel alike, so that a multisampled screen resolves to the texels exactly; the CPU
-computes the table from the same random numbers, drawn in the same order, as the original's loop
-over the locked frame (`render/screen_wobble.c`, the `screen-wobble` library); where the device
-cannot draw the wobble, the table is not computed, so no random number is drawn, as the original
-drew none when it could not lock the frame. The device claims its window, and makes a swapchain for
-it, at the first present while the window is shown, not minimized and of a size in pixels, and a
-claim counts once SDL keeps the window (SDL 3.4's Vulkan driver answers a claim of a window whose
-surface has no size, a minimized one on Windows, with success but keeps nothing of it); a claim that
-fails or is not kept is tried again at the next present (on Android the window has no surface while
-the app is in the background). A window never shown (the scene harness's) has no swapchain, its
-frames are drawn, end at each present and can be read all the same, and a fence on each frame keeps
-the CPU at most two frames ahead of the GPU with or without one. A transfer buffer far larger than
-the frames have needed for 120 flushes in a row is made again as large as they need, and the staging
-texels' memory given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client
-shows without waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits
-for the window: SDL's acquire of a picture waits for the presentation engine even when told not to
-block, so such a frame asks for one only once a refresh of the display (60 Hz where its mode does
-not say) has passed since the last picture, and otherwise is drawn but not shown, as Direct3D 9's
-flip without waiting left a frame the screen had no room for. The device asks Vulkan for none of the
-features it does not use (depth clamping, clip distances, indirect draws from a first instance), so
-GPUs without them run it. A GPU device is never lost: the client has no lost-device handling, and a
-window size the device has no memory for is tried again when the size changes.
+triangle the client draws, the static world and Granny's actors aside, is an instance
+(`render/gfx.h`, `gfx_draw_quad` and `gfx_draw_vertices`): a record of the frame's quads
+(`render/quads.c`, the library `quads`) from which the quad shader's vertex shader makes the
+vertices the client's C code made before, to the bit: a sprite's from its quad's rows, their rhw and
+its turn (`render_object_submit_spr_quad`'s vertices); a particle's, an effect primitive's triangle's
+and a ground cell tile's (the cursor's cell, ground skills' areas, the navigation path and its
+marker) by projecting its points as `renderer_project_vertex` did, with the rhw and depth rules the
+client applied to those vertices (the rhw added to or set, the depth set or moved, an effect quad
+stood up on the screen about its point), the CPU computing only their rhw, which the lists sort by
+and which say whether one lies flat; and the rest, which the client builds on the screen, from the
+client's own vertices, an axis-aligned rectangle with one rhw and colour into a short record of its
+own. An effect primitive's triangles name corners of a set (`struct GfxCorners`) that the triangles
+of one quad share, put among the frame's quads by the first of them drawn, so that a triangle's
+record is a header of 16 bytes. The frame's quads, one storage buffer, hold the records and what they
+name: the matrices projected points go through, the corner sets and the client's vertices. A draw is a run of instances made with the same mode, effect, fog, textures and
+target, all flat or none, drawn as one instanced draw of the triangles (0, 1, 2) and (2, 1, 3) of
+their corners. The sprite atlas's pages are layered textures (`gfx_create_layer_texture`), which the
+device places as layers of texture arrays when a draw first reads them, so that sprites of several
+pages are one draw; the fragment shader reads stage 0 from the array where the draw's record says
+so, at the layer the instance gives. An array holds pages of one size and number of mipmap levels,
+as many as make 16 MB and no more than 64 (64 of the atlas's 256 by 256 pages; one of 2048 by 2048
+or more, as large as it would be alone), another is made when it is full, and it goes with its last
+page: on a map change only the arrays holding the atlas's spare pages (up to 50, kept from map to
+map) stay. A texture or array the GPU has no memory for is not tried again: its quads read white.
+When the frame is presented, or the screen's picture is read (`gfx_read_frame`: screenshots and the
+scene harness's captures, after the frame is presented), one command buffer copies all of it through
+one transfer buffer in one copy pass (the static world's meshes and textures went up before it,
+through a stream of their own, below), runs the static world's compute passes (below) and replays
+the passes, then presents, fitted into the window by `present_fit`, or downloads the screen
+(`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else is read back: a render target's pixels
+never reach the CPU (`gfx_lock` takes only textures and system surfaces, and `gfx_blit` copies from
+a target only into a target). The shaders read the records from storage buffers, at most six a
+shader stage (`STORAGE_BUFFERS_MAX`; SDL tells nothing of a device's limits, so the device refuses a
+shader that reads more): every Vulkan device takes four, which the quad and skin shaders keep to
+(they read three), while the static world's shaders read five and six, so a device that takes fewer
+than six draws no world. A quad finds its draw's record through the header of its own record, a
+Granny actor's draw through the header of its pose's instance, a draw of the static world through a
+uniform, the wobble through an instance-rate vertex attribute that holds its index (a draw's first
+instance), never through the instance ID. Textures keep their pixels on the CPU in the client's own
+format, so the model loader's thread creates, locks and fills them without calling SDL; the main
+thread uploads them when a draw first uses them after a change, and a texture changed after a draw
+used it in the same frame takes its new texels in a copy pass of its own between the render passes,
+so that the earlier draw keeps the old ones. Mipmaps are made on the GPU
+(`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up; a layered
+texture's go up whole into a scratch texture of their own, whose levels SDL makes so, and are then
+copied into the layer, so that a layer's levels are a texture's on every backend. The windows that
+composite (the menu icons, the party plates) draw into a render target of their own, which their
+quad reads as a texture (`texture_create_target`, `render/render_clients.c`). The screen wobble (the
+player's status 0x108) is a step of the frame: a copy of the screen's picture so far, then a pass
+over the whole screen that draws it again with each row taken from the row and the shift a table
+gives (`gfx_wobble`, `src/render/shaders/rows.hlsl`), every sample of a pixel alike, so that a
+multisampled screen resolves to the texels exactly; the CPU computes the table from the same random
+numbers, drawn in the same order, as the original's loop over the locked frame
+(`render/screen_wobble.c`, the `screen-wobble` library); where the device cannot draw the wobble,
+the table is not computed, so no random number is drawn, as the original drew none when it could not
+lock the frame. The device claims its window, and makes a swapchain for it, at the first present
+while the window is shown, not minimized and of a size in pixels, and a claim counts once SDL keeps
+the window (SDL 3.4's Vulkan driver answers a claim of a window whose surface has no size, a
+minimized one on Windows, with success but keeps nothing of it); a claim that fails or is not kept
+is tried again at the next present (on Android the window has no surface while the app is in the
+background). A window never shown (the scene harness's) has no swapchain, its frames are drawn, end
+at each present and can be read all the same, and a fence on each frame keeps the CPU at most two
+frames ahead of the GPU with or without one. A transfer buffer far larger than the frames have
+needed for 120 flushes in a row is made again as large as they need, and the staging texels' memory
+given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
+waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits for the window:
+SDL's acquire of a picture waits for the presentation engine even when told not to block, so such a
+frame asks for one only once a refresh of the display (60 Hz where its mode does not say) has passed
+since the last picture, and otherwise is drawn but not shown, as Direct3D 9's flip without waiting
+left a frame the screen had no room for. The device asks Vulkan for none of the features it does not
+use (depth clamping, clip distances, indirect draws from a first instance), so GPUs without them run
+it. A GPU device is never lost: the client has no lost-device handling, and a window size the device
+has no memory for is tried again when the size changes.
 
 Pixels: every vertex lands where Direct3D 9 put it. Every pass's viewport is its target moved by
 half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's
@@ -715,8 +727,8 @@ half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall
 0, 0);
 since a viewport must lie within its texture (SDL's GPU API, Metal), a target's textures are a pixel
 wider and taller than the target, and a stage that samples a target scales its texture coordinates
-to match and, when it clamps, keeps them off the margin. The static world's records, its casters and
-world vertices take the matrices the Direct3D 9 client drew with, computed in floats as it computed
+to match and, when it clamps, keeps them off the margin. The static world's records and its casters
+take the matrices the Direct3D 9 client drew with, computed in floats as it computed
 them and multiplied in the order Direct3D 9's shader compiler did, and the GPU divides and moves
 their points as Direct3D 9's did. Pre-transformed vertices are snapped in the vertex shader to the
 1/256 of a pixel Direct3D 9's rasterizer snapped them to, rounding to even, and handed over a 1/1024
@@ -780,16 +792,45 @@ each by the frame's waves (`water.hlsli`). The passes that must give the CPU's f
 rules of `exact.hlsli` (below), and `test_static_world_maps` checks that their SPIR-V has no float
 operation the rules forbid, and their results against the C on real maps.
 
+Granny's actors (the emperium, castle guardians, treasure boxes and guild flags of
+`actor/granny.c`; `render/gfx.h`'s `gfx_create_skin`, `gfx_skin_pose` and `gfx_draw_skin`;
+`render/skin_layout.c`, the library `skin-layout`, which packs what the skinning shader reads) are
+skinned, lit and projected by the device. A model's meshes go up once, when a draw first takes the model, as one vertex buffer (each
+vertex its position, normal, texture coordinates and up to four bones of the skeleton with their
+weights, 56 bytes; a rigid mesh's on its one bone) and one index buffer of 32-bit indices, one mesh
+behind the other with its first vertex added, so that an actor's meshes that follow one another with
+one texture are one draw; a copy stays on the CPU, as a texture's pixels do, for a device made
+again. Each frame the CPU poses each actor's bones as before and hands the device one pose among the
+frame's quads (`skin_pose_rows`: its bones' matrices, its meshes' matrix into view space, the light
+it is lit by, the projection), and each mesh is queued where its triangles were, in the opaque list
+by texture. The vertex shader (`skin.hlsl`, `skin.hlsli`) sums each vertex's weighted bones, lights
+it by its normal as the CPU did (rigid meshes by the normal they lie with) and projects it as
+`renderer_project_vertex` projected the CPU's corners, to the pixel and depth the CPU gave them; the
+fragment shader is the quads'. Consecutive draws of one model, mode and textures are one draw: an
+actor's meshes that run on in the model's indices, or one mesh of several actors, instanced, each
+instance a header among the frame's quads naming its pose and the draw's record. Unlike the quads,
+the skinning is plain shader arithmetic, not the CPU's floats to the bit:
+`tests/test_skin_instances.c` compares every corner of every model in the game folder's converted
+files, in their animations and fuzzed poses, with the CPU code it replaced
+(`tests/fixtures/granny_reference.c`) within a tolerance (the pixel within 1/16, rhw within 1e-5
+relative, the depth within 1e-5 of itself from twice the near plane on and within 1e-5 of the depth
+range nearer than that, where a relative bound would measure the CPU's own cancellation and a depth
+buffer compares absolute depths, texture coordinates within 1/4096, the colour within a step), and
+draws actors both ways through `render/gfx_gpu.c`. A model whose skeleton has more than 256 bones, which the shim samples no
+animation for, is not drawn.
+
 The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, which builds their vertices
-from their records, `instances.hlsli`; `world.hlsl` for the static world's records with their
+from their records, `instances.hlsli`; `skin.hlsl` for Granny's actors, `skin.hlsli`; `world.hlsl`
+for the static world's records with their
 shadows, `world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the water, which
 draws its pixels as the quads draw theirs (`quad.hlsli`: the texture stages' combinations, an atlas
 layer, the vertex fog and the alpha test); `rows.hlsl` for the screen wobble, `rounding.hlsl` for
 the device's check of the GPU's rounding, and the compute passes `world_transform.hlsl`,
 `world_cull.hlsl` and `world_compact.hlsl`; `shadow_range.hlsl`, `shadow_extents.hlsl` and
 `shadow_cascades.hlsl`, the shadow fit of phase 5's second half, which only `test_shadow_fit_gpu`
-runs yet; and what they share in `records.hlsli`, `quad.hlsli`, `instances.hlsli`, `world.hlsli`,
-`water.hlsli`, `shadow_fit.hlsli` and `exact.hlsli`; test programs' own shaders in `tests/shaders`).
+runs yet; and what they share in `records.hlsli`, `quad.hlsli`, `instances.hlsli`, `skin.hlsli`,
+`world.hlsli`, `water.hlsli`, `shadow_fit.hlsli` and `exact.hlsli`; test programs' own shaders in
+`tests/shaders`).
 A shader that must give the CPU's floats bit for bit (the quads' vertices, the static world's views
 and cull, the water's quads) follows the rules of `exact.hlsli`: `precise` on every operation,
 assigned to a variable first; no fused multiply-add, `mul()` or dot product; division through a
@@ -831,10 +872,11 @@ dialog, character creation, entering `iz_int03`, walking, chat, the inventory, e
 windows, Hangul chat through IBus, and an active audio stream. The frame overlay (`RAGEXE_OVERLAY=1`) showed about 90 fps at
 1024×768 on llvmpipe. A `-DRAGE_SANITIZERS=ON` build reached the same points; the misaligned
 packet-key loads and the null `memmove` it reported are fixed. The client drew through OpenGL
-then. The GPU renderer (*Renderer*) has run on Linux in WSL (Ubuntu 24.04) with Mesa's lavapipe:
-`test_gfx_gpu` passes with and without multisampling, and the scene harness, built with SDL for the
-console (`-DSDL_UNIX_CONSOLE_BUILD=ON`, as it draws with the offscreen driver), draws the scene set
-as on Windows; the client has not been played on it.
+then. The GPU renderer (*Renderer*) has run on Linux in WSL (Ubuntu 24.04) with Mesa's lavapipe,
+before Granny's actors were skinned on the GPU: `test_gfx_gpu` passed with and without
+multisampling, and the scene harness, built with SDL for the console (`-DSDL_UNIX_CONSOLE_BUILD=ON`,
+as it draws with the offscreen driver), drew the scene set as on Windows; the client has not been
+played on it.
 
 ## macOS client
 

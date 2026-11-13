@@ -132,7 +132,8 @@ enum DrawFilter {
 };
 
 /* What a mode is drawn into, and with: the screen, a render target's texture, and the static
-   world's records (render/gfx.h, gfx_world_draw) as well as quads, into the screen. */
+   world's records and Granny's models (render/gfx.h, gfx_world_draw, gfx_draw_skin) as well as
+   quads, into the screen. */
 #define DRAW_INTO_SCREEN  1
 #define DRAW_INTO_TEXTURE 2
 #define DRAW_MESHES       4

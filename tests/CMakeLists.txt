@@ -143,6 +143,9 @@ endfunction()
 # The client's window services and sound run on SDL; the window services take window coordinates
 # for pixels from the display options' library.
 rage_client_link(platform/window_sdl.c SDL3::SDL3 rage_client_display_options)
+# The Granny shim reads the converted glTF files with cgltf, their images with stb_image, and finds
+# them by zlib's CRC-32.
+rage_client_link(resources/granny_gltf.c rage_cgltf rage_stb rage_zlib)
 if(WIN32)
     rage_client_options(platform/window_sdl.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless.h)
     rage_client_options(platform/net_win32.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless_win32.h)
@@ -424,6 +427,7 @@ rage_test(texel_convert W4 CLIENT render/texel_convert.c)
 rage_test(draw_modes W4 CLIENT render/draw_modes.c)
 rage_test(vertex_fog W4 CLIENT render/vertex_fog.c)
 rage_test(quads W4 CLIENT render/quads.c)
+rage_test(skin_layout W4 CLIENT render/skin_layout.c)
 rage_test(screen_wobble W4 CLIENT render/screen_wobble.c)
 rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
 rage_test(world_layout W4 CLIENT render/world_layout.c render/static_world.c)
@@ -797,8 +801,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
     # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c render/draw_modes.c render/quads.c render/static_world.c render/vertex_fog.c
-        render/world_layout.c
+        CLIENT platform/thread_win32.c render/draw_modes.c render/quads.c render/skin_layout.c render/static_world.c
+        render/vertex_fog.c render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_present COMMAND test_gfx_gpu 1 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
@@ -808,18 +812,36 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # arguments: RAGEXE_MSAA for the pictures, the seed, records per kind of case, exact operations
     # (2^24 and more takes every divisor from 1 to 2), scenes drawn both ways.
     rage_test(quad_instances tests/fixtures/quad_reference.c src/render/gfx_gpu.c src/render/texel_convert.c
-        CLIENT actor/sprite_quad.c effects/particle.c effects/sprite_particle.c platform/thread_win32.c
-        render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c render/rp_screen.c
-        render/static_world.c render/vertex_fog.c render/world_layout.c LIBS SDL3::SDL3
+        CLIENT actor/sprite_quad.c effects/particle.c effects/rag/effect_prim_draw.c effects/sprite_particle.c
+        platform/thread_win32.c render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c
+        render/rp_screen.c render/skin_layout.c render/static_world.c render/vertex_fog.c render/world_layout.c
+        world/ground_draw.c LIBS SDL3::SDL3
         ARGS 1 20261112 300000 17000000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 0 30
         ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(quad_instances quad_instances_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 180)
+    # Granny's actors skinned by the device (render/shaders/skin.hlsl) on this machine's GPU against
+    # the CPU code they replaced, within a tolerance, and drawn through render/gfx_gpu.c, on the models
+    # tools/granny_export converted into the game folder (RAGE_MAPS_GAME_DIR, label client-files);
+    # skipped without them or a GPU. Its arguments: RAGEXE_MSAA for the pictures, the folder, the seed,
+    # fuzzed poses a model, scenes drawn both ways.
+    get_filename_component(default_game "${PROJECT_SOURCE_DIR}/../client-files" ABSOLUTE)
+    set(RAGE_MAPS_GAME_DIR "${default_game}" CACHE PATH
+        "Game folder of test_static_world_maps's maps and test_skin_instances's converted Granny models")
+    rage_test(skin_instances tests/fixtures/granny_reference.c src/render/gfx_gpu.c src/render/texel_convert.c
+        CLIENT platform/thread_win32.c render/draw_modes.c render/math3d.c render/quads.c render/rp_project.c
+        render/rp_screen.c render/skin_layout.c render/static_world.c render/vertex_fog.c render/world_layout.c
+        resources/granny_gltf.c resources/granny_mesh.c
+        LIBS rage_cgltf rage_stb rage_zlib SDL3::SDL3 ARGS 1 ${RAGE_MAPS_GAME_DIR}/data/model/gltf 20261113 20 20
+        LABELS client-files ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    rage_test_run(skin_instances_msaa COMMAND test_skin_instances 4 ${RAGE_MAPS_GAME_DIR}/data/model/gltf 20261114 4 20
+        LABELS client-files ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(skin_instances skin_instances_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 300)
     rage_test(gm_name_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
-    rage_test(granny_models MAIN tests/test_granny_model_storage.c tests/granny_model_geometry.c CLIENT
-        core/fatal.c core/memory.c render/math3d.c std/vec.c)
+    rage_test(granny_gltf CLIENT render/skin_layout.c resources/granny_gltf.c)
+    rage_test(granny_models MAIN tests/test_granny_model_storage.c)
     rage_test(granny_playback)
-    rage_test(granny_vertices CLIENT render/math3d.c)
+    rage_test(granny_vertices CLIENT render/skin_layout.c)
     rage_test(gravity_control tests/effect_base_stubs.c)
     rage_test(grf_archive_owner CLIENT core/cstr.c platform/system_memory_win32.c platform/thread_win32.c
         std/std_sort.c LIBS rage_zlib ARGS ${PROJECT_SOURCE_DIR}/tests/fixtures/grf_records.bin)
@@ -990,7 +1012,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         platform/clock_win32.c)
     rage_test(particle_draw CLIENT effects/ez2str_draw.c render/math3d.c)
     rage_test(particle_pools W1 CLIENT platform/clock_win32.c render/math3d.c render/rp_pool.c
-        std/container_memory.c std/string.c std/vec.c)
+        render/skin_layout.c std/container_memory.c std/string.c std/vec.c)
     rage_test(particle_process CLIENT effects/ez2str_playback.c effects/str_animation.c)
     rage_test(particle_view CLIENT effects/particle_view.c)
     rage_test(password_encode W4 CLIENT login/password_encode.c LIBS rage_crijndael)
@@ -1028,7 +1050,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/render_operations_boundaries.h)
     rage_test(renderer_storage CLIENT core/utf8.c fileio/resource_path.c platform/clock_win32.c
         platform/code_page_win32.c platform/filesystem_win32.c platform/system_memory_win32.c
-        platform/thread_win32.c platform/window_sdl.c render/draw_modes.c render/quads.c std/std_sort.c)
+        platform/thread_win32.c platform/window_sdl.c render/draw_modes.c render/quads.c render/skin_layout.c
+        std/std_sort.c)
     rage_test_run(renderer_storage_growth_failure COMMAND test_renderer_storage growth_failure EXIT 3)
     rage_test_run(renderer_storage_queue_failure COMMAND test_renderer_storage queue_failure EXIT 3)
     rage_test(renew_quest_text CLIENT contents/renew_quest_text.c core/memory.c core/utf8.c std/string.c)
@@ -1038,7 +1061,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         platform/filesystem_win32.c platform/thread_win32.c render/cache_lock.c resources/resource_registry.c
         std/container_memory.c std/string.c std/vec.c)
     rage_test(resource_errors CLIENT core/cstr.c fileio/resource_errors.c platform/thread_win32.c)
-    rage_test(resource_lifecycle CLIENT std/string.c)
+    rage_test(resource_lifecycle CLIENT render/skin_layout.c std/string.c)
     rage_test(resource_paths tests/resource_paths_support.c CLIENT core/text_util.c platform/code_page_win32.c
         std/container_memory.c std/string.c std/vec.c ui/resource/resource_paths.c)
     rage_test(resource_registry CLIENT resources/resource_registry.c)
@@ -1092,15 +1115,12 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # its compute passes on this machine's GPU against the C (label client-files): given a game folder
     # (RAGE_MAPS_GAME_DIR, by default client-files beside the checkout); it says so when it skips
     # them, and when it finds no GPU.
-    get_filename_component(default_game "${PROJECT_SOURCE_DIR}/../client-files" ABSOLUTE)
-    set(RAGE_MAPS_GAME_DIR "${default_game}" CACHE PATH
-        "Game folder whose data.grf test_static_world_maps loads maps from")
     rage_test(static_world_maps CLIENT core/cstr.c core/memory.c core/numeric.c core/owned_text.c core/res_mgr.c
         core/text_array.c fileio/file.c fileio/file_mgr.c fileio/grf_cipher.c fileio/grf_mapfile.c fileio/grf_pak.c
         fileio/res_cache.c fileio/res_get.c fileio/resource_cache_store.c fileio/resource_errors.c
         fileio/resource_path.c ${platform_files} render/anim_mesh.c render/crenderer.c render/draw_modes.c
-        render/keyframes.c render/math3d.c render/rp_pool.c render/rp_project.c render/rp_screen.c
-        render/static_world.c render/world_layout.c resources/attr.c resources/attr_queries.c resources/bitmap.c
+        render/keyframes.c render/math3d.c render/quads.c render/rp_pool.c render/rp_project.c render/rp_screen.c
+        render/skin_layout.c render/static_world.c render/world_layout.c resources/attr.c resources/attr_queries.c resources/bitmap.c
         resources/bitmap_codecs.c resources/bitmap_gif.c resources/bitmap_jpeg.c resources/bitmap_png.c
         resources/bitmap_storage.c resources/gnd.c resources/jpeg_codec.c resources/jpeg_storage.c resources/model_mesh.c
         resources/model_res_base.c resources/model_res_load.c resources/model_res_parts.c

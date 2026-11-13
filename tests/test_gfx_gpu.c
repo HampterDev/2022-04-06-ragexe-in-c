@@ -7,9 +7,11 @@
 #include "render/device.h"
 #include "render/screen_wobble.h"
 #include "render/vertex_fog.h"
+#include "render/skin_layout.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,7 +115,7 @@ static void draw_quad(float x0, float y0, float x1, float y1, DWORD diffuse)
 {
     struct TexDrawVertex v[4];
     quad(v, x0, y0, x1, y1, diffuse);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
 }
 
 static void check_texture(struct C3dDevice *d, int fmt)
@@ -240,7 +242,7 @@ static void world_send(const struct GfxWorldSlot *slots, size_t nslots)
 }
 
 /* The frame (its matrices and waves as the caller set them) seen through `view`, which also draws
-   the world vertices. */
+   the water. */
 static void world_frame(const struct GfxWorldView *view, struct GfxWorldFrame *frame)
 {
     struct SwProjection p;
@@ -477,11 +479,11 @@ static void check_clears(struct C3dDevice *d)
     {
         struct TexDrawVertex v[4];
         quad(v, 0, 0, 32, 32, 0xffff0000);
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
         gfx_clear(GFX_CLEAR_ZBUFFER, 0, 1.0f, &r);
         quad(v, 0, 0, 32, 32, 0xff00ff00);
         v[0].z = v[1].z = v[2].z = v[3].z = 0.75f;
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
     }
     gfx_end_scene();
     assert(screen_pixel(d, 12, 12) == 0x00ff00 && screen_pixel(d, 4, 4) == 0xff0000);
@@ -549,7 +551,7 @@ static void texture_quad(gfx_surface *t, float x, float y, float w, float h)
     struct TexDrawVertex v[4];
     gfx_set_texture(0, t);
     quad(v, x, y, x + w, y + h, 0xffffffff);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
 }
 
 /* Layered textures (gfx_create_layer_texture) read as the same texels in plain ones do, pixel for
@@ -697,7 +699,7 @@ static void check_triangles(struct C3dDevice *d)
         gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
         gfx_set_mode(COLOUR);
         gfx_set_texture(0, NULL);
-        gfx_draw_vertices(v, 6, 0, 0);
+        gfx_draw_vertices(v, 6, 0);
         gfx_end_scene();
         /* the first above the diagonal of its square, the second below the other one */
         assert(screen_pixel(d, 2, 2) == 0xff0000 && screen_pixel(d, 13, 13) == 0);
@@ -705,13 +707,270 @@ static void check_triangles(struct C3dDevice *d)
     }
 }
 
-/* World vertices and the world's records land on the pixels the same corners pre-transformed
-   cover. */
+/* Granny's models (render/gfx.h, gfx_create_skin, gfx_draw_skin; render/skin_layout.h): a model of
+   three meshes, a quad skinned on bone 0 (its second bone 1 with the weight 0) and the same quad 8
+   rows down rigid on bone 1, then a triangle; at depth 100 through test_view a unit is a pixel, the
+   view's centre at (32, 24). */
+static gfx_skin *skin_model(void)
+{
+    struct SkinVertex v[11];
+    uint32_t indices[15];
+    static const uint32_t corner[6] = { 0, 1, 2, 2, 1, 3 };
+    int i;
+    memset(v, 0, sizeof v);
+    for (i = 0; i < 8; i++) {
+        v[i].position[0] = (i & 1) ? 0.0f - 0.5f : -8.0f - 0.5f;
+        v[i].position[1] = ((i & 2) ? 0.0f - 0.5f : -8.0f - 0.5f) + (i >= 4 ? 8.0f : 0.0f);
+        v[i].position[2] = 100.0f;
+        v[i].normal[2] = -1.0f;
+        v[i].weights[0] = 1.0f;
+        v[i].bones[0] = (uint8_t)(i >= 4);
+        v[i].bones[1] = 1;
+        v[i].flags = i >= 4 ? SKIN_RIGID : 0;
+    }
+    /* a triangle right of the first quad, on bones 0 and 1 by halves */
+    for (i = 8; i < 11; i++) {
+        v[i].position[0] = 8.0f + (i == 9 ? 8.0f : 0.0f) - 0.5f;
+        v[i].position[1] = (i == 10 ? 8.0f : 0.0f) - 8.5f;
+        v[i].position[2] = 100.0f;
+        v[i].normal[2] = -1.0f;
+        v[i].weights[0] = v[i].weights[1] = 0.5f;
+        v[i].bones[1] = 1;
+    }
+    for (i = 0; i < 12; i++)
+        indices[i] = corner[i % 6] + (i >= 6 ? 4 : 0);
+    indices[12] = 8;
+    indices[13] = 9;
+    indices[14] = 10;
+    return gfx_create_skin(v, 11, indices, 15);
+}
+
+/* A pose of two bones, bone 1 moved by `move` pixels across, the model where it is, lit straight
+   on (b = scale + offset), its colour `add` added. */
+static int skin_pose(float move, float scale, float offset, uint32_t add, int still)
+{
+    float bones[2][16], rows[SKIN_POSE_HEADER + 6][4];
+    struct SkinPose pose;
+    int b;
+    memset(bones, 0, sizeof bones);
+    memset(&pose, 0, sizeof pose);
+    for (b = 0; b < 2; b++)
+        bones[b][0] = bones[b][5] = bones[b][10] = bones[b][15] = 1.0f;
+    bones[1][12] = move;
+    pose.bones = &bones[0][0];
+    pose.boneCount = 2;
+    /* test_view's: the view where the meshes are, its projection */
+    pose.view[0] = pose.view[4] = pose.view[8] = 1.0f;
+    pose.proj[0] = pose.proj[1] = 100.0f;
+    pose.centre[0] = W / 2.0f;
+    pose.centre[1] = H / 2.0f;
+    pose.nearZ = 10.0f;
+    pose.depthScale = 1.0f;
+    pose.light[2] = -1.0f;
+    pose.scale = scale;
+    pose.offset = offset;
+    pose.add = add;
+    pose.alpha = 0xff;
+    pose.rigidStill = still;
+    assert(skin_pose_rows(&pose, rows) == skin_pose_size(2));
+    return gfx_skin_pose((const float (*)[4])rows, skin_pose_size(2));
+}
+
+/* Granny's meshes land where the CPU put their corners and take its colours, in one draw where they
+   run on in the model or are one range in several poses, both faces of every triangle; a rigid
+   mesh moves with its bone, or lies still in a pose that says so; a bone a vertex weights by 0
+   moves it not even where it is not a number; a mode that draws no meshes, or a render target,
+   takes none; a model given up after its draws were recorded is drawn and goes. */
+static void check_skin(struct C3dDevice *d)
+{
+    gfx_skin *model = skin_model(), *other = skin_model();
+    gfx_surface *rt;
+    unsigned draws;
+    int lit, still, two;
+    assert(model && other);
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    gfx_set_mode(DRAW_OPAQUE_CLAMP);
+    gfx_set_texture(0, NULL);
+    /* b = 128: blue 128, green 128 + 0x40, red 128 + 0x80 modulo 256 */
+    lit = skin_pose(16.0f, 100.0f, 28.5f, 0x804000, 0);
+    assert(lit >= 0);
+    draws = g_perf.draws;
+    gfx_draw_skin(model, 0, 6, lit);
+    gfx_draw_skin(model, 6, 6, lit);
+    gfx_draw_skin(model, 12, 3, lit);
+    gfx_end_scene();
+    assert(g_perf.draws == draws + 1);
+    /* the quad on bone 0: x 24..31, y 16..23; the rigid one moved 16 across: 40..47, 24..31 */
+    assert(screen_pixel(d, 25, 17) == 0x00c080 && screen_pixel(d, 30, 22) == 0x00c080);
+    assert(screen_pixel(d, 41, 25) == 0x00c080 && screen_pixel(d, 46, 30) == 0x00c080);
+    assert(screen_pixel(d, 22, 17) == 0 && screen_pixel(d, 33, 22) == 0 && screen_pixel(d, 30, 26) == 0);
+    /* the triangle, by halves of bones 0 and 1 moved 8 across: the upper left half of x 48 to 55, y 16
+       to 23 */
+    assert(screen_pixel(d, 50, 17) == 0x00c080 && screen_pixel(d, 50, 22) == 0);
+    /* the same range in a second pose: one draw of two instances; the rigid quad lying still in the
+       first (x 24..31, white), on its bone moved 16 across in the second (x 40..47) */
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    still = skin_pose(16.0f, 0.0f, 255.0f, 0, 1);
+    two = skin_pose(16.0f, 0.0f, 64.0f, 0, 0);
+    assert(still >= 0 && two >= 0);
+    draws = g_perf.draws;
+    gfx_draw_skin(model, 6, 6, still);
+    gfx_draw_skin(model, 6, 6, two);
+    gfx_end_scene();
+    assert(g_perf.draws == draws + 1);
+    assert(screen_pixel(d, 25, 25) == 0xffffff && screen_pixel(d, 41, 25) == 0x404040);
+    /* bone 1 not a number: the skinned quad, which weights it by 0, where it was; the triangle,
+       which weights it by a half, nowhere */
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    two = skin_pose(NAN, 0.0f, 255.0f, 0, 0);
+    assert(two >= 0);
+    gfx_draw_skin(model, 0, 6, two);
+    gfx_draw_skin(model, 12, 3, two);
+    gfx_end_scene();
+    assert(screen_pixel(d, 25, 17) == 0xffffff && screen_pixel(d, 30, 22) == 0xffffff);
+    assert(screen_pixel(d, 50, 17) == 0);
+    /* another model, a mode without meshes, a render target: draws apart, or none */
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    lit = skin_pose(16.0f, 100.0f, 28.5f, 0x804000, 0);
+    draws = g_perf.draws;
+    gfx_draw_skin(model, 0, 6, lit);
+    gfx_draw_skin(other, 6, 6, lit);
+    gfx_set_mode(DRAW_OVERLAY);
+    gfx_draw_skin(model, 12, 3, lit);
+    gfx_set_mode(DRAW_OPAQUE_CLAMP);
+    rt = gfx_create_render_target(16, 16);
+    assert(rt && gfx_set_render_target(rt) == 0);
+    gfx_draw_skin(model, 12, 3, lit);
+    assert(gfx_set_render_target(d->target) == 0);
+    gfx_release(rt);
+    /* given up while its draw is recorded */
+    gfx_skin_release(other);
+    gfx_end_scene();
+    assert(g_perf.draws == draws + 2);
+    assert(screen_pixel(d, 25, 17) == 0x00c080 && screen_pixel(d, 41, 25) == 0x00c080);
+    assert(screen_pixel(d, 50, 17) == 0);
+    /* ranges outside the model, a pose of none: nothing */
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    lit = skin_pose(16.0f, 100.0f, 28.5f, 0x804000, 0);
+    draws = g_perf.draws;
+    gfx_draw_skin(model, 12, 6, lit);
+    gfx_draw_skin(model, 16, 3, lit);
+    gfx_draw_skin(model, 0, 6, -1);
+    gfx_draw_skin(NULL, 0, 6, lit);
+    gfx_end_scene();
+    assert(g_perf.draws == draws && screen_pixel(d, 25, 17) == 0);
+    gfx_skin_release(model);
+}
+
+/* The effect primitives' triangles of shared corners (render/quads.h, GFX_QUAD_CORNERS): a set of
+   four corners at depth 100 through an identity view (a unit a pixel, the view's centre at (32, 24))
+   and its two triangles, one draw, the set put among the frame's quads once with its matrix (64
+   bytes, the set 96 and each triangle 20); in the next frame put up again; a corner the set does not
+   have, or no set, draws nothing. */
+static void check_corners(struct C3dDevice *d)
+{
+    static const float at[4][2] = { { -8, -8 }, { 0, -8 }, { -8, 0 }, { 0, 0 } };
+    struct GfxCornerSet set;
+    struct GfxQuad q[2];
+    unsigned draws, bytes;
+    int i, frame;
+    memset(&set, 0, sizeof set);
+    set.row = -1;
+    set.corners.count = 4;
+    for (i = 0; i < 4; i++) {
+        set.corners.point[i][0] = at[i][0] - 0.5f;
+        set.corners.point[i][1] = at[i][1] - 0.5f;
+        set.corners.point[i][2] = 100.0f;
+    }
+    set.corners.view[0] = set.corners.view[4] = set.corners.view[8] = 1.0f;
+    set.corners.proj[0] = set.corners.proj[1] = 100.0f;
+    set.corners.centre[0] = W / 2.0f;
+    set.corners.centre[1] = H / 2.0f;
+    set.corners.colour = 0xff00ff00;
+    memset(q, 0, sizeof q);
+    for (i = 0; i < 2; i++) {
+        q[i].kind = GFX_QUAD_CORNERS;
+        q[i].corners.set = &set;
+        q[i].corners.flat = 1;
+    }
+    q[0].corners.corner[0] = 0;
+    q[0].corners.corner[1] = 1;
+    q[0].corners.corner[2] = 2;
+    q[1].corners.corner[0] = 3;
+    q[1].corners.corner[1] = 2;
+    q[1].corners.corner[2] = 1;
+    for (frame = 0; frame < 2; frame++) {
+        gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+        gfx_set_mode(DRAW_OVERLAY);
+        gfx_set_texture(0, NULL);
+        draws = g_perf.draws;
+        bytes = g_perf.instanceBytes;
+        gfx_draw_quad(&q[0]);
+        gfx_draw_quad(&q[1]);
+        gfx_end_scene();
+        assert(g_perf.draws == draws + 1 && g_perf.instanceBytes == bytes + 64 + 96 + 2 * 20);
+        /* the square x 24 to 31, y 16 to 23, both halves */
+        assert(screen_pixel(d, 25, 17) == 0x00ff00 && screen_pixel(d, 30, 22) == 0x00ff00);
+        assert(screen_pixel(d, 22, 17) == 0 && screen_pixel(d, 33, 22) == 0);
+    }
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    q[0].corners.corner[2] = 4;
+    q[1].corners.set = NULL;
+    gfx_draw_quad(&q[0]);
+    gfx_draw_quad(&q[1]);
+    gfx_end_scene();
+    assert(screen_pixel(d, 25, 17) == 0 && screen_pixel(d, 30, 22) == 0);
+}
+
+/* A white skinned square two pixels wide whose top left pixel is (x, y), at the view depth
+   `depth`: a pose of skin_pose's projection that scales and moves a unit square of the model
+   (fog_square) there */
+static int fog_square_pose(float x, float y, float depth)
+{
+    float bone[16], rows[SKIN_POSE_HEADER + 3][4];
+    struct SkinPose pose;
+    memset(bone, 0, sizeof bone);
+    memset(&pose, 0, sizeof pose);
+    bone[0] = bone[5] = bone[10] = bone[15] = 1.0f;
+    pose.bones = bone;
+    pose.boneCount = 1;
+    pose.view[0] = pose.view[4] = 2.0f * depth / 100.0f;
+    pose.view[9] = (x - 0.5f - W / 2.0f) * depth / 100.0f;
+    pose.view[10] = (y - 0.5f - H / 2.0f) * depth / 100.0f;
+    pose.view[11] = depth;
+    pose.proj[0] = pose.proj[1] = 100.0f;
+    pose.centre[0] = W / 2.0f;
+    pose.centre[1] = H / 2.0f;
+    pose.nearZ = 10.0f;
+    pose.depthScale = 1.0f;
+    pose.light[2] = -1.0f;
+    pose.offset = 255.0f;
+    pose.alpha = 0xff;
+    assert(skin_pose_rows(&pose, rows) == skin_pose_size(1));
+    return gfx_skin_pose((const float (*)[4])rows, skin_pose_size(1));
+}
+
+/* a model of one unit square on bone 0 */
+static gfx_skin *fog_square(void)
+{
+    struct SkinVertex v[4];
+    static const uint32_t indices[6] = { 0, 1, 2, 2, 1, 3 };
+    int i;
+    memset(v, 0, sizeof v);
+    for (i = 0; i < 4; i++) {
+        v[i].position[0] = (float)(i & 1);
+        v[i].position[1] = (float)(i >> 1);
+        v[i].normal[2] = -1.0f;
+        v[i].weights[0] = 1.0f;
+    }
+    return gfx_create_skin(v, 4, indices, 6);
+}
+
+/* The world's records land on the pixels the same corners pre-transformed cover. */
 static void check_world(struct C3dDevice *d)
 {
     struct GfxWorldView view;
     struct GfxWorldFrame frame;
-    struct TexDrawVertex v[4], list[6];
     struct GfxMeshVertex mv[6];
     static const WORD indices[6] = { 0, 1, 2, 3, 4, 5 };
     static const int corner[6] = { 0, 1, 2, 2, 1, 3 };
@@ -721,26 +980,6 @@ static void check_world(struct C3dDevice *d)
     test_view(&view);
     gfx_set_world_camera(&view);
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
-    gfx_set_mode(COLOUR);
-    /* world vertices, a list of triangles as Granny's: x = -8..0, y = -8..0 at depth 100 cover the
-       pixels 24..31, 16..23; a strip of world vertices, 16 to the right, draws nothing */
-    quad(v, 0, 0, 1, 1, 0xff00ff00);
-    for (i = 0; i < 4; i++) {
-        v[i].x = (i & 1) ? 0.0f - 0.5f : -8.0f - 0.5f;
-        v[i].y = (i & 2) ? 0.0f - 0.5f : -8.0f - 0.5f;
-        v[i].z = 100.0f;
-    }
-    for (i = 0; i < 6; i++)
-        list[i] = v[corner[i]];
-    gfx_draw_vertices(list, 6, 0, 1);
-    for (i = 0; i < 4; i++)
-        v[i].x += 16.0f;
-    gfx_draw_vertices(v, 4, 1, 1);
-    gfx_end_scene();
-    assert(screen_pixel(d, 24, 16) == 0x00ff00 && screen_pixel(d, 31, 23) == 0x00ff00);
-    assert(screen_pixel(d, 23, 16) == 0 && screen_pixel(d, 32, 23) == 0 && screen_pixel(d, 24, 15) == 0
-           && screen_pixel(d, 24, 24) == 0);
-    assert(screen_pixel(d, 40, 16) == 0 && screen_pixel(d, 47, 23) == 0);
 
     /* a quad of two triangles that share no vertex, a record each */
     memset(mv, 0, sizeof mv);
@@ -951,29 +1190,14 @@ static void check_resize(struct C3dDevice *d)
 
 /* The fog of the modes that fog, while it is on (render/gfx.h, GfxFog): the quads' by their rhw,
    in 1/255 steps, the meshes' as the Direct3D 9 client's mesh shader had it. */
-static void fog_quad(float x, float y, float size, float rhw, int world)
+static void fog_quad(float x, float y, float size, float rhw)
 {
-    static const int corner[6] = { 0, 1, 2, 2, 1, 3 };
-    struct TexDrawVertex v[4], list[6];
+    struct TexDrawVertex v[4];
     int i;
     quad(v, x, y, x + size, y + size, 0xffff0000);
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 4; i++)
         v[i].rhw = rhw;
-        if (world) {
-            /* at depth 100 a unit is a pixel, the view's centre at (32, 24) */
-            v[i].x = (i & 1 ? x + size : x) - 32.0f - 0.5f;
-            v[i].y = (i & 2 ? y + size : y) - 24.0f - 0.5f;
-            v[i].z = 100.0f;
-        }
-    }
-    if (!world) {
-        gfx_draw_vertices(v, 4, 1, 0);
-        return;
-    }
-    /* world vertices are drawn as a list of triangles (Granny's) */
-    for (i = 0; i < 6; i++)
-        list[i] = v[corner[i]];
-    gfx_draw_vertices(list, 6, 0, 1);
+    gfx_draw_vertices(v, 4, 1);
 }
 
 static int near_value(DWORD got, int want)
@@ -992,51 +1216,69 @@ static float next_float(float value, int by)
 
 /* The quads' fog to the bit: white quads fogged into black keep the original's step in their red,
    at every step's first rhw and the rhw before it, for the maps' fog (0.2 to 0.8) and for an end
-   before the start, in pre-transformed and in world vertices. */
+   before the start. Granny's meshes take theirs by the GPU's own rhw of their view depth: white
+   squares of one mesh at those depths, one instanced draw, within a step of it. */
 static void check_fog_steps(struct C3dDevice *d)
 {
     static const float ranges[2][2] = { { 0.2f, 0.8f }, { 0.7f, 0.3f } };
-    static const int kinds[2] = { 0, 1 };
     struct VertexFogTable table;
-    struct GfxWorldView view;
     struct GfxFog fog;
-    int r, k, i, wrong = 0;
-    test_view(&view);
-    gfx_set_world_camera(&view);
-    for (r = 0; r < 2; r++)
-        for (k = 0; k < 2; k++) {
-            int count;
-            memset(&fog, 0, sizeof fog);
-            fog.on = 1;
-            fog.colour = 0xff000000;
-            fog.start = ranges[r][0];
-            fog.end = ranges[r][1];
-            fog.origin = 10.0f;
-            fog.span = 1490.0f;
-            vertex_fog_table(fog.start, fog.end, fog.origin, fog.span, &table);
-            count = (int)table.count;
-            assert(count > 200);
-            gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
-            gfx_set_mode(DRAW_OPAQUE_CLAMP);
-            gfx_set_texture(0, NULL);
-            gfx_set_fog(&fog);
-            /* two pixels square each, 31 to a row off the first row and column (of which the
-               viewport holds half): a step's first rhw, then the one before */
-            for (i = 0; i < 2 * count; i++)
-                fog_quad((float)(1 + i % 31 * 2), (float)(1 + i / 31 * 2), 2.0f,
-                         next_float(table.rhw[i / 2], -(i & 1)), kinds[k]);
-            gfx_end_scene();
-            gfx_set_fog(NULL);
-            for (i = 0; i < 2 * count; i++) {
-                float rhw = next_float(table.rhw[i / 2], -(i & 1));
-                int want = vertex_fog_step(rhw, fog.start, fog.end, fog.origin, fog.span);
-                int got = (int)(screen_pixel(d, 1 + i % 31 * 2, 1 + i / 31 * 2) >> 16 & 0xff);
-                if (got != want && wrong++ < 8)
-                    fprintf(stderr, "fog %g..%g, %s rhw %.9g: %d, the original %d\n", fog.start, fog.end,
-                            kinds[k] ? "world" : "screen", rhw, got, want);
-            }
+    gfx_skin *square = fog_square();
+    unsigned draws;
+    int r, i, wrong = 0, skinWrong = 0;
+    assert(square);
+    for (r = 0; r < 2; r++) {
+        int count;
+        memset(&fog, 0, sizeof fog);
+        fog.on = 1;
+        fog.colour = 0xff000000;
+        fog.start = ranges[r][0];
+        fog.end = ranges[r][1];
+        fog.origin = 10.0f;
+        fog.span = 1490.0f;
+        vertex_fog_table(fog.start, fog.end, fog.origin, fog.span, &table);
+        count = (int)table.count;
+        assert(count > 200);
+        gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+        gfx_set_mode(DRAW_OPAQUE_CLAMP);
+        gfx_set_texture(0, NULL);
+        gfx_set_fog(&fog);
+        /* two pixels square each, 31 to a row off the first row and column (of which the
+           viewport holds half): a step's first rhw, then the one before */
+        for (i = 0; i < 2 * count; i++)
+            fog_quad((float)(1 + i % 31 * 2), (float)(1 + i / 31 * 2), 2.0f, next_float(table.rhw[i / 2], -(i & 1)));
+        gfx_end_scene();
+        gfx_set_fog(NULL);
+        for (i = 0; i < 2 * count; i++) {
+            float rhw = next_float(table.rhw[i / 2], -(i & 1));
+            int want = vertex_fog_step(rhw, fog.start, fog.end, fog.origin, fog.span);
+            int got = (int)(screen_pixel(d, 1 + i % 31 * 2, 1 + i / 31 * 2) >> 16 & 0xff);
+            if (got != want && wrong++ < 8)
+                fprintf(stderr, "fog %g..%g, rhw %.9g: %d, the original %d\n", fog.start, fog.end, rhw, got, want);
         }
-    assert(!wrong);
+        gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+        gfx_set_fog(&fog);
+        draws = g_perf.draws;
+        for (i = 0; i < 2 * count; i++) {
+            int pose = fog_square_pose((float)(1 + i % 31 * 2), (float)(1 + i / 31 * 2),
+                                       1.0f / next_float(table.rhw[i / 2], -(i & 1)));
+            assert(pose >= 0);
+            gfx_draw_skin(square, 0, 6, pose);
+        }
+        gfx_end_scene();
+        gfx_set_fog(NULL);
+        assert(g_perf.draws == draws + 1);
+        for (i = 0; i < 2 * count; i++) {
+            float rhw = next_float(table.rhw[i / 2], -(i & 1));
+            int want = vertex_fog_step(rhw, fog.start, fog.end, fog.origin, fog.span);
+            int got = (int)(screen_pixel(d, 1 + i % 31 * 2, 1 + i / 31 * 2) >> 16 & 0xff);
+            if ((got < want - 1 || got > want + 1) && skinWrong++ < 8)
+                fprintf(stderr, "skinned fog %g..%g, rhw %.9g: %d, the original %d\n", fog.start, fog.end, rhw, got,
+                        want);
+        }
+    }
+    gfx_skin_release(square);
+    assert(!wrong && !skinWrong);
 }
 
 static void check_fog(struct C3dDevice *d)
@@ -1059,17 +1301,17 @@ static void check_fog(struct C3dDevice *d)
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     gfx_set_texture(0, NULL);
     gfx_set_fog(&fog);
-    fog_quad(0, 0, 8, 1.0f / 50, 0);   /* half way: 127 of 255 kept */
-    fog_quad(8, 0, 8, 1.0f / 150, 0);  /* beyond the end: all fog */
-    fog_quad(16, 0, 8, 1.0f, 0);       /* 0.01 of the way: 252 kept */
+    fog_quad(0, 0, 8, 1.0f / 50);   /* half way: 127 of 255 kept */
+    fog_quad(8, 0, 8, 1.0f / 150);  /* beyond the end: all fog */
+    fog_quad(16, 0, 8, 1.0f);       /* 0.01 of the way: 252 kept */
     /* a mode without fog */
     gfx_set_mode(DRAW_OVERLAY);
-    fog_quad(24, 0, 8, 1.0f / 150, 0);
+    fog_quad(24, 0, 8, 1.0f / 150);
     /* the end where the start is: the depth's share alone */
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     fog.start = fog.end = 0.25f;
     gfx_set_fog(&fog);
-    fog_quad(32, 0, 8, 1.0f / 50, 0);
+    fog_quad(32, 0, 8, 1.0f / 50);
     /* a record at depth 50 between 40 and 60: half fog (the pixels 8 to 15 by 12 to 19) */
     memset(mv, 0, sizeof mv);
     for (i = 0; i < 4; i++) {
@@ -1098,7 +1340,7 @@ static void check_fog(struct C3dDevice *d)
     gfx_world_draw_record(&g_world.records[0], &draw);
     /* the fog off */
     gfx_set_fog(NULL);
-    fog_quad(40, 0, 8, 1.0f / 150, 0);
+    fog_quad(40, 0, 8, 1.0f / 150);
     gfx_end_scene();
     /* the quads' steps exactly: 127 of red and 128 of the fog's green */
     assert(screen_pixel(d, 4, 4) == 0x7f8000);
@@ -1129,10 +1371,10 @@ static void check_effects(struct C3dDevice *d)
     gfx_set_texture(0, t);
     gfx_set_effect(DRAW_BLEND_ONE, DRAW_BLEND_ONE, 3);
     quad(v, 0, 0, 16, 16, 0xff200000);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_effect(DRAW_BLEND_SRCALPHA, DRAW_BLEND_DESTALPHA, 0);
     quad(v, 16, 0, 32, 16, 0x80ffffff);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_texture(1, u);
     gfx_set_effect(DRAW_BLEND_ONE, DRAW_BLEND_ZERO, 5);
     quad(v, 0, 16, 16, 32, 0xffffffff);
@@ -1140,7 +1382,7 @@ static void check_effects(struct C3dDevice *d)
         v[i].u *= 2.0f;
         v[i].v *= 2.0f;
     }
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     /* 0x40 + 0x20, 0x40 and 0x40, added to 0x10, 0x20 and 0x30 */
     assert(screen_pixel(d, 4, 4) == 0x706070);
@@ -1265,10 +1507,10 @@ static void check_presets(struct C3dDevice *d)
         int combine = draw_effect_combine(preset, 0);
         gfx_set_effect(DRAW_BLEND_ONE, DRAW_BLEND_ZERO, combine);
         quad(v, (float)(preset * 4 + 1), 1, (float)(preset * 4 + 3), 3, 0xe0b05080);
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
         gfx_set_effect(DRAW_BLEND_ZERO, DRAW_BLEND_SRCALPHA, combine);
         quad(v, (float)(preset * 4 + 1), 5, (float)(preset * 4 + 3), 7, 0xe0b05080);
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
     }
     gfx_end_scene();
     for (preset = 0; preset < 16; preset++) {
@@ -1302,7 +1544,7 @@ static void check_two_textures(struct C3dDevice *d)
     q.kind = GFX_QUAD_WORLD;
     q.world.viewSpace = 1;
     q.world.proj[0] = q.world.proj[1] = 1.0f;
-    q.world.depth = GFX_DEPTH_ZERO;
+    q.world.depth = GFX_DEPTH_VALUE;
     q.world.colour = 0xffffffff;
     q.world.stage2 = 1;
     q.world.flat = 1;
@@ -1433,21 +1675,21 @@ static void check_effect_depth(struct C3dDevice *d)
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     quad(v, 0, 0, 16, 32, 0xffff0000);
     v[0].z = v[1].z = v[2].z = v[3].z = 0.3f;
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_mode(DRAW_EFFECT_DEPTH);
     gfx_set_effect(DRAW_BLEND_ONE, DRAW_BLEND_ZERO, DRAW_COMBINE_MODULATE);
     quad(v, 0, 0, 32, 16, 0xff00ff00);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     /* drawn after it, behind the effect quad: had that written depth, this would be hidden */
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     quad(v, 16, 0, 32, 8, 0xff0000ff);
     v[0].z = v[1].z = v[2].z = v[3].z = 0.75f;
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_mode(DRAW_EFFECT_OVERLAY);
     gfx_set_effect(DRAW_BLEND_ONE, DRAW_BLEND_ZERO, DRAW_COMBINE_MODULATE);
     quad(v, 0, 16, 32, 32, 0xffffff00);
     v[0].z = v[1].z = v[2].z = v[3].z = 0.9f;
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     assert(screen_pixel(d, 4, 4) == 0xff0000 && screen_pixel(d, 20, 12) == 0x00ff00);
     assert(screen_pixel(d, 20, 4) == 0x0000ff);
@@ -1503,7 +1745,7 @@ static void check_clear_inside(struct C3dDevice *d)
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     gfx_set_texture(0, NULL);
     quad(v, 0, 0, 32, 32, 0xff00ff00);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     assert(screen_pixel(d, 12, 12) == 0x0000ff && screen_pixel(d, 4, 4) == 0x00ff00 && screen_pixel(d, 20, 12) == 0x00ff00);
 }
@@ -1686,7 +1928,7 @@ static int check_window_target(struct C3dDevice *d)
             v[i].u = ((float)(i & 1 ? TW : 0) + 0.5f) / (float)TW;
             v[i].v = ((float)(i & 2 ? TH : 0) + 0.5f) / (float)TH;
         }
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
         gfx_end_scene();
         read_screen(d, all);
         for (y = 0; y < H; y++)
@@ -2148,7 +2390,7 @@ int main(int argc, char **argv)
     gfx_set_mode(FILTERED);
     gfx_set_texture(0, NULL);
     quad(v, 8, 8, 24, 20, 0xffff0000);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     assert(screen_pixel(d, 8, 8) == 0xff0000 && screen_pixel(d, 23, 19) == 0xff0000);
     assert(screen_pixel(d, 7, 8) == 0x102030 && screen_pixel(d, 24, 19) == 0x102030 && screen_pixel(d, 8, 20) == 0x102030);
@@ -2157,7 +2399,7 @@ int main(int argc, char **argv)
        too, as Direct3D 9 drew flat quads without multisampling */
     gfx_clear(GFX_CLEAR_TARGET, 0xff102030, 1.0f, NULL);
     quad(v, 8.5f, 8.5f, 24.5f, 20.5f, 0xff00ff00);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     assert(screen_pixel(d, 8, 8) == 0x00ff00 && screen_pixel(d, 23, 19) == 0x00ff00);
     assert(screen_pixel(d, 7, 8) == 0x102030 && screen_pixel(d, 8, 7) == 0x102030);
@@ -2170,7 +2412,7 @@ int main(int argc, char **argv)
         gfx_set_mode(TEXTURE);
         gfx_set_texture(0, t);
         quad(v, 10.25f, 10.25f, 30.25f, 30.25f, 0xffffffff);
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
         gfx_end_scene();
         /* Direct3D 9 x and y from 9.75 to 29.75: the centres 10 to 29, texels changing after 19 */
         assert(screen_pixel(d, 9, 10) == 0 && screen_pixel(d, 10, 9) == 0);
@@ -2198,7 +2440,7 @@ int main(int argc, char **argv)
         gfx_set_mode(DRAW_OPAQUE_CLAMP);
         gfx_set_texture(0, t);
         quad(v, 0, 0, 32, 32, 0xffffffff);
-        gfx_draw_vertices(v, 4, 1, 0);
+        gfx_draw_vertices(v, 4, 1);
         gfx_end_scene();
         assert(screen_pixel(d, 4, 4) == 0 && screen_pixel(d, 28, 4) == 0x00ff00 && screen_pixel(d, 28, 28) == 0);
         gfx_set_texture(0, NULL);
@@ -2211,7 +2453,7 @@ int main(int argc, char **argv)
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     gfx_set_mode(DRAW_OVERLAY);
     quad(v, 0, 0, 16, 16, 0x80ffffff);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     x = (int)(screen_pixel(d, 4, 4) & 0xff);
     assert(x >= 0x7e && x <= 0x82);
@@ -2233,17 +2475,17 @@ int main(int argc, char **argv)
     /* a mode that does not draw into a render target's texture draws nothing there */
     gfx_set_mode(DRAW_OVERLAY);
     quad(v, 0, 8, 16, 16, 0xffff0000);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_mode(COLOUR);
     quad(v, 0, 0, 16, 8, 0xff0000ff);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     assert(gfx_set_render_target(d->target) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     gfx_set_mode(TEXTURE);
     gfx_set_texture(0, rt);
     quad(v, 0, 0, 16, 16, 0xffffffff);
-    gfx_draw_vertices(v, 4, 1, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
     assert(screen_pixel(d, 4, 2) == 0x0000ff && screen_pixel(d, 4, 12) == 0);
     gfx_set_texture(0, NULL);
@@ -2275,6 +2517,8 @@ int main(int argc, char **argv)
     linear = check_window_target(d);
     check_wobble(d);
     check_clears(d);
+    check_skin(d);
+    check_corners(d);
     check_world(d);
     check_slots(d);
     check_water(d);
@@ -2297,7 +2541,8 @@ int main(int argc, char **argv)
            "array and a second, a layer given up and taken, arrays of 16 MB), lists of triangles, "
            "render targets and their edges, a window's target read 1:1 (%s), the wobble in a frame, modes kept from targets "
            "they do not draw into, modes counted, system surface blits, copies between targets and out of "
-           "bounds, frames read whole and in part, world vertices and records, transform slots, texture-coordinate "
+           "bounds, frames read whole and in part, Granny's models skinned and batched, the world's records, transform "
+           "slots, texture-coordinate "
            "matrices, the water, the world's cull compacted by run, its buffers and arrays grown, its mipmaps, "
            "casters and shadows, a world cleared in a frame, resizing, %s passed\n",
            argc > 1 ? argv[1] : "4", linear ? "by the nearest texel and filtered" : "by the nearest texel only",

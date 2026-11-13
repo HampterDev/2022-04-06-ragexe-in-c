@@ -84,19 +84,18 @@ void prim_pyramid_render(struct EffectPrim *self, const float *view)
             p[k].y = self->base.pos.y + p[k].y;
             p[k].z = p[k].z + self->base.pos.z;
         }
-        prim_set_vertex(&tri->v[0], view, p[0], self->argb, u, 1.0f);
-        prim_set_vertex(&tri->v[1], view, p[1], self->argb, u, 0.0f);
+        prim_set_corner(&tri->world.corner[0], p[0], u, 1.0f);
+        prim_set_corner(&tri->world.corner[1], p[1], u, 0.0f);
         u = u + 0.2f;
-        prim_set_vertex(&tri->v[2], view, p[2], self->argb, u, 1.0f);
+        prim_set_corner(&tri->world.corner[2], p[2], u, 1.0f);
+        tri->world.colour = self->argb;
         tri->texture = self->textures[0];
         if (self->records.pyramid.style == PYRAMID_STYLE_FLICKER) {
             tri->src_blend = DRAW_BLEND_SRCALPHA;
             tri->dest_blend = DRAW_BLEND_ONE;
-            renderer_add_triangle(g_renderer, tri, 5);
-        } else {
-            renderer_add_triangle(g_renderer, tri, 1);
         }
     }
+    prim_add_world_triangles(self->triangles, 4, view, self->records.pyramid.style == PYRAMID_STYLE_FLICKER ? 5 : 1);
 }
 
 void prim_corner_trail_render(struct EffectPrim *self, const float *view)
@@ -108,18 +107,19 @@ void prim_corner_trail_render(struct EffectPrim *self, const float *view)
         const Vec3 *corner = part->corners;
         struct PrimTriangle *tri = &self->triangles[i * 2];
 
-        prim_set_vertex(&tri->v[0], view, corner[0], part->argb, 0.0f, 1.0f);
-        prim_set_vertex(&tri->v[1], view, corner[1], part->argb, 1.0f, 1.0f);
-        prim_set_vertex(&tri->v[2], view, corner[2], part->argb, 0.0f, 0.0f);
+        prim_set_corner(&tri->world.corner[0], corner[0], 0.0f, 1.0f);
+        prim_set_corner(&tri->world.corner[1], corner[1], 1.0f, 1.0f);
+        prim_set_corner(&tri->world.corner[2], corner[2], 0.0f, 0.0f);
+        tri->world.colour = part->argb;
         tri->texture = self->textures[0];
-        renderer_add_triangle(g_renderer, tri, 1);
 
         tri++;
-        prim_set_vertex(&tri->v[0], view, corner[3], part->argb, 1.0f, 0.0f);
-        prim_set_vertex(&tri->v[1], view, corner[2], part->argb, 0.0f, 0.0f);
-        prim_set_vertex(&tri->v[2], view, corner[1], part->argb, 1.0f, 1.0f);
+        prim_set_corner(&tri->world.corner[0], corner[3], 1.0f, 0.0f);
+        prim_set_corner(&tri->world.corner[1], corner[2], 0.0f, 0.0f);
+        prim_set_corner(&tri->world.corner[2], corner[1], 1.0f, 1.0f);
+        tri->world.colour = part->argb;
         tri->texture = self->textures[0];
-        renderer_add_triangle(g_renderer, tri, 1);
+        prim_add_world_triangles(tri - 1, 2, view, 1);
     }
 }
 
@@ -196,18 +196,19 @@ void prim_ring_render(struct EffectPrim *self, const float *view)
             Vec3 out_b = shape_point(self->matrix, outer * c1, outer * s1, 0.0f, &part->pos);
             float u1 = u + 0.25f;
 
-            prim_set_vertex(&tri->v[0], view, in_a, part->argb, u, 1.0f);
-            prim_set_vertex(&tri->v[1], view, in_b, part->argb, u1, 1.0f);
-            prim_set_vertex(&tri->v[2], view, out_a, part->argb, u, 0.0f);
+            prim_set_corner(&tri->world.corner[0], in_a, u, 1.0f);
+            prim_set_corner(&tri->world.corner[1], in_b, u1, 1.0f);
+            prim_set_corner(&tri->world.corner[2], out_a, u, 0.0f);
+            tri->world.colour = part->argb;
             tri->texture = self->textures[0];
-            renderer_add_triangle(g_renderer, tri, self->list_flags);
 
             tri++;
-            prim_set_vertex(&tri->v[0], view, out_b, part->argb, u1, 0.0f);
-            prim_set_vertex(&tri->v[1], view, out_a, part->argb, u, 0.0f);
-            prim_set_vertex(&tri->v[2], view, in_b, part->argb, u1, 1.0f);
+            prim_set_corner(&tri->world.corner[0], out_b, u1, 0.0f);
+            prim_set_corner(&tri->world.corner[1], out_a, u, 0.0f);
+            prim_set_corner(&tri->world.corner[2], in_b, u1, 1.0f);
+            tri->world.colour = part->argb;
             tri->texture = self->textures[0];
-            renderer_add_triangle(g_renderer, tri, self->list_flags);
+            prim_add_world_triangles(tri - 1, 2, view, self->list_flags);
 
             count += 2;
             u = u1 >= 1.0f ? 0.0f : u1;
@@ -275,18 +276,19 @@ void prim_band_render(struct EffectPrim *self, const float *view)
         Vec3 top_b = shape_point(self->matrix, r1 * c1, top, r1 * s1, &self->base.pos);
         float u1 = u + 0.25f;
 
-        prim_set_vertex(&tri->v[0], view, bottom_a, self->argb, u, 1.0f);
-        prim_set_vertex(&tri->v[1], view, top_a, self->argb, u, 0.0f);
-        prim_set_vertex(&tri->v[2], view, bottom_b, self->argb, u1, 1.0f);
+        prim_set_corner(&tri->world.corner[0], bottom_a, u, 1.0f);
+        prim_set_corner(&tri->world.corner[1], top_a, u, 0.0f);
+        prim_set_corner(&tri->world.corner[2], bottom_b, u1, 1.0f);
+        tri->world.colour = self->argb;
         tri->texture = self->textures[self->base.motion];
-        renderer_add_triangle(g_renderer, tri, 1);
         tri++;
 
-        prim_set_vertex(&tri->v[0], view, bottom_b, self->argb, u1, 1.0f);
-        prim_set_vertex(&tri->v[1], view, top_a, self->argb, u, 0.0f);
-        prim_set_vertex(&tri->v[2], view, top_b, self->argb, u1, 0.0f);
+        prim_set_corner(&tri->world.corner[0], bottom_b, u1, 1.0f);
+        prim_set_corner(&tri->world.corner[1], top_a, u, 0.0f);
+        prim_set_corner(&tri->world.corner[2], top_b, u1, 0.0f);
+        tri->world.colour = self->argb;
         tri->texture = self->textures[self->base.motion];
-        renderer_add_triangle(g_renderer, tri, 1);
+        prim_add_world_triangles(tri - 1, 2, view, 1);
         tri++;
 
         u = u1 >= 1.0f ? 0.0f : u1;

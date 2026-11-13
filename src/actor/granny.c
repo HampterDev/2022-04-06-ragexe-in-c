@@ -5,6 +5,7 @@
 #include "actor/render_ops.h"
 #include "render/math3d.h"
 #include "render/rp_pool.h"
+#include "render/skin_layout.h"
 #include "render/texture_cache.h"
 #include "render/texture.h"
 #include <stdlib.h>
@@ -84,21 +85,11 @@ const struct GameObjectOps granny_corpse3d_ops = {
 
 #define ACTOR(self) ((struct GameActor *)(self))
 
-static __inline float light_term(float d)
-{
-    float t = 1.0f < d ? 1.0f : d;
-
-    return 0.0f > t ? 0.0f : t;
-}
-
 struct C3dGrannyGameActor *c3d_granny_game_actor_construct(struct C3dGrannyGameActor *self,
                                                                    const char *name)
 {
     game_actor_construct(ACTOR(self));
     self->ops = &c3d_granny_game_actor_ops.base.base;
-    self->shadow_points.first = NULL;
-    self->shadow_points.last = NULL;
-    self->shadow_points.end = NULL;
     self->model = NULL;
     self->first_frame = 1;
     self->anim = 0;
@@ -107,8 +98,6 @@ struct C3dGrannyGameActor *c3d_granny_game_actor_construct(struct C3dGrannyGameA
     self->hidden_state = 0;
     self->hidden_since = 0;
     self->emblem_tex = NULL;
-    self->shadow_tex = texture_create(0x23, 0x23, 1);
-    vec_resize(&self->shadow_points, 0x1324, sizeof(Vec3));
     return self;
 }
 
@@ -119,9 +108,6 @@ void c3d_granny_game_actor_destruct(struct C3dGrannyGameActor *self)
     self->model = NULL;
     if (self->emblem_tex)
         texture_destroy(self->emblem_tex);
-    if (self->shadow_tex)
-        texture_destroy(self->shadow_tex);
-    vec_free(&self->shadow_points);
     game_actor_dc_game_actor(ACTOR(self));
 }
 
@@ -282,31 +268,62 @@ static void model_matrix(float *r, const char *name, float facing, const Vec3 *a
     mat_translate(r, at);
 }
 
-/* custom: a granny vertex's world coordinates for the device to project (render/renderer.h,
-   renderer_world_quads), where the CPU projected it for its decisions; toWorld is the matrix the
-   view follows in the vertex's projection */
-static void world_corner(struct TexDrawVertex *dst, const Vec3 *pt, const float *toWorld)
+/* custom: an actor's pose for the frame, in which the device skins, lights and projects its model's
+   vertices as the CPU did each vertex before (render/skin_layout.h): the bones as the model's
+   playback last posed them, its meshes' space in the view (its model matrix r times the view, as
+   the CPU projected a skinned mesh's vertices), its light (the unit vector l in the meshes' space)
+   and its alpha, lit as its kind is (skin_pose_kind; `light` the lit model's light, NULL for the
+   others). */
+static struct RPSkinPose *actor_pose(const struct GrannyModelState *model, const float *r, const float *view,
+                                     float lx, float ly, float lz, int kind, const struct GrannyLight *light,
+                                     unsigned char alpha)
 {
-    dst->x = pt->x * toWorld[0] + pt->y * toWorld[3] + pt->z * toWorld[6] + toWorld[9];
-    dst->y = pt->x * toWorld[1] + pt->y * toWorld[4] + pt->z * toWorld[7] + toWorld[10];
-    dst->z = pt->x * toWorld[2] + pt->y * toWorld[5] + pt->z * toWorld[8] + toWorld[11];
+    struct SkinPose pose;
+
+    memset(&pose, 0, sizeof pose);
+    pose.bones = _GrannyGetWorldPoseComposite4x4Array(granny_playback_world_pose(model->playback));
+    pose.boneCount = (uint32_t)model->resource->skeleton->BoneCount;
+    mat_multiply(pose.view, r, view);
+    pose.light[0] = lx;
+    pose.light[1] = ly;
+    pose.light[2] = lz;
+    if (light)
+        skin_pose_kind(&pose, kind, light->intensity, light->r, light->g, light->b);
+    else
+        skin_pose_kind(&pose, kind, 0, 0, 0, 0);
+    pose.alpha = alpha;
+    return pose.bones ? renderer_skin_pose(g_renderer, &pose) : NULL;
+}
+
+/* custom: mesh i of the model drawn in the pose with `texture`, where the original queued its
+   triangles; and the effect job 0x49d starts each frame at the 65th vertex of its 29th mesh, where
+   Granny's deformer put it in the mesh's space */
+static void draw_mesh(struct C3dGrannyGameActor *self, struct GrannyModelState *model, struct RPSkinPose *pose,
+                      int i, struct Texture *texture)
+{
+    const struct GrannyResMesh *m = &model->resource->model->meshes[i];
+
+    if (self && self->job == 0x49d && i == 28) {
+        Vec3 at;
+
+        if (granny_mesh_vertex_position(model->resource, i, granny_playback_world_pose(model->playback), 64, &at))
+            game_actor_launch_effect(ACTOR(self), 0x175, at, -self->facing);
+    }
+    renderer_add_skin(g_renderer, pose, model->resource->skin, m->firstIndex, m->indexCount, texture);
 }
 
 void granny_corpse3d_render(struct GameObject *object, const float *view)
 {
     struct GrannyCorpse3d *self = (struct GrannyCorpse3d *)object;
 
-    float mesh_m[12], r[12], m1[12], m2[12], inv[12];
-    float lx, ly, lz, k, sx, sy, rhw;
-    struct Texture *tex = NULL;
-    unsigned short *indices = NULL;
-    int tris;
-    int i, t, j, n, world = renderer_world_quads(g_renderer, view);
+    float r[12], inv[12];
+    float lx, ly, lz, k;
+    struct RPSkinPose *pose;
+    int i;
 
     if (!self->model)
         return;
     corpse_anim_step(self);
-    memcpy(mesh_m, g_identityMatrix.m, sizeof mesh_m);
     model_matrix(r, self->name, self->facing, &self->pos);
     mat_invert(inv, view);
     lx = ((inv[0] * 0.0f - inv[3] * 300.0f) + inv[6] * 0.0f) + inv[9];
@@ -316,42 +333,12 @@ void granny_corpse3d_render(struct GameObject *object, const float *view)
     lx = lx * k;
     ly = ly * k;
     lz = lz * k;
-    renderer_project_point(g_renderer, &self->pos, view, &sx, &sy, &rhw);
-    for (i = 0; i < self->model->mesh_count; i++) {
-        const struct GrannyMeshVertex *v;
-        struct TexDrawVertex *projected;
+    pose = actor_pose(self->model, r, view, lx, ly, lz, SKIN_ACTOR_CORPSE, NULL, self->alpha);
+    for (i = 0; i < self->model->resource->model->meshCount; i++) {
+        const struct GrannyResMesh *m = &self->model->resource->model->meshes[i];
 
-        v = granny_model_prepare_mesh(self->model, i, NULL, NULL);
-        tex = self->model->meshes[i].texture;
-        indices = self->model->meshes[i].indices;
-        tris = self->model->meshes[i].triangles;
-        memcpy(mesh_m, self->model->meshes[i].matrix, sizeof mesh_m);
-        projected = granny_projection_vertices(self->model->meshes[i].projection, tris);
-        if (!v || !tex || !projected)
-            continue;
-        mat_multiply(m1, mesh_m, r);
-        mat_multiply(m2, m1, view);
-        n = 0;
-        for (t = 0; t < tris; t++) {
-            for (j = 0; j < 3; j++) {
-                struct TexDrawVertex *dst = projected + n;
-                const struct GrannyMeshVertex *src = &v[indices[n]];
-                Vec3 pt;
-                unsigned b;
-
-                n++;
-                pt = src->pos;
-                renderer_project_vertex(g_renderer, &pt, m2, dst);
-                if (world)
-                    world_corner(dst, &pt, m1);
-                memcpy(&dst->u, &src->u, sizeof dst->u);
-                memcpy(&dst->v, &src->v, sizeof dst->v);
-                b = (unsigned)(light_term((src->nx * lx + src->ny * ly) + src->nz * lz) * 100.0f + 155.0f);
-                self->color = b;
-                dst->diffuse = (unsigned char)b * 0x10101u + ((unsigned)self->alpha << 24);
-            }
-        }
-        granny_projection_submit(g_renderer, self->model->meshes[i].projection, tex, tris, world);
+        if (m->texture && m->indexCount)
+            draw_mesh(NULL, self->model, pose, i, m->texture);
     }
 }
 
@@ -359,26 +346,17 @@ void c3d_granny_game_actor_render_emblem_model(struct C3dGrannyGameActor *self, 
 {
     float eye[3];
     struct GameMode *mode;
-    float mesh_m[12], r[12], z[12], m[12];
-    Vec3 light, pt;
+    float r[12];
+    Vec3 light;
     float lx, ly, lz, k, sx, sy, rhw;
     struct ScreenBounds box;
-    struct Texture *tex = NULL;
-    unsigned short *indices = NULL;
-    int tris;
-    int i, t, j, n, world = renderer_world_quads(g_renderer, view);
+    struct RPSkinPose *pose;
+    int i;
 
     if (self->aid == -1)
         return;
-    self->color = ((unsigned)self->alpha << 24) + 0xffffff;
     mode = game_current_mode();
-    memcpy(mesh_m, g_identityMatrix.m, sizeof mesh_m);
     model_matrix(r, self->name, self->facing, &self->pos);
-    mat_set_rotate_z(z, self->facing / 180.0f * 3.141592f);
-    mat_multiply(m, r, view);
-    pt.x = 0.0f;
-    pt.y = 0.0f;
-    pt.z = 0.0f;
     light.x = 0.0f;
     light.y = 0.0f;
     light.z = 0.0f;
@@ -396,54 +374,12 @@ void c3d_granny_game_actor_render_emblem_model(struct C3dGrannyGameActor *self, 
     box.right = 0.0f;
     box.bottom = 0.0f;
     box.z = rhw;
-    for (i = 0; i < self->model->mesh_count; i++) {
-        const struct GrannyMeshVertex *v;
-        struct TexDrawVertex *projected;
-        struct Texture *drawn;
-        float x, y, w;
+    pose = actor_pose(self->model, r, view, lx, ly, lz, SKIN_ACTOR_GUILD_FLAG, NULL, self->alpha);
+    for (i = 0; i < self->model->resource->model->meshCount; i++) {
+        const struct GrannyResMesh *m = &self->model->resource->model->meshes[i];
 
-        v = granny_model_prepare_mesh(self->model, i, NULL, NULL);
-        tex = self->model->meshes[i].texture;
-        indices = self->model->meshes[i].indices;
-        tris = self->model->meshes[i].triangles;
-        memcpy(mesh_m, self->model->meshes[i].matrix, sizeof mesh_m);
-        projected = granny_projection_vertices(self->model->meshes[i].projection, tris);
-        if (!v || !projected)
-            continue;
-        if (self->job == 0x49d && i == 28) {
-            Vec3 at;
-
-            if (granny_mesh_vertex_position(self->model->resource, i, v, 64, &at))
-                game_actor_launch_effect(ACTOR(self), 0x175, at, -self->facing);
-        }
-        n = 0;
-        for (t = 0; t < tris; t++) {
-            for (j = 0; j < 3; j++) {
-                struct TexDrawVertex *dst = projected + n;
-                const struct GrannyMeshVertex *src = &v[indices[n]];
-                unsigned b;
-
-                n++;
-                pt = src->pos;
-                renderer_project_vertex(g_renderer, &pt, m, dst);
-                if (world)
-                    world_corner(dst, &pt, r);
-                memcpy(&dst->u, &src->u, sizeof dst->u);
-                memcpy(&dst->v, &src->v, sizeof dst->v);
-                b = (unsigned)(light_term((src->nx * lx + src->ny * ly) + src->nz * lz) * 100.0f + 155.0f);
-                self->color = b;
-                dst->diffuse = (unsigned char)b * 0x10101u + ((unsigned)self->alpha << 24);
-            }
-        }
-        x = pt.x;
-        y = pt.y;
-        w = pt.z;
-        pt.y = ((z[4] * y + z[1] * x) + z[7] * w) + z[10];
-        pt.x = (((z[0] * x + z[3] * y) + z[6] * w) + z[9]) + (float)((int)self->pos.x % 5);
-        pt.z = (((z[2] * x + z[5] * y) + z[8] * w) + z[11]) + (float)((int)self->pos.z % 5);
-        vec_push(&self->shadow_points, &pt, sizeof pt);
-        drawn = i == 1 ? c3d_granny_game_actor_get_emblem_texture(self) : tex;
-        granny_projection_submit(g_renderer, self->model->meshes[i].projection, drawn, tris, world);
+        if (m->indexCount)
+            draw_mesh(self, self->model, pose, i, i == 1 ? c3d_granny_game_actor_get_emblem_texture(self) : m->texture);
     }
     if (game_copy_camera_position(eye) && granny_bounds_screen_box(&self->model->bounds, &box, view, r, eye))
         game_actor_set_render_info((struct RenderObject *)self, &box, sx, sy);
@@ -455,18 +391,15 @@ void c3d_granny_game_actor_render_lit_model(struct C3dGrannyGameActor *self, con
                            const struct GrannyLight *light)
 {
     float eye[3];
-    float mesh_m[12], r[12], m1[12], m2[12], inv[12];
+    float r[12], inv[12];
     Vec3 pt;
     float lx, ly, lz, k, sx, sy, rhw;
     struct ScreenBounds box;
-    struct Texture *tex = NULL;
-    unsigned short *indices = NULL;
-    int tris;
-    int i, t, j, n, world = renderer_world_quads(g_renderer, view);
+    struct RPSkinPose *pose;
+    int i;
 
     if (self->aid == -1)
         return;
-    memcpy(mesh_m, g_identityMatrix.m, sizeof mesh_m);
     mat_set_rotate_x(r, strstr(self->name, "90") ? 1.570796f : 3.141592f);
     mat_rotate_y(r, (self->facing + 180.0f) / 180.0f * 3.141592f);
     pt.x = self->pos.x - 2.0f;
@@ -487,49 +420,12 @@ void c3d_granny_game_actor_render_lit_model(struct C3dGrannyGameActor *self, con
     box.right = 0.0f;
     box.bottom = 0.0f;
     box.z = rhw;
-    for (i = 0; i < self->model->mesh_count; i++) {
-        const struct GrannyMeshVertex *v;
-        struct TexDrawVertex *projected;
+    pose = actor_pose(self->model, r, view, lx, ly, lz, SKIN_ACTOR_LIT, light, self->alpha);
+    for (i = 0; i < self->model->resource->model->meshCount; i++) {
+        const struct GrannyResMesh *m = &self->model->resource->model->meshes[i];
 
-        v = granny_model_prepare_mesh(self->model, i, NULL, NULL);
-        tex = self->model->meshes[i].texture;
-        indices = self->model->meshes[i].indices;
-        tris = self->model->meshes[i].triangles;
-        memcpy(mesh_m, self->model->meshes[i].matrix, sizeof mesh_m);
-        projected = granny_projection_vertices(self->model->meshes[i].projection, tris);
-        if (!v || !tex || !projected)
-            continue;
-        mat_multiply(m1, mesh_m, r);
-        mat_multiply(m2, m1, view);
-        if (self->job == 0x49d && i == 28) {
-            Vec3 at;
-
-            if (granny_mesh_vertex_position(self->model->resource, i, v, 64, &at))
-                game_actor_launch_effect(ACTOR(self), 0x175, at, -self->facing);
-        }
-        n = 0;
-        for (t = 0; t < tris; t++) {
-            for (j = 0; j < 3; j++) {
-                struct TexDrawVertex *dst = projected + n;
-                const struct GrannyMeshVertex *src = &v[indices[n]];
-                int a = light->intensity;
-                unsigned b;
-
-                n++;
-                pt = src->pos;
-                renderer_project_vertex(g_renderer, &pt, m2, dst);
-                if (world)
-                    world_corner(dst, &pt, m1);
-                memcpy(&dst->u, &src->u, sizeof dst->u);
-                memcpy(&dst->v, &src->v, sizeof dst->v);
-                b = (unsigned)(light_term((src->nx * lx + src->ny * ly) + src->nz * lz) * (float)a + (float)(0xff - a));
-                self->color = b;
-                dst->diffuse = (((light->g + 0x38 + b) << 8) & 0xff00) + (((light->r + 0x38 + b) << 16) & 0xff0000) +
-                             (unsigned char)(light->b + 0x38 + b) + ((unsigned)self->alpha << 24);
-            }
-            vec_push(&self->shadow_points, &pt, sizeof pt);
-        }
-        granny_projection_submit(g_renderer, self->model->meshes[i].projection, tex, tris, world);
+        if (m->texture && m->indexCount)
+            draw_mesh(self, self->model, pose, i, m->texture);
     }
     if (game_copy_camera_position(eye) && granny_bounds_screen_box(&self->model->bounds, &box, view, r, eye))
         game_actor_set_render_info((struct RenderObject *)self, &box, sx, sy);
@@ -546,7 +442,6 @@ void c3d_granny_game_actor_render(struct GameObject *object, const float *view)
 
     if (!self->model)
         return;
-    self->shadow_points.last = self->shadow_points.first;
     actor_anim_step(self);
     sun = weather_sun_position(&g_weather, &tmp);
     light.r = 200;

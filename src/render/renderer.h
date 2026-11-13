@@ -54,9 +54,9 @@ struct Renderer {
     struct GfxShadow shadow;
     struct ShadowReach shadowReach;
     int shadowPending, shadowDrawn;
-    /* custom: the camera's view of the frame, which world-space quads are drawn with
-       (renderer_set_camera), and what the static world's ground and opaque models are drawn with
-       this frame (renderer_set_world; render/gfx.h, gfx_world_draw), while worldSet */
+    /* custom: the camera's view of the frame, which the water is drawn with (renderer_set_camera),
+       and what the static world's ground and opaque models are drawn with this frame
+       (renderer_set_world; render/gfx.h, gfx_world_draw), while worldSet */
     float cameraView[12];
     int cameraSet;
     struct GfxWorldDraw worldModels, worldGround;
@@ -88,15 +88,11 @@ void renderer_set_light(struct Renderer *self, const float *dir, const float *am
    the boxes, shadowPending stays 0 and the frame queues no casters. */
 void renderer_shadow_frame(struct Renderer *self, const float *view, float distance, const struct ShadowBox *boxes,
                            size_t count);
-/* custom: the camera's view matrix for the frame being queued, which quads with world-space
-   vertices (RPQuad.world) are drawn with */
+/* custom: the camera's view matrix for the frame being queued, which the water is drawn with */
 void renderer_set_camera(struct Renderer *self, const float *view);
 /* custom: the static world in this frame (render/gfx.h): its ground and opaque models are drawn
    where the original drew their lists, with these */
 void renderer_set_world(struct Renderer *self, const struct GfxWorldDraw *models, const struct GfxWorldDraw *ground);
-/* custom: whether quads drawn with the view matrix `view` can hand the device world coordinates
-   instead (RPQuad.world): `view` is the camera's for the frame */
-int renderer_world_quads(const struct Renderer *self, const float *view);
 /* custom: whether a box can cast into this frame's shadow maps: centre and half its sizes along its
    three axes (unit vectors, NULL for the world's), world coordinates */
 int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3]);

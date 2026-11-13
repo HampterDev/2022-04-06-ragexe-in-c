@@ -9,17 +9,12 @@ struct granny_control {
     granny_model_instance *instance;
 };
 struct granny_local_pose { int alive, bones, sampled_id; float time; };
-struct granny_world_pose { int alive, bones, sampled_id; float time, matrix[16]; };
-struct granny_mesh_binding {
-    int alive, bones[1];
-    granny_mesh *mesh;
-    granny_skeleton *from, *to;
-};
+struct granny_world_pose { int alive, bones, sampled_id; float time; };
 
 static granny_control sdk_controls[40];
 static granny_animation sdk_animations[] = {{0},{1},{2},{3},{4}};
 static unsigned sdk_calls, sdk_fail_at;
-static int sdk_instances, sdk_control_count, sdk_locals, sdk_worlds, sdk_bindings;
+static int sdk_instances, sdk_control_count, sdk_locals, sdk_worlds;
 static int sdk_next_id, sdk_played_id, sdk_sampled_id, sdk_lookups;
 static int sdk_missing_animation, sdk_missing_skeleton;
 static float sdk_sampled_time;
@@ -27,7 +22,7 @@ static float sdk_sampled_time;
 static int sdk_failure(void) { return ++sdk_calls == sdk_fail_at; }
 static void sdk_assert_empty(void)
 {
-    assert(!sdk_instances && !sdk_control_count && !sdk_locals && !sdk_worlds && !sdk_bindings);
+    assert(!sdk_instances && !sdk_control_count && !sdk_locals && !sdk_worlds);
 }
 
 granny_model_instance *_GrannyInstantiateModel(granny_model *model)
@@ -119,29 +114,7 @@ void _GrannyBuildWorldPose(granny_skeleton *skeleton, int first, int count,
     assert(skeleton && first == 0 && count == skeleton->BoneCount);
     assert(local->alive && world->alive && count == local->bones && count == world->bones && !offset);
     world->time = local->time; world->sampled_id = local->sampled_id;
-    memset(world->matrix, 0, sizeof world->matrix);
-    world->matrix[0] = world->matrix[5] = world->matrix[10] = world->matrix[15] = 1.0f;
-    world->matrix[12] = local->time;
 }
-float *_GrannyGetWorldPoseComposite4x4Array(granny_world_pose *world)
-{ assert(world->alive); return world->matrix; }
-float *_GrannyGetWorldPoseComposite4x4(granny_world_pose *world, int bone)
-{ assert(world->alive && bone == 0); return world->matrix; }
-granny_mesh_binding *_GrannyNewMeshBinding(granny_mesh *mesh, granny_skeleton *from,
-                                           granny_skeleton *to)
-{
-    granny_mesh_binding *binding;
-    assert(mesh && from && to);
-    if (sdk_failure()) return NULL;
-    binding = calloc(1, sizeof *binding); assert(binding);
-    binding->alive = 1; binding->mesh = mesh; binding->from = from; binding->to = to;
-    sdk_bindings++;
-    return binding;
-}
-void _GrannyFreeMeshBinding(granny_mesh_binding *binding)
-{ assert(binding->alive); binding->alive = 0; sdk_bindings--; free(binding); }
-int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *binding)
-{ assert(binding->alive); return binding->bones; }
 GrannyClock _GrannyGetSystemSeconds(void)
 { GrannyClock clock = {{0}}; return clock; }
 float _GrannyGetSecondsElapsed(const GrannyClock *start, const GrannyClock *end)

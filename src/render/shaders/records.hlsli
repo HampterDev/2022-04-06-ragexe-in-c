@@ -1,9 +1,10 @@
 // The records render/gfx_gpu.c writes for a frame, read as storage buffers (structs GpuDraw,
 // GpuView and GpuShadow there, the same layout: only 16-byte vectors and row-major matrices,
 // compiled with -Zpr). A quad's draw finds its record through the quad's record in the frame's
-// quads (instances.hlsli), a draw of the static world's and the water's through their uniform, the
-// wobble's through the instance-rate attribute that holds its index; its view and shadow records
-// through the indices in the draw record.
+// quads (instances.hlsli), a Granny actor's through its instance's header among the frame's quads
+// (skin.hlsl), a draw of the static world's and the water's through their uniform, the wobble's
+// through the instance-rate attribute that holds its index; its view and shadow records through the
+// indices in the draw record.
 
 struct Draw
 {

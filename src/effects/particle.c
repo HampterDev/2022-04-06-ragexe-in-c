@@ -183,7 +183,7 @@ void particle_render(struct Particle *self, unsigned char facing_fixed,
     q->world.centre[1] = (float)g_renderer->centreY;
     q->world.rhw = GFX_RHW_ADD;
     q->world.rhwValue = self->depth_bias;
-    q->world.depth = with_depth ? GFX_DEPTH_PROJECTED : GFX_DEPTH_ZERO;
+    q->world.depth = with_depth ? GFX_DEPTH_PROJECTED : GFX_DEPTH_VALUE;
     q->world.depthValue = 0.0f;
     q->world.colour = self->corners[0].diffuse;
     q->world.stage2 = 0;

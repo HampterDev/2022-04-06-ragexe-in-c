@@ -14,6 +14,7 @@ static void *lifecycle_calloc(size_t count, size_t size)
 #define calloc lifecycle_calloc
 #define free checked_free
 #include "../src/resources/granny_res.c"
+#include "../src/resources/granny_mesh.c"
 #include "../src/resources/wave.c"
 #undef malloc
 #undef calloc
@@ -23,8 +24,13 @@ static void *lifecycle_calloc(size_t count, size_t size)
 static unsigned sdk_handles, file_closes, errors, wave_frees;
 static int file_available = 1, sdk_version = 1, sdk_read = 1, sdk_info = 1;
 static int decodes = 1, rigid = 1, has_alpha = 1;
-static int vertex_count = 3, index_count = 3, invalid_index, fail_deformer;
-static unsigned deformer_call;
+static int vertex_count = 3, index_count = 3, invalid_index, no_material;
+static int mesh_groups[3], rigid_bones[1] = {0};
+/* the device's models (render/gfx.h, gfx_create_skin): made with the vertices and indices given,
+   on the CPU's heap */
+static unsigned skins_live, skins_made;
+static struct SkinVertex skin_vertices[4];
+static uint32_t skin_indices[4], skin_vertex_count, skin_index_count;
 static unsigned texture_copies;
 static int path_available = 1;
 static unsigned last_lookup_job;
@@ -43,7 +49,28 @@ static granny_skeleton *skeletons[] = {&skeleton};
 static granny_texture *textures[] = {&texture};
 struct TexCache g_textureCache;
 const granny_pixel_layout *GrannyRGBA8888PixelFormat;
-const granny_data_type_definition *GrannyPNT332VertexType;
+gfx_skin *gfx_create_skin(const struct SkinVertex *vertices, uint32_t vertexCount, const uint32_t *indices,
+                          uint32_t indexCount)
+{
+    void *k = checked_malloc(1);
+    assert(vertices && indices && vertexCount <= 4 && indexCount <= 4);
+    if (!k)
+        return NULL;
+    memcpy(skin_vertices, vertices, vertexCount * sizeof *vertices);
+    memcpy(skin_indices, indices, indexCount * sizeof *indices);
+    skin_vertex_count = vertexCount;
+    skin_index_count = indexCount;
+    ++skins_live; ++skins_made;
+    return k;
+}
+void gfx_skin_release(gfx_skin *k)
+{
+    if (!k)
+        return;
+    assert(skins_live);
+    --skins_live;
+    checked_free(k);
+}
 
 void *mem_alloc(size_t size) { return checked_malloc(size); }
 
@@ -94,15 +121,21 @@ void _GrannyBuildWorldPose(granny_skeleton *p, int first, int count, granny_loca
     const float *offset, granny_world_pose *world)
 { (void)p; (void)first; (void)count; (void)pose; (void)offset; (void)world; abort(); }
 float *_GrannyGetWorldPoseComposite4x4Array(granny_world_pose *p) { (void)p; abort(); }
-float *_GrannyGetWorldPoseComposite4x4(granny_world_pose *p, int bone) { (void)p; (void)bone; abort(); }
-int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *p) { (void)p; abort(); }
-int *_GrannyGetMeshTriangleGroups(granny_mesh *p) { (void)p; abort(); }
-void *_GrannyGetMeshVertices(granny_mesh *p) { (void)p; abort(); }
-void _GrannyDeformVertices(granny_mesh_deformer *p, const int *bones, const float *matrix,
-    int count, const void *from, void *to)
-{ (void)p; (void)bones; (void)matrix; (void)count; (void)from; (void)to; abort(); }
-int _GrannyGetMeshBytesPerIndex(granny_mesh *p) { (void)p; abort(); }
-void *_GrannyGetMeshIndices(granny_mesh *p) { (void)p; abort(); }
+int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *p) { assert(p); return rigid_bones; }
+int *_GrannyGetMeshTriangleGroups(granny_mesh *m) { assert(m == &mesh); return mesh_groups; }
+void _GrannyCopyMeshSkinVertices(granny_mesh *m, int first, int count, struct SkinSource *out)
+{
+    int i, k;
+    assert(m == &mesh && first == 0 && count == vertex_count);
+    for (i = 0; i < count; ++i) {
+        memset(&out[i], 0, sizeof out[i]);
+        out[i].position[0] = (float)i;
+        for (k = 0; k < 4; ++k) {
+            out[i].bones[k] = i + k;
+            out[i].weights[k] = 0.25f;
+        }
+    }
+}
 
 static void *sdk_alloc(void) { void *p = checked_malloc(1); if (p) ++sdk_handles; return p; }
 static void sdk_free(void *p) { assert(p && sdk_handles); --sdk_handles; checked_free(p); }
@@ -125,23 +158,18 @@ granny_mesh_binding *_GrannyNewMeshBinding(granny_mesh *m, granny_skeleton *a, g
 void _GrannyFreeMeshBinding(granny_mesh_binding *p) { sdk_free(p); }
 int _GrannyGetMeshIndexCount(granny_mesh *m) { assert(m == &mesh); return index_count; }
 void _GrannyCopyMeshIndices(granny_mesh *m, int bytes, void *out)
-{ assert(m == &mesh && bytes == 2); memset(out, 0, (size_t)index_count * 2); if (invalid_index) ((unsigned short *)out)[0] = 3; }
+{
+    unsigned short *o = out;
+    int i;
+    assert(m == &mesh && bytes == 2);
+    for (i = 0; i < index_count; ++i)
+        o[i] = (unsigned short)(i % vertex_count);
+    if (invalid_index) o[0] = 3;
+}
 int _GrannyGetMeshVertexCount(granny_mesh *m) { assert(m == &mesh); return vertex_count; }
 BYTE _GrannyMeshIsRigid(granny_mesh *m) { assert(m == &mesh); return (BYTE)rigid; }
-void _GrannyCopyMeshVertices(granny_mesh *m, const granny_data_type_definition *type, void *out)
-{ assert(m == &mesh && type == GrannyPNT332VertexType); memset(out, 0, 96); }
-const granny_data_type_definition *_GrannyGetMeshVertexType(granny_mesh *m)
-{ assert(m == &mesh); return GrannyPNT332VertexType; }
-granny_mesh_deformer *_GrannyNewMeshDeformer(const granny_data_type_definition *a,
-    const granny_data_type_definition *b, int kind)
-{
-    assert(a == b && kind == GRANNY_DEFORM_POSITION_NORMAL);
-    deformer_call = allocation_calls + 1;
-    return fail_deformer ? NULL : sdk_alloc();
-}
-void _GrannyFreeMeshDeformer(granny_mesh_deformer *p) { sdk_free(p); }
 granny_texture *_GrannyGetMaterialTextureByType(granny_material *material, int kind)
-{ (void)material; assert(kind == GRANNY_DIFFUSE_COLOR_TEXTURE); return &texture; }
+{ (void)material; assert(kind == GRANNY_DIFFUSE_COLOR_TEXTURE); return no_material ? NULL : &texture; }
 BYTE _GrannyTextureHasAlpha(granny_texture *t) { assert(t == &texture); return (BYTE)has_alpha; }
 void _GrannyCopyTextureImage(granny_texture *t, int image, int mip,
     const granny_pixel_layout *layout, int w, int h, int stride, void *out)
@@ -227,15 +255,27 @@ static void test_granny(void)
     for (kind = 0; kind < 2; ++kind) {
         struct Res *res = granny_model_resource_create();
         struct C3dGrannyModelRes *granny = (struct C3dGrannyModelRes *)res;
+        const struct GrannyResMesh *m;
         fixture(); rigid = kind;
         assert(resource_load(res, "model_1234.gr2"));
-        assert(granny->id == 1234 && granny->model && granny->textureCount == 1 && sdk_handles == (rigid ? 1u : 2u));
+        assert(granny->id == 1234 && granny->model && granny->textureCount == 1 && sdk_handles == 1);
+        assert(granny->skin && skins_live == 1);
+        /* the mesh's vertices for the device: a rigid mesh's on its binding's bone, a skinned one's
+           on its own bones within the skeleton; its triangles from index 0 */
+        m = &granny->model->meshes[0];
+        assert(m->texture == granny->textures[0].texture && m->firstIndex == 0 && m->indexCount == 3);
+        assert(m->rigidBone == (rigid ? 0 : -1) && skin_vertex_count == 3 && skin_index_count == 3);
+        assert(skin_indices[0] == 0 && skin_indices[1] == 1 && skin_indices[2] == 2);
+        assert(skin_vertices[2].position[0] == 2.0f);
+        assert(rigid ? skin_vertices[2].flags == SKIN_RIGID && skin_vertices[2].weights[0] == 1.0f
+                     : !skin_vertices[2].flags && skin_vertices[0].bones[0] == 0 && skin_vertices[2].bones[0] == 0
+                       && skin_vertices[2].weights[3] == 0.25f);
         assert(resource_load(res, "model_42.gr2"));
-        assert(granny->id == 42 && granny->model && sdk_handles == (rigid ? 1u : 2u));
+        assert(granny->id == 42 && granny->model && sdk_handles == 1 && skins_live == 1);
         granny_model_resource_clear(granny); granny_model_resource_clear(granny);
-        assert(outstanding == 1 && !sdk_handles && !granny->textures && !granny->file);
+        assert(outstanding == 1 && !sdk_handles && !granny->textures && !granny->file && !granny->skin && !skins_live);
         assert(resource_load(res, "model_7.gr2"));
-        resource_destroy(res); assert(!outstanding && !sdk_handles);
+        resource_destroy(res); assert(!outstanding && !sdk_handles && !skins_live);
     }
     {
         struct Res *res = granny_model_resource_create();
@@ -265,7 +305,7 @@ static void test_granny_failures(void)
 {
     struct C3dGrannyModelRes *resource;
     struct C3dGrannyModelRes prior;
-    unsigned calls, start, live, i, copies, deformer;
+    unsigned calls, start, live, i, copies;
     int kind, invalid;
     fail_at = allocation_calls + 1;
     assert(!granny_model_resource_create()); fail_at = 0;
@@ -275,14 +315,11 @@ static void test_granny_failures(void)
         start = allocation_calls;
         assert(c3d_granny_model_res_load(resource, "model_7.gr2"));
         calls = allocation_calls - start; prior = *resource; live = outstanding;
-        deformer = rigid ? 0 : deformer_call - start;
         for (i = 1; i <= calls; i++) {
-            if (i == deformer)
-                continue;
             fail_at = allocation_calls + i;
             assert(!c3d_granny_model_res_load(resource, "model_8.gr2")); fail_at = 0;
             assert(!memcmp(resource, &prior, sizeof prior) && outstanding == live);
-            assert(sdk_handles == (rigid ? 1u : 2u));
+            assert(sdk_handles == 1 && skins_live == 1);
         }
         resource->res.lockCount = 1; start = allocation_calls;
         assert(!c3d_granny_model_res_load(resource, "model_8.gr2") && start == allocation_calls);
@@ -325,23 +362,30 @@ static void test_granny_partial_models(void)
     struct C3dGrannyModelRes *granny;
     unsigned before, copies;
     int part;
-    for (part = 0; part < 4; part++) {
+    for (part = 0; part < 7; part++) {
         res = granny_model_resource_create(); granny = (struct C3dGrannyModelRes *)res;
         fixture(); rigid = part != 2; before = errors; copies = texture_copies;
         if (part == 0) texture.TextureType = 1;
         if (part == 1) texture.ImageCount = 2;
-        if (part == 2) fail_deformer = 1;
+        if (part == 2) no_material = 1;
         if (part == 3) index_count = 4;
+        if (part == 4) index_count = 2;
+        if (part == 5) mesh_groups[0] = 1;
+        if (part == 6) skeleton.BoneCount = SKIN_BONES_MAX + 1;
         assert(resource_load(res, "model_5.gr2") && granny->model && granny->model->meshCount == 1);
-        assert(errors == before + (part < 3) && granny->textureCount == 1);
+        assert(errors == before + (part < 2) && granny->textureCount == 1);
         assert(!strcmp(granny->textures[0].name, "texture"));
-        assert(granny->model->meshes[0].textures[0] == &granny->textures[0]);
+        /* a texture of another kind, or none, leaves the mesh without one; so does a first group's
+           material the mesh does not have */
         if (part < 2) assert(!granny->textures[0].texture && copies == texture_copies);
         else assert(granny->textures[0].texture);
-        if (part == 2) assert(!granny->model->meshes[0].deformer && !granny->model->meshes[0].rigidVerts);
-        if (part == 3) assert(granny->model->meshes[0].indices);
-        resource_destroy(res); assert(!outstanding && !sdk_handles);
-        fail_deformer = 0; index_count = 3;
+        assert(granny->model->meshes[0].texture == (part == 2 || part == 5 ? NULL : granny->textures[0].texture));
+        /* whole triangles alone; none, and no model on the device; nor for a skeleton the device does not
+           take */
+        assert(granny->model->meshes[0].indexCount == (part == 4 || part == 6 ? 0u : 3u));
+        assert(!granny->skin == (part == 4 || part == 6) && skins_live == (part == 4 || part == 6 ? 0u : 1u));
+        resource_destroy(res); assert(!outstanding && !sdk_handles && !skins_live);
+        no_material = 0; index_count = 3; mesh_groups[0] = 0;
     }
     rigid = 1;
 }

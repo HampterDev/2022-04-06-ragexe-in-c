@@ -1,3 +1,5 @@
+#include "render/projection.h"
+#include "render/quads.h"
 #include "render/rp_pool.h"
 #include "render/texture_cache.h"
 #include "actor/weather.h"
@@ -42,7 +44,6 @@ static void queue_water(struct C3dGround15 *self, int x, int y, struct GndCell *
 {
     const struct GndWater *w = &self->waters[c3d_ground15_water_block(self, x, y)];
     struct RPWorldDraw draw;
-    struct TexDrawVertex v;
     float first[3];
     Vec3 p;
 
@@ -50,12 +51,11 @@ static void queue_water(struct C3dGround15 *self, int x, int y, struct GndCell *
     p.x = first[0];
     p.y = first[1];
     p.z = first[2];
-    renderer_project_vertex(g_renderer, &p, view, &v);
     memset(&draw, 0, sizeof draw);
     draw.kind = RP_WORLD_WATER;
     draw.cell = (uint32_t)cell->water;
     draw.colour = colour;
-    renderer_add_world_draw(g_renderer, RENDER_ALPHA_CLAMP, &draw, w->texture, v.rhw);
+    renderer_add_world_draw(g_renderer, RENDER_ALPHA_CLAMP, &draw, w->texture, renderer_project_rhw(&p, view));
 }
 
 /* the blocks that share a cell with `cells`: x0, y0, x1, y1 */
@@ -121,12 +121,55 @@ void c3d_ground15_leaf(struct C3dGround15 *self, const float *view, const int *c
         }
 }
 
+/* custom: a quad over the ground's cells, its corners in the world (x, y and z of each in `quad`),
+   as an instance whose corners the device projects through the view as renderer_project_vertex
+   projected them (render/gfx.h, GFX_QUAD_WORLD), z less `bias`, with the texture coordinates of
+   each corner in uv, in `colour`, blended (5, 6) among the alpha-blended quads (the flags 1 of
+   renderer_add_prim) and keyed by the rhw of its corners, as its vertices were. The CPU finds the
+   rhw alone, for the key and whether the quad lies flat on the screen. */
+static void queue_cell_quad(const float *quad, const float *view, DWORD colour, struct Texture *texture,
+                            const float *uv, float bias)
+{
+    struct TexDrawPrim *prim = renderer_new_prim_instance(g_renderer);
+    struct GfxQuad *q = &prim->instance;
+    float rhw[4];
+    int i;
+
+    q->kind = GFX_QUAD_WORLD;
+    for (i = 0; i < 4; i++) {
+        Vec3 p;
+
+        p.x = quad[i * 3];
+        p.y = quad[i * 3 + 1];
+        p.z = quad[i * 3 + 2];
+        memcpy(q->world.point[i], &quad[i * 3], sizeof q->world.point[i]);
+        rhw[i] = renderer_project_rhw(&p, view);
+        q->world.u[i] = uv[i * 2];
+        q->world.v[i] = uv[i * 2 + 1];
+    }
+    memcpy(q->world.view, view, sizeof q->world.view);
+    q->world.proj[0] = g_renderer->proj[0];
+    q->world.proj[1] = g_renderer->proj[1];
+    q->world.centre[0] = (float)g_renderer->centreX;
+    q->world.centre[1] = (float)g_renderer->centreY;
+    q->world.rhw = GFX_RHW_PROJECTED;
+    q->world.depth = bias != 0.0f ? GFX_DEPTH_ADD : GFX_DEPTH_PROJECTED;
+    q->world.depthValue = -bias;
+    q->world.colour = colour;
+    q->world.flat = quad_rhw_flat(rhw, 4);
+    prim->base.srcBlend = 5;
+    prim->base.destBlend = 6;
+    prim->base.texture = texture;
+    prim->base.rhw[0] = rhw[0];
+    prim->base.rhw[1] = rhw[1];
+    renderer_add_prim(g_renderer, &prim->base, 1);
+}
+
 static void attr_quad(struct C3dGround15 *self, const float *view, int ax, int ay, DWORD colour,
                       struct Texture *texture, const float *uv, float bias)
 {
     float quad[12] = {0};
-    struct RPQuad *q;
-    float su, sv;
+    float su, sv, scaled[8];
     int i;
 
     if (!c3d_ground15_get_attr_quad(self, ax, ay, quad))
@@ -153,30 +196,13 @@ static void attr_quad(struct C3dGround15 *self, const float *view, int ax, int a
         }
     }
 
-    q = &renderer_new_prim(g_renderer)->base;
-    for (i = 0; i < 4; i++) {
-        {
-            Vec3 world_point = {quad[i * 3], quad[i * 3 + 1], quad[i * 3 + 2]};
-            renderer_project_vertex(g_renderer, &world_point, view, (struct TexDrawVertex *)q->verts + i);
-        }
-        ((struct TexDrawVertex *)q->verts)[i].z -= bias;
-    }
     su = (float)(DWORD)texture->reqWidth / (float)(DWORD)texture->base.width;
     sv = (float)(DWORD)texture->reqHeight / (float)(DWORD)texture->base.height;
-    ((struct TexDrawVertex *)q->verts)[0].u = uv[0] * su;
-    ((struct TexDrawVertex *)q->verts)[0].v = uv[1] * sv;
-    ((struct TexDrawVertex *)q->verts)[1].u = uv[2] * su;
-    ((struct TexDrawVertex *)q->verts)[1].v = uv[3] * sv;
-    ((struct TexDrawVertex *)q->verts)[2].u = uv[4] * su;
-    ((struct TexDrawVertex *)q->verts)[2].v = uv[5] * sv;
-    ((struct TexDrawVertex *)q->verts)[3].u = uv[6] * su;
-    ((struct TexDrawVertex *)q->verts)[3].v = uv[7] * sv;
-    q->srcBlend = 5;
-    q->destBlend = 6;
-    q->texture = texture;
-    for (i = 0; i < 4; i++)
-        ((struct TexDrawVertex *)q->verts)[i].diffuse = colour;
-    renderer_add_prim(g_renderer, q, 1);
+    for (i = 0; i < 4; i++) {
+        scaled[i * 2] = uv[i * 2] * su;
+        scaled[i * 2 + 1] = uv[i * 2 + 1] * sv;
+    }
+    queue_cell_quad(quad, view, colour, texture, scaled, bias);
 }
 
 void c3d_ground15_draw_attr_quad(struct C3dGround15 *self, const float *view, int ax,
@@ -192,6 +218,9 @@ void c3d_ground15_draw_attr_quad_raised(struct C3dGround15 *self, const float *v
     attr_quad(self, view, ax, ay, colour, texture, uv, 0.10003052f);
 }
 
+/* the navigation marker's texture coordinates, corner by corner */
+static const float k_marker_uv[8] = {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f};
+
 void c3d_ground15_draw_attr_marker(struct C3dGround15 *self, const float *view,
                                            int ax, int ay, DWORD colour, struct Texture *texture)
 {
@@ -205,8 +234,6 @@ void c3d_ground15_draw_attr_marker(struct C3dGround15 *self, const float *view,
     float quarter = half * 0.5f;
     const struct AttrCell *c;
     float quad[12], offX, offZ, x0, z0, left, right, front, back;
-    struct RPQuad *q;
-    int i;
 
     if (ax < 0 || cx >= width || ay < 0 || cy >= self->height)
         return;
@@ -236,26 +263,7 @@ void c3d_ground15_draw_attr_marker(struct C3dGround15 *self, const float *view,
     quad[10] = c->height[3];
     quad[11] = back;
 
-    q = &renderer_new_prim(g_renderer)->base;
-    for (i = 0; i < 4; i++)
-        {
-            Vec3 world_point = {quad[i * 3], quad[i * 3 + 1], quad[i * 3 + 2]};
-            renderer_project_vertex(g_renderer, &world_point, view, (struct TexDrawVertex *)q->verts + i);
-        }
-    ((struct TexDrawVertex *)q->verts)[0].u = 0.0f;
-    ((struct TexDrawVertex *)q->verts)[0].v = 0.0f;
-    ((struct TexDrawVertex *)q->verts)[1].u = 1.0f;
-    ((struct TexDrawVertex *)q->verts)[1].v = 0.0f;
-    ((struct TexDrawVertex *)q->verts)[2].u = 0.0f;
-    ((struct TexDrawVertex *)q->verts)[2].v = 1.0f;
-    ((struct TexDrawVertex *)q->verts)[3].u = 1.0f;
-    ((struct TexDrawVertex *)q->verts)[3].v = 1.0f;
-    q->srcBlend = 5;
-    q->destBlend = 6;
-    q->texture = texture;
-    for (i = 0; i < 4; i++)
-        ((struct TexDrawVertex *)q->verts)[i].diffuse = colour;
-    renderer_add_prim(g_renderer, q, 1);
+    queue_cell_quad(quad, view, colour, texture, k_marker_uv, 0.0f);
 }
 
 void c3d_ground15_render_attr_tile(struct C3dGround15 *self, const float *view,

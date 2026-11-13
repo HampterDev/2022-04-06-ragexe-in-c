@@ -488,11 +488,6 @@ void renderer_set_camera(struct Renderer *self, const float *view)
     self->cameraSet = 1;
 }
 
-int renderer_world_quads(const struct Renderer *self, const float *view)
-{
-    return self->cameraSet && !memcmp(self->cameraView, view, sizeof self->cameraView);
-}
-
 /* the box's extent along each of the light's axes against a cascade's square and the depth kept:
    a caster casts into a cascade wherever it lies along the light, the map being orthographic */
 int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3])

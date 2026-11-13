@@ -23,7 +23,7 @@ produces the same pixels every run, and the same random effects on every platfor
 Linux and macOS: build with `-DRAGE_CLIENT=ON` (the target is built with `ragexe`). Windows: run
 `build.bat`, then `tests\scenes\build.bat`, which links `build\ragexe_scenes.exe` from the same
 objects. Then run every script in `scripts/` from the game directory. The Granny models of
-`granny_models`, `granny_dead` and `guild_flags` come from the glTF files that
+`granny_models`, `granny_actions`, `granny_dead` and `guild_flags` come from the glTF files that
 [`tools/granny_export`](../../tools/granny_export/README.md) writes into the game directory, on
 every platform; without them those scenes show message boxes and no models.
 
@@ -133,11 +133,11 @@ moment the frame before it was shown to the moment it was. The file is one JSON 
 |-----|--------|
 | `frame` | the frame number the capture's log line gives |
 | `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives (an indirect draw of a run of the static world's records counts every primitive of the run, whether the GPU's cull keeps it or not) |
-| `draw_calls` | `gfx_draw_quad` and `gfx_draw_vertices` calls and the static world's draw calls (`gfx_world_draw`, `gfx_world_draw_record`, `gfx_world_draw_water`, `gfx_world_cast`) |
+| `draw_calls` | `gfx_draw_quad`, `gfx_draw_vertices` and `gfx_draw_skin` calls and the static world's draw calls (`gfx_world_draw`, `gfx_world_draw_record`, `gfx_world_draw_water`, `gfx_world_cast`) |
 | `modes_sent`, `modes_skipped` | `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what the device draws with, and calls that left it as it was |
 | `texture_binds` | `gfx_set_texture` calls that changed a stage's texture |
-| `vertex_bytes` | a static world mesh's vertices and indices when it is uploaded, and the water's cells drawn |
-| `instance_bytes` | the records of the quads and triangles drawn, their offsets, the matrices they are projected with and the client's vertices they name (render/gfx.h, gfx_draw_quad and gfx_draw_vertices) |
+| `vertex_bytes` | a static world mesh's vertices and indices when it is uploaded, the water's cells drawn, and a Granny model's vertices and indices when a draw first takes it up |
+| `instance_bytes` | the records of the quads and triangles drawn, their offsets, the matrices they are projected with and the corner sets and client's vertices they name (render/gfx.h, gfx_draw_quad and gfx_draw_vertices), and Granny's actors' poses with the headers and offsets of their draws' instances (gfx_skin_pose, gfx_draw_skin) |
 | `texture_bytes` | texels written into textures and surfaces (texture builds, surface uploads, the sprite atlas) |
 | `draw_scene_ms`, `view_render_ms` | time spent in `renderer_draw_scene` and in `view_on_render` |
 | `present_ms` | time spent presenting the frame (`c3d_device_show_frame`), where the device submits the frame's recorded draws, and waits while the GPU is two frames behind |
