@@ -29,7 +29,7 @@ struct GraffiSkill {
     int end_tick;
     void *surface;
     void *font;
-    char text[0x100];
+    char text[GRAFFITI_TEXT_SIZE];
     int cursor_x, cursor_y;
     float angle;
 };
@@ -220,7 +220,8 @@ void graffi_skill_send_msg(struct GameObject *object, struct GameObject *source,
         self->end_tick = (int)par1;
         return;
     case MSG_SET_TEXT:
-        strcpy(self->text, (const char *)MSG_PTR(par1));
+        strncpy(self->text, (const char *)MSG_PTR(par1), sizeof self->text - 1);
+        self->text[sizeof self->text - 1] = 0;
         self->cell_x = (int)par2;
         self->cell_y = (int)par3;
         graffi_skill_on_init(self);

@@ -10,6 +10,8 @@
 const char *skill_trap_model(struct Skill *self);
 void skill_load_model(struct Skill *self, const char *name);
 
+#define GRAFFITI_TEXT_SIZE 0x100
+
 struct GraffiSkill *graffi_skill_new(void);
 
 #endif

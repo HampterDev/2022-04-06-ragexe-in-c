@@ -132,6 +132,11 @@ Overruns and bad table indexes:
   format-string message (`ZC_FORMATSTRING_MSG`) are read up to the packet's length, and its `%s`
   count stops at a message that ends in a lead byte. The original read a missing or unterminated
   argument from past the packet.
+- A graffiti's text from the skill-unit entries is read within the packet (the 80-byte field of
+  `ZC_SKILL_ENTRY2`, the rest of the packet after the header in `ZC_SKILL_ENTRY3` to `5`), and the
+  graffiti keeps at most 255 bytes of it. The original copied the text with `strcpy` into its
+  256-byte buffer, so a text without a NUL read on past the packet and a long one overran the
+  graffiti.
 - A char-server list line of 64 bytes or more is cut at a whole character, before any colour
   code the cut would split. The original's `strcpy_s` ended the client without a message, as
   it did for a private-airplane move with a full 16-byte map name.

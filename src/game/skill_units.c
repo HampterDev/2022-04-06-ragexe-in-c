@@ -18,6 +18,8 @@
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "world/world.h"
+#include <stddef.h>
+#include <string.h>
 
 enum {
     UNT_FIRST = 0x2d,
@@ -75,10 +77,25 @@ static void note_unit_call(struct GameMode *self, const unsigned *aid, unsigned 
         list_push_back(&self->shown_unit_ids, aid, sizeof *aid);
 }
 
-static void add_text_object(struct GameMode *self, unsigned aid, const char *text, short x, short y)
+static void graffiti_text(char *out, const char *field, size_t size)
+{
+    const char *end;
+
+    if (size > GRAFFITI_TEXT_SIZE - 1)
+        size = GRAFFITI_TEXT_SIZE - 1;
+    end = memchr(field, 0, size);
+    if (end)
+        size = (size_t)(end - field);
+    memcpy(out, field, size);
+    out[size] = 0;
+}
+
+static void add_text_object(struct GameMode *self, unsigned aid, const char *field, size_t size, short x, short y)
 {
     struct AbleToMakeEffect *obj = (struct AbleToMakeEffect *)graffi_skill_new();
+    char text[GRAFFITI_TEXT_SIZE];
 
+    graffiti_text(text, field, size);
     list_push_back(&self->world->gameObjects, &obj, sizeof obj);
     list_push_back(&self->world->skills, &obj, sizeof obj);
     render_object_send(obj, NULL, OBJ_MSG_SET_AID, aid, 0, 0, 0);
@@ -167,10 +184,7 @@ void game_mode_zc_skill_entry2(struct GameMode *self, struct PACKET_ZC_SKILL_ENT
     packet->visible = 1;
     entry.creator_aid = packet->creator_aid;
     if (packet->has_text == 1) {
-        char text[sizeof packet->text + 1];
-        memcpy(text, packet->text, sizeof packet->text);
-        text[sizeof packet->text] = 0;
-        add_text_object(self, packet->aid, text, packet->x, packet->y);
+        add_text_object(self, packet->aid, packet->text, sizeof packet->text, packet->x, packet->y);
         return;
     }
 
@@ -201,7 +215,8 @@ void game_mode_zc_skill_entry3(struct GameMode *self, const struct PACKET_ZC_SKI
 
     if (packet->job == UNT_GRAFFITI) {
         if (packet->length > 0x13)
-            add_text_object(self, packet->aid, packet->text, packet->x, packet->y);
+            add_text_object(self, packet->aid, packet->text,
+                            (size_t)packet->length - offsetof(struct PACKET_ZC_SKILL_ENTRY3, text), packet->x, packet->y);
         return;
     }
 
@@ -233,7 +248,8 @@ void game_mode_zc_skill_entry4(struct GameMode *self, const struct PACKET_ZC_SKI
 
     if (packet->job == UNT_GRAFFITI) {
         if (packet->length > 0x16)
-            add_text_object(self, packet->aid, packet->text, packet->x, packet->y);
+            add_text_object(self, packet->aid, packet->text,
+                            (size_t)packet->length - offsetof(struct PACKET_ZC_SKILL_ENTRY4, text), packet->x, packet->y);
         return;
     }
 
@@ -265,12 +281,14 @@ void game_mode_zc_skill_entry5(struct GameMode *self, const struct PACKET_ZC_SKI
 
     if (packet->job == UNT_GRAFFITI) {
         struct AbleToMakeEffect *obj;
+        char text[GRAFFITI_TEXT_SIZE];
 
         if (packet->length <= 0x17)
             return;
+        graffiti_text(text, packet->text, (size_t)packet->length - offsetof(struct PACKET_ZC_SKILL_ENTRY5, text));
         obj = (struct AbleToMakeEffect *)graffi_skill_new();
         render_object_send(obj, NULL, OBJ_MSG_SET_AID, packet->aid, 0, 0, 0);
-        render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (long long)(int)packet->text, (short)packet->x, (short)packet->y, 0);
+        render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (long long)(int)text, (short)packet->x, (short)packet->y, 0);
         list_push_back(&self->world->gameObjects, &obj, sizeof obj);
         list_push_back(&self->world->skills, &obj, sizeof obj);
         return;
