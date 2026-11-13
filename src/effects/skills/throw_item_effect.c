@@ -1,4 +1,5 @@
 #include "effects/effect_allocator.h"
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "effects/particle.h"
@@ -475,7 +476,10 @@ void throw_item_effect_step_item(struct ThrowItemEffect *self, struct Particle *
         p->alpha = p->alpha - 20 < 0 ? 0 : p->alpha - 20;
     } else {
         float speed = throw_item_particle(p)->item_speed;
-        int arc = (int)(t * -180.0f);
+        /* custom: a flight of no frames (a bottle thrown at its own cell) makes t NaN on its first
+           frame, which converts to INT_MIN; the 32-bit original's index of -arc wrapped round to 0,
+           the 64-bit one reaches 8 GB below the table */
+        int arc = isnan(t) ? 0 : (int)(t * -180.0f);
         float y = speed / throw_item_particle(p)->item_distance * self->rise + ITEM_POS(p)->y;
         float z = g_sinTable[throw_item_particle(p)->item_heading] * speed + ITEM_POS(p)->z;
         float x = g_cosTable[throw_item_particle(p)->item_heading] * speed + ITEM_POS(p)->x;

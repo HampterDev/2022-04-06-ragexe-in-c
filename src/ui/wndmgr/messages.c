@@ -37,7 +37,10 @@ static void keep_chat_line(struct UIWindowMgr *self, const char *text, COLORREF 
     text_array_clear(&lines);
 }
 
-static void chat_line(struct UIWindowMgr *self, int msg, const char *text, COLORREF colour, int val3, int val4)
+/* val3 is the line's chat channel and val4 its speaker's name (a pointer, which the 64-bit client
+   must not narrow to an int) */
+static void chat_line(struct UIWindowMgr *self, int msg, const char *text, COLORREF colour, intptr_t val3,
+                      intptr_t val4)
 {
     struct UIWindow *chat;
 
