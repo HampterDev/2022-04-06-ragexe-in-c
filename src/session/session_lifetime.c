@@ -71,13 +71,10 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->maleHairNames);
     vec_init(&self->femaleHairNames);
     vec_init(&self->jobImfNames);
-    vec_init(&self->sexSuffixes);
     vec_init(&self->jobSpritePaths);
     vec_init(&self->reqJobNames);
     tree_init(&self->jobNamesSex0);
     tree_init(&self->jobNamesSex99);
-    vec_init(&self->sexLetters);
-    vec_init(&self->jobIdNames);
     list_init(&self->pingSamples);
     vec_init(&self->jobBodyNames);
     text_array_init(&self->chatMacros);
@@ -345,13 +342,10 @@ void session_destruct(struct Session *self)
     text_array_clear(&self->chatMacros);
     vec_free(&self->jobBodyNames);
     list_free(&self->pingSamples, NULL);
-    vec_free(&self->jobIdNames);
-    vec_free(&self->sexLetters);
     tree_free(&self->jobNamesSex99, NULL);
     tree_free(&self->jobNamesSex0, NULL);
     vec_free(&self->reqJobNames);
     vec_free(&self->jobSpritePaths);
-    vec_free(&self->sexSuffixes);
     vec_free(&self->jobImfNames);
     vec_free(&self->femaleHairNames);
     vec_free(&self->maleHairNames);

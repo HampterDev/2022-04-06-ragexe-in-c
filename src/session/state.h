@@ -118,13 +118,10 @@ struct Session {
     struct Vec maleHairNames;
     struct Vec femaleHairNames;
     struct Vec jobImfNames;
-    struct Vec sexSuffixes;
     struct Vec jobSpritePaths;
     struct Vec reqJobNames;
     struct Tree jobNamesSex0;
     struct Tree jobNamesSex99;
-    struct Vec sexLetters;
-    struct Vec jobIdNames;
     struct List pingSamples;
     struct Vec jobBodyNames;
     struct TextArray chatMacros;

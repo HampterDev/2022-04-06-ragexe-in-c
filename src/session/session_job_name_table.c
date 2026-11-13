@@ -443,10 +443,6 @@ void session_init_job_name_tables(struct Session *self)
     lua_job_names(self, 0x4e35, 0x7cff);
     set_rows(&self->reqJobNames, ROWS(s_jobNamesTail));
 
-    names_resize(&self->sexLetters, 2, "F");
-    ((const char **)self->sexLetters.first)[0] = "F";
-    ((const char **)self->sexLetters.first)[1] = "";
-
     vec_resize(&self->guildSkillUseLevels, 0x14, sizeof(int));
     vec_resize(&self->skills.chosen_levels, 0x157c, sizeof(int));
     vec_resize(&self->merSkillUseLevels, 0x102, sizeof(int));
