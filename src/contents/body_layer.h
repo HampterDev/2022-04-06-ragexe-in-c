@@ -3,7 +3,6 @@
 
 #include "base.h"
 #include "std/std.h"
-#include "std/tree.h"
 #include "resources/sprite_pair.h"
 #include "actor/pc.h"
 #include "actor/sprite_render.h"
@@ -22,15 +21,13 @@ struct QueuedLayer {
 };
 
 struct LayerSprite {
-    int layer;
+    char present;
     struct SpriteResPair pair;
 };
 
-struct LayerView {
-    int layer;
-    int view;
-};
-
+/* One player's layers drawn in one frame, on the stack: the sprites each layer draws, the view
+   (item) of the worn layers, and the worn layers' quads queued by priority, at most one per
+   priority (the first queued keeps it) and at most one per drawn layer order. */
 struct BodyLayerDraw {
     float matrix[12];
     int opaque_override;
@@ -44,11 +41,12 @@ struct BodyLayerDraw {
     int layers_drawn;
     int offset_x, offset_y;
     char head_drawn;
-    struct Tree sprites;
-    struct Tree views;
+    struct LayerSprite sprites[BODY_LAYER_COUNT];
+    int views[BODY_LAYER_COUNT];
     struct ScreenBounds bounds;
     char any_drawn;
-    struct Tree queued;
+    struct QueuedLayer queued[BODY_LAYER_COUNT];
+    int queued_count;
 };
 
 struct LayerClip {
@@ -57,10 +55,10 @@ struct LayerClip {
     int dy, dx;
 };
 
+/* layer is 0 to BODY_LAYER_COUNT - 1. */
 struct LayerSprite *body_layer_sprite_slot(struct BodyLayerDraw *self, int layer);
-int *body_layer_view_slot(struct BodyLayerDraw *self, int layer);
-
-void body_layer_destroy(struct BodyLayerDraw *self);
+void body_layer_queue(struct BodyLayerDraw *self, int priority, const struct SqQuad *quad, void *palette,
+                      int flags);
 
 #define QUAD_BUILDER(pc, quad, palette, flags, x, y)                                               \
     render_object_submit_spr_quad((struct RenderObject *)(pc), (quad), (palette), (flags), (x), (y))

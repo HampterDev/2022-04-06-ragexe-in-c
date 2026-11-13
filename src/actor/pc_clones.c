@@ -72,20 +72,14 @@ static void pc_copy_look_head(struct Pc *self, struct Pc *src)
 
 static void pc_copy_look_tail(struct Pc *self, struct Pc *src)
 {
-    struct String copy;
     struct Vec names;
 
-    string_copy(&copy, &src->head_pal_name);
-    if (&self->head_pal_name != &copy) {
-        string_free(&self->head_pal_name);
-        string_move(&self->head_pal_name, &copy);
-    }
-    string_free(&copy);
+    named_res_assign(&self->head_pal, named_res_text(&src->head_pal), named_res_size(&src->head_pal));
     pc_set_layer_spr_names(self, pc_layer_spr_names((struct Pc *)src, &names));
     string_vec_free(&names);
     pc_set_layer_act_names(self, pc_layer_act_names((struct Pc *)src, &names));
     string_vec_free(&names);
-    string_assign(&self->imf_name, string_cstr(&src->imf_name), src->imf_name.size);
+    named_res_assign(&self->imf, named_res_text(&src->imf), named_res_size(&src->imf));
     self->guild_id = game_actor_get_guild_id((struct GameActor *)src);
     self->aid = src->aid;
 }
@@ -100,7 +94,7 @@ struct BlurPC *blur_pc_construct(struct BlurPC *self, struct Pc *master)
     self->fade_param = 0;
     self->fade_step = 0x10000000;
     self->body_palette = master->body_palette;
-    string_assign(&self->body_pal_name, string_cstr(&master->body_pal_name), master->body_pal_name.size);
+    named_res_assign(&self->body_pal, named_res_text(&master->body_pal), named_res_size(&master->body_pal));
     self->robe = 0;
     self->accessory[0] = 0;
     self->accessory[1] = 0;
@@ -119,7 +113,7 @@ struct HalluPC2 *hallu_pc2_construct(struct HalluPC2 *self, struct Pc *master)
     self->frames = 0;
     self->fade_step = 0x10000000;
     self->body_palette = master->body_palette;
-    string_assign(&self->body_pal_name, string_cstr(&master->body_pal_name), master->body_pal_name.size);
+    named_res_assign(&self->body_pal, named_res_text(&master->body_pal), named_res_size(&master->body_pal));
     self->robe = 0;
     self->accessory[0] = 0;
     self->accessory[1] = 0;
@@ -141,7 +135,7 @@ struct RenderObject *hallu_pc_construct(void *mem, struct RenderObject *actor)
     self->frames = 0;
     self->fade_step = 0x10000000;
     self->body_palette = master->body_palette;
-    string_assign(&self->body_pal_name, string_cstr(&master->body_pal_name), master->body_pal_name.size);
+    named_res_assign(&self->body_pal, named_res_text(&master->body_pal), named_res_size(&master->body_pal));
     self->not_pickable = 1;
     pc_set_body_style((struct GameActor *)self, master->body_style, 1);
     self->robe = 0;
@@ -172,7 +166,7 @@ static void npc_job_palette(struct Npc *self)
     self->body_palette = 0;
     if (session_named_body_palettes_enabled(&g_session1)) {
         self->body_palette = 1;
-        string_assign_cstr(&self->body_pal_name, name);
+        named_res_assign(&self->body_pal, name, strlen(name));
     }
 }
 

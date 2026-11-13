@@ -149,131 +149,19 @@ struct Motion *pc_get_layer_motion(struct Pc *pc, int layer, struct ActRes *act,
 
 #define CAMERA_CLOSE() (320.0f > g_viewDistance)
 
-void pc_layer_depth_bias_by_view(struct Pc *pc, int layer, struct SqQuad *quad,
-                           float a, float b)
+void pc_body_layer_depth_bias(int layer, struct SqQuad *quad, float a, float b)
 {
-    unsigned char upping;
-    double near_off, far_off;
     float da = a, db = b;
-    int view;
 
-    switch (layer) {
-    case 1:
-        if (CAMERA_CLOSE()) {
-            da = a + 6.0e-6f;
-            db = b + 6.0e-6f;
-        }
-        break;
-    case 2:
-        view = pc->accessory[0];
-        if (view == 0x4d3) {
-            if (CAMERA_CLOSE()) {
-                da = a + 0.0008f;
-                db = b + 0.0008f;
-            } else {
-                da = a + 0.00013f;
-                db = b + 0.00013f;
-            }
-        } else if (view == 0x411 || view == 0x54e || view == 0x5c6 || view == 0x5d0 || view == 0x5db) {
-            if (CAMERA_CLOSE()) {
-                da = a + 0.0008f;
-                db = b + 0.0008f;
-            } else {
-                da = a + 0.00019f;
-                db = b + 0.00019f;
-            }
-        } else if (CAMERA_CLOSE()) {
-            da = a + 2.7e-5f;
-            db = b + 2.7e-5f;
-        }
-        break;
-    case 3:
-        if (CAMERA_CLOSE()) {
-            da = a + 4.0e-5f;
-            db = b + 0.0001f;
-        } else {
-            db = b + 4.5e-5f;
-        }
-        break;
-    case 4:
-        if (pc->accessory[1] == 0x5cd) {
-            if (CAMERA_CLOSE()) {
-                da = a + 0.00035f;
-                db = b + 0.0006f;
-            } else {
-                da = a + 1.0e-5f;
-                db = b + 0.00015f;
-            }
-            break;
-        }
-        switch (pc->accessory[2]) {
-        case 0x526:
-            if (CAMERA_CLOSE()) {
-                da = a + 0.00025f;
-                db = b + 0.0001f;
-            } else {
-                da = a + 5.0e-5f;
-                db = b + 5.0e-5f;
-            }
-            break;
-        case 0x54a:
-            if (CAMERA_CLOSE()) {
-                da = a + 9.0e-5f;
-                db = b - 5.0e-5f;
-            }
-            break;
-        case 0x553:
-            if (CAMERA_CLOSE()) {
-                da = a + 2.7e-5f + 0.0004f;
-                db = b + 2.7e-5f + 0.0007f;
-            } else {
-                da = a + 7.0e-5f;
-                db = b + 0.00017f;
-            }
-            break;
-        case 0x62e:
-            if (CAMERA_CLOSE()) {
-                da = a + 0.0002f;
-                db = b + 0.0002f;
-            } else {
-                da = a + 4.0e-5f;
-                db = b + 6.0e-5f;
-            }
-            break;
-        default:
-            if (CAMERA_CLOSE()) {
-                da = a + 3.0e-5f;
-                db = b + 3.0e-5f;
-            }
-            break;
-        }
-        break;
-    case 5:
+    if (layer == 1 && CAMERA_CLOSE()) {
+        da = a + 6.0e-6f;
+        db = b + 6.0e-6f;
+    } else if (layer == 5) {
         da = a + 6.0e-5f;
         db = b + 6.0e-5f;
-        break;
     }
     quad->depth_a = da;
     quad->depth_b = db;
-
-    upping = 0;
-    near_off = 0.0;
-    far_off = 0.0;
-
-    client_lua_call(g_session1.luaState, "OffsetItemPos_GetUppingBottomItem", "d>bll", pc->accessory[0], &upping, &near_off, &far_off);
-    if (layer == 2 && upping == 1) {
-        if (near_off == 0.0)
-            near_off = 0.00025;
-        if (far_off == 0.0)
-            far_off = 0.0001;
-        if (CAMERA_CLOSE()) {
-            quad->depth_a = (float)((double)a + near_off);
-            quad->depth_b = (float)((double)b + near_off);
-        } else {
-            quad->depth_a = (float)((double)a + far_off);
-            quad->depth_b = (float)((double)b + far_off);
-        }
-    }
 }
 
 struct SprRes *pc_layer_spr(struct Pc *pc, int layer)
@@ -353,7 +241,8 @@ char layer_is_ignored_riding_state(int view, int job, int base_action, char moun
         return 0;
     ignored = 0;
 
-    client_lua_call_table(g_session1.luaState, "TB_Layer_Priority", "IsIgnoredRidingState", "d>b", view, &ignored);
+    client_lua_call_table_pure(g_session1.luaState, "TB_Layer_Priority", "IsIgnoredRidingState", "d>b", view,
+                               &ignored);
     return ignored;
 }
 
@@ -396,7 +285,7 @@ char pc_draw_on_top(struct Pc *pc)
             job = session_get_mounted_job(job);
         second = 1;
 
-        client_lua_call(g_session1.luaState, "_New_DrawOnTop", "ddddd>bd", pc->robe, pc->sex, job, pc->action,
+        client_lua_call_pure(g_session1.luaState, "_New_DrawOnTop", "ddddd>bd", pc->robe, pc->sex, job, pc->action,
                 pc->motion, &top, &second);
     } else {
         client_lua_call(g_session1.luaState, "DrawOnTop", "ddddd>b", pc->robe, pc->sex, pc->job, pc->action,
@@ -517,10 +406,54 @@ void pc_render_body_alone(struct Pc *pc, int layer,
     pc->drawn = 1;
 }
 
+void pc_forget_robe_sprites(struct Pc *pc)
+{
+    struct PcRobeSprites *robe = &pc->robe_sprites;
+
+    if (robe->spr)
+        res_unlock(robe->spr);
+    if (robe->act)
+        res_unlock(robe->act);
+    memset(robe, 0, sizeof *robe);
+}
+
+/* The robe's sprite and action where both exist, looked up again only when the job, sex, robe or
+   mount they were found for change. */
+static int pc_robe_sprites(struct Pc *pc, struct SprRes **spr, struct ActRes **act)
+{
+    struct PcRobeSprites *robe = &pc->robe_sprites;
+    int job = game_actor_get_job((struct GameActor *)pc);
+
+    if (robe->robe != pc->robe || robe->job != job || robe->sex != pc->sex || robe->mounted != pc->mounted) {
+        struct String spr_name, act_name;
+
+        pc_forget_robe_sprites(pc);
+        robe->robe = pc->robe;
+        robe->job = job;
+        robe->sex = pc->sex;
+        robe->mounted = pc->mounted;
+        session_get_robe_spr_name(&spr_name, job, pc->sex, pc->robe, pc->mounted);
+        session_get_robe_act_name(&act_name, job, pc->sex, pc->robe, pc->mounted);
+        if (res_mgr_is_available(g_resMgr(), string_cstr(&spr_name))
+            && res_mgr_is_available(g_resMgr(), string_cstr(&act_name))) {
+            robe->spr = res_mgr_get(g_resMgr(), string_cstr(&spr_name));
+            robe->act = res_mgr_get(g_resMgr(), string_cstr(&act_name));
+            if (robe->spr)
+                res_lock(robe->spr);
+            if (robe->act)
+                res_lock(robe->act);
+        }
+        string_free(&act_name);
+        string_free(&spr_name);
+    }
+    *spr = (struct SprRes *)robe->spr;
+    *act = (struct ActRes *)robe->act;
+    return *spr && *act;
+}
+
 void pc_render_robe(struct Pc *pc, int on_top_pass,
                            int *layers_drawn, const float *pos, float x, float y, float screen_scale, float screen_shift)
 {
-    struct String spr_name, act_name;
     struct SqQuad quad;
     struct SprRes *spr;
     struct ActRes *act;
@@ -543,18 +476,8 @@ void pc_render_robe(struct Pc *pc, int on_top_pass,
         ++*layers_drawn;
         return;
     }
-    session_get_robe_spr_name(&spr_name, game_actor_get_job((struct GameActor *)pc), pc->sex,
-                           pc->robe, pc->mounted);
-    session_get_robe_act_name(&act_name, game_actor_get_job((struct GameActor *)pc), pc->sex,
-                           pc->robe, pc->mounted);
-    if (!res_mgr_is_available(g_resMgr(), string_cstr(&spr_name))
-        || !res_mgr_is_available(g_resMgr(), string_cstr(&act_name))) {
-        string_free(&act_name);
-        string_free(&spr_name);
+    if (!pc_robe_sprites(pc, &spr, &act))
         return;
-    }
-    spr = (struct SprRes *)res_mgr_get(g_resMgr(), string_cstr(&spr_name));
-    act = (struct ActRes *)res_mgr_get(g_resMgr(), string_cstr(&act_name));
 
     step_motion = pc->motion;
     motion_index = pc->motion;
@@ -603,8 +526,6 @@ void pc_render_robe(struct Pc *pc, int on_top_pass,
         else
             QUAD_BUILDER(pc, &quad, palette, flags, 0.0f, 0.0f);
     }
-    string_free(&act_name);
-    string_free(&spr_name);
     ++*layers_drawn;
 }
 
@@ -616,11 +537,28 @@ void pc_render_body_layers(struct Pc *pc, const float *matrix, int mode, char fl
     draw.pos[0] = 0.0f;
     draw.pos[1] = 0.0f;
     draw.pos[2] = 0.0f;
-    tree_init(&draw.sprites);
-    tree_init(&draw.views);
-    tree_init(&draw.queued);
     body_layer_render(&draw, matrix, mode, flag);
-    body_layer_destroy(&draw);
+}
+
+/* shadow.spr and shadow.act, looked up the first time a shadow is drawn and held for good. */
+static int shadow_sprite(struct SprRes **spr, struct ActRes **act)
+{
+    static struct SprRes *shadow_spr;
+    static struct ActRes *shadow_act;
+    static unsigned char looked_up;
+
+    if (!looked_up) {
+        looked_up = 1;
+        shadow_spr = (struct SprRes *)res_mgr_get(g_resMgr(), "shadow.spr");
+        shadow_act = (struct ActRes *)res_mgr_get(g_resMgr(), "shadow.act");
+        if (shadow_spr)
+            res_lock((struct Res *)shadow_spr);
+        if (shadow_act)
+            res_lock((struct Res *)shadow_act);
+    }
+    *spr = shadow_spr;
+    *act = shadow_act;
+    return shadow_spr && shadow_act;
 }
 
 void render_object_render_shadow(struct RenderObject *obj, const float *matrix, float zoom)
@@ -629,6 +567,7 @@ void render_object_render_shadow(struct RenderObject *obj, const float *matrix, 
     const float *m = matrix;
     struct SqQuad quad;
     struct SprRes *spr;
+    struct ActRes *act;
     struct SprClip *clip;
     struct SprImg *image;
     void *palette;
@@ -639,6 +578,8 @@ void render_object_render_shadow(struct RenderObject *obj, const float *matrix, 
         return;
     if (obj->shadow_scale == 0.0f || zoom == 0.0f || !attr)
         return;
+    if (!shadow_sprite(&spr, &act))
+        return;
     v[0] = obj->pos.x;
     v[1] = c3d_attr_get_height(attr, obj->pos.x, obj->pos.z);
     v[2] = obj->pos.z;
@@ -648,8 +589,7 @@ void render_object_render_shadow(struct RenderObject *obj, const float *matrix, 
         renderer_project_point(g_renderer, &world_point, matrix, &x, &y, &rhw);
     }
     s = (float)renderer_screen_scale(g_renderer, rhw);
-    spr = (struct SprRes *)res_mgr_get(g_resMgr(), "shadow.spr");
-    clip = motion_get_clip(act_res_get_motion((struct ActRes *)res_mgr_get(g_resMgr(), "shadow.act"), 0, 0), 0);
+    clip = motion_get_clip(act_res_get_motion(act, 0, 0), 0);
     if (clip->sprIndex == -1)
         return;
     image = sprite_resource_image(spr, clip->clipType, 0);

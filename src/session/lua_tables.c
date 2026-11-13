@@ -21,7 +21,7 @@ BYTE session_is_top_layer_robe(struct Session *self, int robe)
 
     if (robe == -1)
         robe = self->robe;
-    client_lua_call(g_session1.luaState, "IsTopLayer", "d>b", robe, &result);
+    client_lua_call_pure(g_session1.luaState, "IsTopLayer", "d>b", robe, &result);
     return result;
 }
 

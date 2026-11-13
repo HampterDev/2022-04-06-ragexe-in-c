@@ -9,7 +9,10 @@
 
 struct ClientLua *client_lua_construct(struct ClientLua *self)
 {
-    if (self) self->L = NULL;
+    if (self) {
+        self->L = NULL;
+        lua_memo_book_init(&self->answers);
+    }
     return self;
 }
 
@@ -19,6 +22,7 @@ void client_lua_close(struct ClientLua *self)
         lua_close(self->L);
         self->L = NULL;
     }
+    client_lua_release_answers(self);
 }
 
 void client_lua_destruct(struct ClientLua *self)
@@ -76,6 +80,7 @@ static char load_script(struct ClientLua *self, const char *path, const char *ca
     status = luaL_loadbuffer(state, (const char *)text, (size_t)file.size, "buf");
     file_destruct(&file);
     if (!status) status = lua_pcall(state, 0, 0, 0);
+    client_lua_forget_answers(self);
     if (status) {
         const char *error = lua_type(state, -1) == LUA_TSTRING ? lua_tostring(state, -1) : NULL;
         client_lua_error_box(self, caption, "%s\n", error ? error : "Lua script failed");

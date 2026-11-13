@@ -10,6 +10,8 @@ struct Session;
 struct SprClip;
 struct SprRes;
 struct ClientLua;
+struct NamedRes;
+struct Res;
 struct ItemInfo;
 struct ScreenBounds;
 struct SqQuad;
@@ -36,7 +38,7 @@ float renderer_scale_x(struct Renderer *arg0)
     abort();
 }
 struct Renderer *g_renderer;
-int client_lua_call(struct ClientLua *arg0, const char *arg1, const char *arg2, ...)
+int client_lua_call_pure(struct ClientLua *arg0, const char *arg1, const char *arg2, ...)
 {
     abort();
 }
@@ -85,20 +87,11 @@ void *res_mgr_get(struct ResMgr *arg0, const char *arg1)
 {
     abort();
 }
-void *res_mgr_get_string(struct ResMgr *arg0, struct String arg1)
+struct Res *named_res_get(struct NamedRes *arg0)
 {
     abort();
 }
 int game_actor_get_transform_job(struct GameActor *arg0)
-{
-    abort();
-}
-BYTE session_is_screen_flipped(struct Session *arg0)
-{
-    abort();
-}
-void render_object_submit_spr_quad(struct RenderObject *arg0, struct SqQuad *arg1, const void *arg2,
-                                  int arg3, float arg4, float arg5)
 {
     abort();
 }
@@ -121,18 +114,6 @@ void render_object_apply_pulse_scale(struct RenderObject *arg0, float *arg1)
 }
 void render_object_swing_point(struct RenderObject *arg0, int arg1, int *arg2, int *arg3, int *arg4,
                               int *arg5)
-{
-    abort();
-}
-void render_object_draw_flashes(struct RenderObject *arg0, struct SqQuad arg1, void *arg2)
-{
-    abort();
-}
-struct SprRes *pc_layer_spr(struct Pc *arg0, int arg1)
-{
-    abort();
-}
-struct ActRes *pc_layer_act(struct Pc *arg0, int arg1)
 {
     abort();
 }
@@ -171,8 +152,7 @@ void pc_layer_depth_bias(int arg0, struct SqQuad *arg1, float arg2, float arg3)
 {
     abort();
 }
-void pc_layer_depth_bias_by_view(struct Pc *arg0, int arg1, struct SqQuad *arg2, float arg3,
-                              float arg4)
+void pc_body_layer_depth_bias(int arg0, struct SqQuad *arg1, float arg2, float arg3)
 {
     abort();
 }
@@ -184,20 +164,12 @@ void pc_draw_layer_overlays(struct Pc *arg0, struct SqQuad *arg1, struct SprClip
     abort();
 }
 float g_spriteScaleDivisor;
-BYTE session_is_head_replacing_view(struct Session *arg0, int arg1)
-{
-    abort();
-}
 float session_get_baby_job_scale(struct Session *arg0, int arg1)
 {
     abort();
 }
 void *session_get_stepped_motion(void *arg0, void *arg1, int arg2,
                                          int arg3, DWORD arg4, int *arg5)
-{
-    abort();
-}
-BYTE effect_state_bit11(DWORD arg0)
 {
     abort();
 }

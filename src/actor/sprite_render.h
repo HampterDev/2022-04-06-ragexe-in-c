@@ -46,12 +46,13 @@ char layer_is_ignored_riding_state(int view, int job, int base_action, char moun
 int layer_body_attach_dy(struct Motion *head_motion, int action, int motion, int job, int sex, int body_style);
 void pc_render_robe(struct Pc *pc, int on_top_pass,
                                int *layers_drawn, const float *pos, float x, float y, float screen_scale, float screen_shift);
+void pc_forget_robe_sprites(struct Pc *pc);
 void pc_render_body_alone(struct Pc *pc, int layer,
                                     const float *pos, float x, float y, float screen_scale, float screen_shift, float z);
 struct Motion *pc_get_layer_motion(struct Pc *pc, int layer, struct ActRes *act,
                                               int *action_out, int *motion_out, char *use_out);
 void pc_layer_depth_bias(int layer, struct SqQuad *quad, float a, float b);
-void pc_layer_depth_bias_by_view(struct Pc *pc, int layer, struct SqQuad *quad, float a, float b);
+void pc_body_layer_depth_bias(int layer, struct SqQuad *quad, float a, float b);
 
 void pc_draw_layer_overlays(struct Pc *pc, struct SqQuad *quad, struct SprClip *clip,
                                       int layer, const int *rect, float screen_shift, float z, float a, float b, float x, float y,

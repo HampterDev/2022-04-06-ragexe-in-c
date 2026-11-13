@@ -96,8 +96,8 @@ void render_object_render_sprite(struct RenderObject *p,const float *matrix,unsi
 static struct PickInfo last_pick;
 static int pick_count, position_count;
 float renderer_scale_x(struct Renderer *p) { assert(p==g_renderer);return 1; }
-void actor_pick_node_insert(struct ActorPickNode *p,struct PickInfo *box)
-{ assert(p==&g_actorPickNode);last_pick=*box;++pick_count;mem_free(box); }
+void actor_pick_node_insert(struct ActorPickNode *p,const struct PickInfo *box)
+{ assert(p==&g_actorPickNode);last_pick=*box;++pick_count; }
 
 int game_object_dir_of(struct GameObject *self, float roty) { abort(); }
 void render_object_set_screen_position(struct RenderObject *self, float x, float y)

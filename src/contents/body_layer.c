@@ -98,10 +98,23 @@ struct MotionPick *body_layer_motion_for(struct BodyLayerDraw *self, struct Moti
     return out;
 }
 
+struct LayerSprite *body_layer_sprite_slot(struct BodyLayerDraw *self, int layer)
+{
+    struct LayerSprite *sprite = &self->sprites[layer];
+
+    if (!sprite->present) {
+        sprite->present = 1;
+        sprite->pair.spr = NULL;
+        sprite->pair.act = NULL;
+    }
+    return sprite;
+}
+
 struct FoundSprites *body_layer_find_sprites(struct BodyLayerDraw *self, struct FoundSprites *out,
                                                         int layer)
 {
-    struct LayerSprite *sprite = tree_find(&self->sprites, &layer, tree_less_int);
+    struct LayerSprite *sprite = (unsigned)layer < BODY_LAYER_COUNT && self->sprites[layer].present
+                                 ? &self->sprites[layer] : NULL;
 
     if (!sprite) {
         out->found = 0;
@@ -150,16 +163,11 @@ struct EventName *body_layer_event_name(struct BodyLayerDraw *self, struct Event
 void *body_layer_palette(struct BodyLayerDraw *self, int layer, struct SpriteResPair pair)
 {
     struct Pc *pc = self->pc;
-    struct String name;
 
-    if (layer == BODY_LAYER_BODY && pc->body_palette > 0) {
-        string_copy(&name, &pc->body_pal_name);
-        return palette_resource_colors(res_mgr_get_string(g_resMgr(), name), pair.spr->palette);
-    }
-    if (layer == BODY_LAYER_HEAD && pc->head_palette > 0) {
-        string_copy(&name, &pc->head_pal_name);
-        return palette_resource_colors(res_mgr_get_string(g_resMgr(), name), pair.spr->palette);
-    }
+    if (layer == BODY_LAYER_BODY && pc->body_palette > 0)
+        return palette_resource_colors((struct PaletteRes *)named_res_get(&pc->body_pal), pair.spr->palette);
+    if (layer == BODY_LAYER_HEAD && pc->head_palette > 0)
+        return palette_resource_colors((struct PaletteRes *)named_res_get(&pc->head_pal), pair.spr->palette);
     return pair.spr->palette;
 }
 
@@ -212,14 +220,14 @@ void body_layer_load_sprites(struct BodyLayerDraw *self)
     }
 
     for (layer = 2; layer <= 4; layer++) {
-        struct LayerSprite *worn = tree_find(&self->sprites, &layer, tree_less_int);
+        struct LayerSprite *worn = &self->sprites[layer];
         struct LayerSprite *head;
         struct SprRes *spr;
         struct ActRes *act;
 
-        if (!worn)
+        if (!worn->present)
             continue;
-        if (session_is_head_replacing_view(&g_session1, *body_layer_view_slot(self, layer)) != 1)
+        if (session_is_head_replacing_view(&g_session1, self->views[layer]) != 1)
             continue;
         head = body_layer_sprite_slot(self, BODY_LAYER_HEAD);
         spr = head->pair.spr;
@@ -228,7 +236,7 @@ void body_layer_load_sprites(struct BodyLayerDraw *self)
         head->pair.act = worn->pair.act;
         worn->pair.spr = spr;
         worn->pair.act = act;
-        tree_erase(&self->sprites, TREE_NODE_OF(worn), NULL);
+        worn->present = 0;
         return;
     }
 }
@@ -240,10 +248,13 @@ void body_layer_reset(struct BodyLayerDraw *self)
     self->offset_y = 0;
     self->head_drawn = 0;
     self->any_drawn = 0;
-    *body_layer_view_slot(self, 2) = self->pc->accessory[0];
-    *body_layer_view_slot(self, 3) = self->pc->accessory[1];
-    *body_layer_view_slot(self, 4) = self->pc->accessory[2];
-    *body_layer_view_slot(self, 8) = self->pc->robe;
+    memset(self->sprites, 0, sizeof self->sprites);
+    memset(self->views, 0, sizeof self->views);
+    self->queued_count = 0;
+    self->views[2] = self->pc->accessory[0];
+    self->views[3] = self->pc->accessory[1];
+    self->views[4] = self->pc->accessory[2];
+    self->views[8] = self->pc->robe;
     body_layer_load_sprites(self);
 }
 
@@ -252,53 +263,51 @@ static void queue_layer(struct BodyLayerDraw *self, int layer, const struct SqQu
 {
     struct Pc *pc = self->pc;
     int dir = pc->action - pc->base_action;
-    int priority, view;
-    struct QueuedLayer entry;
+    int priority, view = self->views[layer];
 
-    if (*body_layer_view_slot(self, layer) <= 0)
+    if (view <= 0)
         return;
     priority = -1;
-    view = *body_layer_view_slot(self, layer);
-    client_lua_call(g_session1.luaState, "GetLayerPriority", "ddd>d", dir, layer, view, &priority);
+    client_lua_call_pure(g_session1.luaState, "GetLayerPriority", "ddd>d", dir, layer, view, &priority);
     if (priority == -1)
         return;
-    entry.priority = priority;
-    entry.quad = *quad;
-    entry.palette = palette;
-    entry.flags = flags;
-    tree_add(&self->queued, &entry, sizeof entry, tree_less_int, NULL);
+    body_layer_queue(self, priority, quad, palette, flags);
+}
+
+void body_layer_queue(struct BodyLayerDraw *self, int priority, const struct SqQuad *quad, void *palette,
+                      int flags)
+{
+    struct QueuedLayer *entry;
+    int at = 0, i;
+
+    while (at < self->queued_count && self->queued[at].priority < priority)
+        at++;
+    if ((at < self->queued_count && self->queued[at].priority == priority) || self->queued_count == BODY_LAYER_COUNT)
+        return;
+    for (i = self->queued_count; i > at; i--)
+        self->queued[i] = self->queued[i - 1];
+    entry = &self->queued[at];
+    entry->priority = priority;
+    entry->quad = *quad;
+    entry->palette = palette;
+    entry->flags = flags;
+    self->queued_count++;
 }
 
 void body_layer_flush(struct BodyLayerDraw *self)
 {
-    struct Vec depth_a = { 0, 0, 0 }, depth_b = { 0, 0, 0 };
-    struct TreeNode *it;
     float max_a = 0.0f, max_b = 0.0f, step = 0.0f;
-    const float *f;
+    int i;
 
-    for (it = tree_first(&self->queued); it != self->queued.head; it = tree_next(it)) {
-        struct QueuedLayer entry = *TREE_VALUE(it, struct QueuedLayer);
-
-        vec_push(&depth_a, &entry.quad.depth_a, sizeof(float));
-        vec_push(&depth_b, &entry.quad.depth_b, sizeof(float));
-    }
-    if (depth_a.first != depth_a.last) {
-        const float *best = (const float *)depth_a.first;
-        for (f = best + 1; f != (const float *)depth_a.last; f++)
-            if (*f > *best)
-                best = f;
-        max_a = *best;
-    }
-    if (depth_b.first != depth_b.last) {
-        const float *best = (const float *)depth_b.first;
-        for (f = best + 1; f != (const float *)depth_b.last; f++)
-            if (*f > *best)
-                best = f;
-        max_b = *best;
+    for (i = 0; i < self->queued_count; i++) {
+        if (i == 0 || self->queued[i].quad.depth_a > max_a)
+            max_a = self->queued[i].quad.depth_a;
+        if (i == 0 || self->queued[i].quad.depth_b > max_b)
+            max_b = self->queued[i].quad.depth_b;
     }
 
-    for (it = tree_first(&self->queued); it != self->queued.head; it = tree_next(it)) {
-        struct QueuedLayer *q = TREE_VALUE(it, struct QueuedLayer);
+    for (i = 0; i < self->queued_count; i++) {
+        struct QueuedLayer *q = &self->queued[i];
 
         q->quad.depth_a = step + max_a;
         q->quad.depth_b = step + max_b;
@@ -309,8 +318,6 @@ void body_layer_flush(struct BodyLayerDraw *self)
         render_object_draw_flashes((struct RenderObject *)self->pc, q->quad, q->palette);
         step += 1.0e-6f;
     }
-    vec_free(&depth_b);
-    vec_free(&depth_a);
 }
 
 struct LayerClip *body_layer_clip_offset(struct BodyLayerDraw *self, struct LayerClip *out, int layer,
@@ -364,7 +371,7 @@ struct LayerClip *body_layer_clip_offset(struct BodyLayerDraw *self, struct Laye
         x = ex + self->offset_x;
         mounted = pc->mounted;
         base_action = pc->base_action;
-        view = *body_layer_view_slot(self, layer);
+        view = self->views[layer];
         if (layer_is_ignored_riding_state(view, game_actor_get_job((struct GameActor *)pc), base_action, mounted) == 1) {
             pc = self->pc;
             ey += layer_body_attach_dy(head, pc->action, pc->motion, game_actor_get_job((struct GameActor *)pc), pc->sex,
@@ -435,11 +442,11 @@ void body_layer_draw_layer(struct BodyLayerDraw *self, int order, int layer, str
         if (layer == BODY_LAYER_HEAD) {
             pc->head_clip[3] = (float)(lc.clip->y + self->offset_y);
             pc->head_clip[2] = (float)(lc.clip->x + self->offset_x);
-            pc_layer_depth_bias_by_view(self->pc, layer, &quad, qa, qb);
+            pc_body_layer_depth_bias(layer, &quad, qa, qb);
         } else if ((layer >= 2 && layer <= 4) || layer == 8) {
             pc_layer_depth_bias(layer, &quad, qa, qb);
         } else {
-            pc_layer_depth_bias_by_view(pc, layer, &quad, qa, qb);
+            pc_body_layer_depth_bias(layer, &quad, qa, qb);
         }
         quad.image = lc.image;
 
@@ -518,7 +525,6 @@ void body_layer_render(struct BodyLayerDraw *self, const float *matrix, int opaq
 {
     const Vec3 *p;
     struct Pc *pc = self->pc;
-    struct String imf_name;
     char head_seen = 0, body_moved = 0;
     float depth;
     int order;
@@ -551,8 +557,7 @@ void body_layer_render(struct BodyLayerDraw *self, const float *matrix, int opaq
     }
     pc_render_robe(self->pc, 0, &self->layers_drawn, self->pos, self->screen_x, self->screen_y,
                self->screen_scale, self->screen_shift);
-    string_copy(&imf_name, &self->pc->imf_name);
-    self->imf = res_mgr_get_string(g_resMgr(), imf_name);
+    self->imf = (const struct ImfRes *)named_res_get(&self->pc->imf);
     bounds_set(&self->bounds, (float)g_renderer->width, (float)g_renderer->height, 0.0f, 0.0f, self->screen_z);
 
     for (order = 8; order >= 0; order--) {
@@ -572,11 +577,4 @@ void body_layer_render(struct BodyLayerDraw *self, const float *matrix, int opaq
         render_object_set_screen_position(
             (struct RenderObject *)pc, self->screen_x, self->screen_y);
     self->pc->drawn = 1;
-}
-
-void body_layer_destroy(struct BodyLayerDraw *self)
-{
-    tree_free(&self->queued, NULL);
-    tree_free(&self->views, NULL);
-    tree_free(&self->sprites, NULL);
 }
