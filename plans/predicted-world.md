@@ -89,6 +89,16 @@ holds the walk, a target that died, a knockback and a wrong guess are all this o
 
 A client whose core has another rules version than the server's does not predict.
 
+**Told again when nothing told it (not built).** A body is told when something from outside
+changed it, so a client that is wrong without such a cause stays wrong until the next one. The
+server tells a player's body again when two seconds have passed without a word of it, on a
+timer of the unit, which the journal replays. The client treats it as any word: equal, and
+nothing is seen; different, and it is the one correction. It counts the words that differed
+without a request or a record to explain them, since each is a fault in a rule or in the
+prediction and worth a line in the log. Check: the convergence test of `tests/test_predicted.c`
+with a body changed behind the client's back converges within the two seconds; the playground's
+count of such words is 0.
+
 ## What goes away
 
 Each of these was a special case of "apply the pending requests to the confirmed state" and

@@ -172,6 +172,53 @@ sent now is applied before it, and a slow monster's swing takes on the screen th
 server has it take. The player's own swing is paced to when its damage number is here, a way
 down and the lead after it lands.
 
+## Every confirmed request measures the way up (not built)
+
+The own clock leads the server's by the way a request takes there (`std/way_up.c`). Its only
+samples are the timed exchanges: one every 2 s, sixteen kept, so the estimate looks back half
+a minute and sees a change of the line two seconds late at the earliest. What is left of
+misprediction under lag is requests that arrive after the tick they name, most of them in the
+first seconds on a map, while few exchanges have been timed (`plans/predicted-world.md`,
+step 7).
+
+Each request the server confirms is a sample of the same kind, of the path that matters:
+
+- **Server.** A stamped request's arrival is known where its unit reads it (`arrivalMs` in
+  `consumers/host/unit.js`), and only the stamp's number goes on from there. `spatial` keeps
+  the arrival beside the number it hands the core, outside the core, which knows nothing of
+  latency. `ZC_OWN_BODY` gains four bytes: the low 32 bits of the server's clock at the
+  arrival of the request the body names, or 0 when the body names none anew.
+- **Client.** The game keeps, for each request that waits, the local clock at which it left.
+  When a word of the server confirms it, the pair goes to `way_up_sample`, as an exchange's
+  does. The estimator does not change: the second longest of the last sixteen and half its
+  height above the shortest, growing at once and shrinking a millisecond in ten.
+
+While someone plays, the samples then come at the pace of the clicks. A request that lost a
+datagram on its way is a sample of that loss, which the second longest keeps from setting the
+lead by itself.
+
+Check: `tests/test_way_up.c` with samples from both sources; the playground at a ping of 150 ms
+with 40 ms of jitter, where the ticks the predicted body differs for (`plans/predicted-world.md`,
+step 7: walking 0.55%, fights 4.29%) must fall, and the requests that arrive after their tick
+in the first ten seconds of a map must be fewer than before.
+
+Not checked: whether the estimate can be kept across a map change. The connection is the same,
+but each map's unit has a clock of its own, and a sample holds the clocks' offset.
+
+Open, and the owner's: the stamp's `seen_tick` is sent with every request and only logged. It
+is either given a user or taken out of the stamp.
+
+## The hold-back is not enforced (as built)
+
+The server applies a request at the tick its stamp names, or on arrival when that tick is past
+(`applyAtMs`, the server's `consumers/shared/src/netcode.js`). The hold-back is a number the
+client is told and adds itself. A client that names an earlier tick, or sends no stamp, is
+applied on arrival: never before it arrives, so no worse than a server without a hold-back,
+but the equal footing holds only between clients that keep to it. It cannot be enforced, since
+a client can also pretend a slow line. It can be watched: a connection whose requests keep
+arriving at or after the tick they name while its round trip, which the delivery piece
+measures, is well under the hold-back is not keeping to it. Not built.
+
 ## Where the action-timing stage differs from the October plans
 
 - **Windup length.** `responsive-combat.md` decided 30% of the attack delay (60% of the attack

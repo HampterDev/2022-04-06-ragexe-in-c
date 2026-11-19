@@ -101,9 +101,10 @@ packets the two can pass each other. A record made after a unit came back under 
 can reach the client before the packet that says the unit it had went, be filed on that actor
 and go with it; one made before the unit went can reach the client after the unit came back
 and show where the unit was. Either holds until the unit's next record of that track. The
-revisions keep such a record from passing for a newer one, not from crossing the going. A
-cure puts the going and the coming in the order the revisions give, for example as records of
-the move track, and is to be designed with step 5.
+revisions keep such a record from passing for a newer one, not from crossing the going. The cure
+is `plans/presence.md`: every coming and going is stamped with the unit's revisions and its
+tick, the floors belong to the unit id and outlive the actor, and the own body then travels
+through the piece.
 
 ### 2. One piece that delivers messages
 

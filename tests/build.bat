@@ -852,6 +852,7 @@ if "%ORACLE_EXE%"=="" set "ORACLE_EXE=%ROOT%\..\client-files\2022-04-06_Ragexe_1
 if exist "%ORACLE_EXE%" (
   call "%~dp0oracle\build.bat"
   if errorlevel 1 exit /b 1
+  if not errorlevel 0 exit /b 1
 ) else (
   echo oracle tests skipped: no original executable at "%ORACLE_EXE%"
 )
