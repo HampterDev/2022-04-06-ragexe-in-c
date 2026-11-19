@@ -2,7 +2,9 @@
 
 How an actor's coming into view and its going take part in the order of its records, so that
 records, hits and the player's own body can travel in any order and the screen still shows what
-the server had. Status, 2026-11-19: design only, nothing built.
+the server had. Status, 2026-11-19: the client's part of steps 1 to 4 is built
+(`world/view_floors.c`, `world/presence.c`, `world/predicted.c`, the act record's mark in
+`world/act_track.c`; checks 1 and 2); the server's steps 1 and 4 and step 5 are not.
 
 `plans/delivery.md` has the records' merge and the delivery piece, `plans/core-loop.md` what a
 record is, `plans/predicted-world.md` the own body and the predicted world.

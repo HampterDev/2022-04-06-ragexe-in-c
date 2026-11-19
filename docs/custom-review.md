@@ -15518,3 +15518,84 @@ Not checked: play by a person; the scene harness and the whole suite after the p
 and CMake builds after it; an arrow's release with the paced attack and a player's swing at a
 low attack speed, on the screen; a cast aimed at the player in the playground (no monster there
 casts).
+
+## A unit's coming and going are stamped, and its floors belong to its id (2026-11-19)
+
+The client half of `plans/presence.md`, steps 1 to 3. A unit's records travel through the
+delivery piece in any order, while its coming into view and its going are the entry and vanish
+packets on the ordered world channel. Before this change nothing ordered the two, and what the
+client had played of a unit's tracks (`RecordFloors`, and the move track's own floor) was a
+member of the actor and died with it.
+
+- **The stamp.** `0x0f26` (`ZC_VIEW_STAMP`, 17 bytes, the project's own) arrives directly
+  before the entry or vanish packet it stamps: the unit, the server tick it is in or out of view
+  from, coming or going, and the revision of each of its three tracks then. It is read bounded
+  (`view_stamp_read`); a short packet or an unknown kind is dropped.
+  It belongs to the very next packet only: the dispatcher (`game/packet_dispatch.c`) hands it
+  to that packet, and it takes effect only when that is the entry (`0x09fd`, `0x09fe`,
+  `0x09ff`) or the vanish of its unit (`view_stamp_stamps`); otherwise it is dropped. A vanish
+  without a stamp, as the server sends at a player's death (she stays in its core, lies where
+  she fell and can be raised there), is no going and changes nothing but what a vanish always
+  did.
+- **An act record sent later than it was made** has the top bit of its kind set
+  (`ACT_RECORD_OLD`, as a move record's cause has `MOVE_RECORD_OLD`), as the one the server
+  sends with an entry. It is read with the bit taken off, played at once (it waits in the queue
+  for the clock it is played on, not for its tick) and is no sample of the render delay.
+- **Floors by unit id** (`world/view_floors.c`, freestanding): for 1,024 unit ids, the floor of
+  each track and the ticks of the last coming and going. A coming sets the floors one below the
+  stamp's revisions (what it has is taken), a going to them (only what is newer is a later
+  stay); floors never go back. When the table is full the unit out of view asked for longest ago
+  gives its place, never one in view. The own character is pinned in view and its stamps change
+  nothing. A map load empties the table. The actor and the move track no longer carry floors:
+  `move_track_file`, `move_track_take` and `timed_queue_file` take the unit's floors.
+- **Where records go** (`world/presence.c`, freestanding, used by `game/packets_act.c`): every
+  record is filed against its unit's floors wherever it comes from (the wire, the waiting list,
+  a going). The past is dropped; one whose unit is out of view or has no actor waits by id
+  (`world/record_wait.c`). A hit is dropped when it is dated in a stay that is over. At a going
+  the actor's move track and the unit's items in the act and HP queue leave and are filed again,
+  so what the stamp covers is dropped and what is newer waits for the next stay; at a coming the
+  unit's hits dated before it go. `ZC_TRACK_MOVE`'s handler moved from `packets_actor.c` to
+  `packets_act.c` beside the act and HP handlers, as the library table has the filing there.
+- **Dated goings in the predicted world** (`world/predicted.c`): `predicted_gone` takes the
+  going's server tick. A body is in the worlds of words before that tick and in none after,
+  whatever arrived first; the rule by arrival in `predicted_confirm` is gone. A going the world
+  is already at or past makes it again. What is due at the going's tick runs before it, so a
+  swing that lands then lands. A body that comes back under its id is another stay: it is in the
+  world from its earliest record on, its records of the going's tick or later leave the stay
+  that ended, and every stay of an id has the same slot in the body core, as on the server. The
+  going is told when its stamp is read (`game_mode_own_body_gone`); `own_other` no longer says
+  that a body is gone when its actor is not found, and tells the world of a body only while its
+  unit is in view, so a dying actor is no body.
+
+Two points the plan leaves open were decided here. The predicted world is not told a coming's
+tick; a stay that came back starts at its earliest record, which is the coming as long as the
+record sent with an entry is not dated before it (step 4 sends an act record "made before it was
+sent"; a move record dated before the coming would put the body in the world early). And the
+core slot a returning body takes is the one of its earlier stay; whether the server's renderer
+keeps a unit's slot across stays was not checked.
+
+Validation: `tests\build_view_floors.bat` (the packet read bounded, floors at a coming and a
+going, the table bounded, a record that overtakes its unit's going, a past record and a later
+stay's while a dying actor is shown, and check 1: two units over up to three stays each, 3,000
+seeds, records and hits filed in a shuffled order with a third of the records twice and the
+stamps in their order, give the move tracks, the queue and the floors of filing in the order
+made: 0 differed); `tests\build_predicted.bat` (`test_gone`: the own swing kills its target,
+another's hit kills it a tick before the own swing lands, a word dated before the going that
+arrives after it, a going dated behind the word already held, a body that comes back; check 2: the convergence runs also with the server's
+words, the monster's records and its goings held back and repeated, with the monster killed by
+the own swing, killed a tick before it lands and coming back under its id within a round trip,
+all converging); `tests\build_move_track.bat`, `build_act_track.bat`, `build_record_wait.bat`,
+`build_own_swing.bat`, `build_attack_records.bat` (an act record sent late is played at
+once and not measured; its units come into view first, as the server stamps them),
+`build.bat check` (with `check_one_world`). The stamp's next-packet rule and the act record's
+mark are checked in `test_view_floors.c` and `test_act_track.c`. Twenty-seven faults put into
+`view_floors.c`, `presence.c`, `predicted.c`, `act_track.c` and `packets_act.c` one at a time
+were each caught by one of these tests; four were caught only after a check was added for them.
+
+`tests\test_effect_trace.c` hashes an actor's bytes. Built against the sources before this
+change with only the actor's `record_floors` and the move track's two floor fields removed, it
+gave `41a27d412ba7eb76`, the digest of this change: nothing but the layout moved it.
+
+Not checked: the server half (step 1's stamp from the renderer, step 4) and so any run against
+the server or in the headless playground, which needs it; until the server sends the stamp, a
+unit's records wait two seconds and are dropped. Play by a person; the x64 and CMake builds.
