@@ -74,6 +74,13 @@ every viewer the packet goes to. The server still keeps no memory of what a view
 entry that is held back until its player has loaded the map is stamped when it is sent, with
 the revisions of that moment. The original's entry and vanish layouts are untouched.
 
+A going's tick is the tick the server's core lost the body, taken from the core and not from
+the renderer's clock, so that the two are the same number also when the core could not run to
+the present before the unit left. A vanish that leaves the unit in the viewer's world has no
+stamp: a player who dies stays where she fell, in the server's core and on the screen, so her
+death is no going. An entry or a vanish the server sends for a script (an NPC shown or hidden)
+is rendered by the renderer like any other and is stamped.
+
 ### 2. Floors belong to the unit id
 
 `world/view_floors.c`, freestanding, with its own tests: for a unit id, the floor of each track
@@ -110,8 +117,10 @@ is read, without waiting for the server's next word.
 ### 4. An entry brings what is under way
 
 The renderer sends, with an entry, the unit's act record when it is not idle (an open swing, a
-cast), marked as made before it was sent, as it sends the walk's record today. Rule 7 of
-`plans/core-loop.md` then holds for the act track. HP is in the entry packet.
+cast), as it sends the walk's record today. The record is marked as made before it was sent
+by the top bit of its kind, as the top bit of a move record's cause marks that one: such a
+record is played at once and is no measure of the render delay. Rule 7 of `plans/core-loop.md`
+then holds for the act track. HP is in the entry packet.
 
 ### 5. The own body through the delivery piece
 
@@ -144,9 +153,10 @@ can, the tick `ZC_HOLD_BACK` names can stand in for the number.
    than once gives the world it gives in order, at every tick compared. Among its cases: the
    own swing kills its target, another's hit kills it a tick before the own swing lands, a
    target goes and comes back within one round trip.
-3. **The server says it.** A session test: every entry and vanish has its stamp directly
-   before it, the stamp's revisions are the renderer's counts, and a death's tick is the tick
-   the core lost the body.
+3. **The server says it.** A session test: every entry, and every vanish that takes the unit
+   out of the viewer's world, has its stamp directly before it; a player's death has none; the
+   stamp's revisions are the renderer's counts; and a going's tick is the tick the core lost
+   the body, also when the core had a question open as the unit left.
 4. **On screen.** The playground with Zombies, 30 of 100 datagrams lost and 10 repeated, shows
    no finding it does not show on a wire that loses nothing, and has a check of its own for an
    actor that one side has and the other does not for longer than the line's delay.
