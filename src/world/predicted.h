@@ -127,6 +127,9 @@ struct Predicted {
     uint32_t applied;     /* how many of the pending requests the world has taken */
     uint32_t same;        /* the server's words that were what had been predicted */
     uint32_t different;   /* and those that were not: corrections */
+    uint32_t unexplained; /* of those, the ones without a request or a record to explain them */
+    uint64_t unexplained_tick; /* the tick of the last of them */
+    uint64_t suspect_tick;     /* while `suspect`: the tick of a word that may be one of them */
     uint32_t own_id;      /* the own body's id, as the server's word has it */
     uint32_t placement;   /* the number of the placement the player is in (while `placed`) */
     uint32_t way_left;    /* while `way_new`: the clock the request a word answered left at, */
@@ -137,7 +140,9 @@ struct Predicted {
     uint8_t placed;       /* the number of this placement is known */
     uint8_t has_waiting;  /* `waiting` holds a word */
     uint8_t way_new;      /* a word answered a request with its arrival: how long the way up took */
-    uint8_t reserved[3];
+    uint8_t heard;        /* a record came since the last word */
+    uint8_t suspect;      /* the last word differed, and nothing explained it yet */
+    uint8_t reserved[1];
 };
 
 enum {
@@ -157,6 +162,14 @@ void predicted_init(struct Predicted *predicted, int32_t width, int32_t height);
  * number of the placement is known the word is kept aside, if it is the newest so far, and
  * PREDICTED_REFUSED is returned. */
 int predicted_confirm(struct Predicted *predicted, const struct BodyGround *ground, const struct PredictedBody *body);
+
+/* A record of the world came, of the server's tick `tick`: a unit's move, act or vitals, a hit,
+ * a coming or a going. A word that differs from what was predicted for its tick counts as
+ * `unexplained` when it answers no request, no waiting request was due by its tick, no record
+ * came since the last word, and none of its tick or before comes until the next word (which
+ * travels first and may overtake it): such a word is a fault in a rule or in the prediction.
+ * It is counted when the next word comes, its tick in `unexplained_tick`. */
+void predicted_heard(struct Predicted *predicted, uint64_t tick);
 
 /* The number of the player's placement on this map (ZC_HOLD_BACK). A word kept aside of that
  * placement is taken now, and what predicted_confirm says of it is returned; otherwise

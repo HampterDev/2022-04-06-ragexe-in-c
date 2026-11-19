@@ -453,6 +453,7 @@ void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt)
 
     if (!move_record_read(pkt, (size_t)(pkt[2] | pkt[3] << 8), &gid, &record))
         return;
+    game_mode_own_body_heard(record.at_tick);
     if (game_mode_knows_clock(self) && !record.old)
         render_delay_sample(&self->render_delay, (int)(game_mode_true_time(self) - record.at_tick));
     if (gid == (uint32_t)g_session1.ownAid)
@@ -465,6 +466,8 @@ void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt)
 void game_mode_zc_view_stamp(struct GameMode *self, const unsigned char *pkt, unsigned size)
 {
     self->view_stamp_waits = (unsigned char)view_stamp_read(pkt, size, &self->view_stamp);
+    if (self->view_stamp_waits)
+        game_mode_own_body_heard(self->view_stamp.tick);
 }
 
 void game_mode_view_stamped(struct GameMode *self, int packet_id, const unsigned char *pkt, unsigned size)
@@ -550,6 +553,7 @@ void game_mode_zc_track_act(struct GameMode *self, const unsigned char *pkt)
 
     if (!act_record_read(pkt, &item.u.act))
         return;
+    game_mode_own_body_heard(item.u.act.at_tick);
     if (item.u.act.gid == (uint32_t)g_session1.ownAid) {
         /* the record of the swing that is already shown is not played again */
         if (item.u.act.kind == ACT_SWING && own_swing_record(&self->own_swing, &item.u.act))
@@ -569,6 +573,7 @@ void game_mode_zc_track_vitals(struct GameMode *self, const unsigned char *pkt)
     struct TimedItem item;
 
     vitals_record_read(pkt, &item.u.vitals);
+    game_mode_own_body_heard(item.u.vitals.at_tick);
     item.kind = TIMED_VITALS;
     item.tick = item.u.vitals.at_tick;
     item.actor = item.u.vitals.gid;
@@ -580,6 +585,7 @@ void game_mode_zc_notice_hit(struct GameMode *self, const unsigned char *pkt)
     struct TimedItem item;
 
     hit_notice_read(pkt, &item.u.hit);
+    game_mode_own_body_heard(item.u.hit.at_tick);
     item.kind = TIMED_HIT;
     item.tick = item.u.hit.at_tick;
     item.actor = item.u.hit.source;
@@ -638,6 +644,8 @@ void game_mode_zc_own_intent(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_OWN_INTENT *packet = (const struct PACKET_ZC_OWN_INTENT *)pkt;
 
+    /* the server's game ended the intent, for a reason the client may not see */
+    game_mode_own_body_heard(packet->tick);
     if (packet->state == OWN_INTENT_ENDED)
         intent_ended(self, packet->seq);
 }

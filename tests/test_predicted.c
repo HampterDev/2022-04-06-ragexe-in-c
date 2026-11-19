@@ -1672,6 +1672,58 @@ static void test_way_up_samples(void)
     CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED && !predicted.way_new);
 }
 
+/* The server tells a player's body again when two seconds passed without a word of it. A body
+   that the server changed behind the client's back, with no word, request or record, is so
+   put right within the two seconds: the word told again differs, and the world runs on as the
+   server's. Nothing explained it, which is counted when the next word comes. A record that came
+   before the word explains it, and so does one of its tick or before that comes after it (the
+   word travels first); one of a later tick does not. */
+static void test_told_again(void)
+{
+    static struct Predicted predicted;
+    static uint64_t arena[(SERVER_ARENA + 7) / 8];
+    const uint64_t T = 0x12a05f200ull;
+    struct BodyWorld *server;
+    struct BodyInput in;
+    struct BodyEvent event;
+    struct PredictedBody word;
+    unsigned char state[BODY_STATE_SIZE], theirs[BODY_STATE_SIZE];
+    int heard;
+
+    /* 0: no record; 1: one before the word; 2: one of its tick after it; 3: one of a later tick after it */
+    for (heard = 0; heard <= 3; heard++) {
+        server = begin(&predicted, arena, T, 10, 10, 30, 30);
+        CHECK(predicted_run(&predicted, &ground, T + 400));
+        /* behind the client's back: the server's body is put on another cell */
+        in = input(T + 500, BODY_INPUT_PLACE, OWN_SLOT, OWN_ID);
+        in.x = 20;
+        in.y = 20;
+        CHECK(body_run(server, &ground, T + 500) == BODY_OK && body_input(server, &ground, &in) == BODY_OK);
+        while (body_take_event(server, &event)) {
+        }
+        /* the client's world is ahead of the server's word, as the own clock is */
+        CHECK(predicted_run(&predicted, &ground, T + 2100));
+        CHECK(body_run(server, &ground, T + 2000) == BODY_OK);
+        CHECK(predicted_state(&predicted, state) && body_state(server, OWN_SLOT, theirs) == BODY_OK && memcmp(state, theirs, sizeof state) != 0);
+        /* told again two seconds after the last word */
+        word = word_of(server, 17, 150);
+        if (heard == 1)
+            predicted_heard(&predicted, T + 1990);
+        CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_DIFFERENT);
+        CHECK(predicted.unexplained == 0 && predicted.suspect == (heard != 1));
+        if (heard >= 2)
+            predicted_heard(&predicted, heard == 2 ? T + 2000 : T + 2001);
+        CHECK(predicted_run(&predicted, &ground, T + 2200) && body_run(server, &ground, T + 2200) == BODY_OK);
+        CHECK(predicted_state(&predicted, state) && body_state(server, OWN_SLOT, theirs) == BODY_OK && memcmp(state, theirs, sizeof state) == 0);
+        /* the next word told again is what was predicted */
+        CHECK(body_run(server, &ground, T + 4000) == BODY_OK && predicted_run(&predicted, &ground, T + 4100));
+        word = word_of(server, 17, 150);
+        CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_SAME);
+        CHECK(predicted.unexplained == (uint32_t)(heard == 0 || heard == 3) && !predicted.suspect);
+        CHECK(predicted.unexplained == 0 || predicted.unexplained_tick == T + 2000);
+    }
+}
+
 /* A word is taken only when it is of the placement the player is in: one that comes before
    the number is known waits, the newest of them, and one of another placement is refused,
    in whichever order the words of two maps and the number arrive. */
@@ -1797,6 +1849,7 @@ int main(void)
     test_walk_news();
     test_placement();
     test_way_up_samples();
+    test_told_again();
     test_convergence();
     if (failures) {
         fprintf(stderr, "predicted: %d failed\n", failures);

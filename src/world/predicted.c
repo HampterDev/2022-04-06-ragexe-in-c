@@ -262,7 +262,7 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
     void *arena = block + (8u - ((uintptr_t)block & 7u)) % 8u;
     const struct PredictedPast *past;
     uint32_t id, kept = 0, i;
-    int was;
+    int was, unexplained;
 
     /* a word of a placement not known yet waits, the newest of them; one of another is
        refused */
@@ -288,6 +288,25 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
         return PREDICTED_REFUSED;
     past = predicted->live && !predicted->stale ? past_at(predicted, body->tick) : NULL;
     was = past != NULL && same(past->state, body->state, BODY_STATE_SIZE);
+    /* the last word that differed with nothing to explain it, and no record of its tick or
+       before came after it either, is unexplained */
+    if (predicted->suspect) {
+        predicted->unexplained++;
+        predicted->unexplained_tick = predicted->suspect_tick;
+        predicted->suspect = 0;
+    }
+    /* a word that is not what was predicted for its tick is suspect when it answers no
+       request, no request that waits was due by its tick, and no record came since the last
+       word: a record of its tick or before that comes before the next word still explains it */
+    unexplained = past != NULL && !was && !predicted->heard && body->request == predicted->confirmed.request;
+    for (i = 0; unexplained && i < predicted->pending_count; i++)
+        if (predicted->pending[i].apply_tick <= body->tick)
+            unexplained = 0;
+    if (unexplained) {
+        predicted->suspect = 1;
+        predicted->suspect_tick = body->tick;
+    }
+    predicted->heard = 0;
     predicted->confirmed = *body;
     predicted->own_id = id;
     /* the requests the word includes have been answered: they wait no longer */
@@ -317,6 +336,13 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
             && (predicted->other[i].out || predicted->stale))
             zero(&predicted->other[i], sizeof predicted->other[i]);
     return was ? PREDICTED_SAME : PREDICTED_DIFFERENT;
+}
+
+void predicted_heard(struct Predicted *predicted, uint64_t tick)
+{
+    predicted->heard = 1;
+    if (predicted->suspect && tick <= predicted->suspect_tick)
+        predicted->suspect = 0;
 }
 
 int predicted_placed(struct Predicted *predicted, const struct BodyGround *ground, uint32_t placement)
