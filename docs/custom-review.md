@@ -15599,3 +15599,33 @@ gave `41a27d412ba7eb76`, the digest of this change: nothing but the layout moved
 Not checked: the server half (step 1's stamp from the renderer, step 4) and so any run against
 the server or in the headless playground, which needs it; until the server sends the stamp, a
 unit's records wait two seconds and are dropped. Play by a person; the x64 and CMake builds.
+
+## The own body travels through the delivery piece, measures the way up and is told again (2026-11-19)
+
+The client half of `plans/presence.md`, step 5, of "Every confirmed request measures the way up"
+in `plans/netcode.md` and of "Told again when nothing told it" in `plans/predicted-world.md`.
+
+- **The route.** `ZC_OWN_BODY` (`0x0f25`) is a replaceable row of the route table
+  (`delivery/delivery_route.c`, the server's bytes): one key for the connection, so the newest
+  replaces every earlier one, and first in priority. A lost datagram costs the body one sending
+  and nothing waits behind it.
+- **The placement.** With the world channel's order gone, a body of a map the player left could
+  pass for one of the map she is on. The server counts her placements (one at login, one at each
+  warp), the body carries the count (offset 24) and `ZC_HOLD_BACK` (`0x0f14`, now 8 bytes) names
+  the count of this map. The predicted world keeps the newest body that comes before the count is
+  known aside and takes it once the count is its own (`predicted_placed`); a body of another
+  count is refused. A tick could not stand in for the count: each map's unit has a clock of its
+  own.
+- **The arrival.** The body carries the low 32 bits of the server's clock when the request it
+  names anew arrived (offset 28; 0 otherwise). Each request waiting in the predicted world keeps
+  the local clock it left at (`PredictedRequest.left`); a word that confirms it hands the pair
+  back once (`way_new`) and `game/own_body.c` gives it to `way_up_sample`, which does not change.
+  The head is 32 bytes, every field on its own alignment.
+- **Told again.** The server tells the body again two seconds after its last word. The
+  predicted world counts a word that differs from what was predicted for its tick when it
+  answers no request, no waiting request was due by its tick and no record came since the last
+  word, unless a record of its tick or before comes before the next word (the body travels first
+  and may overtake the record that explains it). Records are the units' track records, hits,
+  view stamps and `ZC_OWN_INTENT`. Each one counted is a line on standard error.
+- **The playground.** The driver reports per actor whether the client has its unit in view, for
+  the runner's presence check, and on exit how late the own body was through the piece.

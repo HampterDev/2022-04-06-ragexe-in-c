@@ -97,14 +97,16 @@ All new packets are in the project's id range, little-endian and packed. Nothing
 or switched: the server always answers the timed exchange, reads stamps and intents and holds
 requests back, and the client always uses them.
 
-`ZC_HOLD_BACK` 0x0F14, 4 bytes, in answer to each `CZ_NOTIFY_ACTORINIT` (0x007D) of a player:
-the one number of the server's the client reckons with. The client forgets it each time it
-loads a map and sends that packet when it has.
+`ZC_HOLD_BACK` 0x0F14, 8 bytes, in answer to each `CZ_NOTIFY_ACTORINIT` (0x007D) of a player:
+the one number of the server's the client reckons with, and the number of the player's
+placement on the map it is on, which every body of that map carries (`plans/presence.md`,
+part 5). The client forgets both each time it loads a map and sends that packet when it has.
 
 | off | size | field | note |
 |---|---|---|---|
 | 0 | 2 | id | 0x0F14 |
-| 2 | 2 | hold_back_ms | the least time a request waits after its press: the own clock leads the server's by at least this |
+| 2 | 2 | hold_back_ms | the least time a request waits after its press on this map: the own clock leads the server's by at least this; 0 on an ordinary map unless the server sets it, 60 on one where players fight each other |
+| 4 | 4 | placement | the player's placements on a map, counted by the server: one at login, one at each warp |
 
 `ZC_TIME_SYNC` 0x0F12, 14 bytes, after each `ZC_NOTIFY_TIME`
 
@@ -172,7 +174,7 @@ sent now is applied before it, and a slow monster's swing takes on the screen th
 server has it take. The player's own swing is paced to when its damage number is here, a way
 down and the lead after it lands.
 
-## Every confirmed request measures the way up (not built)
+## Every confirmed request measures the way up
 
 The own clock leads the server's by the way a request takes there (`std/way_up.c`). Its only
 samples are the timed exchanges: one every 2 s, sixteen kept, so the estimate looks back half
@@ -186,11 +188,14 @@ Each request the server confirms is a sample of the same kind, of the path that 
 - **Server.** A stamped request's arrival is known where its unit reads it (`arrivalMs` in
   `consumers/host/unit.js`), and only the stamp's number goes on from there. `spatial` keeps
   the arrival beside the number it hands the core, outside the core, which knows nothing of
-  latency. `ZC_OWN_BODY` gains four bytes: the low 32 bits of the server's clock at the
-  arrival of the request the body names, or 0 when the body names none anew.
-- **Client.** The game keeps, for each request that waits, the local clock at which it left.
-  When a word of the server confirms it, the pair goes to `way_up_sample`, as an exchange's
-  does. The estimator does not change: the second longest of the last sixteen and half its
+  latency: `core-walks.js` keeps it on the unit right before the request's number goes to the
+  core (a walk in `spatial`, an intent in `eos-combat`). `ZC_OWN_BODY` gains four bytes: the
+  low 32 bits of the server's clock at the arrival of the request the body names, or 0 when the
+  body names none anew.
+- **Client.** Each request that waits in the predicted world keeps the local clock at which it
+  left (`PredictedRequest.left`). A word of the server that confirms it with an arrival hands
+  the pair back once (`way_new`), and `game/own_body.c` gives it to `way_up_sample`, as an
+  exchange's is. The estimator does not change: the second longest of the last sixteen and half its
   height above the shortest, growing at once and shrinking a millisecond in ten.
 
 While someone plays, the samples then come at the pace of the clicks. A request that lost a
@@ -201,6 +206,15 @@ Check: `tests/test_way_up.c` with samples from both sources; the playground at a
 with 40 ms of jitter, where the ticks the predicted body differs for (`plans/predicted-world.md`,
 step 7: walking 0.55%, fights 4.29%) must fall, and the requests that arrive after their tick
 in the first ten seconds of a map must be fewer than before.
+
+Built on both sides. `tests/test_way_up.c` has samples of both sources: a slower line is followed
+two requests after it, where the exchanges alone have not followed it yet, and a request that lost
+a datagram does not set the lead. `tests/test_predicted.c`: a word hands back its sample once, only
+for the request it names and only with an arrival. The playground at a ping of 150 ms with 40 ms
+of jitter, four runs of 40 s with six Porings: requests that arrived after their tick went from
+1 (none in the first ten seconds on the map) to 0; with 10 of 100 datagrams lost too, from 3 (2
+in the first ten seconds) to 0. The own body differed as predicted 13 and 15 times there before,
+9 and 9 after. Not measured: the share of ticks of step 7's sets of `plans/predicted-world.md`.
 
 Not checked: whether the estimate can be kept across a map change. The connection is the same,
 but each map's unit has a clock of its own, and a sample holds the clocks' offset.
@@ -218,6 +232,11 @@ but the equal footing holds only between clients that keep to it. It cannot be e
 a client can also pretend a slow line. It can be watched: a connection whose requests keep
 arriving at or after the tick they name while its round trip, which the delivery piece
 measures, is well under the hold-back is not keeping to it. Not built.
+
+The hold-back is the map's: only where players fight each other does the order of two players'
+presses matter, so an ordinary map has none unless the server sets one, and a request there
+applies when it arrives. Not built: sizing a contest map's number from the pings of the players
+on it, which needs the server to know each connection's way up.
 
 ## Where the action-timing stage differs from the October plans
 
@@ -240,8 +259,11 @@ measures, is well under the hold-back is not keeping to it. Not built.
 Client (`custom`, not committed) and server (ring-buffer worktree
 `local\worktrees\action-timing`, not committed). The server needs no setting for it; it is
 started from that worktree, so that the gateway that knows 0x0F01 is the one running. Two
-numbers can be set in the server folder's `config/server.conf`: `hold_back_ms` (60 unless set,
-0 for none) and `hold_limit_ms` (250 unless set). To play at a ping, set `RAGEXE_LAG_MS` to
+numbers can be set in the server folder's `config/server.conf`: `hold_back_ms`, the hold-back of
+an ordinary map (0 unless set), `hold_back_contest_ms`, that of a map where players fight each
+other (60 unless set; a map with the fork's mapflag `pvp`, `gvg`, `gvg_castle`, `gvg_te`,
+`gvg_te_castle` or `battleground`), and `hold_limit_ms` (250 unless set). Each map's unit tells
+its own hold-back, and the client keeps the number of the map it is on. To play at a ping, set `RAGEXE_LAG_MS` to
 half the round trip before starting the client.
 
 | Step | Built | Not built or not covered |
@@ -251,6 +273,7 @@ half the round trip before starting the client.
 | 2 Predicted walk | Start at the click, once the server's clock is known; a turn mid-walk once the server accepted it; refusal; the server's path for walks the player asked for | Server-started walks of the own character begin a round trip into their path and are drawn on the client's own search |
 | 3 Stamps and hold-back | `CZ_INPUT_STAMP` before move, attack, skill, pickup, naming the tick to apply it at; applied there, in the order of those ticks, ties in arrival order | Seen tick is only logged; other packets of a connection can overtake its held requests |
 | 4 Shared rules | The walk search and step time as one C file, proven equal to the server's code natively and as wasm | The server still runs its JavaScript; the intent step is not written |
+| Way up from requests | The arrival of the request a body names anew in `ZC_OWN_BODY`; each waiting request's leaving time in the predicted world; the pair a sample of `way_up_sample` ("Every confirmed request measures the way up") | Not measured: the share of ticks the predicted body differs for in the sets of `plans/predicted-world.md`, step 7 |
 
 Found on the way: this client sends ground skills as 0x0AF4, and no module of the server
 handles that id, so ground skills from this client reach nothing today.

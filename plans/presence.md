@@ -2,7 +2,7 @@
 
 How an actor's coming into view and its going take part in the order of its records, so that
 records, hits and the player's own body can travel in any order and the screen still shows what
-the server had. Status, 2026-11-19: design only, nothing built.
+the server had. Status, 2026-11-19: all five steps are built on both sides; see "What is built".
 
 `plans/delivery.md` has the records' merge and the delivery piece, `plans/core-loop.md` what a
 record is, `plans/predicted-world.md` the own body and the predicted world.
@@ -132,10 +132,13 @@ costs one sending and none waits behind another packet.
 
 One guard is needed that the world channel gave for free: a body of the map the player left
 must not pass for one of the map it is on. The body carries the number of the player's
-placement, counted by the server each time the player is put on a map, and `ZC_HOLD_BACK`,
-which is told once a map and in order, names the number of this map. A body with another
-number is refused. Not checked: whether the ticks of two maps' units can be compared; if they
-can, the tick `ZC_HOLD_BACK` names can stand in for the number.
+placement, counted by the server each time the player is put on a map (once when she comes
+into the game, once at each warp), and `ZC_HOLD_BACK`, which is told once a map and in order,
+names the number of this map. A body that comes before the number is kept aside, the newest of
+them, and taken once the number is known and is its own; a body with another number is refused.
+The ticks of two maps' units cannot stand in for the number: each map is a unit with a clock of
+its own, which moves only in the unit's frames and goes on from its last commit after a
+restart, and two hosts' clocks are not related.
 
 ## Constraints
 
@@ -185,3 +188,12 @@ step 5 needs 3.
 - It does not make the entry packet a record. An actor's look still arrives in order on the
   world channel, and a lost datagram there still holds back what follows it.
 - It does not tell a viewer what a unit did while it was out of view.
+
+## What is built
+
+All five steps, on both sides: the client's `custom` and the server's ring-buffer. Steps 1 to 4
+are as the design says; step 5:
+
+| Step | Built | Not built or not covered |
+|---|---|---|
+| 5 The own body on the piece | The route table's row for `ZC_OWN_BODY` (replaceable, the connection's one key, first in priority), the same bytes in the server's `net/delivery` and here. The placement: counted by the server's `eos-world` (`aoi-render.js`), carried with the player to the next map's unit and through a snapshot; `ZC_OWN_BODY` and `ZC_HOLD_BACK` carry it (their layouts in `plans/core-loop.md` and `plans/netcode.md`); the predicted world keeps a body that comes before the number aside and refuses one of another placement (`predicted_placed`). The playground's check 4 is a finding of its own kind, `presence` (the server's `consumers/host/playground/presence.js`, the client's view of a unit in `tests/playground/play_driver.c`). Checks: `tests/test_predicted.c`, `tests/test_delivery_route.c`, the gateway's records test (of two bodies sent in one tick only the newer travels), the server's session and render tests; 15 deliberate faults each caught. Check 5 through the piece, the playground with Zombies, four runs of 40 s: with 10 of 100 datagrams lost a word was 12.6 ms late on average from the gateway's end being handed it to the client's end handing it on (623 words), with 30 of 100 37.1 ms (636 words); 1,904 ms at worst in both; the one such case looked at was the first word of its run, sent before the piece had measured a round trip. No presence finding in any of the playground's sets | Check 5 on the world channel: the playground's wire loses nothing there. A warp between two maps of one host was played in a session test only, not in the playground, whose player stays on one map |

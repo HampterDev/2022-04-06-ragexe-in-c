@@ -320,10 +320,24 @@ reasons of `plans/intents.md`), tick (4: legal again from), x (2), y (2): the pl
 server. It is sent when an intent ends; what the intent makes of the player before that, the
 player's body says (`ZC_OWN_BODY`). The client reads its seq and state.
 
-`ZC_OWN_BODY` 0x0F25, 24 bytes and the body (built, `plans/predicted-world.md`): id, length
-(2), the body core's rules version (4), the tick whole (8), the number of the last request the
-body includes (2), the two settings of the core's world (2, 4), and the body as the core's
-bytes. It took the id planned for `ZC_OWN_CLOCKS`: the ticks from which the character may
+`ZC_OWN_BODY` 0x0F25, 32 bytes and the body (built, `plans/predicted-world.md`), every field
+on its own alignment:
+
+| off | size | field | note |
+|---|---|---|---|
+| 0 | 2 | id | 0x0F25 |
+| 2 | 2 | length | of the packet |
+| 4 | 4 | version | the body core's rules version |
+| 8 | 8 | tick | the server's clock the body is of, whole |
+| 16 | 2 | request | the number of the last request the body includes |
+| 18 | 2 | request_steps | the first setting of the core's world |
+| 20 | 4 | penalty_ms | the second |
+| 24 | 4 | placement | the player's placement on a map the body is of (`plans/presence.md`, part 5) |
+| 28 | 4 | arrival | the low 32 bits of the server's clock when the request it names arrived, when it names it anew; else 0 (`plans/netcode.md`) |
+| 32 | n | state | the body as the core's bytes |
+
+It travels through the delivery piece, the newest replacing every earlier one
+(`plans/delivery.md`). It took the id planned for `ZC_OWN_CLOCKS`: the ticks from which the character may
 swing and move are in the body.
 
 Size per viewer: a swing is 67 bytes (act and hit), 85 when the viewer also gets the HP. The
