@@ -13635,3 +13635,1886 @@ Validation, in `client-files` with `RAGEXE_MSAA=1`: from 10,000 at -60 and -70 d
 now has its shadows (18,832 and 20,343 pixels differ from the capture without shadows); the 20
 captures of the scene set are identical to the commit before. `build.bat check` and the full
 `testsuild.bat` pass.
+
+## The server times a player's swing (2026-11-09)
+
+Patrick wants the proceed logic to answer like League of Legends: any command replaces the
+current action, a swing has a windup that a move cancels, and the lock is a rule rather than
+the length of an animation. Until now the lock was the client's own animation: a move click
+during the attack animation was parked until the animation ended, an attack click waited for it
+too, a walk request within 350 ms of the last was dropped, and an attack request within
+1200 ms of the last was not sent. The server (ring-buffer) knew none of it. The design is in
+`plans/action-timing.md`; this is its first stage, basic attacks and movement.
+
+- **Two server packets.** `0x0f10` (`ZC_ACTION_BEGIN`, 21 bytes) announces a swing without
+  damage: attacker, target, server tick, attack motion, windup, kind, skill. `0x0f11`
+  (`ZC_ACTION_CANCEL`, 7 bytes) drops an announced swing before its impact. `0x08c8` keeps its
+  layout and is the impact of an announced swing when it names the same attacker and target:
+  the hit shows at once and the animation is not started again. Without an announcement it is
+  a whole attack as before. No request packet changes.
+- **Where the open swings live.** In the game mode (`open_swings`, 64 entries, oldest first),
+  not in the actor. The effect trace hashes the bytes of `struct Pc`, so a field there would
+  have changed its recorded digest. An entry goes at the impact, at the cancel, at any other
+  attack of that attacker, or when the attacker's next swing is announced.
+- **The player's commands.** The first `0x0f10` on a map sets `action_timing`. From then on a
+  move click during a swing is sent at once, an attack click during a swing is sent at once,
+  the 1200 ms resend guard is off (the server holds an early request until the next swing is
+  due), and walk requests are spaced 150 ms apart. On a server that never announces a swing
+  all of this stays as it was.
+- **Late walks, on every server.** A walk request inside the spacing window is kept (newest
+  wins) and sent when the window ends. Before, it was dropped, and an approach walk dropped
+  that way was not asked again while its cell stayed the requested one. A new attack, pickup
+  or skill intent forgets a late walk.
+- **What stays.** Skills, pickup and sitting keep their gates; the second stage moves those
+  to the server. The arrow of a bow swing leaves at the announcement, so a cancelled swing's
+  arrow still flies.
+- **The suite.** `tests\build.bat` read `%errorlevel%` inside the parenthesised oracle block,
+  where it is expanded before the call, so a failing oracle test did not fail the suite. It
+  now uses `if errorlevel 1`.
+
+Validation: `test_attack_records` covers the announcement, the impact, an attack with no swing
+open, an attack on another target, the cancel while swinging and while walking, a cancel with
+nothing open, an unknown attacker and an unknown kind; `test_packet_dispatch` has the two new
+rows (new digest `5495853c4bce7cdf`); the effect trace keeps its digest. `build.bat check` and
+the full `tests\build.bat` pass. The server side passes its own suites in its worktree. The
+client has not been run against the server yet.
+
+## Time, stamps and a predicted walk with a server that offers them (2026-11-09)
+
+Patrick asked for the netcode his October decisions describe (`plans/netcode.md`): a clock
+synced the way NTP does it, inputs that carry when they were pressed, the own character moving
+at the click, and rules that client and server both run as one piece of code. The server side
+is in the ring-buffer worktree `local\worktrees\action-timing`, every feature off by default.
+On a server that announces nothing the client behaves as before.
+
+- **Latency rig.** `RAGEXE_LAG_MS` holds every byte that many milliseconds before it is sent
+  and again before it is read (`contents/connection.c`, two `LagLine`s), so a round trip takes
+  twice the value. It is read when the connection is made; at most 5000.
+- **Features.** `0x0f14` (`ZC_NET_FEATURES`, 8 bytes) says per map which of time sync, input
+  stamps and hold-back the server has on, and the hold-back in ms. The game mode keeps it
+  (`net_features`, `hold_back_ms`) and forgets it at the next map.
+- **Clock.** With time sync the keep-alive (`0x0360`, which already carries the client's tick)
+  goes out every 250 ms until the estimate has its eight samples and every 2 s after, and
+  `0x0f12` (`ZC_TIME_SYNC`, 14 bytes) answers with that tick, the server's receive tick and its
+  send tick. `std/clock_sync.c` is the estimate: offset and round trip per exchange, the
+  shortest round trip of the last eight trusted, the clock in use slewed toward it at a tenth
+  of the time that passes, a jump only beyond one second. `game/net_clock.h` names the three
+  clocks: the render clock (`session_get_server_time`, unchanged, everyone else is drawn on
+  it), the true clock (the estimate), and the own clock (true plus the longer of half the best
+  round trip and the hold-back).
+- **Stamps.** With input stamps `0x0f01` (`CZ_INPUT_STAMP`, 12 bytes: number, press tick on
+  the true clock, seen tick on the render clock) goes out directly before every move, attack
+  or sit, skill and pickup.
+- **Predicted walk.** With both features and a first sample the own character starts walking
+  when the move request goes out. Standing or swinging it starts at once; walking it turns at
+  the next cell of the walk it is on, which is where the server takes a new destination. It is
+  drawn on the own clock, so it is where the server will have it. While the newest request has
+  no answer, the start of an older walk is not followed. `0x0f13` (`ZC_MOVE_RESULT`, 9 bytes)
+  ends the wait: accepted, the walk's own start packet replaces the predicted one; refused, a
+  walk that had not turned yet keeps going and one that had left what the server knows stops
+  at the cell the server names. A walk the server has no path for is not started here.
+- **One path search.** `world/grid_path.c` is the server's walk search and step time in
+  freestanding C (the fork's `path_search`: 32 steps at most, a 32 by 32 table). The own
+  walk's path comes from it when the server answers moves, so the drawn path is the walked
+  one. `tests/data/grid_path_vectors.txt` holds the server's answers to 11,523 searches;
+  `tools/grid_path_vectors.mjs` writes it from the server's code, and
+  `tools/check_grid_path_wasm.mjs` checks a wasm build of the same file against the vectors
+  and against the server directly.
+- **What stays.** Other actors and every server-started walk of the own character use the
+  original search. A server-started walk of the own character is drawn on the own clock too,
+  so it begins a round trip into its path. The client's grid follows the cell changes the server sends (`ZC_UPDATE_MAPINFO`). The seen
+  tick is only recorded by the server. Hold-back is the server's; the client only moves its
+  own clock by it.
+
+Validation: `test_clock_sync` (first sample, uneven delays, best of eight, slewing, jumps,
+wrapping, refusals), `test_grid_path` (every vector), the wasm check (vectors and 11,400 fresh
+searches against the server's code), `test_packet_dispatch` with the five project rows (digest
+`663de39b40440f3f`); `test_packets`, the two packet tests that compile `msg_misc.c` and the two
+pathfinder tests were adapted to the new symbols. `build.bat check` and the full
+`tests\build.bat` pass. Nothing here has run against the server: the rig, the stamps before
+each request, the prediction and its corrections have no test of their own and no live run.
+The portable builds were not built.
+
+
+## The server walks into range for the player's intent (2026-11-09)
+
+Patrick asked for milestone set 2 of `herc-client-integration/plans/proceed-rework.md`:
+"walk into range, then act" moves from the client to the server, written against ring-buffer
+(`plans/intents.md`). With the server's `intents` setting on, `ZC_NET_FEATURES` carries bit 3.
+
+- **Sent instead of chasing.** The player's attack (`0xa`), skill on an actor (`0x29` with its
+  level message `0x5a`), skill on the ground (`0x41` with `0x5a`) and pickup (`0x12`) messages
+  send one `CZ_INTENT` (`0x0f02`, 18 bytes, after an input stamp when stamps are on) and leave
+  `pending` at 0, so `player_process_proceed` does nothing. The attack's mode is the message's
+  attack kind: 0 repeat (Ctrl), 1 hold, 2 once. The mouse release (`0xf`) of a hold attack sends
+  the release kind. A skill message no longer waits for state 6 to pass.
+- **The answer.** `ZC_INTENT_ENDED` (`0x0f15`, 10 bytes) for the newest intent clears the attack
+  cursor state (`MODE_MSG_SET_ATTACK_IN_PROGRESS` 0), as the client's own proceed logic does
+  when it gives up. An answer for an older intent changes nothing.
+- **The old path.** On servers without intents `player_proceed_attack` aims at where the target
+  is when where it is going is nearer the player, so a monster walking toward an archer no longer
+  sends the archer backward (`proceed-rework.md` milestone 1), and `game_mode_cell_along_line`
+  no longer divides by zero when both points are the same.
+
+Validation: `test_attack_records` checks that only the newest intent's end clears the cursor;
+`test_packet_dispatch` has the `0x0f15` row (digest `115432c17e57e5b3`). `build.bat check` and
+the full `tests\build.bat` pass. The server side passes its own suites. Not run against the
+server; the old path's fix has no test of its own.
+
+
+## Small packets leave when they are sent (2026-11-10)
+
+Patrick asked whether the transport should move off TCP to a UDP library such as ENet. The
+answer for this protocol was to fix TCP first: Ragnarok sends events that cannot be dropped
+and that depend on each other's order, so unreliable delivery and separate channels gain little,
+and what is left of a UDP transport's advantage is a faster resend after a lost packet. That
+stays open as a second transport for the zone connection. Two things were wrong on TCP itself.
+
+- **Nagle's algorithm was on.** Neither `platform/net_win32.c` nor `platform/net_posix.c` set
+  `TCP_NODELAY`, so a small packet sent while an earlier one was unacknowledged waited for that
+  acknowledgement, which the other side may hold back for up to 200 ms when it has nothing to
+  send. `platform_socket_open` now sets the option on both platforms; a failure to set it is
+  ignored, the socket works without it. The gateway of the ring-buffer server sets it on every
+  accepted socket in the same change (worktree `local\worktrees\action-timing`), as Hercules
+  does.
+- **A stamp and its request were two writes.** `rag_connection_send_packet` flushes after every
+  packet, so `0x0f01` and the request behind it reached the socket in two `send` calls and
+  could travel, be lost and arrive apart. `rag_connection_queue_packet` is the same call
+  without the flush, and `game_mode_send_input_stamp` uses it: the stamp waits in the send
+  queue and leaves in the one write of its request. Every caller sends the request directly
+  after the stamp. While sends are held, both go to the held queue in order, as before.
+
+Validation: `test_packets` checks that a queued packet is not flushed, that the next send
+flushes both once and in order, and the held and disconnected cases; the two packet tests that
+compile `msg_misc.c` got the new symbol. `build.bat check` and the full `tests\build.bat` pass.
+`net_posix.c` was compiled alone with gcc on Linux; the portable builds were not built. The
+gateway's `iocp_disconnect_lands_last_bytes` test reads the option back from the accepted
+socket, and its `make check` passes. The gain is not measured: on loopback two back-to-back
+sends arrive 0.1 ms apart with Nagle on or off, so the delay only exists on a real link, and
+the client has still not been run against the server.
+
+
+## Review of the action timing, netcode and intents work (2026-11-10)
+
+Two reviews of the uncommitted work (one against the repos' rules, one against the three
+plans) found the packets sound and the behaviour wrong in places. What changed here:
+
+- **A click no longer cancels its own swing.** The client sends `CZ_CANCEL_LOCKON`, or the
+  intent's release, whenever the mouse button of a click comes up. On the server both cancelled
+  a swing in its windup, so a quick click never landed. They now end the repeat and the swing
+  lands (`plans/action-timing.md` rule 3).
+- **The intent's end reaches the client.** A release no longer takes a new number, so the
+  `ZC_INTENT_ENDED` that follows it is the newest intent's and clears the attack cursor; the
+  server now answers a release that ends a Hold.
+- **A stop cannot overtake a held attack.** An input stamp goes out before `0x0118` too.
+- **The old chase stays off with intents on.** The server's "too far" message (`0x3c`) no
+  longer starts it.
+- **Stamps carry the press.** A walk that waited for its spacing window is stamped with the
+  tick of its click, not of its sending.
+- **Predicted walks.** A turn mid-walk now waits for the server's answer, so a refused turn
+  leaves the walk under way alone. A second request no longer forgets that the first walk was
+  unconfirmed. A walk's start from the server that names the walk under way confirms it. Only
+  walks the player asked for are drawn on the server's plain path; walks the server started
+  (an intent's) use the client's own search, as theirs is another one. A swing announced while
+  a move is on its way to the server is not shown, as that move cancels it there.
+- **Clock.** It jumps forward only, and only when more than a second behind; ahead, it slows.
+  The header said it never ran backward while the code could jump back.
+- **The path grid follows cell changes.** `ZC_UPDATE_MAPINFO` drops the cached grid
+  (`path_finder_cells_changed`), so the earlier note that ice walls were not in it no longer
+  holds for changes the server sends.
+
+Left as found: `tests/build.bat`'s exit-code fix also applies to `main` and has no entry in
+`docs/upstream/README.md`; `grid_path_scratch_size` is used only by the test and the wasm
+check; the smells the review listed. Not fixed: no `ZC_MOVE_RESULT` when the server has no
+entity for the player; a stale move result after a map change (suspected, not shown).
+
+Validation: `test_clock_sync` (forward jump, no backward jump), `test_attribute_consumers`
+(a cell change reaches the pathfinder), `test_attack_records`; `build.bat check` and the full
+`tests\build.bat` pass. The server's suites pass with tests for a stop and a release during
+the windup, an ended intent stopping its attack, and the step waiting for a swing. Still not
+run client against server.
+
+
+## The first run against the server (2026-11-10)
+
+The client was run against a server started from the ring-buffer worktree, on one machine, with
+time sync, input stamps and a 60 ms hold-back on (`plans/netcode.md`, "The first live run").
+Login, character creation, map entry and walking worked, all on the port the test folder's
+`clientinfo.xml` names. Two things did not, and both are fixed.
+
+- **The features were announced too early.** The server sent `0x0f14` with the map entry,
+  0.07 s after the connection. The client finished loading 2 s and again 4 s later, and
+  `game_mode_initialize` clears the features on each load, so it never stamped a request and
+  kept the 12 s keep-alive. The server now answers every `0x007d` of a player with the features
+  (`consumers/eos-world/module.js` in the worktree). Nothing changed in the client for this.
+- **The clock began up to a second behind after a map load.** The answer to the keep-alive of
+  the first load was read after the second load and taken as the first sample, with the load
+  as its round trip; the clock in use then closed the error at a tenth per second. The first
+  stamp was 813 ms behind the server's tick at its arrival. `game_mode_zc_time_sync` now drops
+  an answer whose echoed tick is older than `initialized_at`, and `clock_sync_now` sets a clock
+  that is behind forward at once while fewer than eight samples are held. With the new build
+  the first stamp, 1.4 s after the load, was 8 ms behind.
+
+Validation: `test_clock_sync` has the forward step while the window fills, a clock that is
+ahead still only slowing, and slewing once the window is full; `build.bat check` and the full
+`tests\build.bat` pass. The server's `netcode-session` test now expects the features after each
+`0x007d` and none with the entry, and its whole consumer suite passes. The dropped stale answer
+has no test of its own; it was seen working in the second live run. Not run live: attacks,
+skills, pickups, refusals, a second player, any added latency, and the look of the predicted
+walk.
+
+
+## The own character darted to a cell when walking in circles (2026-11-10)
+
+Patrick saw it on the client of the first live run: holding the mouse and walking in circles,
+the walk packet "snapped" the character to cells. The server's WAL of two such sessions was
+replayed with the walk paths recomputed by the server's own search (`plans/core-loop.md`, "Seen
+in play"). Client and server turned at different cells, for three reasons, and the client drew
+the difference as a dash. All four are changed.
+
+- **The request's apply tick.** `player_predict_walk` turned at the first cell after
+  `game_mode_own_time`, the tick a request applies at when it is sent as it is pressed. A walk
+  the client held for its spacing window has served part of the hold-back by then: the server
+  applies it at its press tick plus the hold-back, or on arrival when that has passed. The
+  prediction now uses that tick (`walk_apply_tick`, `game_mode_apply_time`; the stamp's press
+  tick is kept in `stamp_press`). On the two sessions the old rule named the wrong cell in 6 of
+  65 and 1 of 19 turns, the server's rule in 2 and 0.
+- **A cell due exactly then.** The client took the first cell after the apply tick, the server
+  takes one due at it. The comparison is now `>=`.
+- **The server's side** (ring-buffer worktree, not here): the walk start's packet carried the
+  tick of the frame that rendered it and not the step's, 10 ms off after a diagonal step, and
+  a request applied between a step's tick and the sweep that ran it still turned at that step.
+  `WALK_STARTED` now carries the walk's tick, and a stamped move turns by the step's tick.
+- **The dash.** The walking state moves a character from where it stands to the next cell of
+  its path, to be there at the cell's time. A replaced path whose next cell is a cell or two
+  away and due in 100 ms was a dash. The own character's step is now cut to 13/10 of its walk
+  speed (`steer_own_walk` in `actor_state.c`, `walk_steer`), the rate `game_actor_find_path`
+  already replays a late walk at; it runs behind its path and closes the gap over the next
+  cells, and at the path's end it walks on to the last cell instead of being put there. A gap
+  of more than four cells is taken at once. Only walks started by a walk message of the player
+  while the server stamps and syncs are steered (`steered`); a stop's glide, a held motion and
+  a body relocation are drawn as before, and so is every other actor and every other server.
+
+`actor_state.c` is shared with `main`; the change is deliberate and only here.
+
+Validation: `test_walk_predict` (the apply tick with and without a hold, across the wrap; a
+step within reach, cut, and too far; a cut walk catching up in the frames the rate gives);
+`build.bat check` and the full `tests\build.bat` pass. The server's suites pass with tests for
+the tick in the event and both packets and for the exact turn. Not done: the predicted walk has
+no test of its own that runs `player.c`, and none of this has been seen on screen yet.
+
+
+## ENet as a second transport (2026-11-10)
+
+Patrick asked for the UDP transport after the TCP fixes (`plans/transport.md`). It is ENet
+1.3.18, vendored as published in `vendor/enet-1.3.18` (its sources, headers, `LICENSE`,
+`README` and `ChangeLog`), carrying on one reliable channel the byte stream TCP carries. Off
+unless `RAGEXE_TRANSPORT=enet` is set; packets, their reader and everything above the socket
+are unchanged.
+
+- **The link.** `platform/net_enet.c` is one file for every platform: an ENet host with one
+  peer, a buffer for what arrived and was not taken yet, and the socket calls' answers (not
+  writable before the server answered the connect, a read of 0 after the server closed, a
+  failed send after that). `platform_socket_open_enet` in `net_win32.c` and `net_posix.c` makes
+  a socket whose calls go there. What the server sends is the server's to size, so a failure
+  to hold it closes the link and nothing else.
+- **Closing.** A close waits up to 100 ms for the server to acknowledge what was sent last,
+  then sends one notice and closes. A TCP close does not wait.
+- **Choosing and falling back.** `connection_connect` tries ENet first when the setting is on.
+  `connection_flush` gives an unanswered attempt up after one second and connects over TCP to
+  the same address, with the send queue kept, and remembers for the run that this server does
+  not answer ENet. `connection_connect` now resolves the address before it opens a socket; the
+  original opened first, with no difference a server can see.
+- **Builds.** `vendor\build_vendor.bat` makes `enet.lib`, `build.bat` and the scene harness
+  link it, and the scene harness's sockets answer `platform_socket_open_enet` with none. The
+  CMake build has `rage_enet`, in `rage_platform` and in the client's targets.
+- **The server** takes ENet clients on its port number's UDP port with `enet = on`
+  (`src/enet_listener.c` in the ring-buffer worktree, `docs/enet-transport.md` there).
+
+Validation: `test_platform_enet` runs the socket against an ENet server in the same process
+(connect, a stream both ways, a 100,000-byte packet read in pieces, the server's close after
+its last bytes, a close that delivers what was sent, a port that never answers); it passes
+with MSVC and, built by hand with gcc, on Linux. `build.bat check` passes with ENet linked.
+The full `tests\build.bat` was not seen passing with this change: it stops at
+`test_character_model`, which does not compile against a change to `actor/types.h` that was in
+progress in the same checkout (`struct MoveTrack`); the tests before it pass.
+The gateway's suite has a real ENet client against its listener. Live, on one machine: with
+the setting and `enet = on` the client logged in, entered the map and walked with every
+connection over ENet and none over TCP; with the setting and `enet = off` it reached the
+character list over TCP after the fallback. In one fallback run the client showed a message
+at the server list and closed without connecting on; Patrick was using the window too, so the
+cause is not known. Not done: the fallback has no test (`connection.c` is not in any test),
+the CMake builds were not built, nothing was run over a link that loses packets, and the gain
+over TCP is not measured.
+
+
+## Move track: other actors are drawn from the server's records (2026-11-10)
+
+Step 1 of `plans/core-loop.md`, which Patrick asked to have built. With a server that announces
+tracks (bit 4 of `0x0f14`, and its clock known), where another actor is comes as `0x0f20`: a
+record that holds from a server tick on, with the cell, the steps of the walk as the server
+searched it, the speed and when the first step lands. Nothing changes on a server without the
+bit, and nothing for the player's own character, which keeps the walk packets and its
+prediction.
+
+- **The record** is read and bounded by `move_record_read` (`world/move_track.c`, freestanding):
+  a packet shorter than its fields, of another length than it says, with more than 32 steps,
+  steps that do not fit it or an unknown cause is dropped. `tests/test_move_track.c` reads the
+  bytes the server's own test writes.
+- **Each actor holds up to four records** by tick (`move_track_file`). One that arrives removes
+  those with the same or a later tick, since the server made it knowing them.
+  `game_actor_process_state` takes the latest one whose tick the render clock has reached
+  (`play_move_track`).
+- **A walk is drawn on the record's cells.** `path_finder_record_path` fills the actor's path
+  from the record, with each cell's tick; a cell off the map drops the record. The client's
+  own search is not run, so a cell the two sides see differently (an ice wall the client was
+  not told of) no longer leaves the actor standing.
+- **A delayed walk stands first.** When the first step starts after the record's tick (a hit
+  delayed the walk), the actor stops where it is drawn and starts walking at that tick. On
+  the fork's packets the client is told nothing of the delay.
+- **A stop is walked off.** A record without steps ends the walk under way; what is left of
+  the way to its cell is walked by the client's own search from where the actor is drawn. If
+  that search finds no way the actor stands where it is. An actor that is not walking and is
+  drawn on the record's cell is left as it is, so a stop does not end a swing or a flinch.
+  Pushed and placed records, which the server does not send yet, are drawn as the stop packet
+  draws them.
+- **A record's walk never sets the actor's place.** It starts without the `snap` of
+  `actor_set_state`, which puts an actor that was hit on the cell the hit named. A walk that
+  waited for its first step does not start when something else gave the actor a path in
+  between (a slide or a knockback, which are still the old packets).
+- **Steering is every such walk's.** `steered` moved from the player to the actor: a walk from
+  a record that puts the actor elsewhere, or arrives late, is joined at 13/10 of the actor's
+  speed like the player's predicted one.
+- **The render clock.** With tracks `session_get_server_time` reads the server's clock less a
+  render delay, set once a frame (`game_mode_pin_render_clock`, `session_pin_server_time`);
+  the walk packets' ticks no longer move it until the next map's `session_set_server_time`
+  (the flag is a static beside the session and not a field of it, so the session's bytes,
+  which `test_window_lists` traces, stay what they were). The delay (`std/render_delay.c`) is 100 ms until eight records
+  have been timed, then the second latest arrival of the last sixteen plus 10 ms, between 40
+  and 200 ms, moving one millisecond in twenty so the clock never jumps or runs backward.
+  Records the server marks as sent later than made (the walk of an actor that comes into
+  view) are not timed.
+
+Two tests carry a digest that follows from this and were set to the new value:
+
+- `test_effect_trace` hashes the bytes of its actors, `sizeof(struct Pc)` each. The actor grew
+  by the track's fields, so the digest is `facbf5f0d03bc7dd` where it was `2842b5a04b52ece4`.
+  The test compiles none of the source files changed here, only the header with the larger
+  struct, and reports the same 2083072 steps and 36991 primitives as before.
+- `test_packet_dispatch` hashes what every packet id dispatches to. With `0x0f20` it is
+  `078bf4fd9db27f47` where it was `115432c17e57e5b3`, over the same 1179800 cases, and it
+  checks that the id reaches `game_mode_zc_track_move`.
+
+Not done: knockbacks, slides and warps are still the old packets, applied on arrival; a record
+that arrives before the clock is synced is played on the old render clock; every actor grew
+by about 240 bytes. Nothing of this has run against a server:
+the reader, the queue, the cells and the delay have tests (`test_move_track`,
+`test_render_delay`), the playing in `actor_state.c` has none.
+
+Validation: `build.bat check` and the full `tests\build.bat` pass. On the server the whole
+consumer suite passes, with a session test that runs spatial and world in a host
+(`consumers/host/tracks-session.test.mjs`): a walk as a record with the server's steps and
+tick, the turn of a stamped move, a delayed walk, and a chase walk's step ticks with and
+without tracks.
+
+## ENet only, three channels, one connection for a login (2026-11-10)
+
+Patrick decided against keeping TCP in the client, and asked for the channels and for his
+picture of one connection (`plans/transport.md`, stages 2 to 4). The server keeps TCP, because
+the parity gate drives the Hercules fork and ring-buffer with one scripted TCP client.
+
+**ENet only.**
+
+- `platform/net_enet.c` is now the socket interface of `platform/net.h` on every platform.
+  `net_win32.c` and `net_posix.c` keep Winsock's start and the address helpers. Gone with the
+  TCP sockets: `platform_socket_set_nonblocking`, the `TCP_NODELAY` of the entry before last,
+  the one-second fallback and `RAGEXE_TRANSPORT` of the last ENet entry, and on Windows the
+  original's lookup of `send` and `recv` in `ws2_32.dll` with its "Module Hooking Error" boxes.
+- A socket whose server has not answered the connect after five seconds reads as closed, so
+  the client's own "disconnected" handling shows it. ENet alone would wait 15 to 30 s.
+- The client no longer connects to a plain Ragnarok server, and not from a network that blocks
+  UDP. The gateway takes ENet unless its folder says `enet = off`.
+- `tests/test_platform_net.c` was the TCP sockets' test and is now this one's: the address
+  helpers as before, and the socket against an ENet server in the same process.
+
+**Three channels.**
+
+- The socket has three (`platform/net.h`): the world's and one for text and lists, both in
+  order and resent, and one that is never resent. `platform_socket_send` and
+  `platform_socket_recv` name the channel. The connection has a send queue and a receive queue
+  per channel, the latency rig's chunks carry their channel, and raw reads and the packets held
+  back during a map load use the world's.
+- `rag_connection_queue_packet` picks the channel from the packet's id: `0x0360` on the unresent
+  one, 46 ids of whisper, party and guild text, guild emblem images, friends, mail, the quest
+  log and rankings on the second, the rest on the world's. `rag_connection_get_packet` takes a
+  whole packet from whichever channel has one, the world's first.
+- The storage and cart contents the first draft had on the second channel stay on the world's:
+  this client's item lists are the split lists `0x0b08` to `0x0b0b`, which the inventory shares.
+  The guild and party windows stay too, as groups nobody has listed completely.
+- A server that answered the connect with fewer channels gets everything on the world's.
+
+**One connection.**
+
+- `connection_hop` ends a stage as `connection_disconnect` does and keeps the socket.
+  `connection_poll` services a kept socket and throws away what arrives on it, and drops it
+  when the server closed it. `connection_connect` takes a kept socket over when it goes to the
+  same address and port, and closes it otherwise. `login/auth.c`, `login/account.c` and
+  `login/zone.c` hop where they disconnected. The login's packets are unchanged, and the
+  server was not changed for it.
+- Returning to character selection, logout and a change of zone server still disconnect: the
+  server cleans a player up only when its connection closes.
+- Seen on the way: the client quits after 15 s on the server list (`login/mode.c`, sub-mode
+  6), which is what the unexplained exit of the ENet entry above was.
+
+Validation: `test_platform_net` (addresses, a stream both ways, a 100,000-byte packet read in
+pieces, the three channels each way and out-of-range ones refused, the server's close after its
+last bytes, a close that delivers what was sent, a port that never answers reading as closed
+after five seconds), `test_connection` (new: the connection over real sockets, each channel
+each way, raw reads, a hop and a connect to the same address on the same link with what
+arrived in between thrown away, a hop and a connect elsewhere, a kept link the server closed,
+a kept link at shutdown) and `test_packets` (the channel of every id, reading from three
+channels). All three also pass built by hand with gcc on Linux. `build.bat dbg check` passes,
+and the full `tests\build.bat` passes; the release objects were built by another session's
+build at the same time, so `build.bat check` on them was not this change's own run. The scene
+harness builds. Live, on one machine against the worktree's server: one connection carried
+`0x0acf`, `0x0064`, `0x0065`, `0x0066`, `0x0436` and both load acknowledgements, no other
+connection was opened, presence went from online without a character to online with one, the
+time exchange on the unresent channel was answered 23 of 23 times, and walking with stamps
+worked. Not run live: anything on the second channel (no whisper, mail or quest was sent),
+returning to character selection, a logout and a second login in one run. Not done: the CMake
+builds were not built, nothing ran over a link that loses packets, and what the channels gain
+is not measured.
+
+
+## Act track, hit notice and vitals: swings, hits and monster HP by their tick (2026-11-10)
+
+Step 2 of `plans/core-loop.md`. With tracks the server sends a swing, a hit and a monster's HP
+with the server tick each belongs to, often ahead of it, and no longer `0x0f10`, `0x0f11`,
+`0x08c8` for hits or the walking entry it resent to show a monster's HP.
+
+- **Three packets**, read in `world/act_track.c` (freestanding): `0x0f21` (33 bytes) is what an
+  actor does from a tick on, a swing with the tick it lands at and the length of its animation,
+  or idle; `0x0f23` (32 bytes) is a hit with the tick it lands at, in the fields of `0x08c8`
+  and with the target's damage motion; `0x0f22` (18 bytes) is an actor's HP from a tick on. An
+  act of a kind this client does not know is dropped.
+- **One queue in the game mode** (`TimedQueue`, 128 items by tick). An act record that arrives
+  removes that actor's act records with the same or a later tick, which is how a swing is
+  cancelled: there is no cancel packet. Hits and HP are never removed. A full queue hands back
+  its earliest item, which is played at once.
+- **Played once a frame** (`game_mode_play_tracks`, from the run loop beside the keep-alive,
+  with the same exception in `tools/libraries.txt`). An item is due when the clock its actor
+  is drawn on reaches its tick: the render clock, or the own clock for the player's own swing
+  and hit, which therefore show as soon as they arrive. Played, a swing is what `0x0f10` was
+  (`swing_begin`), idle what `0x0f11` was (`swing_cancel`), a hit the impact of `0x08c8`
+  (`game_mode_notify_act`, which finds the open swing), HP what `0x0977` is (`AM_SET_HP_BAR`).
+- **The HP moves with the number.** A hit that is played takes the waiting HP records of its
+  target up to its tick with it, so the player's own hit, shown ahead of the render clock,
+  does not leave the monster's bar behind.
+- **A monster's hit is no longer timed by its animation here.** The server sends its swing as
+  a record from the swing's start and the hit dated when it lands; the hit is then the
+  swing's impact and shows at that tick. Before, the client showed it when its own animation
+  of the swing reached the hit frame.
+- How late each of them arrives also feeds the render delay.
+
+Not done: skill hits, casts, sitting, standing and dying are the old packets; players' HP (own
+and party) is the old packets; an actor that comes into view mid-swing gets the hit without the
+swing.
+
+Validation: `test_act_track` (the server's own bytes, the order by tick and arrival, an act
+replacing the later ones of its actor, the own and the render clock, the HP taken along, a full
+queue, the wrap). `test_attack_records` plays the three through `packets_act.c`: a monster's
+swing and hit each at its tick, the HP with the number, a swing cancelled before and after it
+started, an unknown kind, the own clock ahead of the render clock. `test_packet_dispatch`
+checks the three ids reach their handlers; its digest is `50c65ef48b794a53` with them, over the
+same 1179800 cases. `build.bat check` and the full `tests\build.bat` pass. On the server the
+whole consumer suite passes, with the renderer's tests for each of the four and the new
+`mob_windup` tests. Not run client against server.
+
+
+## Own intent: one answer for a walk and an intent (2026-11-10)
+
+Step 3 of `plans/core-loop.md`, as far as it is built. With tracks the server answers a stamped
+move and an intent with one packet, `0x0f24` (14 bytes), in place of `0x0f13` and `0x0f15`: the
+request's number, a state (held, under way, acting, ended), the reason when ended, a tick, and
+the cell the server has the character on.
+
+- **One counter.** `game_mode_send_intent` gives an intent the number of the stamp it goes out
+  with; before, intents counted on their own. A move already had its stamp's number. The
+  record of a move and of an intent are so told apart by the number alone. Without stamps an
+  intent counts on its own as before. A release still carries the number of the intent it
+  releases.
+- **The handler** (`game_mode_zc_own_intent`, `packets_act.c`): under way and ended answer the
+  predicted walk of that number, taken or refused (`player_move_answered`); ended also clears
+  what `0x0f15` clears when the number is the newest intent's. Held and acting are read and
+  change nothing here: the client shows nothing of them yet.
+- **`player_move_answered`** is what `game_mode_zc_move_result` did, moved to
+  `actor/walk_answer.c` so that both packets' handlers may call it: `packets_act.c` and
+  `packets_actor.c` are in different feature libraries, and `actor/player.c` is in one of
+  them.
+
+Not built of step 3: the player's own clocks (`ZC_OWN_CLOCKS`), which nothing here would read
+before casts and skill poses exist; walking as a `CZ_INTENT` of its own kind, since
+`CZ_REQUEST_MOVE2` with its stamp already is that request and the server ends an intent on it.
+The order rules needed no change: the server applies held requests by press tick and ties by
+arrival, and every request of the loop is stamped (the server's `docs/netcode.md`, rule 7).
+
+Validation: `test_attack_records` (held and acting change nothing; under way and ended reach
+the walk's answer with number and cell; ended clears the newest intent and not an older one; an
+unknown state). `test_packet_dispatch` reaches the handler; its digest is `094d71fa293bcbb3`.
+`build.bat check` and the full `tests\build.bat` pass. On the server the whole consumer suite
+passes: the keeper's phases against a scripted world, `eos-combat` sending them and the end
+with tracks and only `0x0f15` without, the renderer's and the host session's answer to a move.
+Not run client against server.
+
+
+## Casts as records, and the list of skills without a pose (2026-11-10)
+
+Step 4 of `plans/core-loop.md`, as far as it is built.
+
+- **A cast is an act record.** `0x0f21` grew to 35 bytes and a third kind, cast: its end tick,
+  the skill and level, the target or the cell, and the element, disposable flag and attack
+  motion `0x07fb` carries. With tracks the server sends it in place of `0x07fb`, and idle in
+  place of `0x01b9`. Played (`play_item`, `packets_act.c`), a cast is `game_mode_zc_useskill_ack`
+  with the time the cast still has on the clock its actor is drawn on: all of it at the
+  record's tick, less when the record is played late, none once the cast is over. The cast bar
+  so ends at the cast's tick; from `0x07fb` it ran its whole length from whenever the packet
+  arrived.
+- **Idle ends a cast too.** An idle record ends an open swing as before and now also the cast
+  an actor shows (`cast_cancel`): only when the actor is casting, so the idle that cancels a
+  swing sends no stop messages to an actor without a cast.
+- **`game_actor_stop_cast`** (`actor/cast_stop.c`) is what `game_mode_zc_dispel` did, moved so
+  that both may call it; the two are in different feature libraries. `0x01b9` behaves as it
+  did: the player's own cast keeps the warning plane, another actor's loses it.
+- **The skills without a pose.** `tests/test_skill_poses.c` reads `session_get_use_effect` for
+  every skill id below 0x1000 and holds the 25 it sets to action 0 to a list. The server keeps
+  a copy of that list, and of `skill_skips_cast_state`'s six, to know which skills leave
+  their user in a pose (its `docs/action-timing.md`, "Skill pose"). The test stands in for
+  `session_get_begin_effect_id`, which asks the game's Lua data: a skill with a begin effect
+  there gets the skill pose in spite of the list, and neither the test nor the server knows
+  that data. `skill_skips_cast_state` is static in `actor/skill_checks.c` and has no test.
+
+Not built of step 4: the skill's pose is not a record (the client still plays it from the
+skill's own packets), and skill hits are the old packets. On the server the pose's length is a
+setting, one attack delay by default, because how long the client's pose lasts depends on the
+job's and weapon's animation.
+
+Validation: `test_act_track` (the server's bytes of a swing and of a cast, a negative element,
+an unknown kind), `test_attack_records` (a cast played with all, part and none of its time; idle
+stopping the cast of an actor that shows one, the player's own as its own, and none of an actor
+without), `test_skill_poses`. `build.bat check` and the full `tests\build.bat` pass. On the
+server the whole consumer suite passes, with the renderer's cast and cancel records, the
+pose's hold in `skill-use.js` (from the use of a skill without a cast time, from the cast's end
+of one with, none for a cancelled cast) and the list in `skill-pose.js`; the two places `module.js` asks
+for the hold have no test of their own, as its tests cannot let a player use a skill. Not run
+client against server.
+
+
+## The body core in the client: where the predicted walk starts (2026-11-10)
+
+Part 5b of `plans/body-core.md`, the client's first use of the core.
+
+- **`src/body/`** holds the body core: `body.c`, `body.h` and the path search `grid_path.c`,
+  `grid_path.h`, which moved there from `src/world/`. They are the server's files
+  (ring-buffer, `sim/body`), byte for byte but for line ends. `tools/check_body_copy.py`
+  compares them, with the core's tests, against the server's checkout when one is there, and
+  `tools/check_libraries.bat` runs it, so `build.bat check` and the suite fail on a copy that
+  has drifted. Without a server checkout it says so and passes. The folder is in the library
+  `base`: the core uses nothing of the client.
+- **Not all of the core has a user here.** The client calls a handful of its functions; the
+  rest (`body_world_check`, `body_move_at`, the stop, hold and speed inputs) is used by the
+  server and by the core's own tests, which the client runs too. The rule that nothing unused
+  stays is not applied inside these files, because they have to stay the server's.
+- **`world/own_walk.c`**, `own_walk_start`: where and when the walk a move request asks for
+  starts. It puts the character into a world of one body as the walk it is on says (the cell
+  it left, the step under way and its landing), gives the core the request at the tick the
+  server applies it, and reads the core's answer. `path_finder_own_walk_start` calls it with
+  the client's ground and the player's path. Freestanding; the world's memory is a block on
+  the stack, in which it finds the 8-byte alignment the core asks for, since a 32-bit build
+  aligns its stack to 4.
+- **`player_predict_walk`** asks that function and no longer has the rule itself (the first
+  cell of the walk whose tick is not before the request, and a path search from it).
+  `player_server_walks` went with it. How the predicted walk is then shown is unchanged: at
+  once when the character stands, as a redirect at the cell and tick the core named when it
+  walks.
+
+What changes in play: almost nothing, and that is the point. The core's answers are those of
+the rule the client had: standing, from its cell at the tick; a step under way, from the cell
+it leads to when it lands; a step landing at the very tick, from that cell at once. One
+difference: the way is searched from the cell the character is on when the request applies,
+as the server does, and again from the cell the step leads to. The client searched from the
+second only.
+
+Not done: the own character still gets no move record from the server, so a hold after a hit
+and a way round a cell the client does not know of still reach it only as the server's later
+correction. The core's holds are not used here.
+
+Validation: `test_body` (the server's tests of the core, unchanged, built with MSVC for x86:
+every input and refusal, the checker, four scenarios of 50,000 inputs with the digests the
+server's clang and wasm builds give), `test_own_walk` (standing, a step under way, a step
+landing at the tick, refusals, a closed cell, the clock's wrap, bad data), `test_grid_path`
+from its new place. `build.bat check` and the full `tests\build.bat` pass.
+`player_predict_walk` itself has no test, as before.
+
+
+## Move records for the player's own character (2026-11-10)
+
+`plans/body-core.md`, part 5b. With `own_records = on` beside `tracks` the server sends the
+owner `0x0f20` for its own character: for a walk, in the place of `0x0087`, and for a walk a
+hit holds back, which the classic protocol never told. Off, the server sends none and nothing
+here changes.
+
+- **`game_mode_zc_track_move`** no longer drops a record of the own character; it hands it to
+  `player_own_move_record` (`actor/player.c`).
+- **Taken as the classic walk start is.** While the newest predicted walk waits for its
+  answer, a record of an older walk is followed only when it is the walk the character is on.
+  That is asked of the walk's destination and not of the walking state, unlike message 0: a
+  hit takes the character out of its walk on the client, and the record of that walk held
+  back is exactly the one to follow.
+- **Followed, it is played like any actor's record**: filed in the character's move track
+  and put into effect by `play_move_track`, which now runs for the player too, on the clock
+  the player is drawn on. So the walk is the server's steps and ticks and is not searched
+  again, and a held walk stands until its first step starts and then walks on. The
+  character is steered to it, never set.
+- **A request that still waits turns the walk the record gives**: where and when is asked of
+  the body core again (`path_finder_own_walk_start`), on the walk as the server has it now and
+  at a tick no earlier than the record's. This is the replay `plans/body-core.md` decided on,
+  for the one case that exists so far.
+- **`path_finder_own_walk_start`**: a walk whose first step has not started yet, held back by
+  a hit, counts as that step under way, as it does to the server: a request waits for the
+  step to land and the walk starts from the cell it leads to. Before, such a walk counted as
+  not begun and was turned on its first cell.
+
+What this does for play, on a server with `own_records`: after a hit the character flinches
+and then walks on when the server lets it, where before it stood while the server walked it
+on. A walk the server re-paths round a wall is drawn on the server's steps.
+
+Not done: a stop is still the classic position fix; a record without steps is ignored here.
+The rules version is not sent. The server's holds are not predicted: a held start is learned
+from the record, one round trip after the click.
+
+Validation: `test_own_walk` (a step a hold keeps from starting). The server's tests cover what
+is sent (its `docs/tracks.md`, "Own records"). `player_own_move_record` and the playing of a
+record on the player have no test: no test builds `player.c` or `actor_state.c`, and none of
+it has been played. `build.bat check` and the full `tests\build.bat` pass.
+
+
+## The body core's copy follows the server: walks to within a range and after a body (2026-11-10)
+
+`src/body/` and its tests under `tests/` were copied again from the server, where the core
+gained two inputs (walk to within a range of a cell; walk after another body) and its rules
+version went to 3. `struct BodyInput` grew by the target's id and slot, so `own_walk_start`
+(`world/own_walk.c`) sets those to 0 in the inputs it makes. Nothing in the client uses the new
+inputs: the client asks the core only about its own plain walk. `test_body` runs the server's
+tests of them, built with MSVC for x86, with the digests the server's builds give.
+`build.bat check` and the full `tests\build.bat` pass.
+
+
+## The body core's copy follows the server: the attack (2026-11-10)
+
+`src/body/` and its tests under `tests/` were copied again from the server, where the core
+gained the basic attack's loop (`plans/body-core.md`, part 5c) and its rules version went to
+4. A world's smallest ring is eight events now and a body is larger, so the block
+`own_walk_start` (`world/own_walk.c`) makes its world of one body in grew from 320 to 512
+bytes; with the old size it would have refused every walk, which `test_own_walk` shows.
+Nothing in the client uses the attack yet. `test_body` runs the server's tests of it, built
+with MSVC for x86, with the digests the server's builds give. `build.bat check` and the full
+`tests\build.bat` pass.
+
+Copied once more the same day, at rules version 5: the server's combat now fights through
+the core (its setting `body_attack`), which took a few inputs more (the attack's clock set
+by the host, an attack that goes on no more, a stop that only forgets the target), an event
+for a swing that had no ammunition, and a reader of a body's attack. No size changed, and
+the client still uses none of it. `build.bat check` and the full `tests\build.bat` pass
+with this copy too.
+
+And a third time, at rules version 6, after the own swing below was built: the core keeps a
+cast and the act clock for the server's skill code now (a cast with its end and a question
+there, its cancel, the clock put there or only later, a clock of the game's own told with the
+answer to a look). A body is 8 bytes larger; the two worlds the client makes on its stack
+(`world/own_walk.c`, `world/own_swing.c`) still fit their blocks, which their tests show.
+The client asks the core nothing new. `build.bat check` and the full `tests\build.bat` pass.
+
+And a fourth time, at rules version 7: the core keeps a player's intent for the server (its
+step, phases and end; `plans/body-core.md`, part 5d). A body is 40 bytes larger, so the two
+blocks the client's stack worlds are made in grew: 576 bytes for the one body of
+`own_walk_start`, 768 for the two of the own swing's question (`world/own_swing.c`); with the
+old sizes both would have refused, which `test_own_walk` and `test_own_swing` show. The client
+uses nothing of the intent. `build.bat check` and the full `tests\build.bat` pass.
+
+
+## The own swing starts at the click (2026-11-10)
+
+With tracks the player's own swing was shown when the server's record of it arrived
+(`ZC_TRACK_ACT`), a round trip after the click. `plans/core-loop.md` decided that it starts at
+the click and is stretched to land on the server's impact, and `plans/body-core.md` that the
+body core says whether it begins. This builds that, for the swing a click begins at once.
+
+Whether and when a swing begins has since become the plan of the order's
+(`world/own_attack.c`, "Attack orders are planned at the click" below), which also covers a
+character that walks or has to walk into reach; `world/own_swing.c` keeps the book of the
+swing shown, and the mode message is `MODE_MSG_OWN_ORDER`.
+
+**The rule as first built** (`world/own_swing.c`, freestanding, and `game_mode_predict_swing` in
+`game/packets_act.c`). When a request to attack leaves (`CZ_REQUEST_ACT2` with action 0 or 7,
+or an attack intent), the client asks the core whether a swing begins at the tick the server
+applies the request: the character and its target go into a world of two bodies as they are
+drawn, the character fights as the server's last record of a swing of its own said (the attack
+motion, and how long after its start the swing landed; the attack delay is twice the attack
+motion, as the server has it for a player), and every question the core has for the game is
+answered yes. If the core begins a swing, its record is filed in the queue the server's records
+wait in, at that tick, and plays on the own clock, which is at that tick now.
+
+The intent is sent by the actor code (`actor/player.c`), which the library table keeps from
+calling the game's code, so it asks through the mode as it asks for everything else: with
+`MODE_MSG_PREDICT_SWING` (0x1000), a mode message of the project's own, above every number
+the original uses.
+
+- **Stretched.** The damage number comes with the server's hit notice, which is here half a
+  round trip of way down and the own clock's lead after the impact. The swing shown is played
+  that much slower (360 ms for 300 at a round trip of 60), at most twice as slow.
+- **Confirmed.** The server's record of a swing at the same target within 250 ms of the one
+  shown is that swing: it is not played again, and its hit notice is the swing's impact as
+  for any swing. A record of another swing is played, and replaces what is shown.
+- **Taken back.** When no record has come twice as late as it is due and 200 ms more, the
+  server did not swing: the animation ends as for a cancelled swing, and the attack delay the
+  swing would have begun is forgotten.
+
+**Only then:** tracks and the own clock (time sync and input stamps); a character that stands
+and has no walk waiting for its answer; a target that is on screen; and after one record of an
+own swing came, which is where the client learns how the character fights. The first swing on
+a map is shown as before.
+
+**Not shown ahead, on purpose:** a swing the attack delay still holds back, and the later
+swings of an attack that goes on. Those begin at a tick no click sets, and showing some of
+them early would make the rhythm uneven. They come with the server's records, a round trip
+behind, as all own swings did.
+
+**Where it can be wrong,** and is then corrected by the two rules above: the target is taken
+where it is drawn, which is a render delay behind where the server has it; the client does not
+know the character's act clock (a skill's delay) or the server's wait after a cancelled swing;
+and a change of attack speed is learned one swing late.
+
+**Not done.** The animation is not timed again when the server's record arrives; the estimate
+made at the click stands. That the frame the animation's hit is on lies where the server's
+impact is, is assumed and not traced: the stretch slows the whole swing. A character that
+walks is not stopped and swung ahead. Nothing of this was seen on screen.
+
+**Tests.** `tests/test_own_swing.c`: when the core begins a swing (reach, a walking target, the
+attack delay, a server without a windup, ticks that wrap), the stretch, which records confirm
+and which replace, the taking back, the idle record. `tests/test_attack_records.c` (`own_swing`):
+the same through the packet code with the clocks: the swing filed at the apply tick and played
+380 ms long at a round trip of 80, the server's record not played again, its hit as the impact,
+the swing taken back after 360 ms, and the cases in which nothing is shown. Twenty-three faults
+put into the module and the packet code were each noticed by one of the two, one of them (ticks
+that wrap inside the attack delay) only after a case was added. `build.bat check` and the full `tests\build.bat` pass.
+
+## Attack orders are planned at the click (2026-11-11)
+
+With a server that takes intents the player clicks a monster once and the server walks the
+character into reach and swings. The client learned each part of that from the server's
+records: where the walk starts, where it turns when the monster moved, where it stops and when
+the swing begins. Each came a way down after it happened, and the own character is drawn a
+lead ahead of the server's clock, so every one of them was late on screen: the character
+walked past the cell the server stopped it on and was set back, or stood between two cells.
+
+**The rule** (`world/own_attack.c`, freestanding; `game_mode_own_order` and `order_follow` in
+`game/packets_act.c`; `player_order_*` in `actor/walk_answer.c`). When an order to attack
+leaves, the client asks the body core, the code the server runs, what the order makes of the
+character. The character and its target go into a world of their own on the walks they are on
+when the server applies the order. The server's intent is played there by its own rules: it
+looks when the order is applied, at once on every cell the character comes onto and on a beat
+of 100 ms from then; a target in reach is attacked, which lets a step under way land first
+and ends the walk there; a target out of reach is walked after, to within the attack range,
+and again no sooner than 300 ms later and a cell closer when that walk left it out of reach.
+The world is run to the first swing. What comes out is the plan: the records of the
+character's walk, as the server will send them, and the swing.
+
+The records go into the character's own move track and the swing into the act queue, at their
+ticks, and play on the own clock. The server's records come all the same and are filed over
+the plan's. Right, they change nothing that is seen.
+
+**Kept right while the order lasts.** Until the first swing begins or the server ends the
+order, the plan is made again when there is news, once a frame:
+
+- The target walks otherwise than the plan had it: it set out, turned, or stopped somewhere
+  else than its walk ended. News that comes within a way down and the own clock's lead of the
+  plan's base is of the base's own moment, which the plan did not know yet. The plan is made
+  again from the same base, and when it comes out different it takes back what the first one
+  made of the character, by a record of the base. Later news is of now: the plan goes on from
+  where the character is, as of an order the server has long applied, and leaves the walk the
+  server has the character on as it is while that leads to the first cell in reach.
+- The server's record of the character's own walk came, or its stop packet: the plan goes on
+  from there.
+
+**Taken back.** Another order of the player's (a move, a skill, a pickup, another attack)
+drops what the plan still held for later, and a swing that has not begun leaves the queue.
+An end of the order as the server's first word about it is its refusal: a character the plan
+moved goes back to the walk the server kept, or stops on the cell the server names. An end
+after the server took the order (the target died, there is no way) has the character stand on
+the cell the server names, and a walk that still waited does not start.
+
+**A target that walks by the fork's packet** is drawn on a way this client searched between
+the packet's two cells. The server walks its own way between them, and the two can differ in
+the first step. The plan is given the server's way (`path_finder_find_server_path`), timed
+from the walk's start.
+
+**A stop for the own character** (`ZC_STOPMOVE`) now also empties the character's move track.
+The server begins and ends a walk at one tick when the character comes into reach on the cell
+it just entered: the walk's record and the stop arrive together, and the record, which is
+played a frame later, walked the character a cell on after the stop.
+
+**The mode message** the actor code tells the mode with is `MODE_MSG_OWN_ORDER` (0x1000, in
+the place of `MODE_MSG_PREDICT_SWING`): the target, 0 for any other order, and whether the
+attack is for one swing.
+
+**Only then:** tracks and the own clock; no move of the player's waiting for its answer; a
+character that stands, walks or swings. Without intents (the classic attack request) the
+server walks after nothing, so only a swing in reach is planned, and a step under way that
+lands before it.
+
+**Where it can be wrong,** and is then put right by the server's records: what the target
+does after the plan was made; a wall in the line of fire; the act clock; a target walk that
+starts after the plan's base is taken to be under way from the base. A swing the attack delay
+still holds back is not shown ahead, nor the later swings of an attack that goes on.
+
+**Not done.** Skills and pickups are not planned. No world is kept between plans. The later
+swings of an attack, and the walk after a target that runs from an attack under way, come
+with the server's records.
+
+**Tests.** `tests/test_own_attack.c`: standing and stepping in and out of reach, a held start,
+the attack delay, a target on a walk of its own, the intent's beat, the walk asked for again,
+the plan made again, the base record, and numbers from outside that fit nothing.
+`tests/test_own_walk.c` and `tests/test_own_swing.c` for the parts it stands on,
+`tests/test_walk_answer.c` for what the character keeps of an order, `tests/test_act_track.c`
+and `tests/test_move_track.c` for taking back what waits, `tests/test_attack_records.c`
+(`own_order`) for the packet code: what a plan is asked, what is done with it, when it is made
+again and what each end takes back. The headless playground (`tests/playground`), eight
+seeded runs of forty seconds with six monsters and no lag: no jump and no wrong resting cell
+of the own character from an order to attack; three findings of the own character drawn far
+from the server while walking by quick clicks, which are older and not of this, and fifteen
+of monsters, which walk by the fork's packets. With 80 ms of lag two own jumps onto a cell
+remain after hit and run. `build.bat check` passes; the whole `tests\build.bat` was not run.
+
+## A walk out of a swing starts at once, and an overview of the ticks (2026-11-11)
+
+**The hold after a swing.** The body core held a body from walking for its attack motion from
+the moment a swing began, as the fork does for a swing that is made at once. With a windup a
+walk request ends the swing before it lands, and the character then stood for the rest of the
+attack motion all the same: it neither swung nor walked. From rules version 9 a swing that a
+command ends in its windup holds the walk no longer: the move clock goes back to where the
+swing found it, and a walk that was asked for in the windup and waited starts then, which is a
+new record (`cancel_swing` in `body/body.c`, the server's file). A swing that landed holds as
+before.
+
+The client's hold on its predicted walk follows (`player_hold_walk`, `player_walk_held` in
+`actor/walk_answer.c`): it counts for a request the server applies once the swing has landed,
+and not for one applied in the windup. It runs to the impact plus the attack motion the server
+has, not the motion a swing shown ahead is stretched to, which held the walk too long.
+
+**The overview** (`game/net_overview.c`). With `RAGEXE_NET_OVERVIEW` set to anything but 0 in
+the environment, two lines are drawn at the top of the game's frame, over everything: the
+server's tick now, how far ahead of it the own character is drawn and how far behind everyone
+else, the round trip, the numbers of the last request, move and intent, and the own
+character's cell and state. The server logs every request with its number and tick, so a
+moment seen on screen or in a recording is found in its logs and journal by these.
+
+**Tests.** The server's `body_tests` (the swing that is ended, the walk that waited, a hold
+from elsewhere, a full event ring) and its session tests; here the copy (`tests/test_body.c`),
+`tests/test_walk_answer.c` for the hold and `tests/test_attack_records.c` for the packet code.
+The playground, eight runs without lag: sixteen findings, thirteen of monsters, two of the own
+character drawn far from the server in quick clicks, and one own jump onto a cell in hit and
+run that is not traced yet. The overview was built and not looked at on screen. `build.bat
+check` passes; the whole `tests\build.bat` was not run.
+
+## The predicted world: the server's word of the own body, and a world kept from it (2026-11-12)
+
+Steps 0 to 3 of `plans/predicted-world.md`, the plan to show the player's own character from
+one persistent world of the body core and no longer from separate predictors. This entry is
+what changed in the client; the plan's "What is built" has both sides.
+
+**The body core's copy** (`src/body`, rules version 10, the server's file). What a body's owner
+asks for is one input, a request with its number: a walk ends the intent and the attack with
+its swing and then walks; an order to attack ends an attack on another body and makes an
+intent the core sees for itself, reading reach, the running attack and the walk from its own
+bodies, looking from every cell, and beginning the attack and the walk after its target
+itself on the game's leave. A body can be taken from a world as 224 bytes and put into
+another (`body_state`, `body_put_state`). The present predictors (`world/own_walk.c`,
+`world/own_attack.c`) use the inputs they used, which do what they did; their tests pass
+unchanged.
+
+**The packet.** `0x0f25` (`ZC_OWN_BODY`), a packet of the project's own with its length in
+it, read by `predicted_read`: the server's rules version, the tick as the core has it, the
+number of the last request the body includes, the two settings of the server's world of the
+core, and the body's bytes. The bytes are data from outside: a packet that is shorter than
+it says or of this version with another length is not read, and bytes that are no body the
+core takes at that tick are refused by the core. The server sends it wherever it runs the
+core; it has no setting of its own.
+
+**The predicted world** (`world/predicted.c`, freestanding). It holds the server's last word,
+the requests that wait for the server's word with their numbers and the ticks the server
+applies them at, and the other bodies' move records. From these the world is made (the
+confirmed body at its tick, the others where their records have them, the requests at their
+ticks, every question answered yes) and run to the own clock; it is made again when the past
+changed: the server's word was not what had been predicted for its tick, or a record came for
+a tick the world is past. A word that is what was predicted only takes the requests it
+confirms off the list. A word of another rules version ends the prediction until one of this
+version comes.
+
+**In the game** (`game/own_body.c`). One such world, begun again on every map: the handler of
+`0x0f25` gives it the server's word, a walk request (`game_mode_msg_request_move`) and an
+order to attack or its release (`game_mode_send_intent`) go in with their stamp's number as
+they leave, and it runs to the own clock once a frame and in the frame a request is made.
+Nothing reads it but the playground's driver. Until the packet comes it stays empty and
+nothing runs. It is given no other bodies yet, so an order to attack is in it
+as a request that did nothing; walking is whole.
+
+**The measure** (`tests/playground`). The driver reports the own body with every frame: the
+cell the walk the character is drawn on has it on at the own clock, and the predicted world's
+body as bytes with its tick. The runner holds both against the server's body at the same
+tick. The baseline, eight runs of 40 s with six monsters: without lag 15 findings on screen (12 of monsters, three of the own character), the drawn cell differs from the server's 13 times (0.8% of the ticks) and the predicted body 183 times, each after an order to attack, which the world cannot predict without the target. In the walking moods alone the predicted body is the server's at every one of 19,825 ticks, byte for byte, where the drawn cell differs four times; with a ping of 80 ms and 20 ms of jitter it differs for 3.1% of the ticks, each time because the server applied a request later than the client reckoned, 213 of 272 times for one frame and without a trace, otherwise until the server's word came.
+
+**Tests.** `tests/test_predicted.c` (in `tests\build.bat`): the packet's bounds, the pieces by
+example, and the convergence test of the plan, 126 runs of a server world and a client world
+of the same core with random requests, lag, jitter, a clock that is off and things on the
+server the client cannot know; 44 deliberate faults in `world/predicted.c` were each noticed.
+`tests/test_body.c` is the server's, with its digests, in 32-bit MSVC.
+`tests/test_packet_dispatch.c` has the new row. `build.bat check` passes with
+`game/own_body.*` in `game-state`.
+
+**Not checked.** The whole `tests\build.bat` was not run, only the tests of what changed
+(`build_body`, `build_own_walk`, `build_own_attack`, `build_predicted`, `build_packet_dispatch`,
+`build_attack_records`, `build_walk_answer`, and of the suite's own list `test_path_info` and
+`test_pathfinder_owner`) and the playground. The CMake builds of `docs/portability.md` were
+not built. `game/own_body.c` has no test of its own beside the playground runs. Nothing was
+looked at on screen, and nothing on screen changed.
+
+## One way: no feature flags, and no classic handling behind them (2026-11-12)
+
+Step 3a of `plans/predicted-world.md`. The netcode of the entries above (time sync, input
+stamps, the hold-back, intents, records, the server's swing timing) was built as options: the
+server announced what it had on (`ZC_NET_FEATURES`), and the client branched on each flag and
+kept the original's handling for a server without it. Patrick decided on 2026-11-12 that it is
+how the two sides work and not an option beside the old way. This entry is what that removed
+from the client.
+
+**The cost, both ways.** This client plays only on a server that speaks the project's netcode:
+it stamps every request, sends intents and waits for records, whoever it is connected to. And
+that server no longer takes a client without it: it reads stamps and intents and sends records
+to everyone.
+
+**The flags.** `net_features` and the `NET_FEATURE_*` bits are gone. What three checks asked
+(`game_mode_predicts`, `game_mode_tracks`, `game_mode_intends`) comes down to one question that
+is still real, whether the server's clock is known yet: `game_mode_knows_clock`
+(`game/net_clock.h`), true from the first answered timed exchange on a map. Until then the own
+walk is not started at the click, no order is planned and the render clock is not pinned, as
+before. A stamp goes out before every request, the keep-alive always runs at the timed
+exchange's intervals (the original's 12 s interval is gone), and an intent always has its
+stamp's number.
+
+**`0x0f14`.** It keeps its id and is `ZC_HOLD_BACK` now, 4 bytes: the id and `hold_back_ms`,
+the one number of the server's the client reckons with (the own clock's lead, the tick a
+request is applied at). It stays a packet of its own, sent once a map in answer to
+`CZ_NOTIFY_ACTORINIT`: the number is the server's and does not change, where `ZC_OWN_BODY` is
+told at every change of the body and `ZC_TIME_SYNC` every few seconds.
+
+**Packets the server no longer sends.** `0x0f10` and `0x0f11` (a swing's announcement and its
+cancel: the swing and idle records of `0x0f21` say both), `0x0f13` (a move's answer) and
+`0x0f15` (an intent's end: `0x0f24` says both). Their handlers, structs, rows in the packet
+table and in the dispatch, and test sinks are removed. What the handlers did is still done,
+from the records: `swing_begin` and `swing_cancel` in `game/packets_act.c`, `intent_ended`,
+`player_move_answered`.
+
+**The swing-timing flag.** `action_timing`, which the first announced swing on a map set, is
+gone: a walk asked for during a swing always goes out at once, and the 1200 ms attack resend
+guard is removed. The flag also chose the spacing of walk requests: 350 ms, the original's,
+until a swing was seen on the map, and 150 ms from then on. One value had to stay, and the
+playground chose it. Its runs (eight of 40 s, six monsters) were made with both, and held
+against the runs from before this entry, where the walking sets saw no swing and so walked
+at 350 ms. Findings of the own character on screen, then ticks at which the drawn cell was
+not the server's:
+
+| Runs | Before | 150 ms | 350 ms |
+|---|---|---|---|
+| Walking, no lag | 2, 4 | 3, 30 | 2, 4 |
+| All moods, no lag | 3, 13 | 2, 27 | 0, 4 |
+| Walking, ping 80 and jitter 20 | 0, 8 | 8, 49 | 0, 8 |
+| All moods, ping 80 and jitter 20 | 7, 31 | 7, 41 | 1, 5 |
+
+The drawn walk is predicted from the last request, and requests that follow each other
+faster miss the server's walk more often. So the spacing is 350 ms (`WALK_SPACING_MS` in
+`actor/player.c`). What it costs: a click within 350 ms of the walk request before it goes
+out up to 200 ms later than it did in a fight before. The walking sets are the same as
+before to the number, which also says that nothing else of this entry changed how the own
+walk is drawn.
+
+**The client's own chase** (`actor/player.c`). With an intent for every attack, pickup, skill on
+an actor and skill on the ground, the original's walk into reach for these never ran:
+`player_proceed_attack`, `player_proceed_pickup`, `player_proceed_skill_actor`,
+`player_proceed_skill_ground`, the helpers only they used
+(`player_shift_cell_by_target_radius`, `player_dist_beyond_target_radius`,
+`player_msg_ground_cast`, and outside the file `game_mode_step_toward_walkable`,
+`game_mode_is_within_cells` and `path_info_end_direction`), the player's fields `move_tick`
+and `attack_tick`, and the classic branches of the messages that set them going. With the pickup went the mode's list of pickup
+requests (`game/pickup_requests.h`, its field, its clears in `game/pickup.c` and its removals
+when an item disappears) and the mode message that sent `CZ_ITEM_PICKUP2`. The plan of an order
+(`world/own_attack.c`) lost its input for a server that does not walk after the target.
+
+**Kept, because something still reaches it.**
+
+- The walk into reach for a skill or an attack on a skill unit (`player_proceed_skill_unit`,
+  the player's `pending` value 6, `attack_sent`, `attacks`, the messages that send
+  `CZ_REQUEST_ACT2` and `CZ_USE_SKILL2`): no intent covers a skill unit.
+- The message the original's `ZC_ATTACK_FAILURE_FOR_DISTANCE` sends the player (0x3c): the
+  packet's handler is the original's and still sets the attack range; the player does nothing
+  with the message, as before with intents on.
+- `game_mode_msg_use_skill_to_ground` and `CZ_USE_SKILL_TOGROUND2`: the mercenary and
+  homunculus AI sends ground skills through it.
+- The talkbox variant of the ground skill (`CZ_USE_SKILL_TOGROUND_WITHTALKBOX2`) and the two
+  windows that send it (0x54 for Talkie Box, 0x65 for Graffiti). The player's code that
+  opened them went with the classic ground cast, which an intent had already taken the place
+  of. The window table still makes them by id, and whether anything else opens them was not
+  settled, so they stay.
+- Every handler of an original packet, whether this server still sends it (a monster's
+  `ZC_NOTIFY_MOVE`, `ZC_NOTIFY_ACT` for a sit, a stand and a pickup, `ZC_USESKILL_ACK` from the
+  older skill handlers, `ZC_STOPMOVE`, the walk-ok for a click on the own cell) or not
+  (`ZC_DISPEL`).
+
+**Tests.** `tests/test_attack_records.c`: the swing's begin, impact and cancel are driven by
+records where they were driven by `0x0f10` and `0x0f11`, with the same expectations; the end of
+an intent by `0x0f24`; the cases of a server without tracks or intents are gone, the one of a
+clock not yet known stays. `tests/test_own_attack.c` lost its two cases without a walk after
+the target. `tests/test_packet_dispatch.c` has the rows as they are now and a new digest.
+`tests/test_game_mode_layout.c`: one allocation and one free fewer a round, the list's.
+`tests/test_path_info.c` no longer asks for a path's last direction.
+
+**Checked.** `build.bat check`, and the whole `tests\build.bat` with the original executable
+for the oracle tests. The playground, the real client against the real server with nothing
+shown: the four sets of the table above, where every number is at or below the one from
+before this entry.
+
+**Not checked.** The CMake builds of `docs/portability.md` were not built, and no scene of
+`tests/scenes` was captured: in a scene the keep-alive now goes out every 250 ms, as nothing
+there answers the time sync, and whether that changes a capture is not known. Nothing was
+looked at on screen, and the game was not played by a person.
+
+## The delivery piece: a lost datagram costs a request a frame (2026-11-12)
+
+Steps 1 to 3 of `plans/delivery.md`. Patrick asked whether sending state down continuously is
+the best the netcode can do. The answer was that state as timed records is right and that the
+transport under them is not: one ENet stream in order holds everything back behind one lost
+datagram and sends stale records again. This entry is the first part of the remedy, built at
+his word: a piece that delivers messages by what they need, and the player's requests through
+it.
+
+- **The piece** (`delivery/delivery.c`, in the library `base`). Freestanding C11 with the state
+  in a block the caller hands in and the time as an argument. Three kinds of message:
+  replaceable (a newer one of its key ends the sending of older ones), single (once, no order)
+  and ordered (once, in order, sent again every 15 ms until acknowledged). Every datagram has a
+  number and is never sent again; the other end names the numbers that arrived, and what a
+  lost one carried goes into a new one. Lost means three later ones acknowledged, or a later
+  one and nine eighths of the round trip, or nothing at all for the round trip, four times its
+  variance and 25 ms, doubling up to eight times. An end that hears nothing goes on asking, a
+  datagram every 15 ms, and is back as soon as one is answered. The source's home is the server's `net/delivery`, since the
+  gateway holds the other end; this tree has the same bytes, and `tools/check_delivery_copy.py`
+  holds them equal in `build.bat check`, with what `tools/check_body_copy.py` already had for
+  reading and comparing.
+- **The channel.** `PLATFORM_CHANNEL_DELIVERY` is the fourth of `platform/net.h`.
+  `platform/net_enet.c` makes its end of the piece when the server answers with the channel,
+  turns ENet's throttle for packets that are not reliable off on that link (ENet would drop
+  the piece's datagrams at the sender when it finds the round trip rising), feeds the piece
+  what arrives on the channel and puts on the wire what it has due each time the socket is
+  serviced. There is no setting: it is how a link of these two programs works. A link with
+  fewer channels has no piece, and what is sent on the channel then goes on the world's, as
+  does a send above the 1,024 bytes the piece takes as one message.
+- **The requests.** `rag_connection.c` names the ids that leave on the channel: the input stamp
+  and the seven requests it goes before (a move, an act, a stop of the attack, a skill on an
+  actor, the two on the ground, an intent). They are the group the server orders among
+  themselves. A stamp is queued and its request sent, so the two are one write and one
+  message, and the gateway's parser reads them next to each other as before.
+- **One stream upstream.** Requests go through the piece and everything else on the world
+  channel, and the gateway's parser reads both in the order they arrive. So that neither
+  overtakes what was sent before it on the other, `platform/net_enet.c` sends each where the
+  other has nothing unacknowledged: a request goes on the world channel while world packets
+  sent before it are on their way (ENet frees a reliable packet when it is acknowledged, which
+  the socket counts), and a world packet through the piece while requests sent before it are in
+  it (`delivery_waiting`, new in the piece). A world send too large for a message waits while
+  the piece carries something.
+- **A close waits for the piece.** `platform_socket_close` services the socket until the piece
+  has nothing unacknowledged, then asks ENet to close, 100 ms together at most.
+
+- **The lossy link** (`tools/lossy_link`, built by its `build.bat` as `build\lossy_link.exe`).
+  A relay on this machine between the client and the server that loses, repeats and delays
+  every datagram by a seed, ENet's own included, so a loss costs each side what it costs on a
+  real link. `tests\measure_requests.bat` sends the same requests through the piece and on the
+  world channel over it, side by side. At 10 of 100 datagrams lost each way and 30 ms each
+  way, a late request was late by about 20 ms through the piece and by 106 to 139 ms on the
+  world channel, where more than twice as many were late; in a run whose connect handshake
+  lost datagrams the world channel stayed 8 to 15 s behind. `plans/delivery.md` has the table.
+- **The playground's line** (`tests/playground/play_driver.c`). What the client sends on the
+  delivery channel goes through both ends of the piece and a wire by the run's seed before the
+  runner is told it, and `rag_connection_packet_channel`, which was a static function of
+  `rag_connection.c`, says which packets those are. With a wire that loses nothing a run is
+  the old driver's, packet for packet; with 10 or 30 of 100 datagrams lost the playground shows
+  the findings it shows without loss, all of monsters, and none of the own character.
+- **What the measurement changed.** As first built, an end of the piece that got no answer
+  for 128 datagrams stopped sending and waited for a timeout that had doubled five times: up
+  to 4.6 s after a handshake that lost datagrams. It now goes on asking. The resend interval
+  went from 20 ms to 15 ms, since at 16 ms a frame 20 ms was every second frame.
+
+The route table (`delivery/delivery_route.c`), read by the client and the gateway, names
+what travels through the piece; the client's own list of requests went into it. The piece's
+and the table's tests are in the CMake build's CTest set too, and pass there in a Visual Studio
+x64 build with the socket's and the connection's tests.
+
+Validation: `tests\build_delivery.bat` (207,288 checks, the count the server's build of the
+same test gives, with 32-bit MSVC at warning level 4), `tests\build_lossy_link.bat` (the wire
+by its seed, the relay between two sockets), `tests\build_platform_net.bat` (requests
+once and in order, three datagrams lost in a row and the request there after the fourth, a
+message from the server's end, a send too large for the piece, a server without the channel,
+requests and world packets as one stream, a request lost just before a close; six rules of the
+stream and the close broken on purpose were each caught), `tests\build_delivery_route.bat`,
+`tests\build_connection.bat` (a request to a server without the channel goes on the world
+channel behind what was sent there) and `test_packets` of the suite (the channel of all 65,536
+ids). The client's socket files, built as a program of their own, sent forty stamped moves and
+ten attacks to the gateway's `server.exe` on this machine, and the gateway's record had the 90
+packets as sent and in order. `build.bat dbg check` built the whole client and passed the
+include, copy and link checks, and `build.bat check` did so again with all of this in. The
+piece's deliberate-fault round (56 faults, each caught) and its run under clang's sanitizers
+were done outside the tree.
+
+Not checked: the whole `tests\build.bat`, any scene of `tests/scenes`, the CMake builds of
+`docs/portability.md`, the x64 client, and play. The game's own client was not run against the
+server with this change; what ran was its socket layer. No link that loses datagrams was used
+outside the tests, where the test itself drops them.
+
+## Records merge in any order and come through the delivery piece (2026-11-12)
+
+Step 4 of `plans/delivery.md`, and with it the records' part of step 5. A track's records used
+to need the order they were made in (`move_track_file` removed every held record with the same
+or a later tick, "as the server made this one knowing them"), so they had to ride the world
+channel in order with everything else.
+
+- **The revision.** The server counts a 16-bit revision per unit and track and puts it in the
+  record: `ZC_TRACK_MOVE` has it at offset 23 and its path at 25, `ZC_TRACK_ACT` at 35 (37
+  bytes), `ZC_TRACK_VITALS` at 18 (20 bytes); `core/packet_table.c` has the new lengths. The
+  count belongs to the unit's id and outlives the unit for a minute, so a unit that comes back
+  under the same id counts on (the server's `docs/tracks.md`, "Revisions").
+- **The merge** (`world/move_track.c`, `world/act_track.c`). Of two records of a track the
+  higher revision is the newer. A record is dropped when it is not newer than the last one
+  played, when its revision is held already, or when a newer one with the same or an earlier
+  tick is held; otherwise it removes every older one held with the same or a later tick.
+  Filed in any order and any number of times, the same records leave the same track, and in
+  the order they were made the rule is the one before. The act and HP queue keeps what was
+  played last per actor (`RecordFloors` on the actor), the move track on the track.
+- **A record before its actor** waits by GID (`world/record_wait.c`, 64 at most, two seconds
+  each) and is filed when the actor appears (`game_mode_play_tracks`); an HP record of an actor
+  that is not there used to be dropped.
+- **Through the piece.** With the revision the records match the route table, so the gateway
+  sends them through the delivery piece, a newer record of a unit and track replacing an older
+  one not yet acknowledged. The playground's driver does the same with its own two ends and
+  wire.
+
+What is not solved: a record can cross the classic packet that says its unit went or came, and
+then shows a unit where it was, or is lost with the actor it was filed on, until the unit's
+next record of that track (`plans/delivery.md`, part 1). `ZC_OWN_BODY` stays on the world
+channel: the predicted world needs it after the packet that says a body went.
+
+Validation: `tests\build_move_track.bat`, `build_act_track.bat` (any order leaves the same
+track or queue, a record twice or overtaken is dropped, what was played is a floor, revisions
+wrap), `build_record_wait.bat`, `build_attack_records.bat`, `test_packets` of the suite, and
+`build.bat check`. On the server: the protocol's, the renderer's and the session tests, and the
+eleven recorded sessions written anew, which a script compared with the ones before: each of
+the 123 records is the one before with its revision added, a unit's revisions start at 1 and
+never go back, and nothing else changed.
+
+## The own walk is drawn from the predicted world (2026-11-12)
+
+Step 4 of `plans/predicted-world.md`. The player's own character walks where the predicted
+world has its body, and nothing else gives it a walk: the predictors that drew the walk
+before are gone in the same change.
+
+**One source** (`game/own_body.c`). After the world ran (once a frame, and when a request or
+the server's word went into it) the own body's move is held against the one the character was
+given last. `predicted_walk_news` (`world/predicted.c`, tested in `tests/test_predicted.c`)
+plays the earlier move on to the tick of the new one with the core's `body_move_at` and
+compares the bytes: a body that only took the steps of its walk says nothing new, and nothing
+is filed. Another move is filed as a record in the character's move track, which is played on
+the own clock as any actor's is on the render clock. A move made before the one drawn is the
+past put right, the server's word having been another than the prediction: it is filed as
+walked, so the character walks to where the body is and is not set there.
+
+**What a record without steps asks** (`move_record_stand` in `world/move_track.c`, tested in
+`tests/test_move_track.c`; `apply_move_record` in `actor/actor_state.c` does what it says).
+An actor that stands on the record's cell is left as it is. One that walks and is drawn on
+the cell ends its walk on the cell's middle, on a path of that one cell, or stops where it is
+drawn while a hit's motion holds it, as moving it there would be a jump. One on another cell
+walks there, on a path the client searches. One that was pushed or placed is set, and so is another's actor
+whose walk does not lead to the cell any more. The own character walks back to its cell from
+up to four cells (`STEER_JUMP_CELLS`) and is set from further. The walk that ends on its own
+cell was not there before: the search has no path from a cell to itself, so a player who
+clicked the cell the step under way led to kept walking the walk before, 2.6 cells past the
+cell for a second in the run that showed it, and another's actor stood still where it was
+drawn, off the middle of its cell.
+
+**Not read for the own character while a body is predicted** (`game/packets_actor.c`): the
+stop (`ZC_STOPMOVE`), the walk start (`ZC_NOTIFY_PLAYERMOVE`) and a move record of the own
+character (`0x0f20`). Each would be a second word of the walk. The server sends the first
+still and no longer sends the other two, nor `0x0f24` for a move: the body with the move's
+number is the move's answer, and `0x0f24` is an intent's alone.
+
+**A walk request goes into the world** only for a character that stands, walks or swings.
+The server refuses the walk of one that sits or is dead before its core sees the request,
+and the client knows those states.
+
+**Gone.** `player_predict_walk`, `player_own_move_record`, `player_turn_due`,
+`player_move_answered`, `player_own_walk_keep` and the player's fields they kept (`predicted`,
+`predicted_moved`, `predicted_seq`, `predicted_x`, `predicted_y`, `predicted_turned`,
+`redirect`, `redirect_move`, `walk_plain`, `own_walk`, `own_walk_kept`); `own_walk_start` and
+`path_finder_own_walk_start`, with `tests/test_own_walk.c`; the clearing of the own track at
+a stop.
+
+**No spacing of walk requests** (`actor/player.c`). A click is kept, the newest of a frame
+winning, and leaves with that frame; the original's 350 ms between two requests and the
+timer for it are gone. Measured with the playground, 16 runs of 40 s in the walking moods
+(1942 clicks), with 350 ms, 150 ms and none. In all nine sets no finding of the own character
+on screen. Ticks at which the drawn cell was not the server's, of about 39,800, and requests
+sent:
+
+| Spacing | No lag | Ping 80, jitter 20 | Ping 150, jitter 40 | Requests |
+|---|---|---|---|---|
+| Before this entry (350 ms) | 146 | 86 | 1337 | 1121 |
+| 350 ms | 0 | 0 | 137 | 1121 |
+| 150 ms | 0 | 0 | 147 | 1689 |
+| None | 0 | 0 | 196 | 1883 |
+
+From the click to its request, in six traced runs without lag: 92 ms on average with 350 ms
+(nine in ten within 224 ms, the longest 336 ms, and 187 of 506 clicks replaced by a newer one
+before they left), 40 ms with 150 ms (112 ms, 144 ms, 46 replaced), and one frame with none,
+every click a request. The walk is drawn when its request leaves, so the spacing was also how
+late a click was drawn. With the walk drawn from the predicted world, requests that follow
+each other fast no longer miss the server's walk: on the worst link a request costs about as
+many differing ticks at any spacing (0.12, 0.09, 0.10), none of them a finding on screen and
+none of 100 ms or more without a spacing. A held mouse button asks every 600 ms, as in the
+original, so the requests are bounded by how fast a player clicks, at most one a frame. The
+server's core has no bound on them; the measurements show no need of one.
+
+The playground (the real client against the real server in lockstep, 16
+runs of 40 s a set, six monsters), findings of the own character on screen before and after
+in the walking moods: 2, 0, 32 and 0, 0, 0 on the three links above. The sets with fighting
+and what was run are in the next entry.
+
+## Attack orders are drawn from the predicted world (2026-11-12)
+
+Step 5 of `plans/predicted-world.md`. An order to attack, its walk into reach and every swing
+of the attack are shown from the predicted world, as the walk is since the entry before. The
+plan that showed them before, a second world of the body core made for each order, is gone in
+the same change, and with it the last file beside `world/predicted.c` that ran a world.
+
+**The other bodies** (`game/own_body.c`, `own_others`). The world takes an order only for a
+body it has, so it is told of the target when the order leaves, and from then on, once a
+frame, of every body the own body names: whom it attacks, swings at or is ordered to attack.
+What it is told is where the server has that actor, as well as the client knows it
+(`other_move`): the newest record of its walk that came, also while it still waits for the
+render clock; else the walk it is drawn on, when that came as a record; else, for a walk that
+came as the classic packet with its two ends (a monster's), the server's way between them,
+searched here with the server's search and said as a walk of the walk's ticks; else the cell
+it is drawn on. A record that has the body where its last one has it changes nothing
+(`predicted_other`), so saying it every frame costs nothing. An actor that is gone is taken
+out of the world.
+
+How exact that is for a monster: the server's body of a monster stands on its unit's cell and
+is moved step by step by the monster's own walk, whose steps are not sent. The client has the
+walk's two ends and its start tick, so it has the monster on the right cell while the monster
+walks the way the server's search finds between them, at its speed, unhindered. It does not
+know of a walk that was held by a hit or cut short until the next packet about that monster
+comes. That is what is left for the monsters' records.
+
+**The ids.** The body core names a body by the low 32 bits of the server's id of its unit. For
+a monster that is the number the client knows it by. For a player it is not (the client knows
+a player by the account's number), and the part of the server that runs the core does not
+know account numbers. So an order to attack another player is not shown ahead: the world
+never has its target, the request does nothing in it, and the character is drawn from the
+server's words, a round trip later. Its swings are played from the server's records.
+
+**The swing** (`world/own_swing.c`, `game_mode_own_swing` in `game/packets_act.c`). The body
+core's reader of an attack says, beside what it said, the body's attack motion, its windup
+and how long until the swing in its windup lands (`body_attack`, the same change in the
+server's file). `predicted_swing` makes of it the swing to show: when it began, when it
+lands, at whom. Once a frame the frame's play of the tracks asks the own body for it and
+`own_swing_follow` says what that asks of what is shown: a swing the body began is shown, at
+once and once, stretched so that its hit meets the damage number, which still comes with the
+server's notice; the server's record of that swing is not played again; a swing the world has
+no more before it landed (a walk ended it, the server's word was another) is taken back. A
+swing the server tells that the world had not is played from its record and is the server's
+to end. Every swing of an attack that goes on is shown this way, not the first alone. A swing
+begins on a character that stands: while the character still walks the last of the way to
+the cell its body swings on, the swing waits.
+
+**The first order on a map.** A body that was never told how it fights does not attack, and
+the server told a player's body only with her first order, so that order could not be
+predicted. The server now tells it when she is put on a map.
+
+**The character is kept on what its body does** (`own_astray` in `game/own_body.c`). When
+something else took the character off its walk (the animation of a hit, a swing that ended),
+or it stands on another cell than its body, it is given the body's move again.
+
+**A record is played in every state of a player character** (`actor/pc_process.c`). The states
+a player character draws itself (an attack's animation, sitting, dead, a cast among them)
+never reached the play of the move track, so a walk out of an attack waited for the
+animation's end: the character stood for most of a second while its body walked on. This held
+for other players' characters too.
+
+**Gone.** `world/own_attack.c` with its plan and `world/own_walk.c`; the order book
+`actor/walk_answer.c` (`player_order_*`, `player_hold_walk`, `player_walk_held`) with the
+player's `order`, `order_moved`, `order_seq`, `walk_held`, `walk_hold` and `walk_hold_from`;
+in `game/packets_act.c` `game_mode_own_order`, `order_plan`, `order_follow`, `order_stand`,
+`order_base`, `order_see`, `order_news`, `swing_take_back`, `plans_same`, and the mode's
+`order_*` fields; `MODE_MSG_OWN_ORDER`; `path_finder_own_attack_plan` and
+`path_finder_walk_at`; of the swing's book the attack delay it kept and the motion it
+learned from the server's records (`own_swing_predict`, `own_swing_withdraw`,
+`own_swing_overdue`, `own_swing_idle`); `timed_queue_drop_act`; `game_mode_own_body_redraw`;
+their tests. Of `0x0f24` the client reads the end of an intent, which clears the attack
+cursor, and nothing else.
+
+**One world** (`tools/check_one_world.py`, run by `build.bat check`). No file under `src` but
+the core and `world/predicted.c` may make, change or run a world of the body core, or name
+one of its inputs.
+
+The playground (the real client against the real server in lockstep, 16 runs of 40 s a set,
+six monsters), before the entry above and after this one. Findings of the own character on
+screen, the share of ticks at which the cell it is drawn on was not the server's, and the
+share at which the predicted body was not the server's body, byte for byte:
+
+| Set | Own findings | Drawn cell differs, % of ticks | Predicted body differs, % of ticks | Monsters' findings |
+|---|---|---|---|---|
+| Walking, no lag | 2 to 0 | 0.37 to 0.00 | 0.0 to 0.0 | 0 to 0 |
+| Walking, ping 80, jitter 20 | 0 to 0 | 0.22 to 0.00 | 2.9 to 4.5 | 0 to 0 |
+| Walking, ping 150, jitter 40 | 32 to 0 | 3.36 to 0.38 | 12.3 to 15.2 | 0 to 0 |
+| Fighting, no lag | 12 to 0 | 1.50 to 0.11 | 31.1 to 1.7 | 18 to 23 |
+| Fighting, ping 80, jitter 20 | 13 to 0 | 1.22 to 0.10 | 41.0 to 10.4 | 24 to 27 |
+| Fighting, ping 150, jitter 40 | 75 to 0 | 4.77 to 0.93 | 50.3 to 31.4 | 20 to 31 |
+| All moods, no lag | 3 to 0 | 0.35 to 0.21 | 18.9 to 2.7 | 26 to 25 |
+| All moods, ping 80, jitter 20 | 7 to 0 | 0.47 to 0.19 | 23.9 to 8.5 | 30 to 33 |
+| All moods, ping 150, jitter 40 | 48 to 0 | 2.85 to 0.70 | 32.7 to 23.0 | 33 to 32 |
+
+No finding of the own character is left in any set. With lag the predicted body differs for
+about 50 ms after a request, walks and orders alike: the request reached the server later
+than the client reckoned and was applied on arrival. The monsters' findings are of how a
+monster is drawn from the classic packets of its walk, which neither entry changes but for
+the walk that ends on its own cell.
+
+Validation: `tests\build_predicted.bat` (the swing to show, a record that says nothing new),
+`tests\build_own_swing.bat`, `tests\build_attack_records.bat`, `tests\build_act_track.bat`,
+`tests\build_move_track.bat`, `tests\build_body.bat`, `test_pathfinder_owner` and
+`test_path_info` of the suite built by themselves, `build.bat` and `build.bat check` with the
+body copy check and the new check.
+
+Not checked: the whole `tests\build.bat`, the scenes of `tests/scenes`, the CMake builds of
+`docs/portability.md`, the x64 client, play by a person, and an attack on another player.
+
+## A monster's walk is a record (2026-11-12)
+
+The server sends a monster's walk as `0x0f20`, as it sends everyone else's: the cell it starts
+on, the steps the monster will take, its speed and the tick the first step lands at. A step
+that a hit holds back is a record too, sent when the hit sets the delay, with the tick the
+step lands at then. The classic walk packet (`0x0086`) is sent for no walk any more; its
+handler is the original's and stays.
+
+**The predicted world's target is exact while it walks.** `game/own_body.c` tells the world
+of another body from the newest record of its walk, or from the walk it is drawn on, a
+monster's as a player's. The rebuilding of a monster's classic walk went (the server's way
+between the walk's two ends, searched here), with `path_finder_find_server_path`, which
+only it used. An actor that does not walk by a record is told as standing on the cell it is
+drawn on.
+
+**One rule for a record without steps** (`move_record_stand` in `world/move_track.c`). An
+actor that was pushed or placed is set. One that walked is on the record's cell: it is left
+when it stands there, ends its walk on the cell's middle when it walks there (or stops where
+it is drawn while a hit's motion holds it), walks there from another cell, and is set only
+from more than four cells away. That holds for every actor. Before, another's actor whose walk
+did not lead to the cell any more was set onto it: a rule for walks that came as the classic
+packet, where the cell the server stopped a monster on could be one its drawn walk had left.
+With the walk's own steps and ticks an actor is off that cell only when it runs behind its
+walk, and setting it there was a jump of most of a cell. `path_info_leads_to` went with it.
+
+The playground (the real client against the real server in lockstep, 16 runs of 40 s a set,
+six monsters), before and after. Findings of the own character on screen, the share of ticks
+at which the cell it is drawn on was not the server's, the share at which the predicted body
+was not the server's body, byte for byte, and the findings of how the monsters are drawn:
+
+| Set | Own findings | Drawn cell differs, % of ticks | Predicted body differs, % of ticks | Monsters' findings |
+|---|---|---|---|---|
+| Walking, no lag | 0 to 0 | 0.00 to 0.00 | 0.0 to 0.0 | 0 to 0 |
+| Walking, ping 80, jitter 20 | 0 to 0 | 0.00 to 0.00 | 4.5 to 4.5 | 0 to 0 |
+| Walking, ping 150, jitter 40 | 0 to 0 | 0.38 to 0.40 | 15.2 to 15.4 | 0 to 0 |
+| Fighting, no lag | 0 to 0 | 0.11 to 0.04 | 1.7 to 1.4 | 23 to 0 |
+| Fighting, ping 80, jitter 20 | 0 to 0 | 0.10 to 0.05 | 10.4 to 10.3 | 27 to 0 |
+| Fighting, ping 150, jitter 40 | 0 to 0 | 0.93 to 0.83 | 31.4 to 31.3 | 31 to 0 |
+| All moods, no lag | 0 to 0 | 0.21 to 0.06 | 2.7 to 2.4 | 25 to 0 |
+| All moods, ping 80, jitter 20 | 0 to 0 | 0.19 to 0.14 | 8.5 to 8.1 | 33 to 0 |
+| All moods, ping 150, jitter 40 | 0 to 0 | 0.70 to 0.65 | 23.0 to 23.0 | 32 to 0 |
+
+What is left of the predicted body's differences in the fights without lag lasts about 80 ms
+a time, until the server's next word, and most of it begins within a quarter of a second of
+an order to attack.
+
+Validation: `tests\build_move_track.bat`, `tests\build_predicted.bat`,
+`tests\build_attack_records.bat`, `tests\build_own_swing.bat`, `test_pathfinder_owner` and
+`test_path_info` of the suite built by themselves, `build.bat` and `build.bat check`.
+
+Not checked: the whole `tests\build.bat`, the scenes of `tests/scenes`, the CMake builds of
+`docs/portability.md`, the x64 client, play by a person, and an actor other than a monster or
+a player (a pet, a homunculus, a mercenary, a walking NPC).
+
+## A monster's attack is the body core's (2026-11-12)
+
+The server runs every unit's basic attack in the body core now: a monster's, a homunculus's
+and a mercenary's as a player's. The copy here is the server's again, at rules version 11.
+
+**What changed in the core.** A fighter says its kind (a player, a monster, another unit) and
+whether its swing holds its walk for the attack motion (`attack_walk_delay`: a player, a
+homunculus and a monster that is no boss). A monster whose target is beyond its range goes
+after it by a way the game finds (the core says so and does not walk it); before its swing
+the game is asked once more (a skill may take the swing's place); its swing lands on a target
+within its range and a cell more. A walk after the target that the attack began ends, within
+its range, in a look at the target, for a player and another unit alike. A look of the
+attack's timer that finds no target it may fight says so. The body's bytes keep their size and
+their offsets: the kind is the byte that said whether the body is a player's, the hold a byte of
+the attack range, which is at most 64.
+
+**In the client nothing that is drawn changes.** The own body is a player's, whose swing held
+its walk before as it does now, and the server tells it so with every body. The predicted world
+answers the question before a monster's swing as it answers every question, yes
+(`world/predicted.c`): no player's body asks it, but the body's bytes come from outside and may
+say a monster's. Other bodies are put in the world by their walk records and do not attack in
+it. `tests/test_predicted.c` tells its fighters that they hold their walk, as the server does.
+
+The playground (the real client against the real server in lockstep, 16 runs of 40 s a set,
+six monsters), before and after: findings of the own character on screen, the share of ticks
+at which the cell it is drawn on was not the server's, the share at which the predicted body
+was not the server's body, and the findings of how the monsters are drawn:
+
+| Set | Own findings | Drawn cell differs, % of ticks | Predicted body differs, % of ticks | Monsters' findings |
+|---|---|---|---|---|
+| Walking, no lag | 0 to 0 | 0.00 to 0.00 | 0.0 to 0.0 | 0 to 0 |
+| Walking, ping 80, jitter 20 | 0 to 0 | 0.00 to 0.00 | 4.4 to 4.4 | 0 to 0 |
+| Walking, ping 150, jitter 40 | 0 to 0 | 0.39 to 0.39 | 15.4 to 15.4 | 0 to 0 |
+| Fighting, no lag | 0 to 0 | 0.05 to 0.05 | 1.4 to 1.6 | 0 to 0 |
+| Fighting, ping 80, jitter 20 | 0 to 0 | 0.06 to 0.11 | 10.2 to 10.1 | 0 to 0 |
+| Fighting, ping 150, jitter 40 | 0 to 0 | 0.83 to 0.95 | 31.3 to 31.5 | 0 to 0 |
+| All moods, no lag | 0 to 0 | 0.06 to 0.06 | 2.4 to 2.5 | 0 to 0 |
+| All moods, ping 80, jitter 20 | 0 to 0 | 0.14 to 0.23 | 8.1 to 8.5 | 0 to 0 |
+| All moods, ping 150, jitter 40 | 0 to 0 | 0.64 to 0.65 | 23.0 to 22.5 | 0 to 0 |
+
+The monsters fight otherwise than before (they see a player's attack by intent, and her attack
+by intent ends the time after a map load in which they leave her alone), so the fights are not
+the same fights; the walking sets give the same numbers.
+
+Validation: `tests\build_body.bat` (the core's tests and digests, 32-bit MSVC),
+`tests\build_predicted.bat`, `build.bat`, `build.bat check` (the copy check among it), the
+playground link.
+
+Not checked: the whole `tests\build.bat`, the scenes of `tests/scenes`, the CMake builds of
+`docs/portability.md`, play by a person, a homunculus's or a mercenary's attack in the
+playground (it has none).
+
+## A request names the tick it is applied at; one id per body; the own client is sent what it reads (2026-11-12)
+
+Four things the predicted world was wrong about, or was sent and did not read, each settled
+on both sides.
+
+**The tick a request is applied at is the client's to name.** The stamp before a request
+(`0x0f01`) carried the press tick, and the server applied the request at the press plus its
+hold-back while that was ahead and on arrival otherwise; the client reckoned the arrival from
+half its best round trip. With lag the two differed whenever a request took longer than that,
+which with a ping of 80 ms and 20 ms of jitter was 23% of the requests, and the predicted body
+was corrected for about 48 ms after each. The stamp now carries, in the same four bytes, the
+server's tick the client wants the request applied at: its own clock at the press, the clock
+the character is drawn on. The server applies the request at that tick when it arrives before
+it (and the tick lies no more than `hold_limit_ms`, 250, after the arrival), and on arrival
+otherwise. So the two agree on every request but one that took longer than the client allowed
+for, which the body tells as a correction.
+
+The own clock is the server's clock plus the longer of the hold-back (`0x0f14`) and the way a
+request takes up. That way is measured by the timed exchanges the clock sync already makes:
+each says the server's clock at the request's arrival less the client's at its sending, the
+clocks' offset and the way up in one number, which is what a request needs
+(`std/way_up.c`). The client takes the second longest of the last sixteen, so one request held
+up does not set it, and half its height above the shortest as a margin from their spread. In
+the playground, with the clock sync's own exchanges, that left 0 of 362 walking requests late
+at ping 80 / jitter 20 and 5 of 362 at 150 / 40 (the slowest of eight would have missed one in
+nine of a steady spread). The lead grows at once and shrinks a millisecond in ten, so the own
+clock never runs backward. `walk_apply_tick` and `game_mode_apply_time` are gone; what was left
+of `std/walk_predict.c` is the steer, now `std/walk_steer.c`.
+
+**One id per body.** The server's core named a player's body by her connection, which the
+client does not know, so an order to attack another player could not be shown ahead. It names
+every body by the id the clients know the unit by now (a player's account id), and such an
+order is shown ahead as one on a monster is. Nothing changed here but a comment.
+
+**Only what is read is sent.** The server sends no `ZC_STOPMOVE` of a player to herself (her
+body says where she stops), and `0x0f24` only when an intent ends, which the client reads to
+clear the attack cursor state. The handler of `ZC_STOPMOVE` ignores one of the own character
+that comes anyway.
+
+**How the character fights reaches the body at once.** The server tells the body her attack
+delay, motion, range and windup whenever it calculates her status anew, so the body the client
+is told, and predicts from, is not stale between orders.
+
+The playground (the real client against the real server in lockstep, 16 runs of 40 s a set,
+six monsters), before and after: findings on screen (the own character's and the monsters'),
+the share of ticks at which the cell the character is drawn on was not the server's, and the
+share at which the predicted body was not the server's body:
+
+| Set | Findings on screen | Drawn cell differs, % of ticks | Predicted body differs, % of ticks |
+|---|---|---|---|
+| Walking, no lag | 0 to 0 | 0.00 to 0.00 | 0.00 to 0.00 |
+| Walking, ping 80, jitter 20 | 0 to 0 | 0.00 to 0.00 | 4.45 to 0.13 |
+| Walking, ping 150, jitter 40 | 0 to 0 | 0.40 to 0.01 | 15.39 to 0.54 |
+| Fighting, no lag | 0 to 0 | 0.04 to 0.04 | 1.60 to 1.60 |
+| Fighting, ping 80, jitter 20 | 0 to 0 | 0.12 to 0.32 | 10.07 to 3.20 |
+| Fighting, ping 150, jitter 40 | 0 to 0 | 0.95 to 0.40 | 31.53 to 4.85 |
+| All moods, no lag | 0 to 0 | 0.06 to 0.06 | 2.49 to 2.49 |
+| All moods, ping 80, jitter 20 | 0 to 0 | 0.23 to 0.17 | 8.46 to 3.01 |
+| All moods, ping 150, jitter 40 | 0 to 0 | 0.65 to 0.44 | 22.54 to 3.96 |
+
+Without lag every difference is the one it was before, at the same tick: the own clock leads by
+the hold-back there, as it did. With lag, of 1883 walking requests 15 reached the server later
+than the tick they named at ping 80 and 44 at ping 150, by 1 to 13 ms, all in the first ten
+seconds after the map was loaded, while 6 to 11 exchanges were held; each difference in the
+walking sets follows one of them, but one (seed 13 at ping 80), where the request came 0.05 ms
+after its tick, the server took it at that tick in its next frame, and the playground had
+judged that tick a frame before (the two bodies' bytes at it are equal). The playground sends
+a stamp and its request with a delay each, so a request comes after the later of two, where the
+client sends both in one write. In the fights what is left follows orders to attack that the
+server took otherwise than the client could know (a target that was gone or had moved there),
+and late requests, each corrected one round trip later; with ping 80 these corrections moved
+the drawn character off the server's cell 17 times where it did 8.
+
+Validation: `build.bat`, `build.bat check`, the playground link, `tests\build_way_up.bat`,
+`tests\build_walk_steer.bat`, `tests\build_predicted.bat` (the convergence runs with the server
+applying at the named tick, a third of them with the other body named by a player's account),
+`tests\build_attack_records.bat`.
+
+Not checked: the whole `tests\build.bat`, the scenes of `tests/scenes`, the CMake builds of
+`docs/portability.md`, play by a person, an order on another player in the playground (it has
+one player).
+
+## Skills and pickups are requests of the body core; a skill unit is a target as an actor is (2026-11-12)
+
+The server's body core sees for every intent now, not only an order to attack: a skill on an
+actor, a skill on a cell and a pickup are requests of the core, as an attack is, and the copy
+here is the server's again, at rules version 12.
+
+**What changed in the core.** Three requests more, each with its range: a skill on a body (the
+body itself too), a skill on a cell, and a pickup of the item on a cell. Each gives the body an
+intent whose reach the core sees for itself (a skill's range and, beyond two cells, the line of
+fire, which the game answers; a pickup's distance), which walks the body into reach (after its
+target or to its cell, a cell closer each walk; a pickup next to the item and then onto it) and
+asks the game to carry the act out from a cell the body stands on: a walk under way ends with the
+step it has begun, and the act follows on that step's cell. The intent the game saw for itself
+is gone, and with it the event that told an intent's phase, which nobody read. The body's bytes
+keep their size; the intent's own part is laid out anew.
+
+**In the client.** `world/predicted.c` takes the three requests (`game/own_body.c` gives each
+what the server takes it with: the skill's range from the skill list, `skill_attack_range`; the
+cell of a ground skill, of a skill unit, of an item; the distance an item is picked up from, two
+cells), so the walk into reach of a skill or a pickup and the stop for the act are drawn ahead as
+an order's are. An attack or a skill on a body the world does not have, and a pickup of an item
+the client does not see, is a cancel by its number, as the server takes one.
+
+**A skill unit is a target as an actor is.** A skill aimed at a skill unit (Remove Trap, Spring
+Trap) and an attack on one that can be attacked (Ice Wall) sent the fork's requests after the
+client's own chase (`pending` 6 in `actor/player.c`). They are intents now, as on an actor: the
+server walks the player into reach of the unit's cell. The server attacks no skill unit, so it
+ends an attack on one at once, as before it did nothing with the fork's request. Gone with the
+chase: `player_proceed_skill_unit` and what only it used (`attack_sent`, `attacks`, `attack_kind`,
+`pending`, the messages `0x1d`, `0x28`, `0x2a`, `0x67`, `game_mode_cell_along_line`).
+
+**Talkie Box and Graffiti ask for their text again.** The ground skill's intent had taken the
+place of the original's cast, which opened their text window, so nothing opened it and the text
+was lost. The window opens when the skill's level comes, and its OK sends the fork's ground
+skill with the text (`0x0367`), as the original did once it stood in reach; these two are not
+walked into reach.
+
+**The classic skill requests that stay.** `0x0438` for a skill on oneself (a combo skill must not
+end the attack, which a request of the core would) and for every homunculus's and mercenary's
+skill, `0x0af4` for the companions' ground skills (their AI), which the server reads now, and
+`0x0367` as above.
+
+**`ZC_NOTIFY_PLAYERMOVE` is the original's handler again.** The server sends no walk start of
+the own walk; the branch that ignored one once the body was known is gone.
+
+The playground (the real client against the real server in lockstep, 16 runs of 40 s a set,
+six monsters; its player walks and attacks), before and after: findings on screen (the own
+character's and the monsters'), and how often the cell the character is drawn on and the
+predicted body were not the server's:
+
+| Set | Findings on screen | Drawn cell differs, times | Predicted body differs, times |
+|---|---|---|---|
+| Walking, no lag | 0 to 0 | 0 to 0 | 0 to 0 |
+| Walking, ping 80, jitter 20 | 0 to 0 | 0 to 0 | 16 to 16 |
+| Walking, ping 150, jitter 40 | 0 to 0 | 2 to 2 | 42 to 42 |
+| Fighting, no lag | 0 to 0 | 3 to 3 | 134 to 134 |
+| Fighting, ping 80, jitter 20 | 0 to 0 | 17 to 17 | 185 to 184 |
+| Fighting, ping 150, jitter 40 | 0 to 0 | 19 to 21 | 181 to 179 |
+| All moods, no lag | 0 to 0 | 2 to 1 | 72 to 71 |
+| All moods, ping 80, jitter 20 | 0 to 0 | 10 to 8 | 103 to 103 |
+| All moods, ping 150, jitter 40 | 0 to 0 | 18 to 17 | 138 to 138 |
+
+Validation: `tests\build_body.bat` (32-bit MSVC, the digests), `tests\build_predicted.bat` (a
+skill on a monster out of range, a ground skill out of range, a pickup two and four cells off,
+each the server's body at every tick; the convergence runs with skills and pickups among the
+requests; five faults put into the new code, each noticed), `build_attack_records`,
+`build_packet_dispatch`, `build_game_mode_layout`, `build_own_swing`, `build_move_track`,
+`build.bat`, `build.bat check`, the playground link.
+
+Not checked: the whole `tests\build.bat`, the scenes of `tests/scenes`, the CMake builds of
+`docs/portability.md`, play by a person; the playground's player walks and attacks only, so no
+skill or pickup was played against the real server there (they are in the server's host session
+and in `test_predicted.c`); Talkie Box and Graffiti were not played.
+
+## A body that goes keeps its past; a refused order is a cancel as on the server (2026-11-12)
+
+Two rules of the predicted world (`world/predicted.c`) that were not the server's, found by
+tracing, tick by tick, what the playground still measured once every step of
+`plans/predicted-world.md` was built.
+
+**A body that goes leaves the world at the world's clock, and keeps its past.** When another
+actor went, the world forgot the body altogether and was made again from the server's last
+word without it, as if it had never been there. A monster that the player's own swing killed
+went from the client some time after the impact; made again from the word of the swing's
+start, the world had no target at the impact, took the swing as lost and let the next swing
+begin at once, where the server's attack delay ran from the swing's start. Nothing told the
+body otherwise until the player's next order, so an order in that time was shown up to an
+attack delay too early (in the playground, after one swing that killed, for up to 5.3 s). Now
+the body leaves at the world's clock, and a world made again from the server's last word has it
+until then. A word that comes after the going left the server after the body went there,
+whatever its tick, as the server's packets come in the order they were sent: the body is in no
+world made from it, and is let go. A record of it after that is of a body that came back.
+
+**An attack, a skill or a pickup the core refuses is a cancel by its number.** The server's game
+turns such a request into a cancel, which ends the attack under way; the world took it as a
+request that did nothing. A walk the core refuses stays a request that did nothing, as on the
+server. The client sends only orders the core takes; the playground sends an attack without a
+mode now and then, on purpose, and found it.
+
+The playground (the real client against the real server in lockstep, 16 runs of 40 s a set,
+six monsters), before and after: findings on screen, and the share of ticks at which the
+predicted body was not the server's body:
+
+| Set | Findings on screen | Predicted body differs, % of ticks |
+|---|---|---|
+| Walking, no lag | 0 to 0 | 0.00 to 0.00 |
+| Walking, ping 80, jitter 20 | 0 to 0 | 0.13 to 0.13 |
+| Walking, ping 150, jitter 40 | 0 to 0 | 0.55 to 0.55 |
+| Fighting, no lag | 0 to 0 | 1.60 to 1.36 |
+| Fighting, ping 80, jitter 20 | 0 to 0 | 3.14 to 2.83 |
+| Fighting, ping 150, jitter 40 | 0 to 0 | 4.86 to 4.29 |
+| All moods, no lag | 0 to 0 | 2.39 to 0.67 |
+| All moods, ping 80, jitter 20 | 0 to 0 | 2.88 to 1.19 |
+| All moods, ping 150, jitter 40 | 0 to 0 | 3.85 to 2.49 |
+
+What differs now lasts until the server's next word, at most 128 ms without lag: an order on a
+monster that died or went on the server, which the client learns with that word, and a monster
+whose new walk the client learns a way later than the server took it, so that for a moment one
+side swings where the other still walks into reach. With lag, beside those, requests that
+arrive after the tick they name.
+
+Validation: `tests\build_predicted.bat`, with two new examples (a monster that dies of the own
+swing and goes while the world is to be made again, also with a word of the server's that comes
+after the going; an order without a mode and a walk off the map, each the server's body at every
+tick) that fail with the rules before, and the convergence runs with the server's game turning
+every refused attack, skill and pickup into a cancel and a quarter of the orders to attack
+without a mode; the whole `tests\build.bat` with `ORACLE_EXE` set; `build.bat` and
+`build.bat check`; the playground's nine sets. Before this change, on the same day, the CMake
+builds of `docs/portability.md` for x64 and Win32 with their tests, the x64 client, and the scenes
+of `tests/scenes` against a client of before the monsters' walks became records: the captures of
+one client differ from one run to the next on this machine in the 3D ground, and the final
+client's differ from the earlier one's no more than that and on no actor or window.
+
+Not checked: play by a person; the CMake builds, the x64 client and the scenes after this change
+(it touches only the predicted world, which the scenes do not run).
+
+## The body core holds a swing as the fork does: not by a skill's delay, by a cast but for Free Cast (2026-11-12)
+
+The copy of the server's body core here is at rules version 13. Four rules changed on both
+sides, each to what the fork does with the battle configuration it ships:
+
+**A skill's delay holds no swing.** The fork lets a basic attack ignore the delay after a
+skill (`skill_delay_attack_enable: true`): only a cast under way holds the swing. The core
+held every swing until the act clock, so after a skill with a long delay the character could
+not attack for all of it. Now the act clock holds skills only. The project's skill pose (a
+recorded departure of the server's) holds the next swing for its time, on the attack's own
+clock, so a skill still costs about a swing.
+
+**Free Cast.** A player with Sage's Free Cast swings while she casts. The core holds a swing
+during its own cast by itself, unless the body's fighter flags say it may swing while it
+casts; the server tells that with how she fights, so the predicted world here has it from
+the body's bytes and shows such a swing ahead as the server makes it.
+
+**A walk after the target within its range already takes a step.** Out of the line of fire, a
+body that stands within the chase range took no step and its attack waited for nothing. The
+fork's walk moves at least one cell on the way to the cell beside the target, and the attack
+looks when it lands; the core does the same.
+
+**A body on a cell no walk ends on is walked to from beside it.** A walk after a body went to
+that body's own cell and found no way when the cell was closed, as an Ice Wall's is. The fork
+walks to the cell beside the target towards the walker, or else the first open one around it
+(`unit_can_reach_bl`); the core does the same. The server now stands an Ice Wall's units and
+a laid trap as bodies that a swing may hit, as the fork lets it.
+
+Nothing else changed here: the predicted world answers the core's questions as before, and
+the fighter's flags come with the body. The predicted world has no body for a skill unit, so
+an attack on one is not predicted here.
+
+Validation: `tests\build_body.bat` (32-bit MSVC: the core's examples, among them a swing held
+by a cast and one Free Cast lets begin, the act clock that holds no swing, the chase's step
+and the walk to a body on a closed cell, and the scenarios with their digests made anew),
+`tests\build_predicted.bat`, the copy check. On the server, its attack held tick by tick
+against the fork's attack in JS read with the same configuration, and its session tests (a
+Sage with and without Free Cast, an Ice Wall a player breaks, a Blast Mine a swing knocks
+back, a Land Mine worn down).
+
+Not checked: the playground with these rules (it waits for another piece of work in the same
+files), `build.bat check` and the client's build over that work, play by a person.
+
+## What is aimed at the own character is played on the own clock, and a swing's attack is paced to its landing (2026-11-13)
+
+The client draws on two clocks (`plans/netcode.md`). The player's own character is drawn on the
+own clock, ahead of the server's by the time a request takes to be applied (at least the
+hold-back, 60 ms), and a request names that clock's tick as the tick the server applies it at.
+Everyone else is drawn on the render clock, 40 to 200 ms behind the server's, so that their
+records are here before they are due.
+
+The server announces a swing when it starts, with the tick it lands at, and decides the hit at
+that tick: a target that is gone or out of reach by then is not hit. A request that is to come
+before the hit has to be pressed while the own clock is still before that tick. The swing was
+played on the render clock, so on the screen everything about it came later than that by the
+own clock's lead and the render delay: for a tenth of a second and more the screen showed a hit
+still to come that no request could come before any longer. And the attack's animation was
+played at the speed its attack motion gave it, so the frame its hit is on came whenever the
+sprite had it, not when the swing landed.
+
+**What changed.** Two things, and no packet: the server sends what it sent.
+
+What another actor aims at the own character is played on the own clock
+(`timed_queue_on_own_clock`, `world/act_track.c`): a swing or a cast whose target it is,
+another actor's hit on it, and the idle record that ends such a swing or cast. Everything else
+of another actor, and where it stands, stays on the render clock.
+
+The attack of every swing the server announces is paced so that the frame its hit is on shows
+when the swing lands, on the clock the swing is played on (`std/swing_pace.c`). So the attack
+of a monster connects on the screen at the last moment a request sent now is still applied
+before its swing lands.
+
+- **The pace.** An attack shows its hit on the frame its sprite marks for it, that frame's
+  number times the frame delay times 24 ms after it began. `swing_pace_frame_delay` gives the
+  frame delay that puts the hit frame at the time that is left to the landing, at most twice
+  as fast and eight times as slow as the attack is on its own. `game_actor_swing_begin` takes
+  the time left, and the setup of the attack state calls `game_actor_pace_attack` where it
+  has the hit frame (`actor/actor_state.c`, `actor/npc.c`, twice in `actor/pc_process.c`),
+  before it times anything by the animation, so an arrow leaves with the paced attack. An
+  attack that is no announced swing is played as it was, and so is a model's
+  (`c3d_granny_game_actor_update_motion` goes by its own factor).
+- **Which landing.** A swing at the own character is paced to the tick it lands at on the own
+  clock, and begins when its record is here, however late on that clock that is. A swing of
+  another actor at someone else, to that tick on the render clock, where its hit shows too.
+  The player's own swing, to when its damage number is here, a way down and the own clock's
+  lead after it lands: nothing waits on that swing, and its hit and its number show together.
+  That replaces the stretch of the own swing, which played it longer by that share of its
+  attack motion ("Attack orders are drawn from the predicted world", above).
+- **The hit shows when its notice is here**, a way down and the lead after the swing's tick on
+  the own clock: the server decides at the landing and its word has to come.
+- **An actor's items keep their order.** One actor can have items on both clocks: a hit on
+  someone else that waits for the render clock, then a swing at the own character that is due
+  already. `timed_queue_take` brings the earlier acts and hits of an actor along with one that
+  is due on the own clock, so an older hit never closes a newer swing.
+- **The end is told as soon.** The idle record that cancels a swing or a cast has no target.
+  The queue remembers which actors' act record played last was aimed at the own character,
+  sixteen of them, and plays such an actor's idle on the own clock.
+- **The swing waits for the walk before it.** The actor's walk is drawn on the render clock.
+  When the server has it standing and beginning its swing, the screen can still have it on the
+  last of that walk, and an attack begun then stops it short of its cell's middle. So a swing
+  or a cast at the own character waits while its actor is drawn on a walk that ends by the
+  act's tick, or has such a walk or a move record of a tick not after it still to show
+  (`aimed_when`, `game/packets_act.c`; `move_track_will_move`), and is paced to the time it
+  has left when the actor is there. It waits no longer than until the render clock reaches the
+  act's tick, which is when it began before this change. A newer act record of the actor takes
+  the waiting one's place; the hit of a swing that still waits is its impact.
+- **Not on what the actor did next.** A monster walks on while its swing is under way. An actor
+  that is drawn on a walk that ends after the swing's tick is past the swing's beginning: the
+  attack is not begun on it, which would stop the walk, and the swing is open so that its hit
+  is still its impact. In the runs below about two of a hundred swings showed no attack for it.
+- **A new actor has none of it.** `game_actor_on_init` sets the three fields of the pace, as it
+  does the move track and the floors.
+
+**What it does not do.**
+
+- **An actor that walks up is not drawn sooner.** Its walk stays on the render clock, so the
+  first swing after a walk begins no sooner than the actor is drawn standing. The swings of an
+  actor that already stands begin the render delay sooner.
+- **A swing can be slow to look at.** A swing whose server time is longer than its sprite's
+  attack is played that much slower, up to eight times; the original played an attack no
+  slower than its sprite and let the actor stand until the hit.
+- A swing whose time left is less than half its attack's own time lands later than its tick.
+- A cast on the ground has no target and stays on the render clock, whoever stands on the cell.
+- A skill's damage comes in the fork's packets and shows as it did.
+- Until the server's clock is known the own clock is the render clock.
+
+**The playground measures it.** The server's `consumers/host/playground/aimed.js` holds, for
+every swing another actor aims at the player: how long after its record came the attack showed
+on the screen; how long before the swing lands, on the own clock, that was, which is the time
+the player has to answer it; and how long after the landing tick, on the own clock, the frame
+of the attack's hit showed. The driver reports the frame every actor's action is on and its
+hit frame for that. Eight seeds of 40 s with six Zombies (attack motion 912 ms) that chase a
+player who walks, fights and stands, each pair of clients one after the other on one tree.
+
+Played on the own clock, against the render clock:
+
+| Line | Attack shown after its record | Time left to the landing | Findings on screen |
+|---|---|---|---|
+| no lag | 39 ms, was 54 (at most 112, was 112) | 798 ms, was 783 (at least 725, was 724) | the same 1 |
+| ping 80, jitter 20 | 36, was 50 (112, was 112) | 748, was 734 (673, was 673) | the same 1 |
+| ping 150, jitter 40 | 35, was 50 (128, was 128) | 661, was 647 (572, was 572) | the same 1 |
+
+Paced, against the attack's own speed, both on the own clock (the frame of the hit, in ms after
+the landing tick; the measure reads the own clock up to a frame of 16 ms after the frame it
+reports was drawn):
+
+| Line | Chasing a player who moves | Three Zombies on a player who stands |
+|---|---|---|
+| no lag | 23 (16 to 32), was 18 (-12 to 91) | 22 (16 to 28), was 0 (-12 to 88) |
+| ping 80, jitter 20 | 24 (15 to 38), was 69 (19 to 153) | 24 (13 to 31), was 49 (22 to 101) |
+| ping 150, jitter 40 | 24 (16 to 46), was 154 (81 to 221) | 24 (16 to 31), was 132 (107 to 163) |
+
+The findings on screen were the same with the pace as without it (1, 1 and none). With six
+Porings, which a knight of level 70 kills before they swing, the runs were the same frame for
+frame on the own clock as on the render clock; with the pace the player's own swing is paced
+too, and in three of sixteen runs the own character's drawn walk differed a little, with no
+finding on screen and the own body differing as often (2 and 60 times in eight fights without
+lag, 4 and 26 in every mood at ping 80, before and with it).
+
+Validation: `tests\build_swing_pace.bat` (the hit frame at the landing, the two bounds, an
+attack without a frame to go by, 200,000 attacks on time or at a bound), `tests\build_act_track.bat`
+(what is aimed is on the own clock and what is not is not, an actor's order across the two
+clocks, the end told as soon, seventeen aimed actors, the item a full queue hands back),
+`tests\build_move_track.bat` (the record that will move a standing actor and the one that will
+not, by tick), `tests\build_own_swing.bat`, `tests\build_attack_records.bat` (the real
+`packets_act.c` and `actor_msg.c`: a swing begun late and paced, its hit on arrival, its end at
+once, a cast's time left, what the actor did before played first, the wait for the walk and its
+end, an actor that walked on, a crowd of seventeen, the pace of each kind of swing and of a
+setup that learns two hit frames), `build.bat check`. Sixty-four faults put into
+`act_track.c`, `move_track.c`, `swing_pace.c`, `actor_msg.c` and `packets_act.c` one at a time
+were each caught by one of these tests.
+
+`tests\test_effect_trace.c` hashes an actor's bytes, so its digest moves when an actor gets a
+field. Built against a copy of the sources in which only `actor/types.h`, `world/move_track.h`,
+`world/act_track.h` and `game/gamemode.h` were the ones from before the records carried
+revisions, the same test gave the digest it expected until then (`facbf5f0d03bc7dd`): nothing
+but the actor's layout had moved it. Its expected digest is today's layout's.
+
+Not checked: play by a person; the scene harness and the whole suite after the pace; the x64
+and CMake builds after it; an arrow's release with the paced attack and a player's swing at a
+low attack speed, on the screen; a cast aimed at the player in the playground (no monster there
+casts).
