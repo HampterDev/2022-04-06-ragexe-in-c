@@ -13,11 +13,6 @@
 #include "world/world.h"
 #include <stdint.h>
 
-static void world_add(struct GameMode *self, void *object)
-{
-    list_push_back(&self->world->gameObjects, &object, sizeof object);
-}
-
 void game_mode_launch_arrow(struct GameMode *self, const struct Vec3 *from, unsigned target, float speed,
                                      int job)
 {
@@ -28,7 +23,7 @@ void game_mode_launch_arrow(struct GameMode *self, const struct Vec3 *from, unsi
     arrow = arrow_effect_new();
     if (arrow == 0)
         return;
-    world_add(self, arrow);
+    world_add_object(self->world, arrow);
     render_object_send(arrow, NULL, 0xe, (intptr_t)from, (int64_t)target, (intptr_t)&speed, (int64_t)job);
 }
 
@@ -38,7 +33,7 @@ void game_mode_launch_arrow_to_point(struct GameMode *self, const float *from, c
 
     if (arrow == 0)
         return;
-    world_add(self, arrow);
+    world_add_object(self->world, arrow);
     render_object_send(arrow, NULL, 0x40, (intptr_t)from, (intptr_t)to, (intptr_t)&speed, 0);
 }
 
@@ -48,7 +43,7 @@ void game_mode_launch_plant_attack(struct GameMode *self, unsigned target_id, in
 
     if (attack == 0)
         return;
-    world_add(self, attack);
+    world_add_object(self->world, attack);
     render_object_send(attack, NULL, 0xe, (int64_t)target_id, (intptr_t)&delay, (int64_t)job, 0);
 }
 
@@ -61,7 +56,7 @@ struct Corpse *game_mode_make_corpse(struct GameMode *self, Vec3 pos,
     if (!corpse)
         return NULL;
     corpse_construct(corpse);
-    world_add(self, corpse);
+    world_add_object(self->world, corpse);
     corpse->pos = pos;
     render_object_load_act_res((struct RenderObject *)corpse, act_name);
     render_object_load_spr_res((struct RenderObject *)corpse, spr_name);
@@ -82,7 +77,7 @@ void game_mode_make_granny_corpse(struct GameMode *self, Vec3 pos, float facing,
     granny_corpse3d_construct(corpse, name);
     corpse->pos = pos;
     corpse->facing = facing;
-    world_add(self, corpse);
+    world_add_object(self->world, corpse);
 }
 
 void game_mode_make_mouse_pointer(struct GameMode *self)
@@ -91,7 +86,7 @@ void game_mode_make_mouse_pointer(struct GameMode *self)
     void *pointer = mem != 0 ? mouse_pointer_construct(mem) : 0;
 
     self->mouse_pointer = pointer;
-    world_add(self, pointer);
+    world_add_object(self->world, pointer);
 }
 
 struct GameActor *game_mode_new_actor_for_job(struct GameMode *self, int job)

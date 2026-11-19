@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include "platform/clock.h"
+#include "platform/thread.h"
 
 static WORD pixel16(const struct C3dDevice *dev, DWORD r, DWORD g, DWORD b)
 {
@@ -195,12 +196,13 @@ struct Texture *texture_create(int width, int height, int format)
     return texture;
 }
 
-/* An empty texture with the next serial, the order the render queues sort textures in. */
+/* An empty texture with the next serial, the order the render queues sort textures in; the model
+   loader's thread makes textures too. */
 static void texture_start(struct Texture *self)
 {
-    static unsigned serial;
+    static volatile int32_t serial;
     memset(self, 0, sizeof *self);
-    self->serial = ++serial;
+    self->serial = (unsigned)platform_atomic_increment(&serial);
     self->base.ops = &texture_surface_ops;
 }
 
@@ -313,18 +315,6 @@ int texture_update_mip_chain(struct Texture *self, const RECT *r)
     return gfx_refresh_mips(self->base.surface, r) >= 0;
 }
 
-struct build_record {
-    struct Texture *tex;
-    gfx_surface *surface;
-    unsigned version;
-    DWORD hash[4];
-    int x, y, w, h, pitch;
-    BYTE colorKeyed;
-};
-#define BUILD_SLOTS 8192
-#define BUILD_PROBES 8
-static struct build_record build_records[BUILD_SLOTS];
-
 static void build_hash(const DWORD *src, int rows, int cols, size_t stride, DWORD out[4])
 {
     DWORD a = 2166136261u, b = 0x9e3779b9u, c = 0x85ebca6bu, d = 0xc2b2ae35u;
@@ -343,26 +333,16 @@ static void build_hash(const DWORD *src, int rows, int cols, size_t stride, DWOR
     out[0] = a; out[1] = b; out[2] = c; out[3] = d;
 }
 
-static struct build_record *build_slot(struct Texture *tex)
-{
-    unsigned h = ((unsigned)(ULONG_PTR)tex >> 4) * 2654435761u, i;
-    struct build_record *first_free = NULL;
-    for (i = 0; i < BUILD_PROBES; i++) {
-        struct build_record *e = &build_records[(h + i) & (BUILD_SLOTS - 1)];
-        if (e->tex == tex)
-            return e;
-        if (!e->tex && !first_free)
-            first_free = e;
-    }
-    return first_free;
-}
-
+/* custom: an upload of the same pixels into the same surface as the texture's last, the surface
+   unchanged since, is skipped; the texture keeps its last upload (struct Texture, lastUpload), where
+   main keeps them in a table of 8,192 slots keyed by the texture's address, so that which uploads it
+   skips hangs on where the heap puts the textures */
 int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, const DWORD *bits, int colorKeyed, int pitch)
 {
     struct gfx_lock lk;
     RECT r, all;
     int sx = 1, sy = 1, x0, y0, w0, h0, row, texW, texH, req_width, req_height;
-    struct build_record *rec = NULL;
+    struct TextureUpload *rec;
     unsigned version;
     DWORD hash[4];
     if (pitch == 0)
@@ -387,10 +367,10 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
     fit(w, self->base.width, &req_width);
     fit(h, self->base.height, &req_height);
     version = gfx_content_version(self->base.surface);
+    rec = &self->lastUpload;
     if (version) {
         build_hash(bits, h0, w0 * sx, (size_t)pitch * sy, hash);
-        rec = build_slot(self);
-        if (rec && rec->tex == self && rec->surface == self->base.surface && rec->version == version
+        if (rec->surface == self->base.surface && rec->version == version
             && rec->x == x && rec->y == y && rec->w == w && rec->h == h && rec->pitch == pitch
             && rec->colorKeyed == (BYTE)colorKeyed && memcmp(rec->hash, hash, sizeof(hash)) == 0) {
             perf_count_shared(&g_perf.buildsSkipped, 1);
@@ -477,8 +457,7 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
         return 0;
     self->reqWidth = req_width; self->reqHeight = req_height;
     self->colorKeyed = (BYTE)colorKeyed;
-    if (version && rec) {
-        rec->tex = self;
+    if (version) {
         rec->surface = self->base.surface;
         rec->version = gfx_content_version(self->base.surface);
         memcpy(rec->hash, hash, sizeof(hash));

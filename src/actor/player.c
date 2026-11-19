@@ -27,6 +27,7 @@
 #include "session/session_talk.h"
 #include "game/input.h"
 #include "platform/clock.h"
+#include "effects/skills/msg_effect.h"
 
 void player_process_proceed(struct Player *self);
 void player_process_costume_body(struct Player *self, unsigned char show);
@@ -752,7 +753,7 @@ void player_process_costume_body(struct Player *self, unsigned char show)
             struct GameObject *obj = game_mode_make_msg_effect(game_current_mode(), 0x2c, &self->pos,
                                                  self->aid, 1);
 
-            list_push_back(&self->attached, &obj, sizeof obj);
+            msg_effect_attach((struct MsgEffect *)obj, &self->attached);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
             self->costume_body_obj = obj;
         }

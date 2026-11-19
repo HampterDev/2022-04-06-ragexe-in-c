@@ -33,7 +33,6 @@ enum {
 
 #define SKILL_UNIT_SIZE sizeof(struct Skill)
 
-struct AbleToMakeEffect;
 void game_mode_spawn_unit_double(struct GameMode *self, unsigned aid, unsigned creator_aid,
                                          int x, int y);
 
@@ -47,21 +46,7 @@ static struct ListNode *find_unit_id(struct GameMode *self, unsigned aid)
     return head;
 }
 
-static void note_unit_inline(struct GameMode *self, const unsigned *aid, unsigned creator_aid, char *visible)
-{
-    if (creator_aid != ((unsigned)g_session1.ownAid) && !*visible) {
-        struct ListNode *node = find_unit_id(self, *aid);
-        if (node != self->shown_unit_ids.head) {
-            list_erase(&self->shown_unit_ids, node, NULL);
-            *visible = 0;
-        }
-        return;
-    }
-    if (*visible)
-        list_push_back(&self->shown_unit_ids, aid, sizeof *aid);
-}
-
-static void note_unit_call(struct GameMode *self, const unsigned *aid, unsigned creator_aid, char *visible)
+static void note_unit(struct GameMode *self, const unsigned *aid, unsigned creator_aid, char *visible)
 {
     if (creator_aid != ((unsigned)g_session1.ownAid) && !*visible) {
         struct ListNode *node = find_unit_id(self, *aid);
@@ -77,33 +62,31 @@ static void note_unit_call(struct GameMode *self, const unsigned *aid, unsigned 
 
 static void add_text_object(struct GameMode *self, unsigned aid, const char *text, short x, short y)
 {
-    struct AbleToMakeEffect *obj = (struct AbleToMakeEffect *)graffi_skill_new();
+    struct Skill *obj = (struct Skill *)graffi_skill_new();
 
-    list_push_back(&self->world->gameObjects, &obj, sizeof obj);
-    list_push_back(&self->world->skills, &obj, sizeof obj);
+    world_add_skill(self->world, obj);
     render_object_send(obj, NULL, OBJ_MSG_SET_AID, aid, 0, 0, 0);
     render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (intptr_t)text, x, y, 0);
 }
 
-static struct Skill *add_unit_inline(struct GameMode *self, void *block, unsigned aid)
+static struct Skill *add_unit(struct GameMode *self, void *block, unsigned aid)
 {
-    struct Skill *unit = 0;
+    struct Skill *unit;
 
     if (!block) return NULL;
     unit = skill_construct(block, (int)aid);
-    list_push_back(&self->world->gameObjects, &unit, sizeof unit);
-    list_push_back(&self->world->skills, &unit, sizeof unit);
+    world_add_skill(self->world, unit);
     return unit;
 }
 
-static struct Skill *add_unit_call(struct GameMode *self, void *block, unsigned aid)
+/* the unit the server shows with this aid where the world has one; custom: one kept only to end
+   its hits stays (world_keep_skill), where the original removed it when they ended */
+static struct Skill *existing_unit(struct GameMode *self, unsigned aid)
 {
-    struct Skill *unit = 0;
+    struct Skill *unit = world_get_skill_by_aid(self->world, (int)aid);
 
-    if (!block) return NULL;
-    unit = skill_construct(block, (int)aid);
-    list_push_back(&self->world->gameObjects, &unit, sizeof unit);
-    list_push_back(&self->world->skills, &unit, sizeof unit);
+    if (unit)
+        world_keep_skill(self->world, unit);
     return unit;
 }
 
@@ -131,7 +114,7 @@ void game_mode_zc_skill_entry(struct GameMode *self, struct PACKET_ZC_SKILL_ENTR
     entry.visible = 1;
     entry.creator_aid = packet->creator_aid;
     entry.range = 0;
-    unit = (struct Skill *)world_get_skill_by_aid(self->world, packet->aid);
+    unit = existing_unit(self, packet->aid);
     if (packet->creator_aid != ((unsigned)g_session1.ownAid) && !entry.visible) {
         struct ListNode *node = find_unit_id(self, packet->aid);
         if (node != self->shown_unit_ids.head) {
@@ -146,7 +129,7 @@ void game_mode_zc_skill_entry(struct GameMode *self, struct PACKET_ZC_SKILL_ENTR
     if (unit == 0) {
         if (packet->job < UNT_FIRST)
             return;
-        unit = add_unit_inline(self, mem_alloc(SKILL_UNIT_SIZE), packet->aid);
+        unit = add_unit(self, mem_alloc(SKILL_UNIT_SIZE), packet->aid);
     }
     if (!unit) return;
     unit->creator_aid = (int)packet->creator_aid;
@@ -174,7 +157,7 @@ void game_mode_zc_skill_entry2(struct GameMode *self, struct PACKET_ZC_SKILL_ENT
         return;
     }
 
-    unit = (struct Skill *)world_get_skill_by_aid(self->world, packet->aid);
+    unit = existing_unit(self, packet->aid);
     if (entry.creator_aid != ((unsigned)g_session1.ownAid) && !entry.visible) {
         struct ListNode *node = find_unit_id(self, packet->aid);
         if (node != self->shown_unit_ids.head) {
@@ -189,7 +172,7 @@ void game_mode_zc_skill_entry2(struct GameMode *self, struct PACKET_ZC_SKILL_ENT
     if (unit == 0) {
         if (packet->job < UNT_FIRST)
             return;
-        unit = add_unit_call(self, mem_alloc(SKILL_UNIT_SIZE), 0);
+        unit = add_unit(self, mem_alloc(SKILL_UNIT_SIZE), 0);
     }
     send_entry(unit, &entry);
 }
@@ -212,13 +195,13 @@ void game_mode_zc_skill_entry3(struct GameMode *self, const struct PACKET_ZC_SKI
     entry.visible = packet->visible;
     entry.creator_aid = packet->creator_aid;
     entry.range = packet->range;
-    note_unit_inline(self, &packet->aid, packet->creator_aid, &entry.visible);
+    note_unit(self, &packet->aid, packet->creator_aid, &entry.visible);
 
-    unit = (struct Skill *)world_get_skill_by_aid(self->world, packet->aid);
+    unit = existing_unit(self, packet->aid);
     if (unit == 0) {
         if (packet->job < UNT_FIRST)
             return;
-        unit = add_unit_inline(self, mem_alloc(SKILL_UNIT_SIZE), packet->aid);
+        unit = add_unit(self, mem_alloc(SKILL_UNIT_SIZE), packet->aid);
         if (unit == 0)
             return;
     }
@@ -244,13 +227,13 @@ void game_mode_zc_skill_entry4(struct GameMode *self, const struct PACKET_ZC_SKI
     entry.visible = packet->visible;
     entry.creator_aid = packet->creator_aid;
     entry.range = packet->range;
-    note_unit_inline(self, &packet->aid, packet->creator_aid, &entry.visible);
+    note_unit(self, &packet->aid, packet->creator_aid, &entry.visible);
 
-    unit = (struct Skill *)world_get_skill_by_aid(self->world, packet->aid);
+    unit = existing_unit(self, packet->aid);
     if (unit == 0) {
         if (!job_makes_unit(packet->job))
             return;
-        unit = add_unit_inline(self, mem_try_alloc(SKILL_UNIT_SIZE), packet->aid);
+        unit = add_unit(self, mem_try_alloc(SKILL_UNIT_SIZE), packet->aid);
         if (unit == 0)
             return;
     }
@@ -264,15 +247,14 @@ void game_mode_zc_skill_entry5(struct GameMode *self, const struct PACKET_ZC_SKI
     struct Skill *unit;
 
     if (packet->job == UNT_GRAFFITI) {
-        struct AbleToMakeEffect *obj;
+        struct Skill *obj;
 
         if (packet->length <= 0x17)
             return;
-        obj = (struct AbleToMakeEffect *)graffi_skill_new();
+        obj = (struct Skill *)graffi_skill_new();
         render_object_send(obj, NULL, OBJ_MSG_SET_AID, packet->aid, 0, 0, 0);
         render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (intptr_t)packet->text, (short)packet->x, (short)packet->y, 0);
-        list_push_back(&self->world->gameObjects, &obj, sizeof obj);
-        list_push_back(&self->world->skills, &obj, sizeof obj);
+        world_add_skill(self->world, obj);
         return;
     }
     if (packet->job == UNT_DRAWN_AS_CREATOR) {
@@ -288,13 +270,13 @@ void game_mode_zc_skill_entry5(struct GameMode *self, const struct PACKET_ZC_SKI
     entry.creator_aid = packet->creator_aid;
     entry.range = packet->range;
     entry.level = packet->level;
-    note_unit_call(self, &packet->aid, packet->creator_aid, &entry.visible);
+    note_unit(self, &packet->aid, packet->creator_aid, &entry.visible);
 
-    unit = (struct Skill *)world_get_skill_by_aid(self->world, packet->aid);
+    unit = existing_unit(self, packet->aid);
     if (unit == 0) {
         if (!job_makes_unit(packet->job))
             return;
-        unit = add_unit_call(self, mem_try_alloc(SKILL_UNIT_SIZE), packet->aid);
+        unit = add_unit(self, mem_try_alloc(SKILL_UNIT_SIZE), packet->aid);
         if (unit == 0)
             return;
     }
@@ -346,8 +328,7 @@ void game_mode_spawn_unit_double(struct GameMode *self, unsigned aid, unsigned c
             render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 0, 0, 0);
             actor->object_type = 7;
             game_actor_launch_effect(actor, 0x3c3, (Vec3){ 0.0f, 0.0f, 0.0f }, 0.0f);
-            list_push_back(&self->world->gameObjects, &actor, sizeof actor);
-            actor_list_push_back(&self->world->actors, actor);
+            world_add_actor(self->world, actor);
             vec_push(ids, &aid, sizeof(unsigned));
         } else {
             game_mode_cell_to_world(self, (short)x, (short)y, &actor->pos.x, &actor->pos.z);
@@ -373,7 +354,6 @@ void game_mode_spawn_unit_double(struct GameMode *self, unsigned aid, unsigned c
                 unit = skill_construct(block, 0);
         }
         send_entry(unit, &entry);
-        list_push_back(&self->world->gameObjects, &unit, sizeof unit);
-        list_push_back(&self->world->skills, &unit, sizeof unit);
+        world_add_skill(self->world, unit);
     }
 }

@@ -121,6 +121,8 @@ struct GameObject *game_object_construct(struct GameObject *self)
 {
     self->ops = &game_object_ops;
     self->serial = ++g_gameObjectSerial;
+    self->world_node = NULL;
+    self->actor_node = NULL;
     return self;
 }
 

@@ -366,6 +366,33 @@ static void check_release_in_frame(struct C3dDevice *d)
     assert(screen_pixel(d, 4, 4) == 0x0000ff);
 }
 
+/* A texture held twice (as the renderer's queues hold the textures their draws name,
+   render/rp_pool.c) and released by its owner is still drawn after its release, and goes when the
+   holds are let go; a texture released while another is held goes at once, after its draw. */
+static void check_release_while_held(struct C3dDevice *d)
+{
+    static const DWORD green[4] = { 0xff00ff00, 0xff00ff00, 0xff00ff00, 0xff00ff00 };
+    static const DWORD white[4] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
+    gfx_surface *t = texture_2x2(GFX_FMT_8888, green), *u;
+    gfx_clear(GFX_CLEAR_TARGET, 0, 1.0f, NULL);
+    gfx_hold(t);
+    gfx_hold(t);
+    gfx_release(t);
+    gfx_set_mode(TEXTURE);
+    gfx_set_texture(0, t);
+    draw_quad(0, 0, 8, 8, 0xffffffff);
+    gfx_set_texture(0, NULL);
+    u = texture_2x2(GFX_FMT_8888, white);
+    gfx_set_texture(0, u);
+    draw_quad(16, 0, 24, 8, 0xffffffff);
+    gfx_set_texture(0, NULL);
+    gfx_release(u);
+    gfx_release_holds();
+    gfx_end_scene();
+    assert(screen_pixel(d, 4, 4) == 0x00ff00);
+    assert(screen_pixel(d, 20, 4) == 0xffffff);
+}
+
 /* Copies between targets stay on the GPU: a render target's rectangle into the screen, a copy into
    a texture refused, rectangles outside their surfaces copying nothing, and the frame saved into a
    render target and put back, under the draws after it (c3d_device_save_frame and
@@ -946,7 +973,9 @@ static int skin_pose(float move, float scale, float offset, uint32_t add, int st
    run on in the model or are one range in several poses, both faces of every triangle; a rigid
    mesh moves with its bone, or lies still in a pose that says so; a bone a vertex weights by 0
    moves it not even where it is not a number; a mode that draws no meshes, or a render target,
-   takes none; a model given up after its draws were recorded is drawn and goes. */
+   takes none; a model given up after its draws were recorded is drawn and goes, and so is one held
+   (gfx_hold_skin, as the renderer's queues hold the models their draws name) and given up by its
+   owner before its draw, which goes when the holds are let go. */
 static void check_skin(struct C3dDevice *d)
 {
     gfx_skin *model = skin_model(), *other = skin_model();
@@ -1025,6 +1054,21 @@ static void check_skin(struct C3dDevice *d)
     gfx_draw_skin(NULL, 0, 6, lit);
     gfx_end_scene();
     assert(g_perf.draws == draws && screen_pixel(d, 25, 17) == 0);
+    /* held twice and given up by its owner: still drawn, and the holds let go after its draw */
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    other = skin_model();
+    assert(other);
+    gfx_hold_skin(other);
+    gfx_hold_skin(other);
+    gfx_skin_release(other);
+    lit = skin_pose(16.0f, 100.0f, 28.5f, 0x804000, 0);
+    assert(lit >= 0);
+    draws = g_perf.draws;
+    gfx_draw_skin(other, 0, 6, lit);
+    gfx_release_holds();
+    gfx_end_scene();
+    assert(g_perf.draws == draws + 1);
+    assert(screen_pixel(d, 25, 17) == 0x00c080 && screen_pixel(d, 30, 22) == 0x00c080);
     gfx_skin_release(model);
 }
 
@@ -2691,6 +2735,7 @@ int main(int argc, char **argv)
     check_culling(d);
     check_texture_changed_in_frame(d);
     check_release_in_frame(d);
+    check_release_while_held(d);
 
     {
         static const DWORD keyed[4] = { 0x00ff0000, 0xff00ff00, 0xff00ff00, 0x00ff0000 };
@@ -2796,7 +2841,7 @@ int main(int argc, char **argv)
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     printf("gfx gpu (RAGEXE_MSAA=%s): clears, edges and flat quads, 8888/565/1555/4444 textures, texel centres, "
-           "culling, textures changed and released in a frame, alpha test, fog (the quads' within a step at every "
+           "culling, textures changed, released and held in a frame, alpha test, fog (the quads' within a step at every "
            "step's start), blending, the effect modes' blending, the 16 presets against Direct3D 9's stages, two "
            "textures, the ground's records, "
            "two-pass alpha, effects behind depth, composites, clears inside a pass, the overlays batched, mipmaps, "
@@ -2806,7 +2851,7 @@ int main(int argc, char **argv)
            "sent cleared on the GPU but where it was written), lists of triangles, "
            "render targets and their edges, a window's target read 1:1 (%s), the wobble in a frame, modes kept from targets "
            "they do not draw into, modes counted, system surface blits, copies between targets and out of "
-           "bounds, frames read whole and in part, Granny's models skinned and batched, the world's records, transform "
+           "bounds, frames read whole and in part, Granny's models skinned, batched and held, the world's records, transform "
            "slots, texture-coordinate "
            "matrices, the water, the world's cull compacted by run, its buffers and arrays grown, its mipmaps, "
            "casters and shadows, a world cleared in a frame, resizing, %s passed\n",

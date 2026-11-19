@@ -1,14 +1,15 @@
 #include "effects/rag/rag_effect.h"
+#include "world/state.h"
 #include "std/list.h"
 
 struct EffectPrim *rag_launch_prim(struct RagEffect *self, int kind, float dx, float dy, float dz)
 {
     struct World *world = game_current_world();
-    struct List *objects = game_current_object_list();
     struct EffectPrim *prim;
     Vec3 offset = { dx, dy, dz };
 
-    if (!world || !objects || !objects->head) {
+    /* nothing is made for a world whose lists are gone (effect_add_world_object would refuse it) */
+    if (!world || !world->gameObjects.head) {
         self->last_prim = NULL;
         return NULL;
     }

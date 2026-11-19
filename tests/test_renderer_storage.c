@@ -69,18 +69,17 @@ void c3d_device_save_frame(struct C3dDevice *device) { (void)device; abort(); }
 void perf_frame_end(struct Renderer *renderer) { (void)renderer; abort(); }
 void perf_overlay_draw(struct Renderer *renderer) { (void)renderer; abort(); }
 
+/* held: holds a reference of the holds, which the renderer's queues take for the surfaces their
+   draws name (render/gfx.h, gfx_hold) */
 struct gfx_surface {
     unsigned id, refs;
-    int allocated, width, height, format;
+    int allocated, held, width, height, format;
     DWORD pixels[16 * 16];
 };
-static unsigned live_surfaces, retained_surfaces, released_surfaces;
+static unsigned live_surfaces, released_surfaces, holds;
 static gfx_surface *bound_surfaces[2];
-void gfx_addref(gfx_surface *surface)
-{
-    assert(surface && (!surface->allocated || surface->refs));
-    ++surface->refs; ++retained_surfaces;
-}
+static gfx_surface *held_surfaces[16];
+static unsigned held_count;
 void gfx_release(gfx_surface *surface)
 {
     assert(surface && surface->refs);
@@ -90,6 +89,26 @@ void gfx_release(gfx_surface *surface)
         for (i = 0; i < 2; ++i) if (bound_surfaces[i] == surface) bound_surfaces[i] = NULL;
         assert(live_surfaces); --live_surfaces; checked_free(surface);
     }
+}
+void gfx_hold(gfx_surface *surface)
+{
+    if (!surface || surface->held)
+        return;
+    assert(!surface->allocated || surface->refs);
+    assert(held_count < 16);
+    surface->held = 1; ++surface->refs; ++holds;
+    held_surfaces[held_count++] = surface;
+}
+/* The stages' surfaces forgotten when a test's own surfaces, its locals, go: a binding left to the
+   next test would point into its frame. */
+static void unbind_local_surfaces(void)
+{
+    bound_surfaces[0] = bound_surfaces[1] = NULL;
+}
+/* a surface drawn is alive: the owner's reference or the queues' hold */
+static int alive(const gfx_surface *surface)
+{
+    return !surface || !surface->allocated || surface->refs;
 }
 static int capture_draws;
 static unsigned sampled_count;
@@ -101,7 +120,7 @@ static void sample_textures(void)
     assert(sampled_count < 64);
     for (i = 0; i < 2; ++i) {
         gfx_surface *surface = bound_surfaces[i];
-        assert(!surface || surface->refs);
+        assert(alive(surface));
         sampled[sampled_count].id[i] = surface ? surface->id : 0;
         sampled[sampled_count].pixel[i] = surface ? surface->pixels[0] : 0;
     }
@@ -127,7 +146,7 @@ void gfx_set_fog(const struct GfxFog *fog)
 { word(4); word((unsigned)fog->on); word(fog->colour); bytes(&fog->start, sizeof fog->start); bytes(&fog->end, sizeof fog->end); }
 void gfx_set_texture(int stage, gfx_surface *surface)
 {
-    assert(stage >= 0 && stage < 2 && (!surface || !surface->allocated || surface->refs));
+    assert(stage >= 0 && stage < 2 && alive(surface));
     bound_surfaces[stage] = surface;
     word(3); word(stage); word(surface ? surface->id : 0);
 }
@@ -190,16 +209,43 @@ void renderer_world_view(const struct Renderer *renderer, const float *view, str
     assert(renderer == g_renderer);
     memset(out, 0, sizeof *out); memcpy(out->view, view, sizeof out->view);
 }
-/* Granny's models (render/gfx.h, gfx_skin_*): what the queues hold of them, the poses put among the
-   frame's quads ('S', their first word) and the draws made ('D', the first index) */
-struct gfx_skin { int refs; };
-static int skin_refs_taken, skin_refs_given;
+/* Granny's models (render/gfx.h, gfx_skin_*): what the queues hold of them (held, as the surfaces
+   are), the poses put among the frame's quads ('S', their first word) and the draws made ('D', the
+   first index) */
+struct gfx_skin { int refs, held; };
+static int skin_holds, skin_refs_given;
+static gfx_skin *held_skins[8];
+static unsigned held_skin_count;
 static int skin_pose_rows_given[8], skin_pose_count;
 static float skin_pose_projection[8][4];
 static struct { int pose; unsigned first, count, texture, mode; struct gfx_skin *model; } skin_draws[16];
 static int skin_draw_count;
-void gfx_skin_addref(gfx_skin *k) { assert(k); ++k->refs; ++skin_refs_taken; }
+void gfx_hold_skin(gfx_skin *k)
+{
+    assert(k);
+    if (k->held)
+        return;
+    assert(k->refs && held_skin_count < 8);
+    k->held = 1; ++k->refs; ++skin_holds;
+    held_skins[held_skin_count++] = k;
+}
 void gfx_skin_release(gfx_skin *k) { assert(k && k->refs > 0); --k->refs; ++skin_refs_given; }
+/* the holds of the surfaces and of the models let go */
+void gfx_release_holds(void)
+{
+    unsigned i, n = held_count;
+    held_count = 0;
+    for (i = 0; i < n; ++i) {
+        held_surfaces[i]->held = 0;
+        gfx_release(held_surfaces[i]);
+    }
+    n = held_skin_count;
+    held_skin_count = 0;
+    for (i = 0; i < n; ++i) {
+        held_skins[i]->held = 0;
+        gfx_skin_release(held_skins[i]);
+    }
+}
 int gfx_skin_pose(const float (*rows)[4], size_t count)
 {
     uint32_t bones;
@@ -327,7 +373,7 @@ static void render_trace(void)
     struct TexDrawPrim pairs[8];
     struct Texture textures[4] = {0};
     struct gfx_surface surfaces[4] = {{1},{2},{3},{4}};
-    unsigned scenario, i, j;
+    unsigned scenario, i, j, holds_before = holds;
     assert(renderer_construct(&renderer));
     for (i = 0; i < 4; ++i) textures[i].base.surface = &surfaces[i];
     g_fogNear = 0.2f; g_fogFar = 0.8f;
@@ -358,11 +404,17 @@ static void render_trace(void)
             renderer_add_multi_tex_batch(&renderer, &pairs[i].base, textures + ((i + 1) % 4));
         }
         current_mode = -1; trace = UINT64_C(1469598103934665603); draws = 0;
+        /* the queued draws, 104 of them, hold each of the four surfaces once */
+        assert(held_count == 4);
+        for (i = 0; i < 4; ++i) assert(surfaces[i].held && surfaces[i].refs == 1);
         renderer_draw_lists(&renderer);
         printf("render %u %u %016llx\n", scenario, draws, (unsigned long long)trace);
         renderer_destroy_all_rp_list(&renderer);
+        assert(!held_count);
     }
-    renderer_destruct(&renderer); assert(!outstanding);
+    for (i = 0; i < 4; ++i) assert(!surfaces[i].refs && !surfaces[i].held);
+    renderer_destruct(&renderer); assert(!outstanding && !held_count && holds - holds_before == 8 * 4);
+    unbind_local_surfaces();
 }
 
 static int ground_available = 1, view_available = 1, cell_available = 1;
@@ -560,13 +612,14 @@ static void world_entries(void)
     }
     g_lightmap = 0;
     renderer_destruct(&renderer); assert(!outstanding);
+    unbind_local_surfaces();
 }
 
 /* Granny's meshes among the opaque list's quads: a pose packed once, with the renderer's projection,
    and put among the frame's quads when the first of its meshes is drawn, each mesh drawn in it by
-   its texture's order with the quads (renderer_add_prim's flags 0), its model held by the queue
-   until it is cleared, a mesh without a pose, model or texture not queued, and a pose of too many
-   bones none. */
+   its texture's order with the quads (renderer_add_prim's flags 0), its model held once however
+   many of its meshes are queued, until the queues are cleared, a mesh without a pose, model or
+   texture not queued, and a pose of too many bones none. */
 static void skin_entries(void)
 {
     float bones[2][16];
@@ -612,7 +665,8 @@ static void skin_entries(void)
         rp_quad_batch_construct(&quad);
         quad.base.texture = textures + 1;
         renderer_add_prim(&renderer, &quad.base, 0);
-        assert(renderer.queues[RENDER_OPAQUE_CLAMP].count == 4 && model.refs == 3 && other.refs == 2);
+        assert(renderer.queues[RENDER_OPAQUE_CLAMP].count == 4 && model.refs == 2 && other.refs == 2);
+        assert(model.held && other.held && held_skin_count == 2);
         pose.boneCount = SKIN_BONES_MAX + 1;
         assert(!renderer_skin_pose(&renderer, &pose));
         pose.boneCount = 2;
@@ -632,11 +686,12 @@ static void skin_entries(void)
                    && skin_draws[2].model == &model));
         assert(skin_pose_rows_given[0] == 9 && skin_pose_rows_given[1] == 90);
         renderer_destroy_all_rp_list(&renderer);
-        assert(model.refs == 1 && other.refs == 1);
+        assert(model.refs == 1 && other.refs == 1 && !model.held && !other.held && !held_skin_count);
     }
-    assert(skin_refs_taken == 6 && skin_refs_given == 6);
+    assert(skin_holds == 4 && skin_refs_given == 4);
     renderer_destruct(&renderer);
     assert(!outstanding && !g_renderer);
+    unbind_local_surfaces();
 }
 
 static void failures(void)

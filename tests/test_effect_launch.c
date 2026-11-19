@@ -8,7 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static struct List *objects;
+static struct World *world;
 static struct GameActor actor;
 static struct {
     struct RagEffect effect;
@@ -19,7 +19,15 @@ static Vec3 initialized_offset;
 struct Session g_session1;
 extern unsigned g_launchedEffectIds[32];
 
-struct List *game_current_object_list(void) { return objects; }
+struct World *game_current_world(void) { return world; }
+
+/* the world's list of objects takes the effect (world/object_list.c) */
+int world_add_object(struct World *self, void *object)
+{
+    assert(self == world && object == &storage && initializations == world_insertions + 1);
+    ++world_insertions;
+    return 1;
+}
 
 void *mem_alloc(size_t size)
 {
@@ -74,24 +82,19 @@ void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender, Re
 void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size)
 {
     assert(size == sizeof(void *) && *(void *const *)value == &storage);
-    if (list == objects) {
-        assert(where == objects->head && initializations == world_insertions + 1);
-        ++world_insertions;
-    } else {
-        assert(list == &actor.effects && where == actor.effects.head);
-        assert(world_insertions == actor_insertions + 1);
-        ++actor_insertions;
-    }
+    assert(list == &actor.effects && where == actor.effects.head);
+    assert(world_insertions == actor_insertions + 1);
+    ++actor_insertions;
     return NULL;
 }
 
 int main(void)
 {
-    struct List world_objects = {0};
+    static char world_token;
     Vec3 offset = {2.0f, 3.0f, 4.0f};
 
     assert(!game_actor_launch_effect(&actor, 1, offset, 90));
-    objects = &world_objects;
+    world = (struct World *)&world_token;
     assert(!game_actor_launch_effect(NULL, 1, offset, 90));
     assert(!game_actor_launch_effect(&actor, -1, offset, 90));
     assert(!game_actor_launch_effect(&actor, 60001, offset, 90));
@@ -129,7 +132,7 @@ int main(void)
     assert(game_actor_launch_effect(&actor, 0x7f, offset, 90) == &storage.effect);
     assert(g_launchedEffectIds[0] == 0x7f && g_launchedEffectIds[1] == 0x345);
     assert(world_insertions == 3 && actor_insertions == 3);
-    objects = NULL;
+    world = NULL;
     assert(!game_actor_launch_effect(&actor, 1, offset, 90));
     assert(world_insertions == 3 && allocations == 4);
     puts("effect launch: rejected requests, allocation failure, rotation and ownership passed");

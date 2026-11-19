@@ -318,15 +318,16 @@ void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip)
     (void)v; (void)n; (void)strip;
 }
 /* Granny's models: no actor stands on these maps */
-void gfx_skin_addref(gfx_skin *k) { (void)k; abort(); }
+void gfx_hold_skin(gfx_skin *k) { (void)k; abort(); }
 void gfx_skin_release(gfx_skin *k) { (void)k; abort(); }
 int gfx_skin_pose(const float (*rows)[4], size_t count) { (void)rows; (void)count; abort(); }
 void gfx_draw_skin(gfx_skin *k, uint32_t first, uint32_t count, int pose)
 { (void)k; (void)first; (void)count; (void)pose; abort(); }
 int gfx_begin_scene(void) { return 0; }
 void gfx_end_scene(void) {}
-void gfx_addref(gfx_surface *s) { (void)s; }
 void gfx_release(gfx_surface *s) { (void)s; }
+void gfx_hold(gfx_surface *s) { (void)s; }
+void gfx_release_holds(void) {}
 int gfx_shadows_supported(void) { return 1; }
 
 struct gfx_caps g_gfxCaps;

@@ -227,6 +227,4 @@ struct GameMode {
 
 void game_mode_update_balloons(struct GameMode *self);
 
-void actor_list_push_back(struct List *list, void *actor);
-
 #endif

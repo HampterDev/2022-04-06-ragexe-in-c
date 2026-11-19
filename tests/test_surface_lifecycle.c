@@ -446,6 +446,39 @@ static void test_cache_upload(void)
     texture_destroy(texture); assert(!handles && !outstanding);
 }
 
+/* An upload of the same pixels, rectangle and keying into the same surface as the texture's last,
+   the surface unchanged since, is skipped; anything else is uploaded. Each texture keeps its own
+   last upload, so two textures never skip on each other's and every repeat is skipped, however
+   many textures there are and wherever they lie. */
+static void test_upload_skip(void)
+{
+    struct Texture *textures[64];
+    DWORD pixels[16], other[16];
+    unsigned i, builds = g_perf.builds, skipped = g_perf.buildsSkipped;
+    for (i = 0; i < 16; ++i) { pixels[i] = 0xff000000u + i; other[i] = pixels[i] ^ 0x10; }
+    for (i = 0; i < 64; ++i) {
+        textures[i] = texture_create(4, 4, GFX_FMT_8888);
+        assert(textures[i] && texture_upload(textures[i], 0, 0, 4, 4, pixels, 0, 0));
+    }
+    assert(g_perf.builds - builds == 64 && g_perf.buildsSkipped == skipped);
+    for (i = 0; i < 64; ++i) assert(texture_upload(textures[i], 0, 0, 4, 4, pixels, 0, 0));
+    assert(g_perf.builds - builds == 64 && g_perf.buildsSkipped - skipped == 64);
+    assert(texture_upload(textures[0], 0, 0, 4, 4, other, 0, 0)); /* other pixels */
+    assert(texture_upload(textures[0], 0, 0, 4, 4, other, 1, 0)); /* keyed */
+    assert(texture_upload(textures[0], 0, 0, 2, 2, other, 1, 0)); /* another rectangle */
+    assert(g_perf.builds - builds == 67 && g_perf.buildsSkipped - skipped == 64);
+    textures[1]->base.surface->version = ++tick; /* written since */
+    assert(texture_upload(textures[1], 0, 0, 4, 4, pixels, 0, 0));
+    assert(texture_recreate(textures[2], 4, 4, GFX_FMT_8888)); /* another surface */
+    assert(texture_upload(textures[2], 0, 0, 4, 4, pixels, 0, 0));
+    assert(g_perf.builds - builds == 69 && g_perf.buildsSkipped - skipped == 64);
+    assert(texture_upload(textures[2], 0, 0, 4, 4, pixels, 0, 0));
+    assert(g_perf.builds - builds == 69 && g_perf.buildsSkipped - skipped == 65);
+    assert(!memcmp(textures[2]->base.surface->pixels, pixels, sizeof pixels));
+    for (i = 0; i < 64; ++i) texture_destroy(textures[i]);
+    assert(!handles && !outstanding);
+}
+
 int main(void)
 {
     g_3dDevice.width = g_3dDevice.height = 8;
@@ -453,7 +486,7 @@ int main(void)
     g_3dDevice.rBits = g_3dDevice.gBits = g_3dDevice.bBits = 3;
     g_3dDevice.rShift = 10; g_3dDevice.gShift = 5;
     test_texture(); test_target(); test_composite(); test_surface(); test_failures(); test_layer(); test_replacement(); test_pixels();
-    test_upload_failure(); test_sprite_upload(); test_cache_upload();
+    test_upload_failure(); test_sprite_upload(); test_cache_upload(); test_upload_skip();
     assert(releases && !handles && !outstanding);
     puts("Surface ownership: typed callbacks, render-target textures, sprite atlas layers, composited windows' targets, four pixel formats, downsampling, wallpaper, transactional recreation, allocation/driver failures and repeated cleanup passed");
     return 0;

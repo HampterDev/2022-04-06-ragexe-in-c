@@ -23,16 +23,22 @@ struct MsgEffect {
     float base_y;
     float base_x;
     float base_zoom;
-    float last_drift_x;
+    /* custom: the original's float at 0x19c here, which the float follower's step wrote
+       (0x89d711) and nothing read, is gone */
     int steps;
     int step_action;
     int style;
     int value;
     int caught_up;
     int moving;
+    /* custom: its node on its owner's list of attached objects (struct GameActor, attached), NULL
+       while it is on none; it leaves the list through it (msg_effect_leave_owner, the actor's 0x30) */
+    struct ListNode *attached_node;
 };
 
 void msg_effect_follow(struct MsgEffect *self);
+/* custom: puts the effect at the end of an actor's list of attached objects and keeps its node */
+void msg_effect_attach(struct MsgEffect *self, struct List *attached);
 
 struct MsgEffect *msg_effect_construct(struct MsgEffect *self);
 

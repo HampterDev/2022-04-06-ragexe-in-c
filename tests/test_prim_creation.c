@@ -2,18 +2,17 @@
 #include "effects/rag/rag_prim_setup.h"
 #include "core/fatal.h"
 #include "std/list.h"
-#include "std/list.h"
+#include "world/state.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-static char worlds[2];
+static struct World worlds[2];
 static struct Texture borrowed_texture;
 static int checking_texture_array;
 static size_t requested_texture_bytes;
 static struct World *world;
-static struct List objects;
 static struct ListNode object_head;
 static struct RagEffect effect;
 static struct ListNode prim_head;
@@ -23,11 +22,10 @@ static struct {
 } prim_node;
 static struct RenderObjectOps methods;
 static struct EffectPrim *owned;
-static int list_present, fail_allocation, replace_world, allocations, deletes, inserts, textures;
+static int fail_allocation, replace_world, allocations, deletes, inserts, textures;
 struct TexCache g_textureCache;
 
 struct World *game_current_world(void) { return world; }
-struct List *game_current_object_list(void) { return list_present ? &objects : NULL; }
 
 void *mem_alloc(size_t bytes)
 {
@@ -58,7 +56,7 @@ struct EffectPrim *effect_prim_construct(struct EffectPrim *self)
     self->base.ops = &methods.base;
     self->motion_count = 1;
     if (replace_world)
-        world = (struct World *)&worlds[1];
+        world = &worlds[1];
     return self;
 }
 
@@ -69,17 +67,20 @@ void effect_prim_init(struct EffectPrim *self, struct RagEffect *master, int kin
     self->delta = offset;
 }
 
+/* the world's list of objects takes the primitive (world/object_list.c) */
+int world_add_object(struct World *self, void *object)
+{
+    assert(self == &worlds[0] && world == &worlds[0] && self->gameObjects.head == &object_head);
+    assert(effect.prims.size == 0 && deletes == 0);
+    owned = object;
+    ++inserts;
+    return 1;
+}
+
 void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size)
 {
     struct EffectPrim *const *prim = value;
 
-    if (list == &objects) {
-        assert(where == &object_head && world == (struct World *)&worlds[0]);
-        assert(size == sizeof(void *) && effect.prims.size == 0 && deletes == 0);
-        owned = *prim;
-        ++inserts;
-        return NULL;
-    }
     assert(list == &effect.prims && where == &prim_head && prim_head.prev == &prim_head);
     assert(size == sizeof *prim && *prim == owned && inserts == 1 && deletes == 0);
     prim_node.links.next = where;
@@ -112,9 +113,8 @@ static void reset(void)
     prim_head.next = prim_head.prev = &prim_head;
     effect.prims.head = &prim_head;
     effect.duration = 77;
-    world = (struct World *)&worlds[0];
-    objects.head = &object_head;
-    list_present = 1;
+    world = &worlds[0];
+    worlds[0].gameObjects.head = &object_head;
     fail_allocation = replace_world = allocations = deletes = inserts = textures = 0;
 }
 
@@ -164,10 +164,7 @@ int main(void)
     assert(!allocations && !inserts && !textures && effect.last_prim == NULL);
 
     reset();
-    list_present = 0;
-    assert(rag_launch_prim(&effect, 12, 1, 2, 3) == NULL && !allocations);
-    reset();
-    objects.head = NULL;
+    worlds[0].gameObjects.head = NULL;
     assert(rag_launch_prim(&effect, 12, 1, 2, 3) == NULL && !allocations);
 
     reset();

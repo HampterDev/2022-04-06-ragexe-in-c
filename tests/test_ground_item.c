@@ -80,6 +80,8 @@ struct Item *world_get_item_by_aid(struct World *w,int aid)
 { struct ListNode *n;assert(w==&world);for(n=ih.next;n!=&ih;n=n->next)if((*LIST_VALUE(n,struct Item *))->aid==aid)return *LIST_VALUE(n,struct Item *);return NULL; }
 void *list_insert(struct List *l,struct ListNode *where,const void *value,size_t size)
 { struct ListNode *n=malloc(sizeof *n+size);assert(l && n && value);memcpy(n+1,value,size);n->next=where;n->prev=where->prev;where->prev->next=n;where->prev=n;++l->size;return n+1; }
+int world_add_object(struct World *w,void *object)
+{ assert(w==&world);list_insert(&w->gameObjects,w->gameObjects.head,&object,sizeof object);return 1; }
 BYTE world_remove_item(struct World *w,int aid) { (void)w;(void)aid;abort(); }
 void game_mode_remove_pickup_request(struct GameMode *m, unsigned aid) { (void)m;(void)aid;abort(); }
 

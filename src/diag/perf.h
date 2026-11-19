@@ -117,7 +117,6 @@ struct perf_counters {
     unsigned resGets;
     unsigned resHits;
     unsigned actorLookups;
-    unsigned actorIndexHits;
 };
 extern struct perf_counters g_perf;
 

@@ -11,7 +11,10 @@ lavapipe (Granny's skinning and phase 7's shaders have not run there), and the s
 phases 2 to 4 has run there, but no one has played on it. The Android client of phase 2 builds for
 both ABIs and draws the login screen on the x86_64 emulator (the host's GPU through gfxstream, and
 SwiftShader); no map has been drawn on Android. The macOS client has not been built or run on it,
-and no Metal compiler has seen its shaders. Phase 8 is next.
+and no Metal compiler has seen its shaders. The CPU's own searches that phase 7's profile found (the
+sprite atlas's walk, robes looked for on disk, Lua per layer, effects' owners found by walking the
+lists) are fixed on the line, and the load scenes were measured again (*Where the renderer stands*).
+Phase 8 is next.
 File references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
@@ -126,7 +129,28 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   `prontera_crowd` made 1,174 draws (1,954 calls) and `camera_level_view` 3,345 with Direct3D 9;
   they make 613 and 574, of them 318 and 317 for the shadows (the depth pass and the casters, an
   indirect draw a run in each cascade). `docs/custom-review.md` has the baseline and each phase's
-  CPU times.
+  CPU times. The load scenes (`tests/scenes/load.py`, `RAGEXE_MSAA=4`, three rounds by turns, a GTX
+  970 at 1,600 by 900; `docs/custom-review.md`, "The CPU fixes on the GPU line"), the median frame
+  in ms of this client with the CPU fixes, phase 7's and Direct3D 9's, and the parts of this
+  client's frame that the next phases take from:
+
+  | scene | this client | phase 7 | Direct3D 9 | draw scene | present | texels |
+  |---|---|---|---|---|---|---|
+  | `woe_emperium` | 20.44 | 30.70 | 29.21 | 5.29 | 1.92 | 0.22 |
+  | `woe_choke` | 17.58 | 23.78 | 23.45 | 4.58 | 1.75 | 0.19 |
+  | `arrive_castle` | 17.63 | 23.00 | 21.70 | 5.29 | 2.18 | 0.54 |
+  | `bombers_ifrit` | 12.20 | 16.48 | 16.15 | 3.73 | 0.80 | 0.13 |
+  | `arrive_prontera` | 4.58 | 11.87 | 13.41 | 1.00 | 0.84 | 0.16 |
+  | `town_prontera` | 4.67 | 11.33 | 12.85 | 0.99 | 0.88 | 0.08 |
+  | `mvp_randgris` | 5.89 | 5.91 | 4.48 | 0.99 | 3.10 | 0.03 |
+  | `snow_lutie` | 3.61 | 5.58 | 7.72 | 0.48 | 1.65 | 0.03 |
+  | `mvp_baphomet` | 5.96 | 6.26 | 5.32 | 1.03 | 2.61 | 0.04 |
+  | `aoe_orc_dungeon` | 2.91 | 3.01 | 2.35 | 0.16 | 2.34 | 0.00 |
+
+  The frame is two thirds of Direct3D 9's in the crowds and a third of it in Prontera; in the three
+  light scenes it is longer, by presenting (2.3 to 3.1 ms against Direct3D 9's 0.15 to 0.3). The
+  first frame of an arrival takes 251 ms in the castle and 174 in Prontera (Direct3D 9: 226 and
+  137), most of it handling the packets of the crowd (106 to 134 ms), 16 and 12 ms widening texels.
 
 ## The floor
 
@@ -609,18 +633,24 @@ recorded.
   `view_on_render`, the effect primitives' triangles are built and queued one by one (3.6 ms of
   the Emperium room's 30.3 in the profile, 2.7 of the bombers' 16.5), and the level-99 auras'
   particles take 1.5 ms there and 1.8 of Prontera's 11.2. The rest of the objects' time is the
-  CPU's own waste outside the renderer, fixed elsewhere: the sprite atlas's linear search (2.8 ms
+  CPU's own waste outside the renderer: the sprite atlas's linear search (2.8 ms
   in the Emperium room), robe sprites checked on disk every frame (3.2 ms in Prontera), Lua calls
   per layer (1.4 ms in Prontera), and a linear search of the skills for every effect (2.0 ms in the
-  Emperium room).
+  Emperium room). Those are fixed since, outside the renderer (`docs/custom-review.md`, the two
+  entries after phase 7's), and the load scenes measured again (*Where the renderer stands*).
 
 ### Phase 8: the frame recorded off the main thread (medium)
 
 - What it takes from the main thread: presenting, which records the frame's passes into Vulkan's
-  command buffer and copies the frame's records into the transfer buffer: 2.0 ms of the Emperium
-  room's frame, 0.9 in Prontera, 0.8 among the bombers, where Direct3D 9's driver did that work on
-  a thread of its own; and the records' second copy (0.6 ms in the Emperium room), since the
-  frame's quads are written into memory of the device's, zeroed first, and copied again.
+  command buffer and copies the frame's records into the transfer buffer: 1.9 ms of the Emperium
+  room's frame of 20.4 with the CPU fixes, 0.9 in Prontera's of 4.7, 0.8 among the bombers, where
+  Direct3D 9's driver did that work on a thread of its own (0.2 to 0.7 ms); and the records' second
+  copy (0.6 ms in the Emperium room in phase 7's profile), since the frame's quads are written into
+  memory of the device's, zeroed first, and copied again. With the CPU's searches gone it is the
+  largest part of the GPU client's frame that Direct3D 9 does not pay, and in the light load scenes
+  (Randgris, Baphomet, the Orc Dungeon), where presenting takes 2.3 to 3.1 ms against 0.15 to 0.3,
+  the only part by which their frame is longer than Direct3D 9's; whether that time is recording
+  or waiting for the GPU is to be profiled first.
 - A render thread of the device's own acquires the frame's command buffer, records the passes and
   submits them, from a copy of what the frame recorded (its steps, draws and uploads), while the
   main thread goes on to the next frame; the records are written once, into the transfer buffer
@@ -638,7 +668,9 @@ recorded.
 - What it takes from the CPU: building and queueing the effect primitives' triangles one by one
   (their corners, each triangle's key, an entry and a record each: 3.6 ms of the Emperium room's
   frame, 2.7 of the bombers'), and the level-99 auras' particles (1.5 ms in the Emperium room, 1.8
-  in Prontera).
+  in Prontera); measured by phase 7's profile, before the CPU fixes shortened the frames these
+  parts lie in (the Emperium room's objects 8.1 ms where they took 14.9, its effects 1.2 where they
+  took 2.3), so a profile of the client with them comes first.
 - One instance a primitive (a ring of strips, a cylinder, a quad of a mode) or a particle system,
   holding what the CPU steps (a ring's radius, span, turn, tilt and column heights; a system's
   particles as the CPU spawned them, with the original's random numbers), from which the vertex
@@ -655,9 +687,9 @@ recorded.
 
 ### Phase 10: texels widened on the GPU (small)
 
-- What it takes from the CPU: widening the client's 16-bit texels to 32 bits as they go up, 13 to
-  16 ms of the first frame of an arrival in a crowd (Direct3D 9 sent them as they are) and 0.2 to
-  0.5 ms a frame in the crowds.
+- What it takes from the CPU: widening the client's 16-bit texels to 32 bits as they go up, 12 to
+  16 ms of the first frame of an arrival in a crowd (Direct3D 9 sent them as they are), whose 174 to
+  251 ms are mostly the crowd's packets (106 to 134 ms), and 0.1 to 0.5 ms a frame in the crowds.
 - The rectangles written go up as they are, 16 bits a texel, into a texture of 16-bit integers the
   device keeps for staging, and a pass of their own widens them into the texture by bit replication
   as `render/texel_convert.c` does (the colour key for a system surface): one path on every GPU of

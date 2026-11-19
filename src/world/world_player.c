@@ -19,7 +19,7 @@ int world_create_player(struct World *self)
     if (!player)
         return 0;
 
-    list_push_back(&self->gameObjects, &player, sizeof player);
+    world_add_object(self, player);
     self->player = player;
     return 1;
 }

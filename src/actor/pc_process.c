@@ -27,6 +27,8 @@
 #include "ui/wndmgr/wndmgr.h"
 #include <stdint.h>
 #include "platform/clock.h"
+#include "effects/skills/msg_effect.h"
+#include "world/world.h"
 
 unsigned char pc_on_process(struct GameObject *object)
 {
@@ -65,7 +67,7 @@ unsigned char pc_on_process(struct GameObject *object)
             struct GameObject *obj = game_mode_make_msg_effect(game_current_mode(), 0x2c, &self->pos,
                                                  self->aid, 1);
 
-            list_push_back(&self->attached, &obj, sizeof obj);
+            msg_effect_attach((struct MsgEffect *)obj, &self->attached);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
             self->costume_body_obj = obj;
         }
@@ -114,7 +116,7 @@ static void pc_stand_look(struct Pc *self, struct ActorEntryInfo *entry, int twi
 static void pc_walk_look(struct Pc *self, struct ActorMoveEntryInfo *entry, int twin)
 {
     struct ActorLook look;
-    self->aid = entry->aid;
+    world_set_actor_aid(game_current_world(), (struct GameActor *)self, entry->aid);
     self->walk_speed = entry->speed;
     self->path_start = entry->move_start_time;
     self->head_dir = 0;
@@ -190,7 +192,7 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
         actor_set_state(self, pc_packet_state(entry->state), 1);
         return;
     case 4:
-        self->aid = entry->aid;
+        world_set_actor_aid(game_current_world(), (struct GameActor *)self, entry->aid);
         pc_stand_place(self, game_current_mode(), entry);
         self->walk_speed = entry->speed;
         pc_stand_look(self, entry, 0);
@@ -200,7 +202,7 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
         return;
     case 0x79:
         self->body_style = entry->body;
-        self->aid = entry->aid;
+        world_set_actor_aid(game_current_world(), (struct GameActor *)self, entry->aid);
         pc_stand_place(self, game_current_mode(), entry);
         self->walk_speed = entry->speed;
         pc_stand_look(self, entry, 1);

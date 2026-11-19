@@ -64,8 +64,13 @@ gfx_surface *gfx_create_texture(int w, int h, int fmt);
 gfx_surface *gfx_create_layer_texture(int w, int h, int fmt);
 int gfx_texture_format_ok(int fmt);
 gfx_surface *gfx_create_render_target(int w, int h);
-void gfx_addref(gfx_surface *s);
 void gfx_release(gfx_surface *s);
+/* custom: holds the surface until gfx_release_holds: its first hold since then takes one
+   reference, which gfx_release_holds lets go, and later holds take none. The renderer holds the
+   surfaces and Granny models (gfx_hold_skin) its queued draws name, which take no reference each
+   (render/rp_pool.c). gfx_release_holds lets go the models' holds too. */
+void gfx_hold(gfx_surface *s);
+void gfx_release_holds(void);
 int gfx_get_size(gfx_surface *s, int *w, int *h);
 /* custom: the CPU's pixels of a texture or a system surface, a rectangle of them or all; a render
    target has none (-1), its pixels stay on the GPU. */
@@ -347,12 +352,13 @@ void gfx_set_world_camera(const struct GfxWorldView *view);
    every triangle. Draws of one model, mode, fog and textures one after the other are one draw where
    skin_batch_join joins them: an actor's meshes that run on in the model's indices, or one range in
    several poses, instanced. A model goes when its last reference is released and no recorded draw
-   takes it. The actors take no part in the static world's shadows (GFX_SHADOW_CASCADES): they
-   neither cast into the maps nor receive from them. */
+   takes it; gfx_hold_skin holds it until gfx_release_holds, as gfx_hold holds a surface. The actors
+   take no part in the static world's shadows (GFX_SHADOW_CASCADES): they neither cast into the maps
+   nor receive from them. */
 typedef struct gfx_skin gfx_skin;
 gfx_skin *gfx_create_skin(const struct SkinVertex *vertices, uint32_t vertexCount, const uint32_t *indices,
                           uint32_t indexCount);
-void gfx_skin_addref(gfx_skin *skin);
+void gfx_hold_skin(gfx_skin *skin);
 void gfx_skin_release(gfx_skin *skin);
 int gfx_skin_pose(const float (*rows)[4], size_t count);
 void gfx_draw_skin(gfx_skin *skin, uint32_t first, uint32_t count, int pose);

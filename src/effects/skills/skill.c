@@ -108,16 +108,13 @@ static void skill_reset(struct Skill *self)
     self->creator_aid = 0;
     self->range = 0;
     self->launched = 0;
-    self->cells.last = self->cells.first;
 }
 
 struct Skill *skill_construct(struct Skill *self, int unit_aid)
 {
     game_actor_construct(&self->base);
     self->base.ops = &skill_ops.base.base;
-    self->cells.first = 0;
-    self->cells.last = 0;
-    self->cells.end = 0;
+    self->unit_node = NULL;
     self->unit_aid = unit_aid;
     skill_reset(self);
     return self;
@@ -148,29 +145,17 @@ void skill_release_model(struct Skill *self)
 
 static void skill_release(struct Skill *self)
 {
-    struct RenderObject *me = (struct RenderObject *)&self->base;
-    struct SkillCell *cell;
-
     if (self->base.balloon_wnd) {
         ui_window_mgr_post_quit2(&g_windowMgr, self->base.balloon_wnd);
         self->base.balloon_wnd = 0;
     }
     skill_release_model(self);
-    for (cell = self->cells.first; cell != self->cells.last; cell++) {
-        struct World *world = game_current_world();
-        int x = cell->x, y = cell->y;
-        if (!world)
-            break;
-        world_send_msg_to_object(world, me, x, y, MSG_CELL_GONE, 0, 0, 0, 0);
-    }
-    self->cells.last = self->cells.first;
 }
 
 void skill_destruct(struct Skill *self)
 {
     self->base.ops = &skill_ops.base.base;
     skill_release(self);
-    vec_free(&self->cells);
     game_actor_dc_game_actor(&self->base);
 }
 

@@ -82,14 +82,24 @@ struct MsgEffect *msg_effect_construct(struct MsgEffect *self)
     self->arc_extra_y = 0;
     self->arc_extra_z = 0;
     self->drift.x = 0.0f;
+    self->attached_node = NULL;
     msg_effect_reset(self);
     return self;
 }
 
+void msg_effect_attach(struct MsgEffect *self, struct List *attached)
+{
+    self->attached_node = LIST_NODE_OF(list_push_back(attached, &self, sizeof self));
+}
+
+/* custom: the message carries the effect's node on the owner's attached list (NULL where the owner
+   took it off already), which the original's owner searched the list for */
 void msg_effect_leave_owner(struct MsgEffect *self)
 {
     if (self->owner)
-        render_object_send(self->owner, (struct RenderObject *)&self->base, MSG_OWNER_LEAVES, 0, 0, 0, 0);
+        render_object_send(self->owner, (struct RenderObject *)&self->base, MSG_OWNER_LEAVES,
+                           (intptr_t)self->attached_node, 0, 0, 0);
+    self->attached_node = NULL;
 }
 
 void msg_effect_destruct(struct MsgEffect *self)
@@ -492,6 +502,7 @@ void msg_effect_send_msg(struct GameObject *object, struct GameObject *source,
     }
     case MSG_OWNER_GONE:
         self->owner = 0;
+        self->attached_node = NULL;
         switch (self->style) {
         case 6: case 0xd: case 0xe: case 0xf: case 0x10: case 0x11: case 0x15: case 0x16: case 0x19:
             return;

@@ -17,7 +17,7 @@ static void show_ground_item(struct GameMode *self, struct ItemDropInfo *entry)
     if (item == 0) {
         item = item_create();
         if (!item) return;
-        list_push_back(&self->world->gameObjects, &item, sizeof item);
+        world_add_object(self->world, item);
         list_push_back(&self->world->items, &item, sizeof item);
     }
     item_place(item, self, entry);

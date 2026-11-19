@@ -16966,10 +16966,10 @@ times as shares of each run's median frame) says where the renderer's own time g
 | level-99 auras (stepped and drawn) | 1.51 | 1.81 | 0.38 |
 | particles drawn (the auras' among them) | 0.98 | 1.20 | 0.50 |
 
-The CPU's own waste outside the renderer, which other work fixes, is larger still: the sprite
-atlas's linear search (2.80, 0.35 and 0.72 ms), robe sprites looked for on disk every frame (1.42,
-3.20, 0.58), Lua calls per layer (1.18, 1.38, 0.32) and a linear search of the skills for every
-effect (2.0 ms in the Emperium room). From these numbers `plans/gpu-renderer.md` takes three
+The CPU's own waste outside the renderer, which the two entries below fix, is larger still: the
+sprite atlas's linear search (2.80, 0.35 and 0.72 ms), robe sprites looked for on disk every frame
+(1.42, 3.20, 0.58), Lua calls per layer (1.18, 1.38, 0.32) and a linear search of the skills for
+every effect (2.0 ms in the Emperium room). From these numbers `plans/gpu-renderer.md` takes three
 phases: recording and submitting the frame on a thread of the device's own, with the records
 written once into the memory the GPU reads (about 2 ms of the Emperium room's main thread, where
 Direct3D 9's driver did that work on its own thread); the effect primitives and particle systems as
@@ -17117,9 +17117,10 @@ Validation: the regular scene set and every load scene at `RAGEXE_MSAA=1` agains
 to the pixel, and the 13 again in a second pair of runs. The draws and texture binds of single
 frames differ by one or two between the two clients (`town_prontera`, `arrive_prontera`,
 `woe_choke`, `snow_lutie`), as they also differ between two runs of the same client
-(`town_prontera`, `arrive_prontera`, `woe_choke`): the ground's surfaces are sorted by the addresses
+(`town_prontera`, `arrive_prontera`, `woe_choke`): the ground's surfaces were sorted by the addresses
 of their textures and lightmap pages (`world/ground_load.c`), so which textures share an array, and
-with it the binds and merged draws a frame needs, can follow where the heap places them. An earlier
+with it the binds and merged draws a frame needs, could follow where the heap placed them (the next
+entry sorts them by the textures' serials). An earlier
 build of these changes once drew 139 pixels of damage digits in `mvp_randgris`'s last capture
 differently, with every count of every frame the same, in one of ten runs; it was not seen again,
 and its cause was not found.
@@ -17144,3 +17145,267 @@ is cleared), `test_body_layer_slots` the arrays and that a player's frame alloca
 `test_pick_state` the kept storage. The effect trace's digest moves with the actors' layout
 (`tests/test_effect_trace.c` says how it was checked). `build.bat check` passes, and so does the
 whole suite (`tests\build.bat` with `ORACLE_EXE`): 334 tests and the oracle's 7.
+
+## Objects found and taken off their lists without a search (2026-11-13)
+
+A profile of the load scenes (`tests/scenes/load`; 4 kHz samples with stacks of the measured
+frames) found jobs that the client did per object or per draw every frame by walking a list. The
+original does the same walks (or, for the queues' references, nothing at all), so each change below
+is `custom`'s own; the order in which every list is walked, which decides the order the objects are
+processed and drawn in, is kept. It was done and measured on the load scenes' commit (`88f1365a`), as
+the entry above was, and merged onto the GPU line after it.
+
+- **Actors and skill units by their aid.** Every effect looks its owner up by aid each frame
+  (`effect_find_actor`, `0x9818d0` in the original: the actors, then the skill units). The original
+  walks the world's actors (`GetGameActorByAID`, `0x65c580`) and then its units (`sub_65c6a0`) for
+  the first with the aid, to the end where the owner is none; in the Emperium room, with 1,783
+  units, the units' walk took 3.7 % of a frame. `main` puts a cache in front of the actors' walk,
+  whose 4,096 slots hash the world's address with the aid, give up after 8 probes, keep at most
+  2,048 answers and remember absent aids until an actor joins; where it misses, it walks.
+  Each list now carries an index by aid (`world/id_index.c`, its own library `id-index`): an
+  open-addressed table of the aids, each with the chain of its entries in the list's order, so it
+  answers the first actor or unit with the aid in the list's order, as the walk did, with no limit
+  and nothing that hangs on an address. Each node of the list holds the object and its link in the
+  index (`struct ActorEntry`, `struct SkillEntry`), so the index's entries go with the list's nodes,
+  and the object keeps its node (`actor_node`, `unit_node`). The lists' storage, the actors' lookup
+  and their aid's setter are in `world/aid_index.c`, below the game state, whose packet handlers look
+  actors up too; joining and leaving the lists and the units' lookup in `world/aid_lists.c`.
+  An actor's or a unit's aid changes only through its setter once it may be on its list
+  (`world_set_actor_aid`, `world_set_skill_aid`), which moves the entry in the index and keeps its
+  place: an actor's entry messages set it after the actor joined in the move entry and for the store
+  assistant, and the vanish sets -1; packet `0x1c9`'s unit is made with aid 0 and a graffiti gets its
+  aid by message `0x16`. Several objects do share an aid: a unit kept for the hits it still plays
+  beside a new one of the same aid, or graffiti sent twice. An object is destroyed before its entry
+  leaves the list, as in the original, so it is still found while its destructor runs. The walks of
+  the actors by aid in `world_get_actor_or_player`, `world_actor_matches_global` and the guild
+  master's nearness check go through the index too.
+- **Units that leave while they play hits.** A unit the server says has left while it still plays
+  hits stays until they end. The original put its aid on a list (`world+0xd8`, gone through each
+  frame at `0x65e1a9`) that it never shortened until the map changed: from then on it removed every
+  unit with that aid as soon as it came, a new one the next frame, and the unit itself when the
+  server showed it again before its hits ended. The mark is now the unit's own (`SkillEntry`'s
+  node on `pendingSkills`), so it goes with the unit, and a kept unit that the server shows again
+  stays (`world_keep_skill`).
+- **Objects taken off the world's list.** `world_remove_object` searched the world's list of objects
+  for the object (the original's `0x65e620`, which the listing names `UIWindow::RemoveChild`); each
+  object now keeps its node on that list (`world_node`, set by `world_add_object`, through which
+  every object joins it), and an actor its node on the actors (`actor_node`), which the processing
+  of the objects searched for each object that ended. The search mattered where damage numbers come
+  in crowds: an actor's total damage (style `0x16`, the original's number routine at `0x767040`,
+  which the listing names `CSession::LaunchSkillSpecialEffect`) takes the actor's previous total
+  off, digit by digit, each through `0x65e620` over the whole list. The object given to
+  `world_remove_object` is now read, so it must be alive (the search only compared addresses); each
+  caller says why its object is: found on a list that only live objects are on, or one whose holder
+  is told when it goes.
+- **Attached effects taken off their actor's list.** Each digit's destructor sends message `0x30` to
+  its actor, whose handler (`sub_751dc7`, reached through the jump table at `0x75bc98`) walked the
+  actor's list of attached objects for it, after the routine above had already taken it off, so
+  the walk always ran the whole list. The attached objects are message effects (damage numbers,
+  marks, emotions, the miss mark, a costume, the cart, the falcon), each of which now keeps its node
+  on the list (`msg_effect_attach`) and sends it with `0x30`; the actor takes the node off only where
+  it holds the effect that sent it (`game_actor_detach`), so a node of another object changes
+  nothing. The routine's own walk for the old total stays.
+- **The queues' texture references.** `queue_append` took a reference to each queued draw's texture
+  and clearing the queues let each go again; the original's `CRenderer::AddPrim` (`0x4e60c0`)
+  queues the draw with none. The reference kept a texture that its owner let go between queueing
+  and drawing: a sprite or a cached texture loaded again, released or evicted while its draws are
+  queued (`tests/renderer_texture_owner_test.h`). The device now holds each surface the queues name
+  once a frame (`gfx_hold`, a reference taken by the first draw that names it) and lets the holds go
+  when the queues are cleared, so a surface goes at the moment it goes in `main`, and one that no
+  queued draw names goes at once. On the GPU line each queued draw of a Granny model's mesh also took
+  a reference to the model (`gfx_skin_addref`, "Granny's actors skinned on the GPU"), which clearing
+  the queues let go by walking every entry for them; the device holds those models the same way
+  (`gfx_hold_skin`, let go by `gfx_release_holds` with the surfaces), so clearing the queues walks
+  none, and `gfx_skin_addref`, which had no other caller, is gone.
+- **Two ways what is drawn hung on addresses.** An upload of the same pixels into the same unchanged
+  texture is skipped (`texture_upload_pixels`; `main` too). `main` kept the last upload of each
+  texture in a table of 8,192 slots keyed by the texture's address with 8 probes, which kept no
+  record where the slots near the address's hash were taken, so which uploads were skipped changed
+  with where the heap put the textures, and with them the version of a texture already drawn in the
+  frame, for which the device splits the frame's passes for a late upload (`add_upload`), a draw and
+  a texture bind more or fewer from run to run. Each texture now keeps its own last upload
+  (`struct Texture`, `lastUpload`). The ground's blocks in the static world sorted their surfaces by
+  their textures' and lightmap pages' addresses, unstably, so the order of a block's runs and of
+  the surfaces within a run changed from run to run; they sort by the textures' serials and then by
+  the surfaces' place in the block. A texture's serial is taken atomically, since the model loader's
+  thread makes textures too.
+- **Leftovers.** The skill unit's vector of cells (`0x410` in the original), which nothing ever
+  filled, there either (only its constructor, reset, destructor and release touch it; the release,
+  `0x89bdc0`, walks it and sends each cell's object a message through `sub_65ea80`), is gone with
+  that walk and `world_send_msg_to_object`; so is the message effect's float at `0x19c`, which the
+  float follower's step writes (`0x89d711`) and nothing reads.
+
+The client before these changes (built from the same tree) and this one, three runs a scene each,
+`RAGEXE_MSAA=4`, back to back by turns (each scene's runs alternate between the two clients, the
+order turned round each round), 600 measured frames (the arrivals 300) pooled over the runs; times
+in ms, the median frame and the worst, before → after, on a GTX 970 that other builds and runs
+shared, so the worst frames are noise:
+
+| scene | objects | `frame_ms` | worst frame | `effects_ms` | `effects_render_ms` | `actors_ms` | `objects_render_ms` | `draw_scene_ms` |
+|---|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,976 | 35.90 → 31.06 | 66.11 → 56.65 | 2.09 → 0.58 | 2.40 → 1.25 | 3.48 → 3.20 | 16.25 → 14.90 | 8.33 → 7.58 |
+| `arrive_castle` | 7,028 | 30.53 → 29.85 | 640.97 → 310.67 | 0.95 → 0.63 | 1.59 → 1.34 | 2.41 → 2.46 | 12.15 → 12.61 | 8.34 → 8.10 |
+| `woe_choke` | 11,290 | 28.58 → 26.08 | 61.01 → 48.42 | 1.66 → 0.61 | 2.05 → 1.28 | 2.50 → 2.55 | 11.94 → 11.56 | 6.97 → 6.52 |
+| `bombers_ifrit` | 5,559 | 19.62 → 17.33 | 31.12 → 37.21 | 0.39 → 0.42 | 0.73 → 0.77 | 4.52 → 2.35 | 6.60 → 6.75 | 4.92 → 4.75 |
+| `arrive_prontera` | 243 | 15.59 → 16.21 | 210.43 → 199.93 | 0.71 → 0.73 | 1.60 → 1.64 | 0.10 → 0.11 | 8.53 → 8.99 | 2.44 → 2.42 |
+| `town_prontera` | 243 | 14.46 → 14.40 | 127.96 → 54.62 | 0.64 → 0.64 | 1.51 → 1.48 | 0.10 → 0.10 | 8.59 → 8.48 | 1.86 → 1.81 |
+| `mvp_randgris` | 2,041 | 8.29 → 8.25 | 36.62 → 82.69 | 0.01 → 0.01 | 0.01 → 0.01 | 0.63 → 0.66 | 2.14 → 2.29 | 1.16 → 1.21 |
+| `mvp_baphomet` | 2,160 | 8.02 → 8.28 | 36.99 → 97.98 | 0.25 → 0.20 | 0.45 → 0.43 | 0.69 → 0.68 | 2.22 → 2.30 | 1.53 → 1.60 |
+| `snow_lutie` | 837 | 8.00 → 7.86 | 68.15 → 22.15 | 0.23 → 0.23 | 0.70 → 0.68 | 0.29 → 0.28 | 4.29 → 4.16 | 1.06 → 1.04 |
+| `aoe_orc_dungeon` | 731 | 2.88 → 2.88 | 22.20 → 61.37 | 0.01 → 0.01 | 0.01 → 0.01 | 0.10 → 0.11 | 0.36 → 0.37 | 0.21 → 0.22 |
+
+The Emperium room's frame is 4.8 ms shorter: 2.7 ms of it in finding the effects' owners by their
+aid, while the effects step (`effects_ms`) and while they draw (`effects_render_ms`); the walk also
+emptied the caches the rest of the frame worked from, so the objects' quads gain about 1.3 ms more
+and `renderer_draw_scene` 0.75 ms. Among the bombers, stepping the objects takes about half the
+time it took (4.52 → 2.35 ms). The other scenes are within the spread of their runs.
+
+A profile after (VSDiagnostics' CPU sampling at 4 kHz on `build.bat dbg`, the measured frames of two
+runs of each scene, against three runs of the Emperium room and two of the bombers before) puts
+`world_get_skill_by_aid` at 0.06 % of the Emperium room's main thread (3.70 % before) and the
+actors' lookup at 0.27 % (0.41 % with `main`'s cache and its walks); among the bombers
+`world_remove_object` at 0.04 % (10.64 %), the attached effects' leaving (`msg_effect_delete`) at
+0.07 % (3.67 %) and stepping the objects at 13.4 % (20.8 %). The queues' references cost 0.97 % of
+the Emperium room before (clearing the queues 0.62 %, the releases 0.35 %); the holds cost 0.33 %
+(taking them 0.31 %, letting them go 0.02 %), and appending an entry costs what it did (3.5 %). The
+search that remains is the routine's walk of the actor's attached list for its previous total
+(2.3 % among the bombers).
+
+Validation: at `RAGEXE_MSAA=1`, the captures of the regular scene set (38) and of the ten load
+scenes (13), the load scenes four times with each client by turns, are the same to the pixel as
+the client's before, with the same counters, and every measured frame has the same counts but where
+the runs of one client differ among themselves. The client before, over six to eight runs of each
+load scene, differs from itself in `arrive_prontera` (12 frames, by one or two draws and a texture
+bind), `snow_lutie` (98 frames of one run, by a draw and a texture bind), `town_prontera` (4
+frames) and `woe_choke` (1 frame of one run), and one of its eight runs of `bombers_ifrit` in its
+capture (140 pixels, by up to 100 steps). This client's four runs give the same counts in eight of
+the scenes, and differ in `arrive_prontera` (one or two draws in four single frames) and in
+`town_prontera` (one run of four in 23 frames, by up to two draws and a texture bind), where the
+client before differs too. Four more runs of each of those two, of this client linked without
+address space layout randomisation, differ there as well; but the heap's addresses still change
+from run to run in a program linked so, so that does not tell addresses from timing, and the cause
+of what remains in those two scenes is open. Of the
+timing runs' 39 captures at `RAGEXE_MSAA=4`, all are the same as the client's before, and each
+client's three runs are the same as each other. `build.bat check` passes, and so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 334
+tests and the oracle's 7. `test_aid_lists` is new (seeded runs of actors and units joining, changing their aid, leaving and
+being processed, against walks of the lists and a model of the units that leave, and the cases by
+name: a unit that leaves view while its hits play and comes back with the same aid, before its hits
+end and after it went, a unit replaced while it plays hits, units that share an aid, removals from a
+destructor), and so is `test_attached_effects` (the hand-off of message `0x30`, with show_number's
+totals and an owner that goes first); `test_surface_lifecycle` checks the skipped uploads, `test_gfx_gpu`
+draws a held texture after its owner let it go, and `test_renderer_storage` one hold for each surface
+that queued draws name. Each of eleven changes that break a rule of the code under test (a leaving
+unit's mark ignored when the server shows it again, pushed twice or left behind when it goes; an
+actor's or a unit's aid set past its index; an actor's node left in the index; the sender's check,
+the node in `0x30` or its clearing when the owner goes; an upload's record not kept or its version
+not compared) makes its test fail. `test_effect_trace`'s digest moves with the objects' layout alone:
+built with the layout before (no `world_node`, no `actor_node`), the changed code gives the digest
+before.
+
+## The CPU fixes on the GPU line, and the load scenes again (2026-11-19)
+
+The two entries above were made on the load scenes' commit (`88f1365a`) and merged onto the GPU
+line after phase 7 (`plans/gpu-renderer.md`). Where they met the line:
+
+- **Granny's models held as the textures are.** Each queued draw of a Granny model's mesh took a
+  reference to its model, and clearing the queues walked every entry of every queue to let them go;
+  the entry above holds the textures the queues name once a frame instead and clears the queues
+  without a walk. The models are held the same way now (`gfx_hold_skin` beside `gfx_hold`, one
+  reference a frame however many of a model's meshes are queued, let go by `gfx_release_holds`), and
+  `gfx_skin_addref` goes. `test_renderer_storage` checks the hold (a model with two meshes queued
+  holds one reference until the queues are cleared), and `test_gfx_gpu` draws a model held twice
+  and given up by its owner before its draw.
+- **Textures.** Phase 7 locks only the atlas cell `texture_draw_sprite_frame` writes and sends a
+  texture's written rectangles; the first entry above finds the cell by an index and takes, for a
+  new frame, the cell the walk took; the second keeps each texture's last upload in the texture,
+  compared by the surface and its content version, which every unlock moves as it marks the
+  rectangle dirty, so an upload is skipped only where nothing was written into the texture since the
+  same one. None of the three changes what another writes or sends.
+- **A test that read a dead frame.** `test_renderer_storage`'s device stub remembered the surfaces
+  bound to its stages, and its tests bind surfaces that are their own locals; the next test's static
+  world draws read the stage 0 surface that the Granny test had left bound, which lay in the next
+  test's frame. It passed while that memory happened to read as no texture and failed once the
+  merge moved the frames. Each test now forgets its stages' surfaces when it ends.
+- **The effect trace** moves with both entries' layouts: its digest is `3445124eaf068fdb`, and built
+  with the objects' layout without `world_node` and `actor_node` it is the first entry's.
+
+Validation: the regular scene set (40 captures) at `RAGEXE_MSAA=1` and at 4 and every load scene
+(13 captures) at `RAGEXE_MSAA=1`, against phase 7's client (`27fded8f`), run one after the other
+after each of the two merges: every capture the same to the pixel, with the same counts in every
+counters file of the regular set. The load scenes' frames differ by a draw or a texture bind here
+and there in `arrive_prontera`, `town_prontera`, `woe_choke` and `snow_lutie`, where phase 7's
+client differs from itself the same way (its ground's surfaces sorted by their textures' addresses); the
+merged client run twice differs from itself in one value of one frame of `town_prontera`.
+`build.bat check` passes (1,873 files in 39 libraries, 1,152 objects, the shaders' check), and so
+does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 342 tests and the oracle's 7.
+
+**The load scenes**, `tests/scenes/load.py`, `RAGEXE_MSAA=4`, 600 measured frames (the arrivals
+300): the merged client, phase 7's and the Direct3D 9 baseline (`02fc9e5e` with
+`tests/scenes/load/d3d9_baseline.patch`, FreeType), three rounds, in each round every scene run once
+by each client one right after the other, the clients' order turned round from round to round; the
+frames pooled over the rounds; on a GTX 970 at 1,600 by 900, with fewer other programs on the
+machine than before. `frame_ms` in ms, the worst frame with its round and its frame in the stretch:
+
+| scene | objects | merged | worst | phase 7 | worst | Direct3D 9 | worst |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,975 | 20.44 | 31.4 (3.336) | 30.70 | 51.9 (1.218) | 29.21 | 108.5 (3.532) |
+| `woe_choke` | 11,290 | 17.58 | 39.9 (2.238) | 23.78 | 41.7 (1.275) | 23.45 | 36.1 (3.375) |
+| `arrive_castle` | 7,028 | 17.63 | 336.2 (2.1) | 23.00 | 257.6 (3.1) | 21.70 | 247.0 (1.1) |
+| `bombers_ifrit` | 5,559 | 12.20 | 27.2 (2.82) | 16.48 | 40.3 (1.144) | 16.15 | 25.1 (2.536) |
+| `arrive_prontera` | 243 | 4.58 | 174.1 (1.1) | 11.87 | 168.2 (2.1) | 13.41 | 142.3 (2.1) |
+| `town_prontera` | 243 | 4.67 | 23.5 (3.469) | 11.33 | 17.6 (2.37) | 12.85 | 22.6 (3.512) |
+| `mvp_randgris` | 2,041 | 5.89 | 26.3 (2.45) | 5.91 | 24.3 (3.15) | 4.48 | 11.5 (1.574) |
+| `snow_lutie` | 837 | 3.61 | 22.6 (1.101) | 5.58 | 24.7 (3.133) | 7.72 | 16.4 (2.24) |
+| `mvp_baphomet` | 2,160 | 5.96 | 25.8 (1.161) | 6.26 | 28.0 (3.58) | 5.32 | 10.1 (3.517) |
+| `aoe_orc_dungeon` | 731 | 2.91 | 23.5 (1.28) | 3.01 | 21.6 (3.27) | 2.35 | 5.0 (2.564) |
+
+A scene's medians of the three rounds lie within 2.4 ms of each other for every client, but for
+two: the Direct3D 9 client's Emperium room (27.3 to 32.1 ms) and the merged client's busy Prontera,
+4.1 and 4.4 ms in two rounds and 9.1 in the first, where every part of the frame took about twice
+as long (the objects 1.27 ms against 0.66, presenting 1.47 against 0.82) with the same counts,
+which points at the machine rather than the client. The merged client's counts (draws, primitives,
+instance and texture bytes) are phase 7's.
+
+The parts' medians, merged / phase 7 / Direct3D 9, in ms:
+
+| scene | view | objects | effects | actors | effects step | draw scene | present | texels |
+|---|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 9.41 / 17.20 / 17.62 | 8.13 / 14.91 / 15.31 | 1.19 / 2.26 / 2.45 | 2.63 / 2.90 / 2.98 | 0.49 / 1.98 / 1.97 | 5.29 / 5.97 / 5.71 | 1.92 / 2.04 / 0.35 | 0.22 / 0.22 / 0.00 |
+| `woe_choke` | 7.93 / 12.82 / 12.95 | 6.65 / 10.95 / 10.67 | 1.23 / 1.93 / 2.10 | 2.08 / 2.05 / 2.04 | 0.51 / 1.48 / 1.46 | 4.58 / 4.92 / 5.56 | 1.75 / 1.74 / 0.66 | 0.19 / 0.19 / 0.00 |
+| `arrive_castle` | 7.07 / 12.01 / 13.17 | 5.77 / 10.50 / 11.27 | 1.22 / 1.44 / 1.65 | 1.79 / 1.84 / 1.90 | 0.49 / 0.82 / 0.83 | 5.29 / 5.35 / 4.63 | 2.18 / 2.11 / 0.30 | 0.54 / 0.54 / 0.00 |
+| `bombers_ifrit` | 5.21 / 7.04 / 7.30 | 4.51 / 6.33 / 6.22 | 0.67 / 0.67 / 0.75 | 1.74 / 3.80 / 3.82 | 0.30 / 0.32 / 0.31 | 3.73 / 4.01 / 3.50 | 0.80 / 0.80 / 0.51 | 0.13 / 0.13 / 0.00 |
+| `arrive_prontera` | 1.92 / 8.98 / 9.93 | 0.73 / 7.56 / 7.68 | 1.13 / 1.40 / 1.79 | 0.08 / 0.08 / 0.08 | 0.50 / 0.54 / 0.55 | 1.00 / 1.14 / 2.33 | 0.84 / 0.85 / 0.20 | 0.16 / 0.17 / 0.00 |
+| `town_prontera` | 1.97 / 8.76 / 9.65 | 0.74 / 7.43 / 7.58 | 1.19 / 1.33 / 1.63 | 0.09 / 0.08 / 0.08 | 0.56 / 0.50 / 0.44 | 0.99 / 0.95 / 2.24 | 0.88 / 0.83 / 0.19 | 0.08 / 0.07 / 0.00 |
+| `mvp_randgris` | 1.20 / 2.07 / 2.12 | 1.03 / 1.89 / 1.76 | 0.01 / 0.01 / 0.01 | 0.33 / 0.44 / 0.35 | 0.00 / 0.00 / 0.00 | 0.99 / 0.89 / 1.34 | 3.10 / 2.12 / 0.30 | 0.03 / 0.03 / 0.00 |
+| `snow_lutie` | 0.90 / 4.10 / 4.78 | 0.39 / 3.51 / 3.55 | 0.43 / 0.52 / 0.72 | 0.13 / 0.18 / 0.19 | 0.14 / 0.14 / 0.16 | 0.48 / 0.48 / 2.17 | 1.65 / 0.51 / 0.17 | 0.03 / 0.04 / 0.00 |
+| `mvp_baphomet` | 1.41 / 2.24 / 2.81 | 1.10 / 1.88 / 1.94 | 0.27 / 0.33 / 0.46 | 0.39 / 0.48 / 0.42 | 0.11 / 0.16 / 0.18 | 1.03 / 0.97 / 1.45 | 2.61 / 1.85 / 0.15 | 0.04 / 0.04 / 0.00 |
+| `aoe_orc_dungeon` | 0.27 / 0.36 / 0.62 | 0.24 / 0.34 / 0.32 | 0.01 / 0.01 / 0.01 | 0.05 / 0.07 / 0.05 | 0.00 / 0.00 / 0.00 | 0.16 / 0.17 / 1.01 | 2.34 / 2.31 / 0.21 | 0.00 / 0.00 / 0.00 |
+
+In the crowds the merged client's worst frames of the parts are the lowest or near them (the
+Emperium room's objects 13.1 ms, phase 7's 27.6 and Direct3D 9's 59.9); both GPU clients have
+single presents of 16 to 24 ms in most scenes. The first frame of an arrival (the median of the
+rounds') is 251 ms in the castle and 174 in Prontera, phase 7's 256 and 163, Direct3D 9's 226 and
+137: handling the packets of the crowd that appears takes 101 to 147 ms of it on each client, and
+the GPU clients spend 24 and 19 ms in `renderer_draw_scene` where Direct3D 9 spends 5 and 7, 16 and
+12 of them widening texels.
+
+What the numbers say: with the CPU's searches gone, the merged client's frame is two thirds of
+Direct3D 9's in the crowds (20.4 ms against 29.2 in the Emperium room, 12.2 against 16.2 among the
+bombers) and a third of it in Prontera (4.7 against 12.9). The objects' part, which was half of a
+crowded frame, is now 40 % of it, and the renderer's own work on the main thread a larger share:
+`renderer_draw_scene` and presenting take 7.2 of the Emperium room's 20.4 ms (Direct3D 9's 6.1 of
+29.2) and 4.5 of the bombers' 12.2. Presenting is where the GPU client stays behind Direct3D 9: 0.8
+to 2.2 ms in the crowds against 0.3 to 0.7, and 2.3 to 3.1 ms in the three light scenes, Randgris,
+Baphomet and the Orc Dungeon, the only ones where Direct3D 9's frame is the shorter (4.5 against
+5.9 ms in Randgris), against its 0.15 to 0.3. Why presenting takes that long in a light frame
+(recording, or waiting for the GPU while the frame before is drawn) was not profiled. For the plan
+this puts phase 8, the frame recorded and submitted on a thread of its own, first: it takes the
+part that Direct3D 9 does not pay in every scene. Phase 9's effect primitives and auras were
+profiled at 3.6 and 1.5 ms of a 30 ms Emperium frame on phase 7's client and were not profiled
+again: the CPU entries did not change how they are built, but the walks they removed ran inside the
+same parts of the frame, so what phase 9 would take of a 20 ms frame needs a profile of the merged
+client first. Phase 10 stays small: widening texels takes 0.1 to 0.5 ms of a steady frame, and 16
+and 12 ms of an arrival's first frame, beside 106 and 134 ms of packets that no GPU phase touches.
+
+Not checked: Linux, macOS and Android were not built; the frame time on the GPU was not measured;
+the effect gallery did not run; no one played.

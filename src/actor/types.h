@@ -12,9 +12,15 @@ enum { ACTOR_EFFECT_SLOT_COUNT = 5 };
 
 struct GameObjectOps;
 
+/* custom: world_node is the object's node on its world's list of objects (struct World,
+   gameObjects), NULL while it is not on it (world_add_object, world_remove_object); actor_node an
+   actor's node on its world's list of actors (struct World, actors, world/aid_index.h), NULL for
+   any other object and while it is not on it */
 #define CGAMEOBJECT_MEMBERS                    \
     const struct GameObjectOps *ops;           \
-    uint64_t serial;
+    uint64_t serial;                           \
+    struct ListNode *world_node;               \
+    struct ListNode *actor_node;
 struct GameObject { CGAMEOBJECT_MEMBERS };
 
 #define CRENDEROBJECT_MEMBERS                  \

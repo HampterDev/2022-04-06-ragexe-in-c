@@ -36,7 +36,6 @@ int main(void)
 
     for (i = 0; i < 12; ++i)
         matrix[i] = saved[i] = (float)(i * 3 - 9);
-    assert(!game_current_object_list());
     assert(!game_current_scene_root());
     assert(!game_current_actor_list());
     assert(!game_current_ground());
@@ -57,7 +56,6 @@ int main(void)
     assert(!game_current_ground());
     map.ground = (struct C3dGround15 *)&object;
     assert(game_current_ground() == (struct C3dGround15 *)&object);
-    assert(game_current_object_list() == &map.gameObjects);
     assert(game_current_actor_list() == &map.actors);
     assert(!game_find_actor(42) && lookup_calls == 1);
     found = (struct GameActor *)&object;
@@ -83,12 +81,12 @@ int main(void)
     view = NULL;
     assert(!game_find_actor(42) && lookup_calls == 2);
     game_remove_object(&object);
-    assert(remove_calls == 1 && !game_current_object_list());
+    assert(remove_calls == 1);
     assert(!game_current_actor_list());
     assert(!game_copy_camera_position(eye) && eye[0] == 1 && eye[1] == 2 && eye[2] == 3);
     memcpy(saved, matrix, sizeof saved);
     assert(!game_copy_view_matrix(matrix));
     assert(memcmp(matrix, saved, sizeof matrix) == 0);
-    puts("world context: absent world/camera, object lists and current view matrix passed");
+    puts("world context: absent world/camera, the actor list and current view matrix passed");
     return 0;
 }

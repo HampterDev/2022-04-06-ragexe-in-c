@@ -148,6 +148,13 @@ note    The answers of Lua functions that answer from their arguments alone, as 
 uses
 paths   contents/lua_memo.*
 
+library id-index
+note    An index from ids to the entries of one list as pure logic (world/id_index.c): an id's first
+        entry in the list's order, kept right as entries are appended, leave and change their id
+        (the world's actors and skill units by their aid). Uses nothing else of the client.
+uses
+paths   world/id_index.*
+
 library platform
 note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
         (platform/audio_sdl.c), crash dumps, the text-input editor and IME
@@ -219,11 +226,11 @@ note    The rest of the library layer below game-state: game-side modules the li
         and that never use them (the session's storage and tables, item and skill information,
         contents managers, Lua bindings, chat and link text, world, actor and navigation helpers,
         login records, startup settings).
-uses    widgets lua-memo
+uses    widgets lua-memo id-index
 paths   contents/
         effects/stl/ iteminfo/ login/ session/ skills/ ui/character/ ui/chat/ ui/items/ ui/mail/
         web/ world/ actor/action.c actor/actor.h actor/actor_defaults.c actor/actor_path.*
-        actor/actor_values.c actor/actorindex.c actor/getjob.c actor/granny_actor.h
+        actor/actor_values.c actor/getjob.c actor/granny_actor.h
         actor/granny_model_storage.* actor/head_extent.c actor/job.h
         actor/layer_order.* actor/map_type_table.* actor/motion.c actor/motion_update.c
         actor/render_ops.h core/actor_slots.c core/drive_state.* core/startup_settings.c
@@ -241,7 +248,7 @@ paths   contents/
         game/schedules.h game/scream_text.* game/screen_counters.* game/skill_cooldowns.*
         game/skill_fail.c game/store_entries.* game/store_search_items.* game/system_messages.*
         game/target_cursor.c game/ui_bridge.h game/user_config.* game/warp_list.c
-        game/world_object_lists.c navi/navi.h navi/navi_airship.c navi/navi_links.c
+        navi/navi.h navi/navi_airship.c navi/navi_links.c
         navi/navi_objects.c navi/navi_records.c navi/navi_text_lines.* platform/clientinfo.*
         ui/draw_key.* ui/hideui.* ui/hotkeys/hotkeys_std.* ui/hotkeys/session_option_map.c
         ui/misc/crash_dialog.c ui/quests/achievement.h ui/quests/image_wnd.c
@@ -293,8 +300,8 @@ paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/act
         ui/resource/resource_paths.h ui/social/guild_containers.c ui/social/guild_member_sort.h
         world/actor_lookup.c world/hover_cell.h world/lifecycle.h world/load.h world/mode.h
         world/model_actor.c world/model_load.c world/models.c world/models.h world/object_lookup.h
-        world/objects_remove.c world/player.h world/tooltip.h world/view_context.c world/world.c
-        world/world.h world/world_imports.h world/world_near.c
+        world/object_list.c world/player.h world/tooltip.h world/view_context.c world/world.c
+        world/world.h world/world_imports.h world/world_near.c world/aid_lists.c
 
 library actors
 note    The actor and effect object model: the method tables of actor/game_object.c, the actor
@@ -625,7 +632,6 @@ include game/item_choice_lists.c game/objects.h
 include game/item_merge.c game/session_bridge.h
 include game/packets_hp.c game/objects.h
 include game/user_config.c game/session_bridge.h session/session_state.h
-include game/world_object_lists.c world/world_imports.h
 include login/loginmode.h contents/guild_info.h contents/mcstore_backup.h world/tooltip.h
 include login/merc_ai_trace.c login/merc_ai.h
 include navi/navi_airship.c navi/navi_manager.h navi/navi_search.h

@@ -64,9 +64,11 @@
    new effects' lines, whose effect is 4,096 bytes smaller and its bytes' hash another. The render
    objects' body palette became a name with the resource it names, and the players' imf and head
    palette too, and the players hold their robe's sprites: the trace before (027d7d81b571a862) is
-   this one line for line once the objects' sizes, the hashes of their bytes and the offsets and
-   counts of the changed words are left out. */
-#define EXPECTED_DIGEST 0x070472d1e6f92c2dull
+   that one (070472d1e6f92c2d) line for line once the objects' sizes, the hashes of their bytes and
+   the offsets and counts of the changed words are left out. Every object has kept its nodes on the
+   world's lists since then (struct GameObject, world_node and actor_node): built with the objects'
+   layout without them, this test gives 070472d1e6f92c2d. */
+#define EXPECTED_DIGEST 0x3445124eaf068fdbull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -327,8 +329,8 @@ struct ObjRef {
 static struct ObjRef g_objs[MAX_OBJS];
 static int g_obj_count, g_effect_count, g_prim_count, g_other_count;
 static int g_serialised_count;          /* g_objs[0..g_serialised_count) were serialised as new */
-static struct List g_objects;
-static struct ListNode *g_scanned;      /* last node of g_objects already registered */
+static struct World g_world;           /* its gameObjects: the world list the effects fill */
+static struct ListNode *g_scanned;      /* last node of the world list already registered */
 
 static const struct GameObjectOps *g_rag_ops, *g_prim_ops;
 static struct GameActorOps g_actor_ops, g_foreign_ops;
@@ -372,9 +374,9 @@ static char kind_of_object(const struct GameObject *o)
 static void scan_new_objects(void)
 {
     struct ListNode *n;
-    if (!g_objects.head)
+    if (!g_world.gameObjects.head)
         return;
-    for (n = g_scanned->next; n != g_objects.head; n = n->next) {
+    for (n = g_scanned->next; n != g_world.gameObjects.head; n = n->next) {
         struct GameObject *o = *LIST_VALUE(n, struct GameObject *);
         const struct Block *b = block_of(o);
         if (!obj_of(o))
@@ -488,6 +490,8 @@ static void fix_ptr(size_t at, size_t offset)
 static void fix_render_object(size_t at, size_t base)
 {
     fix_ptr(at, base + offsetof(struct RenderObject, ops));
+    fix_ptr(at, base + offsetof(struct RenderObject, world_node));
+    fix_ptr(at, base + offsetof(struct RenderObject, actor_node));
     fix_ptr(at, base + offsetof(struct RenderObject, body_pal.name.data));
     fix_ptr(at, base + offsetof(struct RenderObject, body_pal.res));
     fix_ptr(at, base + offsetof(struct RenderObject, spr));
@@ -711,12 +715,22 @@ int g_isSkipFrame;
 DWORD g_fogColor;
 int gfx_shadows_supported(void) { return 0; }
 int g_lightmap = 1;
-static struct World g_world;
 static int g_res_mgr_token, g_map_attr_token, g_mode_token;
 
 struct ResMgr *g_resMgr(void) { return (struct ResMgr *)&g_res_mgr_token; }
 struct World *game_current_world(void) { return &g_world; }
-struct List *game_current_object_list(void) { return &g_objects; }
+/* the world's list of objects, as world/object_list.c keeps it */
+int world_add_object(struct World *world, void *object)
+{
+    struct GameObject *obj = object;
+
+    if (world != &g_world)
+        fail("an object added to another world");
+    if (!g_world.gameObjects.head)
+        return 0;
+    obj->world_node = LIST_NODE_OF(list_push_back(&g_world.gameObjects, &obj, sizeof obj));
+    return 1;
+}
 struct C3dAttr *game_current_map_attr(void) { return (struct C3dAttr *)&g_map_attr_token; }
 const char *game_current_map_name(void) { return "prt_fild08"; }
 int game_map_preserves_party_effects(void) { return 0; }
@@ -1417,8 +1431,8 @@ static uint64_t run_effect(int id, const struct InputSet *set, int set_index)
     g_session1.map_rule_flags[0] = set->min_effects;
     g_session1.effectOn = set->effect_on;
 
-    list_init(&g_objects);
-    g_scanned = g_objects.head;
+    list_init(&g_world.gameObjects);
+    g_scanned = g_world.gameObjects.head;
     reset_actor(MASTER, 2001, master_pos, set->facing);
     reset_actor(PLAYER_ACTOR, 1000, player_pos, 45.0f);
     if (set->master_is_player)
@@ -1469,7 +1483,7 @@ static uint64_t run_effect(int id, const struct InputSet *set, int set_index)
         line("destroyed after %d steps, %d frames", calls, frames);
     }
     free_run_blocks();
-    g_objects.head = NULL;
+    g_world.gameObjects.head = NULL;
     g_in_run = 0;
     ++g_total_runs;
     return g_run_hash;

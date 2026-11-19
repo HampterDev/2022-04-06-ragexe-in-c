@@ -123,6 +123,7 @@ struct gfx_surface {
     int mips;               /* the lower levels are to be made again */
     unsigned pinned;        /* the frame whose recorded commands use it */
     int dead;               /* released while pinned: freed after that frame */
+    int held;               /* holds a reference of the holds (gfx_hold) */
     struct gfx_surface *prev, *next;
     unsigned version;
     /* gfx_create_layer_texture's: placed, when a draw first reads it, as a layer of an array */
@@ -147,6 +148,7 @@ struct gpu_array {
    takes it (skin_ready), and again with a new device or after an upload that failed. */
 struct gfx_skin {
     int refs;
+    int held;         /* holds a reference of the holds (gfx_hold_skin) */
     unsigned pinned;  /* the frame whose recorded draws take it */
     int dead;         /* released while pinned: freed after that frame */
     int failed;       /* its buffers could not be made: draws take nothing of it, and it is not tried
@@ -374,6 +376,12 @@ static struct {
     /* blocks of CLEAR_TEXELS like texels among this frame's staged ones (clear_texels): the texel
        and the block's offset plus one, 0 for none */
     struct { uint32_t texel; long at; } clearBlocks[2];
+    /* the surfaces and Granny models held, one reference each, until gfx_release_holds (gfx_hold,
+       gfx_hold_skin) */
+    struct gfx_surface **holds;
+    size_t nholds, holdCapacity;
+    struct gfx_skin **skinHolds;
+    size_t nskinHolds, skinHoldCapacity;
     int cameraView;
     int unresolving;  /* the draw being recorded puts the resolved screen back into the multisampled one */
     int viewsTargetW, viewsTargetH;
@@ -687,16 +695,43 @@ static void free_handle(struct gfx_surface *s)
         destroy_handle(s);
 }
 
-void gfx_addref(gfx_surface *s)
-{
-    if (s)
-        s->refs++;
-}
-
 void gfx_release(gfx_surface *s)
 {
     if (s && --s->refs <= 0)
         free_handle(s);
+}
+
+/* A hold is a reference, taken and let go by the thread that draws (render/rp_pool.c). */
+void gfx_hold(gfx_surface *s)
+{
+    if (!s || s->held)
+        return;
+    if (!grow((void **)&G.holds, &G.holdCapacity, G.nholds + 1, sizeof *G.holds))
+        abort(); /* not held, it could go before it is drawn */
+    s->held = 1;
+    s->refs++;
+    G.holds[G.nholds++] = s;
+}
+
+void gfx_release_holds(void)
+{
+    size_t i, n = G.nholds;
+
+    G.nholds = 0;
+    for (i = 0; i < n; i++) {
+        struct gfx_surface *s = G.holds[i];
+
+        s->held = 0;
+        gfx_release(s);
+    }
+    n = G.nskinHolds;
+    G.nskinHolds = 0;
+    for (i = 0; i < n; i++) {
+        struct gfx_skin *k = G.skinHolds[i];
+
+        k->held = 0;
+        gfx_skin_release(k);
+    }
 }
 
 static void pin(struct gfx_surface *s)
@@ -2027,10 +2062,16 @@ static void skin_destroy(struct gfx_skin *k)
     free(k);
 }
 
-void gfx_skin_addref(gfx_skin *k)
+/* A hold is a reference, as a surface's (gfx_hold). */
+void gfx_hold_skin(gfx_skin *k)
 {
-    if (k)
-        k->refs++;
+    if (!k || k->held)
+        return;
+    if (!grow((void **)&G.skinHolds, &G.skinHoldCapacity, G.nskinHolds + 1, sizeof *G.skinHolds))
+        abort(); /* not held, it could go before it is drawn */
+    k->held = 1;
+    k->refs++;
+    G.skinHolds[G.nskinHolds++] = k;
 }
 
 void gfx_skin_release(gfx_skin *k)
@@ -2427,7 +2468,7 @@ int gfx_world_texture(gfx_surface *texture, uint8_t array, uint16_t layer)
         return 0;
     /* the texture's pixels go up with the next stream, straight from the surface, which stays
        until then */
-    gfx_addref(texture);
+    texture->refs++;
     u = &W.textureUploads[W.ntextureUploads++];
     memset(u, 0, sizeof *u);
     u->surface = texture;

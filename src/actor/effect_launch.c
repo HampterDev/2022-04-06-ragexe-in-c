@@ -5,6 +5,7 @@
 #include "core/memory.h"
 #include "actor/actor.h"
 #include "game/context.h"
+#include "world/world.h"
 #include "effects/rag/rag_effect.h"
 
 unsigned g_launchedEffectIds[32];
@@ -43,9 +44,9 @@ struct RagEffect *game_actor_launch_effect(struct GameActor *self, int effect_id
     unsigned char force = 0;
     int deg;
     float s, c, x, z;
-    struct List *objects = game_current_object_list();
+    struct World *world = game_current_world();
 
-    if (!me || !objects || (effect_id == 0xa6 && !me->is_pc))
+    if (!me || !world || (effect_id == 0xa6 && !me->is_pc))
         return NULL;
 
     if (effect_id < 0 || effect_id > 60000 || effect_is_retired(effect_id))
@@ -73,7 +74,7 @@ struct RagEffect *game_actor_launch_effect(struct GameActor *self, int effect_id
     offset.x = x * c - z * s;
 
     rag_effect_init(effect, (struct RenderObject *)me, effect_id, offset);
-    list_push_back(objects, &effect, sizeof effect);
+    world_add_object(world, effect);
     list_push_back(&me->effects, &effect, sizeof effect);
     return effect;
 }

@@ -442,6 +442,9 @@ rage_test(static_world W4 CLIENT render/math3d.c render/rp_project.c render/rp_s
 rage_test(shadow_fit W4 tests/shadow_fit_scenes.c tests/fixtures/shadow_box_fit.c CLIENT render/shadow_fit.c)
 rage_test_run(shadow_fit_motions COMMAND test_shadow_fit --motions LABELS long)
 rage_test(shadow_fit_gpu_packing W4 CLIENT render/shadow_fit.c render/shadow_fit_gpu.c)
+rage_test(id_index W4 CLIENT world/id_index.c)
+rage_test(aid_lists W4 CLIENT std/container_memory.c std/list.c std/tree.c world/aid_index.c world/aid_lists.c
+    world/id_index.c world/object_list.c world/objects.c)
 rage_test(frame_timer W1 NO_WX CLIENT contents/frame_timer.c)
 rage_test(string W4)
 rage_test(touch CLIENT core/touch.c)
@@ -742,6 +745,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(effect_durations W4 CLIENT effects/durations.c)
     rage_test(effect_factories W1 CLIENT std/container_memory.c std/list.c std/tree.c std/vec.c GENERATED
         effect_types)
+    rage_test(attached_effects WE4013 CLIENT actor/attached.c actor/show_number.c effects/skills/msg_effect.c
+        std/container_memory.c std/list.c std/vec.c world/object_list.c)
     rage_test(effect_launch CLIENT actor/effect_launch.c)
     rage_test(effect_launch_duration WE4013 ${RAGE_EFFECT_DATA_C} CLIENT core/utf8.c effects/durations.c
         effects/effect_data.c fileio/resource_path.c platform/code_page_win32.c GENERATED
@@ -1007,7 +1012,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         world/pathinfo.c OBJECTS rage_test_weather_state_support)
     rage_test(object_operations WE4013 CLIENT actor/object_ops.c core/abstract_method.c
         effects/skills/dummy_effect_launcher.c platform/clock_win32.c std/container_memory.c std/list.c
-        std/string.c std/tree.c std/vec.c world/objects.c world/objects_remove.c)
+        std/string.c std/tree.c std/vec.c world/aid_index.c world/aid_lists.c world/id_index.c world/objects.c
+        world/object_list.c)
     rage_test(object_type W4 tests/fixtures/type_query_reference.c OBJECTS test_object_type_actor_object_types
         test_object_type_character_object_types test_object_type_chat_object_types
         test_object_type_controls_object_types test_object_type_hotkey_object_types
@@ -1186,7 +1192,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/lua_data_manager_boundaries.h INCLUDES src/contents LIBS rage_lua)
     rage_test(traversal_callbacks tests/model_names_fixture.c tests/traversal_callbacks_support.c CLIENT
         core/numeric.c core/owned_text.c platform/clock_win32.c render/math3d.c resources/model_res_queries.c
-        std/list.c std/tree.c std/vec.c world/model_actor.c world/world_near.c world/world_std.c)
+        std/list.c std/tree.c std/vec.c world/aid_index.c world/aid_lists.c world/id_index.c world/model_actor.c
+        world/object_list.c world/world_near.c world/world_std.c)
     rage_test(ui_drop WE4013 CLIENT core/fatal.c platform/clock_win32.c std/list.c std/string_vec.c std/vec.c
         OBJECTS test_ui_drop_owner_2 test_ui_drop_owner_4 test_ui_drop_owner_8 test_ui_drop_owner_9
         test_ui_drop_owner_10)
