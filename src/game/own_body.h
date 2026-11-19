@@ -21,6 +21,9 @@ struct GameMode;
 
 /* ZC_OWN_BODY, `size` bytes as they came. */
 void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size_t size);
+/* The number of the player's placement on the map it is on (ZC_HOLD_BACK): the server's words
+   of that placement are taken from now on, and of no other. */
+void game_mode_own_body_placed(struct GameMode *self, unsigned placement);
 /* A request to walk to the cell (x, y) left for the server, with its stamp's number. */
 void game_mode_own_body_walk(struct GameMode *self, unsigned number, int x, int y);
 /* An intent left for the server (CZ_INTENT, `kind` INTENT_*), with its stamp's number: an order

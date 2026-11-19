@@ -46,6 +46,7 @@ static size_t packet_of(unsigned char *out, const struct PredictedBody *body, si
     put16(out + 16, body->request);
     put16(out + 18, body->request_steps);
     put32(out + 20, body->penalty_ms);
+    put32(out + 24, body->placement);
     memcpy(out + PREDICTED_PACKET_HEAD, body->state, state_size < BODY_STATE_SIZE ? state_size : BODY_STATE_SIZE);
     return PREDICTED_PACKET_HEAD + state_size;
 }
@@ -131,11 +132,13 @@ static void test_read(void)
     body.request = 0xbeef;
     body.request_steps = 17;
     body.penalty_ms = 150;
+    body.placement = 0x89abcdefu;
     for (i = 0; i < (int)BODY_STATE_SIZE; i++)
         body.state[i] = (unsigned char)(i * 7 + 1);
     size = packet_of(packet, &body, BODY_STATE_SIZE);
-    CHECK(size == 248 && predicted_read(packet, size, &read) == 1);
+    CHECK(size == 252 && predicted_read(packet, size, &read) == 1);
     CHECK(read.version == BODY_RULES_VERSION && read.tick == 0x12a05f2a0ull && read.request == 0xbeef);
+    CHECK(read.placement == 0x89abcdefu);
     CHECK(read.request_steps == 17 && read.penalty_ms == 150 && memcmp(read.state, body.state, BODY_STATE_SIZE) == 0);
     /* shorter than it says, longer than it says, shorter than its head */
     memset(&read, 0xEE, sizeof read);
@@ -220,6 +223,7 @@ static void test_world(void)
 
     memset(cells, 1, sizeof cells);
     predicted_init(&predicted, WIDTH, HEIGHT);
+    CHECK(predicted_placed(&predicted, &ground, 0) == PREDICTED_REFUSED);
     CHECK(predicted_run(&predicted, &ground, T) == 0 && predicted_now(&predicted) == 0);
     CHECK(!predicted_move(&predicted, &move) && !predicted_state(&predicted, state) && !predicted_attack(&predicted, &attack));
     CHECK(predicted_wide(&predicted, 5) == 5);
@@ -371,6 +375,7 @@ static struct BodyWorld *begin(struct Predicted *predicted, uint64_t *arena, uin
     body_set_request_steps(server, 17);
     body_set_cancel_penalty(server, 150);
     predicted_init(predicted, WIDTH, HEIGHT);
+    predicted_placed(predicted, &ground, 0);
     word = word_of(server, 17, 150);
     CHECK(predicted_other(predicted, MOB_ID, &mob) == 1);
     CHECK(predicted_confirm(predicted, &ground, &word) == PREDICTED_DIFFERENT && predicted_run(predicted, &ground, tick) == 1);
@@ -1364,6 +1369,7 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
         cells[i] = (unsigned char)(rnd() % 9u != 0);
     cells[20 * WIDTH + 20] = cells[20 * WIDTH + 24] = 1;
     predicted_init(&predicted, WIDTH, HEIGHT);
+    predicted_placed(&predicted, &ground, 0);
     server.request_steps = 17;
     server.penalty_ms = chaos ? 120 : 0;
     server.world = server_world(server.arena, start, 20, 20, other_id, 24, 20);
@@ -1636,6 +1642,62 @@ static void test_walk_news(void)
     CHECK(predicted_walk_news(&before, &before) == PREDICTED_WALK_ON);
 }
 
+/* A word is taken only when it is of the placement the player is in: one that comes before
+   the number is known waits, the newest of them, and one of another placement is refused,
+   in whichever order the words of two maps and the number arrive. */
+static void test_placement(void)
+{
+    static struct Predicted predicted;
+    static uint64_t arena[(SERVER_ARENA + 7) / 8];
+    struct BodyWorld *server;
+    struct PredictedBody old, word, later;
+    unsigned char state[BODY_STATE_SIZE];
+    const uint64_t T = 0x12a05f200ull;
+
+    memset(cells, 1, sizeof cells);
+    server = server_world(arena, T, 10, 10, MOB_ID, 14, 10);
+    old = word_of(server, 17, 150);
+    old.placement = 4;
+    old.tick = T + 900; /* a map's clock may be ahead of the next one's */
+    word = word_of(server, 17, 150);
+    word.placement = 5;
+    later = word;
+    later.tick = T + 50;
+
+    /* the number comes last: the newest word of the newest placement waits for it */
+    predicted_init(&predicted, WIDTH, HEIGHT);
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_REFUSED && !predicted.live);
+    CHECK(predicted_confirm(&predicted, &ground, &old) == PREDICTED_REFUSED && !predicted.live);
+    CHECK(predicted_confirm(&predicted, &ground, &later) == PREDICTED_REFUSED && !predicted.live);
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_REFUSED && predicted.waiting.tick == T + 50);
+    CHECK(predicted_placed(&predicted, &ground, 5) == PREDICTED_DIFFERENT && predicted.live && predicted.confirmed.tick == T + 50);
+    CHECK(predicted_placed(&predicted, &ground, 5) == PREDICTED_REFUSED && !predicted.has_waiting);
+    /* a word of the map that was left, late, is no word of this one */
+    CHECK(predicted_confirm(&predicted, &ground, &old) == PREDICTED_REFUSED && predicted.confirmed.tick == T + 50);
+    CHECK(predicted_confirm(&predicted, &ground, &later) != PREDICTED_REFUSED);
+
+    /* only a word of the map that was left came before the number: nothing is taken */
+    predicted_init(&predicted, WIDTH, HEIGHT);
+    CHECK(predicted_confirm(&predicted, &ground, &old) == PREDICTED_REFUSED);
+    CHECK(predicted_placed(&predicted, &ground, 5) == PREDICTED_REFUSED && !predicted.live && !predicted.has_waiting);
+    CHECK(!predicted_state(&predicted, state));
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_DIFFERENT && predicted.live);
+
+    /* the number first: a word of the old placement after it is refused, one of this taken */
+    predicted_init(&predicted, WIDTH, HEIGHT);
+    CHECK(predicted_placed(&predicted, &ground, 5) == PREDICTED_REFUSED);
+    CHECK(predicted_confirm(&predicted, &ground, &old) == PREDICTED_REFUSED && !predicted.live && !predicted.has_waiting);
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_DIFFERENT && predicted.live);
+
+    /* numbers that wrap: the one after 0xFFFFFFFF is newer */
+    predicted_init(&predicted, WIDTH, HEIGHT);
+    old.placement = 0xFFFFFFFFu;
+    word.placement = 0;
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_REFUSED);
+    CHECK(predicted_confirm(&predicted, &ground, &old) == PREDICTED_REFUSED && predicted.waiting.placement == 0);
+    CHECK(predicted_placed(&predicted, &ground, 0) == PREDICTED_DIFFERENT && predicted.confirmed.tick == word.tick);
+}
+
 static void test_convergence(void)
 {
     static const struct {
@@ -1703,6 +1765,7 @@ int main(void)
     test_gone();
     test_refused();
     test_walk_news();
+    test_placement();
     test_convergence();
     if (failures) {
         fprintf(stderr, "predicted: %d failed\n", failures);

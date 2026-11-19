@@ -15,6 +15,7 @@
  *     CZ_CANCEL_LOCKON 0x0118, CZ_USE_SKILL2 0x0438,
  *     CZ_USE_SKILL_TOGROUND3 0x0AF4,
  *     CZ_USE_SKILL_TOGROUND_WITHTALKBOX2 0x0367, CZ_INTENT 0x0F02
+ *   ZC_OWN_BODY 0x0F25                                       replaceable  the connection    0
  *   ZC_NOTICE_HIT 0x0F23                                     single                         1
  *   ZC_TRACK_MOVE 0x0F20, ZC_TRACK_ACT 0x0F21,               replaceable  unit and track,   2
  *     ZC_TRACK_VITALS 0x0F22                                              from the record's tick
@@ -22,8 +23,8 @@
  * A replaceable message's key is the packet's id in the high half and the unit's GID in the
  * low half, so each track of each unit is a key of its own; its `from` is the record's tick.
  * A row without a unit would have the id alone as its key and 0 as its `from`, so that the
- * newest replaces every earlier one. The player's own body (ZC_OWN_BODY) is not in the table:
- * it travels in order with the world channel.
+ * newest replaces every earlier one. The player's own body (ZC_OWN_BODY) is such a row: of
+ * the bodies told to a client only the newest is sent until it arrives.
  *
  * What the server sends is data from outside to the client and the client's to the gateway, so
  * a packet goes through the piece only when it is exactly one packet of its id, as long as its

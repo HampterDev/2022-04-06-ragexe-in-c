@@ -63,6 +63,7 @@ int predicted_read(const unsigned char *packet, size_t size, struct PredictedBod
     body->request = (uint16_t)get16(packet + 16);
     body->request_steps = (uint16_t)get16(packet + 18);
     body->penalty_ms = get32(packet + 20);
+    body->placement = get32(packet + 24);
     if (version == BODY_RULES_VERSION)
         copy(body->state, packet + PREDICTED_PACKET_HEAD, BODY_STATE_SIZE);
     return 1;
@@ -262,6 +263,17 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
     uint32_t id, kept = 0, i;
     int was;
 
+    /* a word of a placement not known yet waits, the newest of them; one of another is
+       refused */
+    if (!predicted->placed || body->placement != predicted->placement) {
+        if (!predicted->placed
+            && (!predicted->has_waiting || (int32_t)(body->placement - predicted->waiting.placement) > 0
+                || (body->placement == predicted->waiting.placement && body->tick >= predicted->waiting.tick))) {
+            predicted->waiting = *body;
+            predicted->has_waiting = 1;
+        }
+        return PREDICTED_REFUSED;
+    }
     if (body->version != BODY_RULES_VERSION) {
         predicted->live = 0;
         return PREDICTED_VERSION;
@@ -299,6 +311,18 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
             && (predicted->other[i].out || predicted->stale))
             zero(&predicted->other[i], sizeof predicted->other[i]);
     return was ? PREDICTED_SAME : PREDICTED_DIFFERENT;
+}
+
+int predicted_placed(struct Predicted *predicted, const struct BodyGround *ground, uint32_t placement)
+{
+    if (predicted->placed && predicted->placement == placement)
+        return PREDICTED_REFUSED;
+    predicted->placement = placement;
+    predicted->placed = 1;
+    if (!predicted->has_waiting)
+        return PREDICTED_REFUSED;
+    predicted->has_waiting = 0;
+    return predicted_confirm(predicted, ground, &predicted->waiting);
 }
 
 int predicted_request(struct Predicted *predicted, const struct PredictedRequest *request)

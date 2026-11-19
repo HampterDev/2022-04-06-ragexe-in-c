@@ -43,6 +43,7 @@
 #include "std/string.h"
 #include "world/mode_manager.h"
 #include "world/state.h"
+#include "world/view_floors.h"
 #include "lossy_link/wire.h"
 #include "scene.h"
 #include "play.h"
@@ -52,6 +53,7 @@
 
 #define PLAY_AID 2000000
 #define PLAY_GID 150000
+#define ZC_OWN_BODY 0x0f25
 
 enum { MSG_FRAME = 1, MSG_STEP = 2 };
 enum { DO_ENTER = 1, DO_WALK = 2, DO_ATTACK = 3, DO_CANCEL = 4, DO_QUIT = 5 };
@@ -87,10 +89,24 @@ void drive_state_note_chat(const char *text)
     (void)text;
 }
 
+/* How late the player's own body is through the piece: each ZC_OWN_BODY the server's end is
+   handed, by the low half of its tick, with when it was handed, and of each one the client's end
+   hands on, how long after that it was. One that a newer replaced before it arrived is not
+   handed on and not measured. */
+#define BODY_SENT_KEPT 64
+static struct {
+    struct { uint32_t tick, at; } sent[BODY_SENT_KEPT];
+    unsigned next;
+    unsigned long taken, total_ms, worst_ms;
+} B;
+
 static void leave(int code, const char *why)
 {
     if (why)
         fprintf(stderr, "playground: %s\n", why);
+    /* read by the runner */
+    fprintf(stderr, "playground: own body through the piece: %lu taken, %lu ms late in all, %lu at worst\n", B.taken,
+            B.total_ms, B.worst_ms);
     fflush(stdout);
     fflush(stderr);
     exit(code);
@@ -111,6 +127,38 @@ static struct {
     unsigned char message[DELIVERY_MESSAGE_MAX]; /* a stamp that waits for its request */
     size_t message_size;
 } L;
+
+static void body_sent(const unsigned char *packet, size_t size, uint32_t now)
+{
+    if (size < 12 || get16(packet) != ZC_OWN_BODY)
+        return;
+    B.sent[B.next % BODY_SENT_KEPT].tick = (uint32_t)get32(packet + 8);
+    B.sent[B.next % BODY_SENT_KEPT].at = now;
+    B.next++;
+}
+
+static void body_taken(const unsigned char *packet, size_t size, uint32_t now)
+{
+    uint32_t tick;
+    unsigned i;
+
+    if (size < 12 || get16(packet) != ZC_OWN_BODY)
+        return;
+    tick = (uint32_t)get32(packet + 8);
+    for (i = 0; i < BODY_SENT_KEPT && i < B.next; i++) {
+        unsigned k = (B.next - 1 - i) % BODY_SENT_KEPT;
+
+        if (B.sent[k].tick == tick) {
+            uint32_t late = now - B.sent[k].at;
+
+            B.taken++;
+            B.total_ms += late;
+            if (late > B.worst_ms)
+                B.worst_ms = late;
+            return;
+        }
+    }
+}
 
 static void line_open(void)
 {
@@ -178,9 +226,12 @@ static void line_run(void)
 
             delivery_arrived(end, now, datagram, size);
             while ((message = delivery_take(end, &size)) != NULL) {
-                if (!direction)
+                if (!direction) {
                     tell_message(message, size);
-                else if (!scene_net_deliver(SCENE_MAP_PORT, message, (int)size))
+                    continue;
+                }
+                body_taken(message, size, now);
+                if (!scene_net_deliver(SCENE_MAP_PORT, message, (int)size))
                     leave(2, "the server sent before the client connected to the map");
             }
             moved = 1;
@@ -381,7 +432,10 @@ static size_t report(void)
             p[16] = (unsigned char)(actor->motion < 0 ? 0 : actor->motion > 254 ? 254 : actor->motion);
             p[17] = (unsigned char)(actor->attack_motion_count > 0.0f && actor->attack_motion_count < 255.0f
                                         ? (int)actor->attack_motion_count : 255);
-            p[18] = p[19] = 0;
+            /* whether the client has the actor's unit in view (world/view_floors.h): an actor that
+               is shown after its going, dying, is not */
+            p[18] = mode && view_floors_in_view(&mode->view_floors, (uint32_t)actor->aid) ? 1 : 0;
+            p[19] = 0;
             p += 20;
             actors++;
         }
@@ -448,6 +502,7 @@ static void deliver(const unsigned char *bytes, size_t size)
         }
         if (delivery_route(bytes, length, &route) && route.kind != DELIVERY_ORDERED
             && delivery_send(L.server, route.kind, route.key, route.from, route.priority, bytes, length)) {
+            body_sent(bytes, length, platform_ticks_ms());
             line_run();
         } else if (!scene_net_deliver(SCENE_MAP_PORT, bytes, (int)length)) {
             leave(2, "the server sent before the client connected to the map");

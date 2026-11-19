@@ -29,6 +29,12 @@
  * answer of the game's that was not yes, another body that is not where its record has it, a
  * skill's range the server has otherwise than the client's skill list.
  *
+ * A word is of one placement of the player on a map: the server counts them, the word carries
+ * the number, and the map's ZC_HOLD_BACK names the number of the map the player is on. A word
+ * that comes before that is kept aside, the newest of them, and is taken once the number is
+ * known and is its own; a word of another placement is refused. So a word of a map the player
+ * left does not pass for one of this map, in whatever order the two arrive.
+ *
  * The bytes of a ZC_OWN_BODY and the records are data from outside: what does not fit is
  * refused and changes nothing. */
 
@@ -43,7 +49,7 @@
 /* The bytes of the world's arena: the core's header, the bodies and a ring of sixteen events. */
 #define PREDICTED_ARENA 1464u
 
-/* ZC_OWN_BODY, 0x0F25, little-endian and packed, 24 bytes and the state:
+/* ZC_OWN_BODY, 0x0F25, little-endian and packed, 28 bytes and the state:
  *
  *   off size field
  *     0    2 id            0x0F25
@@ -53,14 +59,16 @@
  *    16    2 request       the number of the last request of the player's the state includes
  *    18    2 request_steps the longest way a request's walk may take (body_set_request_steps)
  *    20    4 penalty_ms    how long after a cancelled swing the next may begin
- *    24    n state         the body (body_state): BODY_STATE_SIZE bytes of this version
+ *    24    4 placement     the number of the player's placement on a map the body is of
+ *    28    n state         the body (body_state): BODY_STATE_SIZE bytes of this version
  */
-#define PREDICTED_PACKET_HEAD 24u
+#define PREDICTED_PACKET_HEAD 28u
 
 struct PredictedBody {
     uint64_t tick;
     uint32_t version;
     uint32_t penalty_ms;
+    uint32_t placement;
     uint16_t request;
     uint16_t request_steps;
     unsigned char state[BODY_STATE_SIZE]; /* zero when the version is not this core's */
@@ -105,6 +113,7 @@ struct PredictedPast {
 struct Predicted {
     uint64_t world[(PREDICTED_ARENA + 7u) / 8u]; /* the core's arena, run to the own clock */
     struct PredictedBody confirmed;              /* the server's last word */
+    struct PredictedBody waiting;                /* the newest word that came before its placement was known */
     struct PredictedRequest pending[PREDICTED_PENDING];
     struct PredictedOther other[PREDICTED_OTHERS];
     struct PredictedPast past[PREDICTED_PAST];   /* a ring: the own body's states, oldest first */
@@ -115,24 +124,33 @@ struct Predicted {
     uint32_t same;        /* the server's words that were what had been predicted */
     uint32_t different;   /* and those that were not: corrections */
     uint32_t own_id;      /* the own body's id, as the server's word has it */
+    uint32_t placement;   /* the number of the placement the player is in (while `placed`) */
     int32_t width, height;
     uint8_t live;         /* the server said what the body is, in this core's version */
     uint8_t stale;        /* the past changed: the world is made again before it runs on */
-    uint8_t reserved[2];
+    uint8_t placed;       /* the number of this placement is known */
+    uint8_t has_waiting;  /* `waiting` holds a word */
 };
 
 enum {
     PREDICTED_SAME = 0,      /* the word is what was predicted for its tick */
     PREDICTED_DIFFERENT = 1, /* it is not, or nothing was predicted for that tick: the world is made again */
-    PREDICTED_REFUSED = 2,   /* another version, bytes that are no body, or a word older than the last: nothing changed */
+    PREDICTED_REFUSED = 2,   /* bytes that are no body, a word older than the last or of another placement: nothing changed */
     PREDICTED_VERSION = 3    /* another rules version: nothing is predicted until a word of this one */
 };
 
 /* An empty prediction for a map of width by height cells. */
 void predicted_init(struct Predicted *predicted, int32_t width, int32_t height);
 
-/* The server's word of the own body. `ground` is the map as the core reads it. */
+/* The server's word of the own body. `ground` is the map as the core reads it. Before the
+ * number of the placement is known the word is kept aside, if it is the newest so far, and
+ * PREDICTED_REFUSED is returned. */
 int predicted_confirm(struct Predicted *predicted, const struct BodyGround *ground, const struct PredictedBody *body);
+
+/* The number of the player's placement on this map (ZC_HOLD_BACK). A word kept aside of that
+ * placement is taken now, and what predicted_confirm says of it is returned; otherwise
+ * PREDICTED_REFUSED. The number said again changes nothing. */
+int predicted_placed(struct Predicted *predicted, const struct BodyGround *ground, uint32_t placement);
 
 /* A request of the player's that leaves for the server. Returns 0 when it is none the core
  * knows. When more wait than the list holds, the oldest goes. */

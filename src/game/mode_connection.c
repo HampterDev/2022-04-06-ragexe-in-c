@@ -46,6 +46,7 @@ DWORD g_firstKeepAliveTime;
 #include "actor/render_ops.h"
 #include "platform/clock.h"
 #include "game/net_clock.h"
+#include "game/own_body.h"
 
 #define WND_LOADING          6
 #define MSGBOX_RESULT_CLOSED 0x105
@@ -132,6 +133,7 @@ void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt)
 struct PACKET_ZC_HOLD_BACK {
     unsigned short id;
     unsigned short hold_back_ms;
+    DWORD placement;
 };
 struct PACKET_ZC_TIME_SYNC {
     unsigned short id;
@@ -140,16 +142,18 @@ struct PACKET_ZC_TIME_SYNC {
     DWORD server_send;
 };
 #pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_HOLD_BACK, 4);
+SIZE_ASSERT(PACKET_ZC_HOLD_BACK, 8);
 SIZE_ASSERT(PACKET_ZC_TIME_SYNC, 14);
 
 /* The least time the server wants a request to wait after its press (plans/netcode.md), which the
-   own clock keeps. It says so each time the map is loaded. */
+   own clock keeps, and the number of the player's placement on this map, which the server's
+   words of the own body carry (plans/presence.md). It says so each time the map is loaded. */
 void game_mode_zc_hold_back(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_HOLD_BACK *packet = (const struct PACKET_ZC_HOLD_BACK *)pkt;
 
     self->hold_back_ms = packet->hold_back_ms;
+    game_mode_own_body_placed(self, packet->placement);
 }
 
 /* The server's half of a timed exchange: the tick this client sent in its keep-alive, and the

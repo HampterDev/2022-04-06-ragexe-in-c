@@ -22,6 +22,7 @@ static const struct Route g_routes[] = {
     { 0x0367, DELIVERY_ORDERED, 0, 0, 0, -1, -1 },     /* CZ_USE_SKILL_TOGROUND_WITHTALKBOX2 */
     { 0x0f02, DELIVERY_ORDERED, 0, 0, 0, -1, -1 },     /* CZ_INTENT */
     /* what the server sends */
+    { 0x0f25, DELIVERY_REPLACEABLE, 0, 0, 32, -1, -1 }, /* ZC_OWN_BODY */
     { 0x0f23, DELIVERY_SINGLE, 1, 32, 0, -1, -1 },     /* ZC_NOTICE_HIT */
     { 0x0f20, DELIVERY_REPLACEABLE, 2, 0, 25, 4, 8 },  /* ZC_TRACK_MOVE */
     { 0x0f21, DELIVERY_REPLACEABLE, 2, 37, 0, 2, 6 },  /* ZC_TRACK_ACT */

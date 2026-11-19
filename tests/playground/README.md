@@ -37,7 +37,9 @@ u32 tick                      the client's clock, 16 ms a frame
 f32 x, y; u8 state; 3 unused  the player
 u32 actors, each: u32 gid; f32 x, y; u8 state; u8 is a player; u16 job;
                   u8 the frame its action is on; u8 the frame its attack shows its hit on
-                  (255: none); 2 unused
+                  (255: none); u8 1 when the client has its unit in view
+                  (`world/view_floors.h`; an actor shown dying after its going has not);
+                  1 unused
 u32 packets, each: u16 size; the packet as the client sent it on its map connection
 u8  the own clock is known; u8 a body is predicted; 2 unused
 u32 own clock                 the server's tick the own character is drawn on
@@ -93,7 +95,7 @@ inside `play_driver.c`, with a wire between the piece's two ends:
   its stamp) goes through the client's end, the wire and the end the gateway holds, and the
   runner is told a request when that second end hands it on;
 - what the server sends that the route table names (`delivery/delivery_route.h`: the units'
-  records and hits) goes through the gateway's end, the wire and the client's end, and is given
+  records, the own body and hits) goes through the gateway's end, the wire and the client's end, and is given
   to the client when its end hands it on. The rest of what the server sends is given to the
   client as it comes, a packet at a time and in the order sent.
 
@@ -105,3 +107,7 @@ once, as the client sends the two in one write.
 On a wire that loses nothing everything arrives in the frame it was sent and in the order it
 was sent, and a run is what it was without the piece. What a lost datagram carried is sent again
 by the piece when the driver next ticks, 16 ms on, unless something newer replaced it.
+
+When it ends, the client writes on its standard error how late the own body was through the
+piece, which the runner reads: of each `ZC_OWN_BODY` the client's end handed on, the time from
+the gateway's end being handed it to then, in all and at worst.

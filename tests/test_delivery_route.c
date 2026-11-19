@@ -102,8 +102,15 @@ static void test_body_and_notice(void)
     struct DeliveryRoute route;
     size_t size;
 
-    /* the own body stays in order with the world */
-    size = packet_of(p, 0x0f25, 24 + 224, 1, 0, 0);
+    /* the own body: the newest replaces every earlier one, before notices and records; its
+       size is its length field and at least its head */
+    size = packet_of(p, 0x0f25, 32 + 224, 1, 0, 0);
+    CHECK(delivery_route(p, size, &route) == 1 && route.kind == DELIVERY_REPLACEABLE && route.priority == 0);
+    CHECK(route.key == (uint64_t)0x0f25 << 32 && route.from == 0);
+    CHECK(delivery_route(p, size - 1, &route) == 0 && delivery_route(p, size + 1, &route) == 0);
+    size = packet_of(p, 0x0f25, 32, 1, 0, 0);
+    CHECK(delivery_route(p, size, &route) == 1);
+    size = packet_of(p, 0x0f25, 31, 1, 0, 0);
     CHECK(delivery_route(p, size, &route) == 0);
     /* a hit: once, in no order */
     size = packet_of(p, 0x0f23, 32, 0, 0, 0);
@@ -118,7 +125,7 @@ static void test_every_id(void)
 {
     unsigned char p[300];
     struct DeliveryRoute route;
-    unsigned id, routed = 0, sizes[] = { 2, 20, 32, 37, 64, 248 }, s;
+    unsigned id, routed = 0, sizes[] = { 2, 20, 32, 37, 64, 256 }, s;
 
     for (id = 0; id <= 0xffff; id++) {
         int any = 0;
@@ -129,8 +136,8 @@ static void test_every_id(void)
         }
         routed += any;
     }
-    /* eight requests and four packets of the server's */
-    CHECK(routed == 12);
+    /* eight requests and five packets of the server's */
+    CHECK(routed == 13);
 }
 
 int main(void)

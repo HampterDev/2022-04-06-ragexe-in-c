@@ -251,6 +251,14 @@ void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size
     }
 }
 
+void game_mode_own_body_placed(struct GameMode *self, unsigned placement)
+{
+    struct BodyGround ground;
+
+    if (own_ground(&ground) && predicted_placed(&g_own, &ground, (uint32_t)placement) != PREDICTED_REFUSED)
+        game_mode_own_body_frame(self);
+}
+
 /* The request joins the ones that wait for the server's word, at the tick its stamp named for
    the server to apply it at, the own clock of its frame, and the world takes it at once: what
    the player asks for is in the world, and drawn, in the frame it is asked. Without a stamp it
