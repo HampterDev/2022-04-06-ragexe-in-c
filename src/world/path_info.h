@@ -16,7 +16,6 @@ void path_info_clear(struct PathInfo *path);
 int path_info_resize(struct PathInfo *path, size_t count);
 int path_info_get_cell(const struct PathInfo *path, int index, int *x, int *y);
 uint32_t path_info_end_time(const struct PathInfo *path);
-int path_info_end_direction(const struct PathInfo *path);
 int path_info_next_cell(const struct PathInfo *path, uint32_t time,
                         uint32_t *deadline, float *x, float *y);
 #endif

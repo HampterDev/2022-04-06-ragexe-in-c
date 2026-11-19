@@ -35,10 +35,11 @@
 
 library base
 note    Containers and strings (std/), JSON (json/), memory, UTF-8 and text formatting, XML, the
-        type queries (core/object_type.c), fatal errors, base.h and the Windows type names. Uses
-        nothing else of the client.
+        type queries (core/object_type.c), fatal errors, base.h and the Windows type names, the
+        body core the server shares (body/) and the delivery piece its gateway shares
+        (delivery/). Uses nothing else of the client.
 uses
-paths   core/
+paths   body/ core/ delivery/
         initializers/ json/ std/ actor/actor_ops.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 
@@ -90,7 +91,8 @@ paths   ui/
         session/option_pairs.h session/shop_inventory.h ui/character/character.h
         ui/character/selection_buttons.h ui/chat/readable_links.h ui/chat/sub_chat_map.h
         ui/items/styling_shop_std.h ui/render/draw_list.c ui/render/render.h world/mode_actions.h
-        world/mode_context.c world/mode_dispatch.* world/mode_types.h world/path_info.h
+        world/mode_context.c world/mode_dispatch.* world/mode_types.h world/move_track.h
+        world/act_track.h world/path_info.h
 
 library gamedata
 note    The rest of the library layer below game-state: game-side modules the libraries above use
@@ -157,7 +159,8 @@ paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/act
         effects/str_path.c effects/str_path.h game/actor_marks.h game/actor_name_lookup.c
         game/actor_names.h game/ground_item_state.h game/input.h game/input_queries.c
         game/mode_listed.c game/mode_misc.h game/mode_util.h game/msg_skills.c game/name_balloon.c
-        game/name_balloon.h game/party_member.h game/pickup_requests.h game/world_objects.h
+        game/name_balloon.h game/net_clock.h game/own_body.* game/party_member.h
+        game/world_objects.h
         login/merc_ai.c login/merc_ai.h login/merc_ai_cmds.c navi/grid_uv.h navi/navi_instance.c
         navi/navi_manager.h navi/navigation.h session/job_sounds.h session/predicates.c
         session/session_items.c session/session_items.h session/session_job_rules.c
@@ -237,7 +240,7 @@ paths   actor/ effects/ navi/ ui/render/ ui/worldmap/ contents/body_layer.*
         effects/skills/tetra_ball_effect.c game/actor_actions.h game/actor_marks.*
         game/actor_names.* game/camera.* game/chat.* game/display_settings.h game/drag.*
         game/entry_packet_handlers.h game/input.* game/item_records.h game/lifecycle.*
-        game/magic_static.h game/map_property.c game/mode_misc.* game/mode_run.c
+        game/magic_static.h game/map_property.c game/mode_misc.* game/mode_run.c game/net_overview.*
         game/mode_whisper.c game/mouse_camera.* game/object_click.c game/objects.h
         game/packet_data.* game/packet_ids.h game/packet_rows.h game/packets.h
         game/session_bridge.h game/skill_fx.h game/skill_unit_packets.h game/state_change_helpers.h
@@ -822,9 +825,12 @@ link    game/net_poll.c game_mode_dispatch_packet
 exception knot-calls-features
 why     The game mode's run loop (game/mode_run.c) sends the keep-alive (game_mode_send_keep_alive,
         game/mode_connection.c) and draws the windows (ui_window_mgr_render_windows,
-        ui/wndmgr/render_windows.c); both files are in feat-packets.
+        ui/wndmgr/render_windows.c); both files are in feat-packets. It also plays the acts, hits
+        and HP whose tick has come (game_mode_play_tracks, game/packets_act.c in feat-game), once
+        a frame like the keep-alive.
 remove  Handlers installed by client_install_hooks(), as g_windowMgrHandlers are.
 link    game/mode_run.c game_mode_send_keep_alive ui_window_mgr_render_windows
+        game_mode_play_tracks
 
 exception stray-includes
 why     Single includes of a higher library's header: std/std.h includes render/math3d.h,

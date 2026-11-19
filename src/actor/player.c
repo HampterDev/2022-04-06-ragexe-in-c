@@ -2,7 +2,6 @@
 #include "actor/actor_ops.h"
 #include "actor/object_ops.h"
 #include "actor/render_ops.h"
-#include "game/ground_item_state.h"
 #include "navi/navi_manager.h"
 #include "contents/sound.h"
 #include "game/client_state.h"
@@ -13,7 +12,6 @@
 #include "world/mode_dispatch.h"
 #include "ui/window_access.h"
 #include "game/context.h"
-#include <math.h>
 #include "actor/actor.h"
 #include "actor/pc.h"
 #include "actor/player.h"
@@ -26,9 +24,9 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "game/input.h"
+#include "game/net_clock.h"
 #include "platform/clock.h"
 
-void player_process_proceed(struct Player *self);
 void player_process_costume_body(struct Player *self, unsigned char show);
 
 static void player_send_owed_5b(struct Player *self)
@@ -44,6 +42,9 @@ static void player_send_owed_5b(struct Player *self)
     self->owed_walk_y = -1;
     render_object_send(self, NULL, 0x5b, a, b, 0, 0);
 }
+
+#define MODE_SEND(mode, msg, a, b, c) \
+    mode_send_message((struct Mode *)(mode), (msg), (a), (b), (c), 0)
 
 unsigned char player_on_process(struct GameObject *object)
 {
@@ -73,7 +74,15 @@ unsigned char player_on_process(struct GameObject *object)
         req.dst_y = self->requested_cell_y;
         render_object_send(self, NULL, 0, (intptr_t)&req, 0, 0, 0);
     }
-    player_process_proceed(self);
+    /* The walk the player asked for since the last frame leaves now, and is in the predicted
+       world and drawn in this frame (game/own_body.c). Of several clicks of one frame the
+       newest is the one that counts. Nothing spaces the requests: a click is not held back
+       for the one before it (docs/custom-review.md, "The own walk is drawn from the
+       predicted world"). */
+    if (self->asked_walk) {
+        self->asked_walk = 0;
+        MODE_SEND(mode, 0x8a, self->asked_walk_x, self->asked_walk_y, 0);
+    }
     result = actor_process_state(self);
     render_object_process_sound((struct RenderObject *)self);
     if (self->wave_pending) {
@@ -102,6 +111,7 @@ void player_set_state(struct GameActor * base_actor, int state, unsigned char sn
     if (state != 1) {
         self->requested_cell_x = -1;
         self->requested_cell_y = -1;
+        self->steered = 0;
     }
     player_send_owed_5b(self);
     if (state == 3) {
@@ -124,60 +134,6 @@ unsigned char player_process_state(struct GameActor * base_actor)
 #define MODE_SEND1(mode, a, b) \
     mode_send_message((struct Mode *)(mode), (a), (b), 0, 0, 0)
 
-void player_shift_cell_by_target_radius(struct Player *self, struct GameActor *target, float x, float z,
-                           int *a, int *b)
-{
-    int n = game_actor_get_npc_location_radius(target);
-    float deg;
-
-    if (target->model_kind == 1)
-        n = 5;
-    else if (!n)
-        return;
-    deg = (float)atan2((double)(x - self->pos.x), (double)-(z - self->pos.z)) / 3.141592f * 180.0f;
-    if (deg >= 360.0f)
-        deg -= 360.0f;
-    if (0.0f > deg)
-        deg += 360.0f;
-    if (deg >= 0.0f && 25.0f > deg) {
-        *a += n;
-    } else if (deg >= 25.0f && 70.0f > deg) {
-        *b += n;
-        *a += n;
-    } else if (deg >= 70.0f && 115.0f > deg) {
-        *b += n;
-    } else if (deg >= 115.0f && 160.0f > deg) {
-        *b += n;
-        *a -= n;
-    } else if (deg >= 160.0f && 205.0f > deg) {
-        *a -= n;
-    } else if (deg >= 205.0f && 250.0f > deg) {
-        *b -= n;
-        *a += n;
-    } else if (deg >= 250.0f && 295.0f > deg) {
-        *b -= n;
-    } else if (deg >= 295.0f && 340.0f > deg) {
-        *b -= n;
-        *a -= n;
-    } else {
-        *a += n;
-    }
-}
-
-static float max0(float v)
-{
-    return 0.0f > v ? 0.0f : v;
-}
-
-float player_dist_beyond_target_radius(struct GameActor *target, float dist)
-{
-    if (target->model_kind == 1)
-        return max0(dist - 20.0f);
-    if (game_actor_get_npc_location_radius(target) > 0)
-        return max0(dist - (float)(game_actor_get_npc_location_radius(target) + 1) * 4.0f);
-    return max0(dist);
-}
-
 static void player_msg(struct Player *self, int msg)
 {
     render_object_send(self, NULL, msg, 0, 0, 0, 0);
@@ -188,276 +144,29 @@ static void player_walk_msg(struct Player *self, int x, int y)
     render_object_send(self, NULL, 0x5b, x, y, 0, 0);
 }
 
-static int player_in_range(int range, float dist)
+/* Talkie Box and Graffiti take a text: the ground skill's window asks for it, and sends the skill
+   with it (CZ_USE_SKILL_TOGROUND_WITHTALKBOX2, game_mode_msg_use_skill_to_ground_talkbox). That
+   request is the fork's, and no intent: the player is walked into reach for neither. */
+enum { SKILL_HT_TALKIEBOX = 0x7d, SKILL_RG_GRAFFITI = 0xdc, WND_TALKBOX_TRAP_INPUT = 0x54, WND_GRAFFITI_STRBOX = 0x65 };
+enum { SKILL_TEXT_MSG_SET_CELL = 0x44 };
+
+static int player_ground_text_skill(int skill_id)
 {
-    return (float)(range * 5) + 5.5f >= dist;
+    return skill_id == SKILL_HT_TALKIEBOX || skill_id == SKILL_RG_GRAFFITI;
 }
 
-static void player_attack_now(struct Player *self)
+static void player_ask_ground_text(struct Player *self)
 {
-    if (self->attack_kind == 2)
-        player_msg(self, 0xd);
-    if (self->attack_sent)
-        return;
-    if (self->attack_tick + 0x4b0 >= platform_ticks_ms())
-        return;
-    self->attacks++;
-    self->attack_tick = platform_ticks_ms();
-    self->attack_sent = 1;
-    player_msg(self, self->attack_kind == 2 ? 0x1d : 0x28);
-}
+    struct GroundSkillUse cast;
+    struct UIWindow *wnd;
 
-static int player_skill_gate(const struct Player *self)
-{
-    int st = self->state;
-
-    return st == 1 || st == 0 || st == 4 || st >= 0x10;
-}
-
-static int player_swing_holds(const struct Player *self)
-{
-    return self->state == 2;
-}
-
-static int player_proceed_attack(struct Player *self, struct GameMode *mode)
-{
-    struct GameActor *target = world_get_game_actor_by_aid(mode->world,
-                                                          self->target_aid);
-    int my_x, my_y, x, y, st, due, gate;
-    unsigned interval;
-    float dist, fx, fz;
-
-    if (!target)
-        return 0;
-    if (target->state == 3)
-        return 1;
-    game_mode_world_to_cell(mode, self->pos.x, self->pos.z, &my_x, &my_y);
-
-    st = self->state;
-    if (game_actor_get_job((struct GameActor *)self) == 0x10
-        || game_actor_get_job((struct GameActor *)self) == 0xfb1
-        || game_actor_get_job((struct GameActor *)self) == 0xfc7)
-        gate = st == 1 || st == 0 || st == 4 || st == 7 || st == 8;
-    else if ((game_actor_get_job((struct GameActor *)self) >= 0xfce
-              && game_actor_get_job((struct GameActor *)self) < 0x10eb)
-             || game_actor_get_job((struct GameActor *)self) == 0x18
-             || game_actor_get_job((struct GameActor *)self) == 0x19)
-        gate = st == 1 || st == 0 || st == 4 || st == 7 || st == 8 || st >= 0x10;
-    else
-        gate = st == 1 || st == 0 || st == 4;
-    if (!gate)
-        return 1;
-
-    dist = render_object_calc_dist((struct RenderObject *)target, self->pos.x, self->pos.y, self->pos.z);
-    dist = player_dist_beyond_target_radius(target, dist);
-    if ((self->requested_cell_x == my_x && self->requested_cell_y == my_y) || player_in_range(g_session1.attackRange, dist)) {
-        player_attack_now(self);
-        return 1;
-    }
-
-    interval = self->pending != 5 ? 0x1c2 : 0x4b0;
-    due = platform_ticks_ms() > self->move_tick + interval;
-    st = self->state;
-    x = target->cell_x;
-    y = target->cell_y;
-    if (self->pending == 5) {
-        fx = target->pos.x;
-        fz = target->pos.z;
-    } else {
-        game_mode_cell_to_world(mode, x, y, &fx, &fz);
-    }
-    player_shift_cell_by_target_radius(self, target, fx, fz, &y, &x);
-    game_mode_cell_along_line(mode, self->pos.x, self->pos.z, fx, fz, &x, &y, g_session1.attackRange);
-    if (self->requested_cell_x == x && self->requested_cell_y == y)
-        return 1;
-    if (st == 2)
-        return 1;
-    if (self->attack_sent || !due)
-        return 1;
-    self->requested_cell_x = x;
-    self->requested_cell_y = y;
-    self->move_tick = platform_ticks_ms();
-    player_walk_msg(self, x, y);
-    return 1;
-}
-
-static int player_proceed_pickup(struct Player *self, struct GameMode *mode)
-{
-    struct Item *item = world_get_item_by_aid(mode->world, self->target_aid);
-    int my_x, my_y, x, y, item_x, item_y;
-
-    if (!item)
-        return 0;
-    game_mode_world_to_cell(mode, self->pos.x, self->pos.z, &my_x, &my_y);
-    game_mode_world_to_cell(mode, item->base.pos.x, item->base.pos.z, &x, &y);
-    item_x = x;
-    item_y = y;
-    game_mode_step_toward_walkable(mode, &my_x, &my_y, &x, &y);
-    if (self->state != 0 && self->state < 0x10)
-        return 1;
-    if (game_mode_is_within_cells(&my_x, &my_y, &item_x, &item_y, 1)) {
-        render_object_send(self, NULL, 0x10, item_x, item_y, 0, 0);
-        if (!game_mode_is_pickup_requested(mode, self->target_aid)) {
-            game_mode_add_pickup_request(mode, self->target_aid);
-            MODE_SEND1(mode, 0x88, self->target_aid);
-        }
-        return 0;
-    }
-    if (self->requested_cell_x == x && self->requested_cell_y == y)
-        return 1;
-    self->requested_cell_x = x;
-    self->requested_cell_y = y;
-    player_walk_msg(self, x, y);
-    return 1;
-}
-
-static int player_proceed_skill_actor(struct Player *self, struct GameMode *mode)
-{
-    struct GameActor *target;
-    int my_x, my_y, x, y, range;
-    float tx, tz, dist;
-
-    if (self->target_aid == g_session1.ownAid)
-        target = (struct GameActor *)self;
-    else
-        target = world_get_game_actor_by_aid(mode->world, self->target_aid);
-    if (!target)
-        return 0;
-    game_mode_world_to_cell(mode, self->pos.x, self->pos.z, &my_x, &my_y);
-    tx = target->pos.x;
-    x = target->cell_x;
-    tz = target->pos.z;
-    y = target->cell_y;
-    range = skill_attack_range(self->skill_id, self->skill_level);
-    game_mode_cell_along_line(mode, self->pos.x, self->pos.z, tx, tz, &x, &y, range);
-    if (!player_skill_gate(self))
-        return 1;
-    dist = render_object_calc_dist((struct RenderObject *)target, self->pos.x, self->pos.y, self->pos.z);
-    dist = player_dist_beyond_target_radius(target, dist);
-    if (player_in_range(range, dist) || (self->requested_cell_x == my_x && self->requested_cell_y == my_y)) {
-        player_msg(self, 0x2a);
-        return 0;
-    }
-    if (self->requested_cell_x == x && self->requested_cell_y == y)
-        return 1;
-    if (player_swing_holds(self))
-        return 1;
-    self->requested_cell_y = y;
-    self->requested_cell_x = x;
-    player_shift_cell_by_target_radius(self, target, tx, tz, &y, &x);
-    player_walk_msg(self, x, y);
-    return 1;
-}
-
-static int player_proceed_skill_ground(struct Player *self, struct GameMode *mode)
-{
-    int x = self->skill_cell_x, y = self->skill_cell_y, my_x, my_y, range;
-    float fx, fz, dist;
-
-    game_mode_world_to_cell(mode, self->pos.x, self->pos.z, &my_x, &my_y);
-    range = skill_attack_range(self->skill_id, self->skill_level);
-    game_mode_cell_to_world(mode, x, y, &fx, &fz);
-    game_mode_cell_along_line(mode, self->pos.x, self->pos.z, fx, fz, &x, &y, range);
-    if (!player_skill_gate(self))
-        return 1;
-    dist = render_object_calc_dist((struct RenderObject *)self, fx, self->pos.y, fz);
-    if (player_in_range(range, dist) || (self->requested_cell_x == my_x && self->requested_cell_y == my_y)) {
-        player_msg(self, 0x42);
-        return 0;
-    }
-    if (self->requested_cell_x == x && self->requested_cell_y == y)
-        return 1;
-    if (player_swing_holds(self))
-        return 1;
-    self->requested_cell_y = y;
-    self->requested_cell_x = x;
-    player_walk_msg(self, x, y);
-    return 1;
-}
-
-static int player_unit_attackable(struct GameActor *unit)
-{
-    int job = game_actor_get_job(unit);
-
-    return job == 0x8d || job == 0x8f || job == 0x98 || job == 0xda || job == 0xde || job == 0xe6;
-}
-
-static int player_proceed_skill_unit(struct Player *self, struct GameMode *mode)
-{
-    struct GameActor *unit = (struct GameActor *)world_get_skill_by_aid(mode->world, self->target_aid);
-    int my_x, my_y, x, y, range, job;
-    float fx, fz, dist;
-
-    if (!unit)
-        return 0;
-    game_mode_world_to_cell(mode, self->pos.x, self->pos.z, &my_x, &my_y);
-    game_mode_world_to_cell(mode, unit->pos.x, unit->pos.z, &x, &y);
-    range = skill_attack_range(self->skill_id, self->skill_level);
-    if (!MODE_SEND1(mode, 0x5f, 0)) {
-        if (range < 5 && self->skill_id != 0x7c)
-            range = g_session1.attackRange > 5 ? g_session1.attackRange : 5;
-    }
-    game_mode_cell_to_world(mode, x, y, &fx, &fz);
-    game_mode_cell_along_line(mode, self->pos.x, self->pos.z, fx, fz, &x, &y, range);
-    if (!player_skill_gate(self))
-        return 1;
-    dist = render_object_calc_dist((struct RenderObject *)self, fx, self->pos.y, fz);
-    if (player_in_range(range, dist) || (self->requested_cell_x == my_x && self->requested_cell_y == my_y)) {
-        if (player_unit_attackable(unit) && !self->skill_id) {
-            player_attack_now(self);
-            return 1;
-        }
-        player_msg(self, 0x2a);
-        return 0;
-    }
-    if (self->requested_cell_x == x && self->requested_cell_y == y)
-        return 1;
-    if (self->state == 2) {
-        job = game_actor_get_job(unit);
-        if (job != 0x8d && job != 0x8f && job != 0x98)
-            return 1;
-    }
-    self->requested_cell_y = y;
-    self->requested_cell_x = x;
-    player_walk_msg(self, x, y);
-    return 1;
-}
-
-void player_process_proceed(struct Player *self)
-{
-    struct GameMode *mode = game_current_mode();
-    int keep;
-
-    switch (self->pending) {
-    case 1:
-    case 5:
-        keep = player_proceed_attack(self, mode);
-        break;
-    case 2:
-        keep = player_proceed_pickup(self, mode);
-        break;
-    case 3:
-        keep = player_proceed_skill_actor(self, mode);
-        break;
-    case 4:
-        keep = player_proceed_skill_ground(self, mode);
-        break;
-    case 6:
-        keep = player_proceed_skill_unit(self, mode);
-        break;
-    default:
-        return;
-    }
-    if (!keep)
-        player_msg(self, 0xd);
-}
-
-#define MODE_SEND(mode, msg, a, b, c) \
-    mode_send_message((struct Mode *)(mode), (msg), (a), (b), (c), 0)
-
-static int player_busy(const struct Player *self)
-{
-    return self->state == 6 || is_effect_state_hiding(self->effect_state);
+    cast.skill_id = self->skill_id;
+    cast.level = self->skill_level;
+    cast.x = self->skill_cell_x;
+    cast.y = self->skill_cell_y;
+    wnd = ui_window_open(self->skill_id == SKILL_HT_TALKIEBOX ? WND_TALKBOX_TRAP_INPUT : WND_GRAFFITI_STRBOX);
+    if (wnd)
+        ui_window_send(wnd, NULL, SKILL_TEXT_MSG_SET_CELL, (intptr_t)&cast, 0, 0, 0);
 }
 
 static int player_burrow_skill(int skill, int hi, int with_250)
@@ -467,12 +176,16 @@ static int player_burrow_skill(int skill, int hi, int with_250)
     return skill == 0x89 || skill == 0xd4 || skill == 0x211 || skill == 0x212 || (with_250 && skill == 0x250);
 }
 
+/* A walk to a cell that came without its steps: the fork's walk start, and the way to the
+   cell a record says the character stands on (actor_state.c). The walk the player asks for
+   comes as records from the predicted world, with the server's steps (game/own_body.c). */
 static void player_msg_walk(struct Player *self, struct GameMode *mode, const struct ActorMove *move)
 {
     int x, y, sub_x, sub_y;
 
     self->move_request_pending = 0;
     self->path_start = move->start_tick;
+    self->steered = (unsigned char)game_mode_knows_clock(mode);
     if (game_actor_find_path((struct GameActor *)self, move->src_x, move->src_y, move->sub_x, move->sub_y,
                              move->dst_x, move->dst_y, g_session1.walkSpeed)) {
         self->cell_x = move->dst_x;
@@ -546,38 +259,6 @@ static void player_msg_turn(struct Player *self, struct GameMode *mode, int x, i
     MODE_SEND(mode, 0x8b, game_mode_angle_to_direction(self->roty), head, 0);
 }
 
-static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
-{
-    struct GroundSkillUse cast;
-    struct PathInfo path;
-    struct UIWindow *wnd;
-    int x, y, sub_x, sub_y, dir;
-
-    cast.x = self->skill_cell_x;
-    cast.skill_id = self->skill_id;
-    cast.y = self->skill_cell_y;
-    cast.level = self->skill_level;
-    if (cast.skill_id == 0x7d || cast.skill_id == 0xdc) {
-        wnd = ui_window_open(cast.skill_id == 0x7d ? 0x54 : 0x65);
-        ui_window_send(wnd, NULL, 0x44, (intptr_t)&cast, 0, 0, 0);
-        return;
-    }
-    if (cast.skill_id != 0x108) {
-        MODE_SEND(mode, 0x46, (intptr_t)&cast, 0, 0);
-        return;
-    }
-    x = y = sub_x = sub_y = 0;
-    game_mode_world_to_sub_cell(game_current_mode(), self->pos.x, self->pos.z, &x, &y, &sub_x,
-                            &sub_y);
-    path_info_init(&path);
-    dir = 0;
-    if (path_finder_find_path(&g_pathFinder, platform_ticks_ms(), x, y, sub_x, sub_y, self->skill_cell_x,
-                              self->skill_cell_y, 0x96, &path, 0xf) == 1)
-        dir = path_info_end_direction(&path);
-    MODE_SEND(mode, 0x46, (intptr_t)&cast, dir, 0);
-    path_info_destroy(&path);
-}
-
 void player_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4)
 {
@@ -585,9 +266,12 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
 
     struct GameMode *mode = game_current_mode();
     int p1 = (int)par1, p1_hi = (int)(par1 >> 32), p2 = (int)par2, p2_hi = (int)(par2 >> 32), p3 = (int)par3;
-    struct GameActor *actor;
     int st;
 
+    /* A swing announced while a move of the player is under way to the server: that move
+       cancels it there, so it is not shown here. */
+    if (msg == ACTOR_MSG_SWING_BEGIN && game_mode_own_body_walk_waits())
+        return;
     if (msg < 0 || msg > 0x95)
         {
             pc_send_msg(object, source, msg, par1, par2, par3, par4);
@@ -607,36 +291,22 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         self->requested_cell_y = p2;
         break;
     case 0xa:
-        if (player_busy(self))
-            break;
-        actor = world_get_game_actor_by_aid(mode->world, p1);
-        if (!actor)
-            break;
+        self->asked_walk = 0;
+        self->intent_skill = 0;
         self->target_aid = p1;
-        self->attack_sent = 0;
-        self->attack_kind = p2;
-        self->attacks = 0;
-        self->pending = (unsigned)(g_session1.walkSpeed * 4 / 3) < (unsigned)actor->walk_speed ? 5 : 1;
+        self->intent_hold = p2 == 1;
+        game_mode_send_intent(mode, INTENT_ATTACK, p2, (unsigned)p1, 0, 0, 0, 0);
         break;
     case 0xd:
-        self->attack_sent = 0;
-        self->pending = 0;
+        self->asked_walk = 0;
+        self->intent_skill = 0;
+        self->intent_hold = 0;
         MODE_SEND(mode, 0x1a, 0, 0, 0);
         break;
     case 0xf:
-        if (self->pending == 3) {
-            MODE_SEND(mode, 0x1a, 0, 0, 0);
-        } else if (self->pending == 1 || self->pending == 5 || self->pending == 6) {
-            int attacks;
-
-            if (!self->attack_kind)
-                break;
-            attacks = self->attacks;
-            self->attack_kind = 2;
-            if (!attacks)
-                break;
-            player_msg(self, 0xd);
-            MODE_SEND(mode, 0x49, 0, 0, 0);
+        if (self->intent_hold) {
+            self->intent_hold = 0;
+            game_mode_send_intent(mode, INTENT_RELEASE, 0, 0, 0, 0, 0, 0);
         }
         break;
     case 0x10:
@@ -645,7 +315,9 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x11:
         player_msg(self, 0xd);
         st = self->state;
-        if (st == 2 || st == 5 || st == 6) {
+        /* In states 5 and 6 the walk waits for the state to end (owed_walk). During a swing it
+           goes out now: the server cancels the swing or lets it land. */
+        if (st == 5 || st == 6) {
             self->owed_walk = 1;
             self->owed_walk_x = p1;
             self->owed_walk_y = p2;
@@ -657,13 +329,13 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         }
         break;
     case 0x12:
-        if (player_busy(self))
+        if (is_effect_state_hiding(self->effect_state))
             break;
-        self->pending = 2;
+        self->asked_walk = 0;
+        self->intent_skill = 0;
+        self->intent_hold = 0;
         self->target_aid = p1;
-        break;
-    case 0x1d:
-        MODE_SEND(mode, 0x89, 0, self->target_aid, 0);
+        game_mode_send_intent(mode, INTENT_PICKUP, 0, (unsigned)p1, 0, 0, 0, 0);
         break;
     case 0x1e:
     case 0x1f:
@@ -674,68 +346,47 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         else if (self->state == 6)
             MODE_SEND(mode, 0x89, 3, self->target_aid, 0);
         break;
-    case 0x28:
-        actor = world_get_game_actor_by_aid(mode->world, self->target_aid);
-        if (actor && actor->object_type == 7)
-            break;
-        MODE_SEND(mode, 0x89, 7, self->target_aid, 0);
-        break;
     case 0x29:
-        if (self->state == 6)
-            break;
         if (is_effect_state_hiding(self->effect_state) && !player_burrow_skill(p2, p2_hi, 1))
             break;
-        self->pending = 3;
+        /* The intent goes out when the level arrives (0x5a). */
+        self->intent_skill = INTENT_SKILL_ACTOR;
+        self->intent_hold = 0;
         self->target_aid = p1;
         self->skill_id = p2;
-        break;
-    case 0x2a:
-        MODE_SEND(mode, 0x45, self->skill_id, self->target_aid, self->skill_level);
+        self->asked_walk = 0;
         break;
     case 0x3c:
-        if (player_busy(self))
-            break;
-        self->pending = self->pending == 1 ? 5 : 1;
-        self->move_tick = platform_ticks_ms() - 0x4b0;
-        self->target_aid = p1;
-        self->attack_sent = 0;
-        self->attacks = 0;
-        self->requested_cell_x = -1;
-        self->requested_cell_y = -1;
+        /* the target is out of reach: the server brings the player into reach, the client does not chase */
         break;
     case 0x41:
-        if (self->state == 6)
-            break;
         if (is_effect_state_hiding(self->effect_state) && !player_burrow_skill(p1, p1_hi, 0))
             break;
-        self->pending = 4;
+        self->intent_skill = INTENT_SKILL_GROUND;
+        self->intent_hold = 0;
         self->skill_id = p1;
         self->skill_cell_x = p2;
         self->skill_cell_y = p3;
         self->target_aid = 0;
-        break;
-    case 0x42:
-        player_msg_ground_cast(self, mode);
+        self->asked_walk = 0;
         break;
     case 0x5a:
         self->skill_level = p1;
+        if (self->intent_skill == INTENT_SKILL_ACTOR)
+            game_mode_send_intent(mode, INTENT_SKILL_ACTOR, 0, (unsigned)self->target_aid, 0, 0, self->skill_id,
+                                  self->skill_level);
+        else if (self->intent_skill == INTENT_SKILL_GROUND && player_ground_text_skill(self->skill_id))
+            player_ask_ground_text(self);
+        else if (self->intent_skill == INTENT_SKILL_GROUND)
+            game_mode_send_intent(mode, INTENT_SKILL_GROUND, 0, 0, self->skill_cell_x, self->skill_cell_y,
+                                  self->skill_id, self->skill_level);
+        self->intent_skill = 0;
         break;
     case 0x5b:
-        if (platform_ticks_ms() > self->held_walk_tick + 0x15e) {
-            self->held_walk_tick = platform_ticks_ms();
-            MODE_SEND(mode, 0x8a, p1, p2, 0);
-        }
-        break;
-    case 0x67:
-        if (player_busy(self))
-            break;
-        self->pending = 6;
-        self->skill_id = ((const struct SkillUse *)MSG_PTR(par2))->skill_id;
-        self->skill_level = ((const struct SkillUse *)MSG_PTR(par2))->level;
-        self->target_aid = p1;
-        self->attack_kind = p3;
-        self->attack_sent = 0;
-        self->attacks = 0;
+        /* kept, the newest winning: it goes out with the frame (player_on_process) */
+        self->asked_walk = 1;
+        self->asked_walk_x = p1;
+        self->asked_walk_y = p2;
         break;
     case 0x95:
         path_info_clear(&self->path);
@@ -836,22 +487,21 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->path_cell = -1;
     self->move_request_tick = 0;
     self->move_request_pending = 0;
-    self->pending = 0;
-    self->attack_kind = 0;
-    self->attacks = 0;
-    self->attack_sent = 0;
     self->target_aid = 0;
     self->pickable = 1;
     self->skill_id = 0;
     self->skill_level = 0;
-    self->move_tick = platform_ticks_ms() - 1200;
-    self->attack_tick = platform_ticks_ms() - 1200;
     self->screen_x = g_renderer->centreX;
     self->screen_y = g_renderer->centreY;
     self->owed_walk = 0;
     self->owed_walk_x = -1;
     self->owed_walk_y = -1;
-    self->held_walk_tick = platform_ticks_ms() - 1200;
+    self->asked_walk = 0;
+    self->asked_walk_x = -1;
+    self->asked_walk_y = -1;
+    self->steered = 0;
+    self->intent_skill = 0;
+    self->intent_hold = 0;
     actor_set_state(self, 0, 1);
     self->walk_speed = g_session1.walkSpeed;
     self->is_pc = 1;

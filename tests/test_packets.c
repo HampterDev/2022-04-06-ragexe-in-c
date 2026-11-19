@@ -22,9 +22,13 @@ struct PacketLengthInfo *packet_table_get_length(struct PacketTable *table,
 
 void connection_reset_queues(struct Connection *connection)
 {
+    int channel;
+
     assert(connection == rag_connection_transport(rag_connection_instance()));
-    byte_queue_reset(&connection->recv_queue, CONNECTION_QUEUE_SIZE);
-    byte_queue_reset(&connection->send_queue, CONNECTION_QUEUE_SIZE);
+    for (channel = 0; channel < PLATFORM_SOCKET_CHANNELS; channel++) {
+        byte_queue_reset(&connection->recv_queue[channel], CONNECTION_QUEUE_SIZE);
+        byte_queue_reset(&connection->send_queue[channel], CONNECTION_QUEUE_SIZE);
+    }
     byte_queue_reset(&connection->held, CONNECTION_QUEUE_SIZE);
     ++reset_calls;
 }
@@ -36,6 +40,15 @@ char connection_flush(struct Connection *connection)
     return 1;
 }
 
+/* Everything is kept in the world channel's queue, and the channel it was sent on is noted. */
+static int last_channel;
+
+void connection_queue_send(struct Connection *connection, int channel, int count, const void *bytes)
+{
+    last_channel = channel;
+    byte_queue_write(&connection->send_queue[0], count, bytes);
+}
+
 struct RagConnection *rag_connection_construct(struct RagConnection *connection)
 {
     memset(connection, 0, sizeof *connection);
@@ -45,8 +58,12 @@ struct RagConnection *rag_connection_construct(struct RagConnection *connection)
 
 void connection_destruct(struct Connection *connection)
 {
-    byte_queue_destroy(&connection->send_queue);
-    byte_queue_destroy(&connection->recv_queue);
+    int channel;
+
+    for (channel = 0; channel < PLATFORM_SOCKET_CHANNELS; channel++) {
+        byte_queue_destroy(&connection->send_queue[channel]);
+        byte_queue_destroy(&connection->recv_queue[channel]);
+    }
     byte_queue_destroy(&connection->held);
 }
 
@@ -63,6 +80,7 @@ static void test_all_packet_ids(struct RagConnection *connection)
     unsigned id;
     int mode, i, before, length;
     unsigned char packet[32], expected[32];
+    int on_channel[PLATFORM_SOCKET_CHANNELS] = {0};
 
     for (id = 0; id <= 0xffff; ++id) {
         for (i = 0; i < sizeof packet; ++i)
@@ -72,7 +90,7 @@ static void test_all_packet_ids(struct RagConnection *connection)
         memcpy(expected, packet, sizeof expected);
         length = 2 + id % 31;
         for (mode = 0; mode < 3; ++mode) {
-            byte_queue_reset(&connection->base.send_queue, 0);
+            byte_queue_reset(&connection->base.send_queue[0], 0);
             byte_queue_reset(&connection->base.held, 0);
             connection->base.hold_sends = mode == 1;
             connection->base.socket = mode == 2 ? NULL : OPEN_SOCKET;
@@ -81,17 +99,23 @@ static void test_all_packet_ids(struct RagConnection *connection)
             assert(!memcmp(packet, expected, sizeof packet));
             assert(flush_calls == before + (mode == 0));
             if (mode == 0) {
-                expect_bytes(&connection->base.send_queue, expected, length);
+                on_channel[last_channel]++;
+                expect_bytes(&connection->base.send_queue[0], expected, length);
                 assert(byte_queue_size(&connection->base.held) == 0);
             } else if (mode == 1) {
                 expect_bytes(&connection->base.held, expected, length);
-                assert(byte_queue_size(&connection->base.send_queue) == 0);
+                assert(byte_queue_size(&connection->base.send_queue[0]) == 0);
             } else {
-                assert(byte_queue_size(&connection->base.send_queue) == 0);
+                assert(byte_queue_size(&connection->base.send_queue[0]) == 0);
                 assert(byte_queue_size(&connection->base.held) == 0);
             }
         }
     }
+    /* one packet is never resent, 46 are text and lists, 8 are the player's requests and their
+       stamp, everything else is the world's */
+    assert(on_channel[PLATFORM_CHANNEL_NEWEST] == 1 && on_channel[PLATFORM_CHANNEL_LISTS] == 46);
+    assert(on_channel[PLATFORM_CHANNEL_DELIVERY] == 8);
+    assert(on_channel[PLATFORM_CHANNEL_WORLD] == 0x10000 - 55);
 }
 
 int main(void)
@@ -99,7 +123,7 @@ int main(void)
     static const unsigned char packet[] = { 0x34, 0x12, 1, 2, 3, 4 };
     static const unsigned char variable[] = { 0x35, 0x12, 7, 0, 9, 8, 7 };
     struct RagConnection *connection = rag_connection_instance();
-    struct ByteQueue *received = &connection->base.recv_queue;
+    struct ByteQueue *received = &connection->base.recv_queue[0];
     unsigned char output[32];
     unsigned short length = 0xeeee;
 
@@ -115,7 +139,7 @@ int main(void)
     assert(g_session1.lastSendTime == 0x76543210);
     assert(flush_calls == 0);
     assert(rag_connection_send_packet(connection, sizeof packet, packet));
-    expect_bytes(&connection->base.send_queue, packet, sizeof packet);
+    expect_bytes(&connection->base.send_queue[0], packet, sizeof packet);
     assert(packet[0] == 0x34 && packet[1] == 0x12);
     assert(flush_calls == 1);
 
@@ -160,13 +184,13 @@ int main(void)
             framed[3] = 0;
             memcpy(framed + 4, packet, sizeof packet);
             byte_queue_write(received, sizeof framed, framed);
-            byte_queue_write(&connection->base.send_queue, 2, packet);
+            byte_queue_write(&connection->base.send_queue[0], 2, packet);
             previous = reset_calls;
             length = 0xeeee;
             assert(!rag_connection_get_packet(connection, output, &length));
             assert(reset_calls == previous + 1 && length == 0xeeee);
             assert(byte_queue_size(received) == 0);
-            assert(byte_queue_size(&connection->base.send_queue) == 0);
+            assert(byte_queue_size(&connection->base.send_queue[0]) == 0);
             assert(byte_queue_size(&connection->base.held) == 0);
             assert(!rag_connection_get_packet(connection, output, &length));
             assert(reset_calls == previous + 1);
@@ -211,7 +235,90 @@ int main(void)
         assert(length == sizeof unknown && memcmp(unknown, output, length) == 0);
         assert(byte_queue_size(received) == 0 && reset_calls == 8);
     }
+    {
+        /* A queued packet waits, and leaves in one flush with the packet sent after it. */
+        unsigned char both[sizeof variable + sizeof packet];
+        int before = flush_calls;
+
+        memcpy(both, variable, sizeof variable);
+        memcpy(both + sizeof variable, packet, sizeof packet);
+        connection->base.socket = OPEN_SOCKET;
+        connection->base.hold_sends = 0;
+        byte_queue_reset(&connection->base.send_queue[0], 0);
+        byte_queue_reset(&connection->base.held, 0);
+        assert(!rag_connection_queue_packet(connection, 1, variable));
+        assert(!rag_connection_queue_packet(connection, sizeof variable, NULL));
+        assert(rag_connection_queue_packet(connection, sizeof variable, variable));
+        expect_bytes(&connection->base.send_queue[0], variable, sizeof variable);
+        assert(flush_calls == before);
+        assert(rag_connection_send_packet(connection, sizeof packet, packet));
+        expect_bytes(&connection->base.send_queue[0], both, sizeof both);
+        assert(flush_calls == before + 1);
+
+        byte_queue_reset(&connection->base.send_queue[0], 0);
+        connection->base.hold_sends = 1;
+        assert(rag_connection_queue_packet(connection, sizeof variable, variable));
+        assert(rag_connection_send_packet(connection, sizeof packet, packet));
+        expect_bytes(&connection->base.held, both, sizeof both);
+        assert(byte_queue_size(&connection->base.send_queue[0]) == 0);
+        connection->base.socket = NULL;
+        assert(rag_connection_queue_packet(connection, sizeof variable, variable));
+        expect_bytes(&connection->base.held, both, sizeof both);
+        assert(flush_calls == before + 1);
+    }
+    {
+        /* The channel a packet leaves on: the timed request, a whisper, a mail request, the
+           delivery piece's for an input stamp and each request it goes before (a move, an act,
+           a stop, a skill on an actor, on the ground and with a text, an intent), and the
+           world's for chat said aloud, a turn, an item used and the pickup nothing sends. */
+        static const struct { unsigned short id; int channel; } sends[] = {
+            { 0x0360, PLATFORM_CHANNEL_NEWEST },   { 0x0096, PLATFORM_CHANNEL_LISTS },    { 0x09e8, PLATFORM_CHANNEL_LISTS },
+            { 0x0f01, PLATFORM_CHANNEL_DELIVERY }, { 0x035f, PLATFORM_CHANNEL_DELIVERY }, { 0x0437, PLATFORM_CHANNEL_DELIVERY },
+            { 0x0118, PLATFORM_CHANNEL_DELIVERY }, { 0x0438, PLATFORM_CHANNEL_DELIVERY }, { 0x0af4, PLATFORM_CHANNEL_DELIVERY },
+            { 0x0367, PLATFORM_CHANNEL_DELIVERY }, { 0x0f02, PLATFORM_CHANNEL_DELIVERY }, { 0x0362, PLATFORM_CHANNEL_WORLD },
+            { 0x008c, PLATFORM_CHANNEL_WORLD },    { 0x0361, PLATFORM_CHANNEL_WORLD },    { 0x0439, PLATFORM_CHANNEL_WORLD },
+        };
+        unsigned char bytes[4] = {0};
+        unsigned i;
+
+        connection->base.socket = OPEN_SOCKET;
+        connection->base.hold_sends = 0;
+        for (i = 0; i < sizeof sends / sizeof sends[0]; i++) {
+            memcpy(bytes, &sends[i].id, 2);
+            last_channel = -1;
+            assert(rag_connection_send_packet(connection, sizeof bytes, bytes));
+            assert(last_channel == sends[i].channel);
+        }
+        /* held packets leave on the world channel later, whatever they are */
+        byte_queue_reset(&connection->base.send_queue[0], 0);
+    }
+    {
+        /* Reading: a whole packet of any channel is taken, the world's first, and half a packet
+           on one channel does not hold up another's. */
+        struct ByteQueue *world = &connection->base.recv_queue[PLATFORM_CHANNEL_WORLD];
+        struct ByteQueue *lists = &connection->base.recv_queue[PLATFORM_CHANNEL_LISTS];
+        struct ByteQueue *newest = &connection->base.recv_queue[PLATFORM_CHANNEL_NEWEST];
+
+        byte_queue_reset(world, 0);
+        byte_queue_reset(lists, 0);
+        byte_queue_reset(newest, 0);
+        byte_queue_write(lists, sizeof variable, variable);
+        byte_queue_write(newest, sizeof packet, packet);
+        byte_queue_write(world, 3, packet);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof variable && memcmp(variable, output, length) == 0);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof packet && memcmp(packet, output, length) == 0);
+        assert(!rag_connection_get_packet(connection, output, &length));
+        byte_queue_write(world, sizeof packet - 3, packet + 3);
+        byte_queue_write(lists, sizeof variable, variable);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof packet && memcmp(packet, output, length) == 0);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof variable && memcmp(variable, output, length) == 0);
+        assert(!rag_connection_get_packet(connection, output, &length) && reset_calls == 8);
+    }
     test_all_packet_ids(connection);
-    puts("Packets: framing, short framed lengths, packets below their table minimum read with zeroed tails, partial reads, immutable plain sends, holding, disconnected sends and 196608 packet-ID/send-mode cases passed.");
+    puts("Packets: framing, short framed lengths, packets below their table minimum read with zeroed tails, partial reads, immutable plain sends, queued sends leaving with the next packet, the channel of what is sent, reading from three channels, holding, disconnected sends and 196608 packet-ID/send-mode cases passed.");
     return 0;
 }

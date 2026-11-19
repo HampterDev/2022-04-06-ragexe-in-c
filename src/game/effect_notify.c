@@ -13,6 +13,7 @@
 #include "effects/effect_controls.h"
 #include "actor/actor_common.h"
 #include "actor/game_actor.h"
+#include "actor/cast_stop.h"
 #include "effects/skills/emitter_effect.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
@@ -569,40 +570,15 @@ struct PacketDispel {
 };
 #pragma pack(pop)
 
-enum {
-    ACTOR_MSG_PROGRESS_STOP = 0x53,
-    ACTOR_MSG_CAST_EFFECT_STOP = 0x54,
-    ACTOR_MSG_TARGET_EFFECT_STOP = 0x57,
-    ACTOR_STATE_CASTING = 8,
-};
-
-static void dispel_messages(struct GameActor *actor)
-{
-    render_object_send(actor, NULL, ACTOR_MSG_CAST_EFFECT_STOP, 0, 0, 0, 0);
-    render_object_send(actor, NULL, ACTOR_MSG_TARGET_EFFECT_STOP, 0, 0, 0, 0);
-    render_object_send(actor, NULL, ACTOR_MSG_PROGRESS_STOP, 0, 0, 0, 0);
-}
-
-static void leave_state_8(struct GameActor *actor)
-{
-    if (actor->state == ACTOR_STATE_CASTING)
-        actor_set_state(actor, 0, 1);
-}
-
 void game_mode_zc_dispel(struct GameMode *self, const struct PacketDispel *packet)
 {
     struct GameActor *actor;
 
     if ((int)packet->aid == g_session1.ownAid) {
-        actor = (struct GameActor *)self->world->player;
-        dispel_messages(actor);
-        leave_state_8(actor);
+        game_actor_stop_cast((struct GameActor *)self->world->player, 1);
         return;
     }
     actor = world_get_game_actor_by_aid(self->world, packet->aid);
-    if (!actor)
-        return;
-    dispel_messages(actor);
-    effect_mgr_remove_type(g_effectMgr, packet->aid, EF_WARNING_PLANE);
-    leave_state_8(actor);
+    if (actor)
+        game_actor_stop_cast(actor, 0);
 }

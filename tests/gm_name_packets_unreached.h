@@ -68,6 +68,10 @@ struct Connection *rag_connection_transport(struct RagConnection *arg0)
 {
     abort();
 }
+char rag_connection_queue_packet(struct RagConnection *arg0, int arg1, const void *arg2)
+{
+    abort();
+}
 intptr_t game_mode_send_msg(struct Mode *arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5)
 {
     abort();
@@ -148,6 +152,14 @@ unsigned char clientinfo_is_admin_aid(int arg0)
     abort();
 }
 unsigned char clientinfo_is_yellow_aid(int arg0)
+{
+    abort();
+}
+unsigned int clock_sync_now(struct ClockSync *arg0, unsigned int arg1)
+{
+    abort();
+}
+DWORD session_get_server_time(struct Session *arg0)
 {
     abort();
 }

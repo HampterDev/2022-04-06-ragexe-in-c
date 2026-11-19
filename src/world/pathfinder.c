@@ -1,4 +1,7 @@
 #include "world/pathfinder_state.h"
+#include "body/grid_path.h"
+#include "world/move_track.h"
+#include "body/body.h"
 #include "resources/attr.h"
 #include "core/numeric.h"
 #include "render/math3d.h"
@@ -59,6 +62,7 @@ void path_finder_destruct(struct PathFinder *self)
         free(self->maps[i].file);
     }
     free(self->maps);
+    free(self->walkable);
     memset(self, 0, sizeof *self);
 }
 
@@ -67,6 +71,13 @@ void path_finder_set_attr(struct PathFinder *self, struct C3dAttr *attr)
     if (self->attr != attr)
         path_finder_clear_search(self);
     self->attr = attr;
+    path_finder_cells_changed(self);
+}
+
+void path_finder_cells_changed(struct PathFinder *self)
+{
+    free(self->walkable);
+    self->walkable = NULL;
 }
 
 static int map_name_compare(const char *name, size_t length, const struct PathMapEntry *entry)
@@ -360,6 +371,83 @@ static float start_offset(int cell, int sub)
     if (cell > 0)
         f = (float)((double)cell - 0.5 + (double)f);
     return f;
+}
+
+/* The map as the server's search reads it: a cell is walkable unless its type blocks walking
+   or it lies in the map's last row or last column. */
+static const unsigned char *server_grid(struct PathFinder *self)
+{
+    struct C3dAttr *attr = self->attr;
+    int x, y;
+
+    if (self->walkable)
+        return self->walkable;
+    if (attr->width <= 0 || attr->height <= 0)
+        return NULL;
+    self->walkable = malloc((size_t)attr->width * (size_t)attr->height);
+    if (!self->walkable)
+        return NULL;
+    for (y = 0; y < attr->height; y++)
+        for (x = 0; x < attr->width; x++) {
+            struct AttrCell *cell = c3d_attr_get_cell(attr, x, y);
+
+            self->walkable[(size_t)y * (size_t)attr->width + (size_t)x] =
+                cell && cell->type != CELL_BLOCKED && cell->type != CELL_BLOCKED_SNIPE
+                && x < attr->width - 1 && y < attr->height - 1;
+        }
+    return self->walkable;
+}
+
+/* The map as the server's path search reads it. Returns 0 without one. */
+static int server_map(struct PathFinder *self, struct GridPathMap *map)
+{
+    if (!self->attr)
+        return 0;
+    map->walkable = server_grid(self);
+    if (!map->walkable)
+        return 0;
+    map->width = self->attr->width;
+    map->height = self->attr->height;
+    return 1;
+}
+
+/* The body core's working memory for the questions about the player's own character. */
+static int32_t own_scratch[(BODY_SCRATCH_SIZE + sizeof(int32_t) - 1) / sizeof(int32_t)];
+
+BYTE path_finder_body_ground(struct PathFinder *self, struct BodyGround *ground, int *width, int *height)
+{
+    struct GridPathMap map;
+
+    if (!server_map(self, &map))
+        return 0;
+    ground->walkable = map.walkable;
+    ground->scratch = own_scratch;
+    *width = map.width;
+    *height = map.height;
+    return 1;
+}
+
+BYTE path_finder_record_path(struct PathFinder *self, const struct MoveRecord *record, struct PathInfo *info)
+{
+    struct MoveCell cells[MOVE_TRACK_STEPS + 1];
+    int count = move_record_cells(record, cells), i;
+
+    if (!self->attr)
+        return 0;
+    for (i = 0; i < count; i++)
+        if (cells[i].x < 0 || cells[i].y < 0 || cells[i].x >= self->attr->width || cells[i].y >= self->attr->height)
+            return 0;
+    if (!path_info_resize(info, (size_t)count))
+        return 0;
+    info->startX = start_offset(record->x, 8);
+    info->startY = start_offset(record->y, 8);
+    for (i = 0; i < count; i++) {
+        info->cells[i].x = cells[i].x;
+        info->cells[i].y = cells[i].y;
+        info->cells[i].dir = cells[i].dir;
+        info->cells[i].time = cells[i].tick;
+    }
+    return 1;
 }
 
 BYTE path_finder_find_path(struct PathFinder *self, DWORD startTime, int sx, int sy,

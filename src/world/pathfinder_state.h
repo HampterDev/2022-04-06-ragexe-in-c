@@ -14,6 +14,8 @@ struct PathFinder {
     struct PathMapEntry *maps;
     size_t map_count, map_capacity;
     unsigned char useHeapNodes;
+    /* `attr` as the server's path search reads it (body/grid_path.h), built on first use. */
+    unsigned char *walkable;
 };
 
 void path_finder_construct(struct PathFinder *self);
@@ -21,8 +23,19 @@ void path_finder_destruct(struct PathFinder *self);
 unsigned char path_finder_find_path(struct PathFinder *self, DWORD startTime,
     int sx, int sy, int subX, int subY, int tx, int ty, int speed,
     struct PathInfo *info, int kind);
+/* The walk of a ZC_TRACK_MOVE record with steps, as the server timed it; nothing is searched.
+   Returns 0 and leaves `info` alone when a cell of it is off the map. */
+struct MoveRecord;
+unsigned char path_finder_record_path(struct PathFinder *self, const struct MoveRecord *record,
+    struct PathInfo *info);
+/* This map as the body core reads it (body/body.h): its cells and the working memory of a path
+   search, with its sides. Returns 0 without a map. */
+struct BodyGround;
+unsigned char path_finder_body_ground(struct PathFinder *self, struct BodyGround *ground, int *width, int *height);
 void path_finder_clear_search(struct PathFinder *self);
 void path_finder_set_attr(struct PathFinder *self, struct C3dAttr *attr);
+/* A cell of `attr` changed: what was built from the cells is built again on its next use. */
+void path_finder_cells_changed(struct PathFinder *self);
 unsigned char path_finder_use_map_attr(struct PathFinder *self, const char *name, size_t length);
 unsigned char path_finder_cell_walkable(struct PathFinder *self, int x, int y);
 

@@ -81,7 +81,6 @@ struct Item *world_get_item_by_aid(struct World *w,int aid)
 void *list_insert(struct List *l,struct ListNode *where,const void *value,size_t size)
 { struct ListNode *n=malloc(sizeof *n+size);assert(l && n && value);memcpy(n+1,value,size);n->next=where;n->prev=where->prev;where->prev->next=n;where->prev=n;++l->size;return n+1; }
 BYTE world_remove_item(struct World *w,int aid) { (void)w;(void)aid;abort(); }
-void game_mode_remove_pickup_request(struct GameMode *m, unsigned aid) { (void)m;(void)aid;abort(); }
 
 void able_to_make_effect_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg a, RenderMsgArg b, RenderMsgArg c, RenderMsgArg d)

@@ -1,6 +1,7 @@
 #include "ui/window_types.h"
 #include "actor/actor_spawns.h"
 #include "actor/actor_ops.h"
+#include "actor/game_actor.h"
 #include "actor/object_ops.h"
 #include "actor/render_ops.h"
 #include "ui/window_access.h"
@@ -301,6 +302,20 @@ unsigned char pc_process_state(struct GameActor * base_actor)
     if (!game_actor_process_fade_out(actor))
         return 0;
     switch (self->state) {
+    case 2: case 3: case 6: case 7: case 8: case 45: case 51:
+        /* These states are drawn here and never reach game_actor_process_state, which keeps the
+           time of the actor's last frame. A walk measures its first step from that time, so one
+           that started out of a swing was drawn as far into its first cell as the swing had
+           lasted: the character leapt ahead when it walked off in the middle of an attack. */
+        self->process_server_time = game_actor_walk_time(actor);
+        /* Nor would they reach the play of the move track there: a record whose tick has come
+           is played in these states too. The server has the character walk, so it walks, out of
+           an attack's animation as out of standing; left to wait for the animation's end, the
+           character stood for most of a second while its body walked on. */
+        game_actor_play_move_track(actor);
+        break;
+    }
+    switch (self->state) {
     case 2: case 7: case 45:
         render_object_update_motion((struct RenderObject *)self);
         if (self->motion_finished)
@@ -466,6 +481,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         game_actor_set_state(actor, accepts ? 9 : 2, snap);
         self->attack_motion_count = session_get_job_float(&g_session1, game_actor_get_job(actor), self->sex,
                                              (int)self->weapon, accepts);
+        game_actor_pace_attack(actor);
         kind = (int)self->weapon;
         if (kind > 0x69)
             kind = session_get_weapon_view_id(kind);
@@ -528,6 +544,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         t = session_get_job_float(&g_session1, game_actor_get_job(actor), self->sex,
                                  (int)self->weapon, accepts);
         self->attack_motion_count = t;
+        game_actor_pace_attack(actor);
         if (self->weapon == 0xe || self->weapon == 0xd)
             pc_shoot(self, t * self->motion_delay, 0);
         break;

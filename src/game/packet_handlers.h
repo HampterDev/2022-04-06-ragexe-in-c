@@ -382,6 +382,15 @@ void game_mode_zc_req_ach_reward_ack(struct GameMode *self, unsigned result, int
 void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, int start_time,
                         int attack_mt, int attacked_mt, int damage, int count, int action,
                         int left_damage, int is_sp_damage);
+void game_mode_zc_hold_back(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_time_sync(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_track_act(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_track_vitals(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_notice_hit(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_own_intent(struct GameMode *self, const unsigned char *pkt);
+/* Plays the acts, hits and HP whose tick has come. Once a frame. */
+void game_mode_play_tracks(struct GameMode *self);
 void game_mode_on_ack_req_name_all2(struct GameMode *self, const struct PacketAckReqNameAll2 *packet);
 void game_mode_zc_attack_failure_for_distance(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_attack_range(const unsigned char *pkt);

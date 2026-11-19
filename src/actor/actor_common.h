@@ -8,7 +8,6 @@
 #include "game/cells.h"
 #include "game/mode_misc.h"
 #include "game/mode_util.h"
-#include "game/pickup_requests.h"
 #include "game/quest_marks.h"
 #include "skills/skill_action.h"
 #include "game/world_objects.h"

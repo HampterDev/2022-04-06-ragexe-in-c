@@ -1,6 +1,5 @@
 #include "game/actor_packets.h"
 #include "game/ground_item_packets.h"
-#include "game/pickup_requests.h"
 #include "session/state.h"
 #include "ui/window_access.h"
 #include <stdlib.h>
@@ -16,11 +15,6 @@
 #include "session/session_items.h"
 #include "session/session_party.h"
 #include "ui/wndmgr/wndmgr.h"
-
-static void clear_pickup_requests(struct GameMode *self)
-{
-    list_clear(&self->pickup_requests, NULL);
-}
 
 #define WINDOW_ITEM_OBTAIN 0x3a
 #define WINDOW_MENU_ICON 0x133
@@ -250,7 +244,6 @@ void game_mode_item_pickup_ack(struct GameMode *self, const unsigned char *pkt)
     struct String name = {0};
     int count;
 
-    clear_pickup_requests(self);
     if (packet->result == 0) {
         read_old_ack(&item, packet);
 
@@ -302,7 +295,6 @@ void game_mode_item_pickup_ack2(struct GameMode *self, const unsigned char *pkt)
     struct ItemInfo item, old;
     int count;
 
-    clear_pickup_requests(self);
     if (ack->result == 0) {
         read_old_ack(&item, ack);
         item.expire_time = packet->expire_time;
@@ -338,7 +330,6 @@ void game_mode_item_pickup_ack3(struct GameMode *self, const unsigned char *pkt)
     struct ItemInfo item, old;
     int count;
 
-    clear_pickup_requests(self);
     if (ack->result == 0) {
         read_old_ack(&item, ack);
         item.expire_time = packet->expire_time;
@@ -440,7 +431,6 @@ void game_mode_item_pickup_ack_v5(struct GameMode *self, unsigned short index, u
     struct Pickup p;
     struct ItemInfo item;
 
-    clear_pickup_requests(self);
     p.index = index;
     p.count = count;
     p.item_id = item_id;
@@ -489,7 +479,6 @@ void game_mode_item_pickup_ack_v6(struct GameMode *self, const unsigned char *pk
     struct Pickup p;
     struct ItemInfo item;
 
-    clear_pickup_requests(self);
     read_v6(&p, &packet->v5);
     if (packet->v5.result == 0) {
         read_pickup(&item, &p);
@@ -513,7 +502,6 @@ void game_mode_item_pickup_ack_v7(struct GameMode *self, const unsigned char *pk
     struct Pickup p;
     struct ItemInfo item;
 
-    clear_pickup_requests(self);
     read_v6(&p, v5);
     if (v5->result == 0 || v5->result == 3) {
         read_pickup(&item, &p);
@@ -536,7 +524,6 @@ void game_mode_item_pickup_ack_v8(struct GameMode *self, const unsigned char *pk
     struct Pickup p;
     struct ItemInfo item;
 
-    clear_pickup_requests(self);
     p.index = packet->index;
     p.count = packet->count;
     p.item_id = packet->item_id;
@@ -592,35 +579,6 @@ void game_mode_item_pickup_party(const unsigned char *pkt)
         item_info_destruct(&item);
     }
     party_member_info_destroy(&member);
-}
-
-void game_mode_add_pickup_request(struct GameMode *self, unsigned item_aid)
-{
-    list_push_back(&self->pickup_requests, &item_aid, sizeof item_aid);
-}
-
-char game_mode_is_pickup_requested(struct GameMode *self, unsigned item_aid)
-{
-    struct ListNode *head = self->pickup_requests.head;
-    struct ListNode *node;
-
-    for (node = head->next; node != head; node = node->next)
-        if (*LIST_VALUE(node, unsigned) == item_aid)
-            return 1;
-    return 0;
-}
-
-void game_mode_remove_pickup_request(struct GameMode *self, unsigned item_aid)
-{
-    struct ListNode *head = self->pickup_requests.head;
-    struct ListNode *node;
-
-    for (node = head->next; node != head; node = node->next) {
-        if (*LIST_VALUE(node, unsigned) == item_aid) {
-            list_erase(&self->pickup_requests, node, NULL);
-            return;
-        }
-    }
 }
 
 void game_mode_zc_item_pickup_ack_v5(struct GameMode *self, const unsigned char *pkt)

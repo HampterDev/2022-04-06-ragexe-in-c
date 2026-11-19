@@ -1,7 +1,6 @@
 #include "game/actor_packets.h"
 #include "game/gamemode.h"
 #include "game/ground_item_packets.h"
-#include "game/pickup_requests.h"
 #include "game/ground_item.h"
 #include "world/object_lookup.h"
 #include <stdlib.h>
@@ -87,5 +86,4 @@ void game_mode_zc_item_disappear(struct GameMode *self, const unsigned char *pkt
     const struct PACKET_ZC_ITEM_DISAPPEAR *packet = (const struct PACKET_ZC_ITEM_DISAPPEAR *)pkt;
 
     world_remove_item(self->world, packet->aid);
-    game_mode_remove_pickup_request(self, packet->aid);
 }

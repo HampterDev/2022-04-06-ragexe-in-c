@@ -56,7 +56,6 @@ static void clear_lists(struct GameMode *self)
 {
     name_card_holder_clear(&self->actor_names);
     tree_clear(&self->unit_cells, NULL);
-    list_clear(&self->pickup_requests, NULL);
     self->popup_entries.last = self->popup_entries.first;
     tree_clear(&self->square_marks, NULL);
     tree_clear(&self->ping_marks, NULL);
@@ -171,6 +170,19 @@ void game_mode_initialize(struct GameMode *self)
     self->right_press_x = g_mouse.x;
     self->right_press_y = g_mouse.y;
     self->server_move_pending = 0;
+    self->open_swing_count = 0;
+    own_swing_reset(&self->own_swing);
+    self->hold_back_ms = 0;
+    clock_sync_reset(&self->clock_sync);
+    way_up_reset(&self->way_up);
+    render_delay_reset(&self->render_delay);
+    timed_queue_clear(&self->tracks);
+    self->aimed_waiting_count = 0;
+    record_wait_clear(&self->record_wait);
+    self->input_seq = 0;
+    self->move_seq = 0;
+    self->stamp_tick = 0;
+    self->intent_seq = 0;
     self->npc_dialog_open = 0;
     self->player_dead = 0;
     self->name_balloon = 0;

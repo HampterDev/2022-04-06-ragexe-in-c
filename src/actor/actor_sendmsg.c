@@ -523,6 +523,12 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
     case 0x0b:
         game_actor_msg_attack(self, MSG_PTR(par1));
         break;
+    case ACTOR_MSG_SWING_BEGIN:
+        game_actor_swing_begin(self, (int)par1, (int)par2, (int)par3);
+        break;
+    case ACTOR_MSG_SWING_CANCEL:
+        game_actor_swing_cancel(self);
+        break;
     case 0x0c:
         if (self->state != 3)
             actor_set_state(self, 3, 1);

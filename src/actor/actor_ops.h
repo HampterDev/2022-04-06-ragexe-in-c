@@ -302,6 +302,12 @@ int *game_actor_get_request(struct GameActor *actor, int value0);
 int *game_actor_get_request2(struct GameActor *actor, int value0);
 void game_actor_make_corpse(struct GameActor *actor);
 unsigned char game_actor_process_state(struct GameActor *actor);
+/* The clock `actor`'s walk is drawn on, now: the time game_actor_process_state keeps as that of
+   the actor's last frame. */
+unsigned game_actor_walk_time(struct GameActor *actor);
+/* Plays the record of the actor's move track whose tick has come, and starts a walk that waited for its
+   first step: once a frame, in whatever state the actor is drawn. */
+void game_actor_play_move_track(struct GameActor *actor);
 void game_actor_set_attack_speed(struct GameActor *actor, int value0);
 void game_actor_set_guild(struct GameActor *actor, int value0, int value1);
 void game_actor_set_guild_id(struct GameActor *actor, int value0);

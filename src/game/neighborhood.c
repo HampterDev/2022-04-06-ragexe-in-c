@@ -1,5 +1,4 @@
 #include "game/packet_handlers.h"
-#include "game/pickup_requests.h"
 #include "navi/navi_manager.h"
 #include "session/state.h"
 #include <string.h>
@@ -46,9 +45,7 @@ void game_mode_on_remove_neighborhood_characters(struct GameMode *self, int coun
 
         if (world_remove_actor_by_aid(self->world, aid) == 1)
             mode_send_msg(self, MODE_MSG_ACTOR_REMOVED, aid, 0, 0, 0);
-        else if (world_remove_item(self->world, aid) == 1)
-            game_mode_remove_pickup_request(self, aid);
-        else
+        else if (world_remove_item(self->world, aid) != 1)
             world_remove_skill(self->world, aid);
     }
 }

@@ -6,6 +6,8 @@
 #include "std/container_types.h"
 #include "render/vec3.h"
 #include "world/path_info.h"
+#include "world/move_track.h"
+#include "world/act_track.h"
 
 enum { ACTOR_EFFECT_SLOT_COUNT = 5 };
 
@@ -138,6 +140,22 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     unsigned short level;                      \
     Vec3 facing_vector;                        \
     struct PathInfo path;                      \
+    /* Where the server says the actor is (ZC_TRACK_MOVE, plans/core-loop.md): the records    \
+       waiting for their tick; a walk that waits for its first step, and when that starts;    \
+       and whether the walk under way is joined at a capped speed and never set onto. */       \
+    struct MoveTrack move_track;               \
+    /* What of its act and vitals tracks was played last (world/act_track.h): a record not     \
+       newer than that is the past. */                                                         \
+    struct RecordFloors record_floors;         \
+    /* While the attack of a swing the server announced is set up (game_actor_swing_begin):    \
+       the time until its hit is to show, and the frame delay the attack has on its own        \
+       (game_actor_pace_attack). */                                                            \
+    int swing_lands_ms;                        \
+    float swing_own_delay;                     \
+    unsigned char swing_paces;                 \
+    unsigned track_go;                         \
+    unsigned char track_waiting;               \
+    unsigned char steered;                     \
     unsigned char glide;                       \
     int path_cell;                             \
     float walked;                              \
@@ -216,6 +234,11 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int64_t sphere_count;
 struct GameActor { CGAMEACTOR_MEMBERS };
 
+/* Actor messages of the server's action timing (plans/action-timing.md), above every number the
+   original uses. SWING_BEGIN: par1 the target's AID, par2 the attack motion in ms, par3 the ms
+   from now until the swing's hit is to show (not above 0: it has landed). */
+enum { ACTOR_MSG_SWING_BEGIN = 0x1000, ACTOR_MSG_SWING_CANCEL = 0x1001 };
+
 struct ActorHit {
     int target_aid;
     int kind;
@@ -245,6 +268,9 @@ struct ActorAttack {
     int attack_mt;
     int attacked_mt;
     unsigned char is_sp_damage;
+    /* The impact of a swing the server announced (ACTOR_MSG_SWING_BEGIN): the animation is
+       already playing, and the hit shows now. */
+    unsigned char impact;
 };
 
 struct ActorSkillUse {
@@ -332,23 +358,25 @@ struct Player {
     CPC_MEMBERS
     int requested_cell_x;
     int requested_cell_y;
-    unsigned attack_tick;
     unsigned move_request_tick;
-    int pending;
     int move_request_pending;
-    int attack_kind;
-    int attack_sent;
     int owed_walk;
     int target_aid;
-    int attacks;
-    unsigned move_tick;
-    unsigned held_walk_tick;
     int skill_id;
     int skill_level;
     int skill_cell_x;
     int skill_cell_y;
     int owed_walk_x;
     int owed_walk_y;
+    /* The walk the player asked for since the last frame, the newest of them: it goes out with
+       the frame (player_on_process). */
+    int asked_walk;
+    int asked_walk_x;
+    int asked_walk_y;
+    /* Intents (plans/intents.md): the kind of skill intent that waits for its level message,
+       and whether the last intent was an attack held by the mouse. */
+    int intent_skill;
+    int intent_hold;
     struct RagEffect *status_icons;
 };
 

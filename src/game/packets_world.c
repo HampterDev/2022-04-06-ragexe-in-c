@@ -7,6 +7,7 @@
 #include <string.h>
 #include "render/renderer.h"
 #include "game/packets_world.h"
+#include "world/pathfinder_state.h"
 #include "session/session_party.h"
 #include "session/session_windows.h"
 
@@ -58,8 +59,10 @@ void game_mode_zc_update_map_info(struct GameMode *self, const struct PACKET_ZC_
     if (!mode || !mode->world)
         return;
     cell = c3d_attr_get_cell(mode->world->attr, packet->x, packet->y);
-    if (cell)
+    if (cell) {
         cell->type = packet->type;
+        path_finder_cells_changed(&g_pathFinder);
+    }
 }
 
 void game_mode_zc_talkbox_chat_contents(struct GameMode *self,

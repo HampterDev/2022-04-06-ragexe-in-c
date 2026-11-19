@@ -17,6 +17,8 @@ struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
 struct Renderer *g_renderer;
 struct PathFinder g_pathFinder;
+static int cell_changes;
+void path_finder_cells_changed(struct PathFinder *p) { assert(p == &g_pathFinder); cell_changes++; }
 struct RenewQuestMgr *g_questTable;
 void string_free(struct String *s) { abort(); }
 struct TreeNode *tree_next(struct TreeNode *node) { (void)node; abort(); }
@@ -57,9 +59,9 @@ int main(void)
     game_mode_cell_to_world(&mode, 1, 0, &x, &z); assert(x == 2.5f && z == -2.5f);
     game_mode_world_to_cell(&mode, x, z, &cx, &cy); assert(cx == 1 && cy == 0);
     update.x = 1; update.y = 1; update.type = 5;
-    game_mode_zc_update_map_info(NULL, &update); assert(cells[3].type == 5);
+    game_mode_zc_update_map_info(NULL, &update); assert(cells[3].type == 5 && cell_changes == 1);
     update.x = -1; update.type = 8;
-    game_mode_zc_update_map_info(NULL, &update); assert(cells[3].type == 5);
+    game_mode_zc_update_map_info(NULL, &update); assert(cells[3].type == 5 && cell_changes == 1);
     update.x = 2; game_mode_zc_update_map_info(NULL, &update);
     update.x = 0; update.y = 2; game_mode_zc_update_map_info(NULL, &update);
     update.y = 0; grid.cells = NULL;

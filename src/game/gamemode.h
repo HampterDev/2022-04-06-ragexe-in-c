@@ -99,6 +99,13 @@ struct View;
 struct UIWindow;
 struct UITransBalloonText;
 
+#include "std/clock_sync.h"
+#include "std/way_up.h"
+#include "std/render_delay.h"
+#include "world/act_track.h"
+#include "world/record_wait.h"
+#include "world/own_swing.h"
+
 struct GameMode {
     struct Mode base;
     int map_bounds[4];
@@ -128,7 +135,6 @@ struct GameMode {
         actor_names;
     struct Tree awaiting_name;
     struct Tree unit_cells;
-    struct List pickup_requests;
     struct Tree chat_room_owners;
     struct Tree square_marks;
     struct Tree triangle_marks;
@@ -145,6 +151,39 @@ struct GameMode {
     struct String whisper_target;
     int server_move_pending;
     unsigned server_move_time;
+    /* The swings that began (a swing record of ZC_TRACK_ACT) and have not yet landed or been
+       cancelled, oldest first. */
+    struct OpenSwing {
+        unsigned aid;
+        unsigned target;
+    } open_swings[64];
+    int open_swing_count;
+    /* The least time the server wants a request to wait after its press (ZC_HOLD_BACK,
+       plans/netcode.md), its clock as estimated from the timed exchanges and the way up they
+       measure, the numbers of the last input stamp and of the last stamped move, and the tick
+       the last stamp named. */
+    unsigned hold_back_ms;
+    struct ClockSync clock_sync;
+    struct WayUp way_up;
+    /* How far behind that clock everyone else is drawn while the server sends tracks
+       (plans/core-loop.md). */
+    struct RenderDelay render_delay;
+    /* The acts, hits and HP the server sent, waiting for their tick (game_mode_play_tracks). */
+    struct TimedQueue tracks;
+    /* Records whose actor was not there when they came (plans/delivery.md), waiting for it. */
+    struct RecordWait record_wait;
+    /* The book of the player's own swing that is shown, which follows the predicted world's
+       word of it (game_mode_own_swing). */
+    struct OwnSwing own_swing;
+    /* The swings and casts of other actors at the player's own character that wait for their
+       actor to be drawn standing (game_mode_play_tracks), the one that came first first. */
+    struct ActRecord aimed_waiting[TIMED_AIMED_ACTORS];
+    int aimed_waiting_count;
+    unsigned short input_seq;
+    unsigned short move_seq;
+    unsigned stamp_tick;
+    /* The number of the last intent sent (CZ_INTENT, plans/intents.md). */
+    unsigned short intent_seq;
     int npc_dialog_open;
     int player_dead;
     int camera_free;

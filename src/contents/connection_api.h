@@ -17,6 +17,10 @@ struct RagConnection *rag_connection_construct(struct RagConnection *connection)
 void connection_destruct(struct Connection *connection);
 char connection_connect(struct Connection *connection, const struct ServerAddress *address);
 void connection_disconnect(struct Connection *connection);
+/* Ends a stage of the login as connection_disconnect does, but keeps the link: the next
+   connection_connect takes it over when it goes to the same address, so a login is one
+   connection from its first packet to the map. */
+void connection_hop(struct Connection *connection);
 char connection_flush(struct Connection *connection);
 char connection_poll(struct Connection *connection);
 int connection_recv_bytes(struct Connection *connection, void *dst, int count, char exact);
@@ -33,6 +37,9 @@ int rag_connection_get_packet_length(struct RagConnection *connection, int packe
 unsigned short rag_connection_get_packet_type(const void *packet);
 char rag_connection_get_packet(struct RagConnection *connection, void *buffer,
                              unsigned short *length);
+char rag_connection_queue_packet(struct RagConnection *connection, int length, const void *packet);
 char rag_connection_send_packet(struct RagConnection *connection, int length, const void *packet);
+/* The channel of platform/net.h a packet of this id leaves on. */
+int rag_connection_packet_channel(unsigned short id);
 
 #endif

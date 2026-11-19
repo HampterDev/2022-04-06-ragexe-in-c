@@ -207,7 +207,7 @@ int main(int argc, char **argv)
         assert(base->ops == &g_gameModeVtable_ops);
         assert(!expected->world && !expected->view && !expected->mouse_pointer);
         assert(!expected->skill_use.type && !expected->skill_use_unchecked);
-        assert(!expected->actor_names.cards.size && expected->pickup_requests.head);
+        assert(!expected->actor_names.cards.size);
         populate_strings(expected, round);
         expected->whispers_logged = 0;
         game_mode_on_init(base, "prontera.rsw");
@@ -236,8 +236,9 @@ int main(int argc, char **argv)
     }
     for (i = 0; i < trace_count * sizeof *trace; ++i)
         digest = (digest ^ ((const unsigned char *)trace)[i]) * UINT32_C(16777619);
-    /* Removing the screenshot prefix eliminates one allocation/free per round. */
-    assert(trace_count == 6562 && digest == UINT32_C(0x274efe64));
+    /* The screenshot prefix and the list of pickup requests are gone: each was one allocation
+       and one free a round. */
+    assert(trace_count == 6402 && digest == UINT32_C(0x10e9cde8));
     if (argc == 2) {
         FILE *file = fopen(argv[1], "wb");
         assert(file && fwrite(trace, sizeof *trace, trace_count, file) == trace_count);

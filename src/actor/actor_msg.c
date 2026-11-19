@@ -7,6 +7,7 @@
 #include "session/session_jobs.h"
 #include "actor/actor_msg.h"
 #include "platform/clock.h"
+#include "std/swing_pace.h"
 
 int g_multiHitInterval = 200;
 
@@ -88,18 +89,22 @@ void game_actor_msg_attack(struct GameActor *self,
             rag_effect_send_msg(effect, (struct RenderObject *)self, 0x32, 0, 0, 0);
         self->casting = 0;
     }
-    actor_set_attack_speed(self, attack_mt);
-    if (attack->target_aid != self->aid)
-        actor_set_state(self, 2, 1);
-    render_object_turn_toward((struct RenderObject *)self, tx, tz);
-    delay = (unsigned)(self->attack_motion_count * self->motion_delay * 24.0f);
-    if (game_actor_get_job(self) == 0x3f8 || game_actor_get_job(self) == 0x58c)
-        delay += 0xc0;
-    else if (game_actor_get_job(self) == 0x505 || game_actor_get_job(self) == 0x726)
-        delay += 0x390;
-    else if (game_actor_get_job(self) == 0x506 || game_actor_get_job(self) == 0x725 ||
-             game_actor_get_job(self) == 0x507)
-        delay += 0x198;
+    if (attack->impact) {
+        delay = 0;
+    } else {
+        actor_set_attack_speed(self, attack_mt);
+        if (attack->target_aid != self->aid)
+            actor_set_state(self, 2, 1);
+        render_object_turn_toward((struct RenderObject *)self, tx, tz);
+        delay = (unsigned)(self->attack_motion_count * self->motion_delay * 24.0f);
+        if (game_actor_get_job(self) == 0x3f8 || game_actor_get_job(self) == 0x58c)
+            delay += 0xc0;
+        else if (game_actor_get_job(self) == 0x505 || game_actor_get_job(self) == 0x726)
+            delay += 0x390;
+        else if (game_actor_get_job(self) == 0x506 || game_actor_get_job(self) == 0x725 ||
+                 game_actor_get_job(self) == 0x507)
+            delay += 0x198;
+    }
 
     flag = -1;
     switch (type) {
@@ -192,6 +197,55 @@ void game_actor_msg_attack(struct GameActor *self,
             SEND_HIT(target, self, &hit, total);
         }
     }
+}
+
+/* The start of a swing whose hit is not decided yet: the attack animation plays, and the hit
+   comes later as an attack marked `impact`. The animation is paced so that the frame its hit is
+   on shows `lands_ms` from now, which is when the swing lands (std/swing_pace.h): however long
+   the server has the swing take, the attack on the screen connects when the swing does. The
+   attack's setup calls game_actor_pace_attack where it has that frame, before it times anything
+   by the animation (an arrow's release). */
+void game_actor_swing_begin(struct GameActor *self, int target_aid, int attack_mt, int lands_ms)
+{
+    struct GameMode *mode = game_current_mode();
+    struct GameActor *target;
+
+    self->attack_target_aid = target_aid;
+    if (g_session1.ownAid == target_aid)
+        target = (struct GameActor *)mode->world->player;
+    else
+        target = world_get_game_actor_by_aid(mode->world, target_aid);
+    actor_set_attack_speed(self, attack_mt);
+    if (target_aid != self->aid) {
+        self->swing_lands_ms = lands_ms;
+        self->swing_own_delay = 0.0f;
+        self->swing_paces = 1;
+        actor_set_state(self, 2, 1);
+        self->swing_paces = 0;
+    }
+    if (target)
+        render_object_turn_toward((struct RenderObject *)self, target->pos.x, target->pos.z);
+}
+
+/* Where the setup of an attack has the frame its hit is on (attack_motion_count): paces the
+   animation of the swing the server announced, and does nothing for any other attack. A setup
+   that goes through another's (a player's through the common one) calls it once for each
+   frame it comes to know, and the last one holds: every call paces the delay the attack had
+   before the first. */
+void game_actor_pace_attack(struct GameActor *self)
+{
+    if (!self->swing_paces)
+        return;
+    if (!(self->swing_own_delay > 0.0f))
+        self->swing_own_delay = self->motion_delay;
+    self->motion_delay = swing_pace_frame_delay(self->swing_own_delay, self->attack_motion_count, self->swing_lands_ms);
+}
+
+/* The server dropped the swing before its impact: the attack animation ends. */
+void game_actor_swing_cancel(struct GameActor *self)
+{
+    if (self->state == 2)
+        actor_set_state(self, 0, 1);
 }
 
 void game_actor_set_attack_speed(struct GameActor * self, int ms)

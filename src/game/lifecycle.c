@@ -29,7 +29,6 @@ struct GameMode *game_mode_create(void)
     name_card_holder_init(&self->actor_names);
     tree_init(&self->awaiting_name);
     tree_init(&self->unit_cells);
-    list_init(&self->pickup_requests);
     tree_init(&self->chat_room_owners);
     tree_init(&self->square_marks);
     tree_init(&self->triangle_marks);
@@ -104,7 +103,6 @@ RAGE_NOINLINE void game_mode_destruct(struct GameMode *self)
     tree_free(&self->triangle_marks, NULL);
     tree_free(&self->square_marks, NULL);
     tree_free(&self->chat_room_owners, NULL);
-    list_free(&self->pickup_requests, NULL);
     tree_free(&self->unit_cells, NULL);
     tree_free(&self->awaiting_name, NULL);
     name_card_holder_destroy(&self->actor_names);

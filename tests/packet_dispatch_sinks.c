@@ -2288,6 +2288,63 @@ void game_mode_zc_battlefield_notify_position(struct GameMode *arg0, const unsig
     packet_trace_pointer(arg1);
 }
 
+void game_mode_zc_hold_back(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_hold_back");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_time_sync(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_time_sync");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_track_move(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_track_move");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_track_act(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_track_act");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_track_vitals(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_track_vitals");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_notice_hit(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_notice_hit");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_own_intent(struct GameMode *arg0, const unsigned char *arg1)
+{
+    packet_trace_call("game_mode_zc_own_intent");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+}
+
+void game_mode_zc_own_body(struct GameMode *arg0, const unsigned char *arg1, size_t arg2)
+{
+    packet_trace_call("game_mode_zc_own_body");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+    packet_trace_value(arg2);
+}
+
 void game_mode_zc_blade_stop(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_BladeStop");

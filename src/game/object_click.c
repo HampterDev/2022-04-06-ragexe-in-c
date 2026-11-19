@@ -28,10 +28,7 @@ enum { JOB_WARP_PORTAL = 0x2d };
 enum { PLAYER_STATE_SIT = 6 };
 enum { SKILL_USE_ON_UNIT = 5 };
 enum { SKILL_AM_POTIONPITCHER = 0xe7 };
-enum {
-    ACTOR_MSG_PICK_UP = 0x12,
-    ACTOR_MSG_UNIT_SKILL = 0x67,
-};
+enum { ACTOR_MSG_PICK_UP = 0x12 };
 
 static int held_or(int result)
 {
@@ -410,26 +407,23 @@ static void click_actor(struct GameMode *self, struct PickInfo *pick)
         click_player(self, pick);
 }
 
+/* A skill unit is a target as an actor is (plans/intents.md): a skill aimed at units of its kind
+   (Remove Trap, Spring Trap) is an intent on it, and so are an attack on one that can be
+   attacked and a skill aimed at an actor that is used on one. The server walks the player into
+   reach of its cell, and ends an attack on it: it attacks no skill unit. */
 static void click_skill_unit(struct GameMode *self, struct PickInfo *pick)
 {
     int skill = self->skill_use.skill_id;
+    struct Player *player = self->world->player;
 
-    if (!unit_is_attackable(pick->job)) {
-        if (self->skill_use.type == SKILL_USE_ON_UNIT)
-            render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (intptr_t)&self->skill_use, 0, 0);
+    if (self->skill_use.type == SKILL_USE_ON_UNIT) {
+        render_object_send(player, NULL, ACTOR_MSG_USE_SKILL, (long long)pick->aid, (long long)skill, 0, 0);
+        render_object_send(player, NULL, ACTOR_MSG_SKILL_LEVEL, (long long)self->skill_use.level, 0, 0, 0);
         return;
     }
-    if (skill == 0xd7 || skill == 0xd8 || skill == 0xd9 || skill == 0xda)
+    if (!unit_is_attackable(pick->job) || skill == 0xd7 || skill == 0xd8 || skill == 0xd9 || skill == 0xda)
         return;
-    mode_send_msg(self, MODE_MSG_SET_ATTACK_IN_PROGRESS, 1, 0, 0, 0);
-    self->held_walk_allowed = 0;
-    if (key_down(VK_CONTROL) || g_session1.noCtrl == 1) {
-        render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (intptr_t)&self->skill_use, 0, 0);
-        self->attack_repeat = 1;
-    } else {
-        render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (intptr_t)&self->skill_use, 1, 0);
-        self->attack_repeat = 0;
-    }
+    attack_actor(self, pick->aid, 0);
 }
 
 static int click_companion(struct GameMode *self, struct PickInfo *pick, int result)

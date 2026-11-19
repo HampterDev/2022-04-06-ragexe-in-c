@@ -1,7 +1,9 @@
 #include "contents/adventurer_agency.h"
 #include "world/mode_actions.h"
+#include "game/net_overview.h"
 #include "game/cells.h"
 #include "game/connection.h"
+#include "game/net_clock.h"
 #include "game/mode_misc.h"
 #include "game/mode_util.h"
 #include "world/actor_lookup.h"
@@ -192,6 +194,9 @@ static void run_logic_steps(struct GameMode *self)
         game_mode_send_keep_alive(self, 0);
         renderer_run_every15s();
     }
+    game_mode_pin_render_clock(self);
+    game_mode_own_body_frame(self);
+    game_mode_play_tracks(self);
     steps = frame_timer_step_count();
     g_isSkipFrame = steps;
     game_mode_process_input(self);
@@ -226,8 +231,10 @@ static void render_frame(struct GameMode *self)
     mode_draw_mouse_cursor(&self->base);
     game_mode_draw_skill_level_at_cursor(self);
     mode_process_fade_in(&self->base);
-    if (renderer_draw_scene(g_renderer))
+    if (renderer_draw_scene(g_renderer)) {
         renderer_draw_frame_extras(g_renderer);
+        game_mode_draw_net_overview(self);
+    }
     renderer_flip(g_renderer, 1);
 }
 

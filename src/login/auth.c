@@ -42,7 +42,7 @@ static void keep_token(const BYTE *pkt, int header)
     for (i = 0; i < 0x1f4; i++)
         g_session1.ssoToken[i] = 0;
     memcpy(g_session1.ssoToken, pkt + header, len > 0x1f4 ? 0x1f4 : len);
-    connection_disconnect(rag_connection_transport(rag_connection_instance()));
+    connection_hop(rag_connection_transport(rag_connection_instance()));
     CMODE_SENDMSG(client_current_mode(), 0x2710, 0, 0, 0, 0);
 }
 

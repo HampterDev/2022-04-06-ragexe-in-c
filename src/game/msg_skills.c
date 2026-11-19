@@ -12,6 +12,7 @@
 #include <string.h>
 #include "platform/win_types.h"
 #include "game/mode_msg.h"
+#include "game/net_clock.h"
 #include "game/skill_list.h"
 #include "game/mode_util.h"
 #include "platform/language.h"
@@ -270,6 +271,7 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
     packet.target = target;
     if ((unsigned short)skill_id == 0x5d)
         g_session1.senseTargetAid = target;
+    game_mode_send_input_stamp(self);
     send_packet(CZ_USE_SKILL2, &packet);
     return 0;
 
@@ -315,6 +317,7 @@ int game_mode_msg_use_skill_to_ground(struct GameMode *self, const struct Ground
     packet.level = (unsigned short)level;
     packet.x = (unsigned short)x;
     packet.y = (unsigned short)y;
+    game_mode_send_input_stamp(self);
     send_packet(CZ_USE_SKILL_TOGROUND2, &packet);
     return 0;
 }
@@ -347,6 +350,7 @@ int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const struc
         packet.level = (unsigned short)skill_table_find(&g_session1.skills, &skill, packet.skill_id)->level;
         skill_info_destruct(&skill);
     }
+    game_mode_send_input_stamp(self);
     send_packet(packet.id, &packet);
     return 0;
 }

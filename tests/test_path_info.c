@@ -72,7 +72,7 @@ static void test_storage(void)
     path_info_init(&path);
     assert(!path.cells && !path.count && !path.capacity);
     assert(!path.startX && !path.startY);
-    assert(path_info_end_time(&path) == 0 && path_info_end_direction(&path) == -1);
+    assert(path_info_end_time(&path) == 0);
     assert(!path_info_get_cell(&path, 0, &x, &y) && x == 17 && y == 19);
     assert(path_info_next_cell(&path, 100, &deadline, &px, &py) == -1);
     assert(deadline == 29 && px == 31 && py == 37);
@@ -137,7 +137,7 @@ static void test_queries(void)
     assert(deadline == 300 && x == 4 && y == 4);
     assert(path_info_next_cell(&path, 400, &deadline, &x, &y) == -1);
     assert(deadline == 400 && x == 4 && y == 5);
-    assert(path_info_end_time(&path) == 400 && path_info_end_direction(&path) == 0);
+    assert(path_info_end_time(&path) == 400);
     path.cells[0].time = 0;
     assert(path_info_next_cell(&path, 250, &deadline, &x, &y) == -1);
     assert(deadline == 400 && x == 4 && y == 5);

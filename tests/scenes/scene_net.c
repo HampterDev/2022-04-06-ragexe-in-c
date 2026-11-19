@@ -137,12 +137,6 @@ struct PlatformSocket *platform_socket_open(void)
     return calloc(1, sizeof(struct PlatformSocket));
 }
 
-int platform_socket_set_nonblocking(struct PlatformSocket *sock)
-{
-    (void)sock;
-    return 1;
-}
-
 int platform_socket_connect(struct PlatformSocket *sock, uint32_t address, uint16_t port)
 {
     (void)address;
@@ -163,9 +157,10 @@ int platform_socket_writable(struct PlatformSocket *sock)
     return 1;
 }
 
-int platform_socket_send(struct PlatformSocket *sock, const void *data, int size)
+int platform_socket_send(struct PlatformSocket *sock, int channel, const void *data, int size)
 {
     size_t room = sizeof sock->out - sock->out_size;
+    (void)channel;
     if (size <= 0)
         return 0;
     if ((size_t)size > room)
@@ -176,10 +171,11 @@ int platform_socket_send(struct PlatformSocket *sock, const void *data, int size
     return size;
 }
 
-int platform_socket_recv(struct PlatformSocket *sock, void *buffer, int size)
+int platform_socket_recv(struct PlatformSocket *sock, int channel, void *buffer, int size)
 {
     size_t left = sock->in_size - sock->in_read;
-    if (!left)
+    /* a scene's server sends everything on the world channel */
+    if (!left || channel != PLATFORM_CHANNEL_WORLD)
         return PLATFORM_SOCKET_RETRY;
     if ((size_t)size < left)
         left = (size_t)size;

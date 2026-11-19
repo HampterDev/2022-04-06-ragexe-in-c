@@ -76,7 +76,7 @@ for /r "%ROOT%src" %%f in (*.c) do (
 )
 >> "%BUILD%\sources%SUFFIX%.rsp" echo "%GEN%\effect_data_embedded.c"
 >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\effect_data_embedded.obj"
-set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0""
+set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\enet-1.3.18\include""
 if "%ARCH%"=="x64" set "INC=%INC% /I"%ROOT%vendor\stb" /I"%ROOT%vendor\cgltf" /I"%ROOT%vendor\dr_libs" /I"%BUILD%\vendor_x64\sdl3-src\include" /DDR_MP3_NO_STDIO"
 set "TEXTLIB="
 if defined TEXT (
@@ -106,7 +106,7 @@ set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib oleaut32
 if "%ARCH%"=="x64" (
   set "VLIB=%BUILD%\vendor_x64"
   link /nologo msvcrt.lib msvcprt.lib @"%BUILD%\%OUT%.objs.rsp" ^
-   "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" ^
+   "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" "!VLIB!\enet.lib" ^
    "!VLIB!\dr_mp3.lib" "!VLIB!\SDL3-static.lib" setupapi.lib version.lib cfgmgr32.lib shlwapi.lib ^
    !TEXTLIB! vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
    /OUT:"%BUILD%\%OUT%.exe" /IMPLIB:"%BUILD%\%OUT%.lib" /SUBSYSTEM:WINDOWS /MACHINE:X64 ^
@@ -114,7 +114,7 @@ if "%ARCH%"=="x64" (
 ) else (
   set "VLIB=%BUILD%\vendor"
   link /nologo msvcrt.lib msvcprt.lib @"%BUILD%\%OUT%.objs.rsp" ^
-   "%ROOT%lib\cps.lib" "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" /LIBPATH:"%ROOT%lib" ^
+   "%ROOT%lib\cps.lib" "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" "!VLIB!\enet.lib" /LIBPATH:"%ROOT%lib" ^
    granny2.lib mss32.lib shlwapi.lib ^
    !TEXTLIB! msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
    /OUT:"%BUILD%\%OUT%.exe" /IMPLIB:"%BUILD%\%OUT%.lib" /SUBSYSTEM:WINDOWS /MACHINE:X86 /SAFESEH /LARGEADDRESSAWARE ^

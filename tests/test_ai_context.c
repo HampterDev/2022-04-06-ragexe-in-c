@@ -12,7 +12,8 @@ void lua_rawgeti(lua_State *L, int index, int key);
 
 struct Session g_session1;
 const unsigned char CMercenaryAI_col[1] = {0};
-static BYTE actor[0x400], target[0x400], player[0x400], owner[0x400];
+static struct GameActor actor, target, owner;
+static struct Player player;
 static struct GameActorOps actor_ops;
 static int timed_actions, timed_action, timed_mode;
 static int active, has_actor, has_target, has_player, has_owner, hidden;
@@ -22,14 +23,14 @@ static BYTE last_packet[16];
 static struct List actor_list;
 
 struct GameMode *game_current_mode(void) { return active ? (struct GameMode *)&active : NULL; }
-struct Player *game_current_player(void) { return active && has_player ? (struct Player *)player : NULL; }
+struct Player *game_current_player(void) { return active && has_player ? &player : NULL; }
 const struct List *game_current_actor_list(void) { return active ? &actor_list : NULL; }
 struct GameActor *game_find_actor(int id)
 {
     if (!active) return NULL;
-    if (id == 20 && has_actor) return (struct GameActor *)actor;
-    if (id == 30 && has_target) return (struct GameActor *)target;
-    if (id == 40 && has_owner) return (struct GameActor *)owner;
+    if (id == 20 && has_actor) return &actor;
+    if (id == 30 && has_target) return &target;
+    if (id == 40 && has_owner) return &owner;
     return NULL;
 }
 int game_world_to_cell(float x, float z, int *cx, int *cy)
@@ -117,9 +118,9 @@ float float_sqrt(float value) { return sqrtf(value); }
 float float_cos(float value) { return cosf(value); }
 float float_sin(float value) { return sinf(value); }
 static int effect_state(struct RenderObject *self)
-{  return (void *)self == target ? hidden : 0; }
+{  return (void *)self == (void *)&target ? hidden : 0; }
 int game_actor_get_npc_location_radius(struct GameActor *self)
-{  assert((void *)self == owner); return 4; }
+{  assert(self == &owner); return 4; }
 int game_actor_get_guild_id(struct GameActor *self)
 {  (void)self; assert(!"no guild queries"); return 0; }
 int *game_actor_get_request(struct GameActor *self, int which)
@@ -133,7 +134,7 @@ void game_actor_set_request2(struct GameActor *self, const int *record, int whic
 
 static void timed_action_start(struct RenderObject *self, int action, int mode)
 {
-    assert((void *)self == actor);
+    assert((void *)self == (void *)&actor);
     ++timed_actions;
     timed_action = action;
     timed_mode = mode;
@@ -242,14 +243,14 @@ int main(void)
     assert(L);
     g_session1.ownAid = 10; g_session1.homunAid = 20; g_session1.mercAid = 21;
     actor_ops.base.get_effect_state = effect_state;
-    ACTOR(actor)->ops = ACTOR(target)->ops = ACTOR(player)->ops = ACTOR(owner)->ops = &actor_ops.base.base;
-    ACTOR(actor)->aid = 20;
-    ACTOR(target)->aid = 30;
-    ACTOR(actor)->requests[5] = 40;
-    ACTOR(target)->pos.x = 3; ACTOR(target)->pos.z = 4;
+    actor.ops = target.ops = ACTOR(&player)->ops = owner.ops = &actor_ops.base.base;
+    actor.aid = 20;
+    target.aid = 30;
+    actor.requests[5] = 40;
+    target.pos.x = 3; target.pos.z = 4;
     head.links.next = &first.links; head.links.prev = &second.links;
-    first.links.next = &second.links; first.links.prev = &head.links; first.value = actor;
-    second.links.next = &head.links; second.links.prev = &first.links; second.value = target;
+    first.links.next = &second.links; first.links.prev = &head.links; first.value = (BYTE *)&actor;
+    second.links.next = &head.links; second.links.prev = &first.links; second.value = (BYTE *)&target;
     actor_list.head = &head.links; actor_list.size = 2;
 
     check_missing(L);
@@ -278,9 +279,9 @@ int main(void)
     assert(merc_ai_homun_get_v(L) == 2 && lua_tonumber(L, -1) == -1);
     has_player = 1;
 
-    ACTOR(actor)->pos.x = 3; ACTOR(actor)->pos.z = 4;
+    actor.pos.x = 3; actor.pos.z = 4;
     x = 3; y = 4;
-    merc_ai_apply_skill_attack_range(20, target, &x, &y, 100, 2);
+    merc_ai_apply_skill_attack_range(20, &target, &x, &y, 100, 2);
     assert(x == 3 && y == 4);
 
     args(L, 20, 2, 100, 5, 6);

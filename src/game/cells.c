@@ -4,7 +4,6 @@
 #include "world/pathfinder_state.h"
 #include "world/actor_lookup.h"
 #include <stdlib.h>
-#include <math.h>
 #include "platform/win_types.h"
 #include "game/cells.h"
 #include "session/session_skills.h"
@@ -53,11 +52,6 @@ int game_mode_get_map_height(struct GameMode *self)
 int game_mode_angle_to_direction(float degrees)
 {
     return ((int)degrees + 180) / 45 % 8;
-}
-
-char game_mode_is_within_cells(const int *a_x, const int *a_y, const int *b_x, const int *b_y, int range)
-{
-    return abs(*a_x - *b_x) <= range && abs(*a_y - *b_y) <= range;
 }
 
 RAGE_NOINLINE char game_mode_is_cell_blocked(struct GameMode *self, int x, int y)
@@ -114,54 +108,6 @@ char game_mode_is_valid_cell(struct GameMode *self, int x, int y)
     if (game_mode_is_cell_occupied(self, x, y))
         return 0;
     return 1;
-}
-
-void game_mode_step_toward_walkable(struct GameMode *self, const int *toward_x, const int *toward_y,
-                                            int *x, int *y)
-{
-    int start_x = *x, start_y = *y;
-    int i;
-
-    if (*toward_x > start_x)
-        *x = start_x + 1;
-    else if (*toward_x < start_x)
-        *x = start_x - 1;
-    if (*toward_y > *y)
-        *y = *y + 1;
-    else if (*toward_y < *y)
-        *y = *y - 1;
-    if (cell_is_walkable(self->world->attr, *x, *y))
-        return;
-
-    for (i = 1; i < 9; i++) {
-        *x = start_x + kNeighbours[i].dx;
-        *y = start_y + kNeighbours[i].dy;
-        if (cell_is_walkable(self->world->attr, *x, *y))
-            return;
-    }
-}
-
-void game_mode_cell_along_line(struct GameMode *self, float from_x, float from_z, float to_x, float to_z,
-                                       int *x, int *y, int cells)
-{
-    float dx = from_x - to_x;
-    float dz = from_z - to_z;
-    float inv_len = (float)(1.0 / (double)sqrtf(dz * dz + dx * dx));
-    float dist = (float)(cells * 5);
-    int start_x, start_y, i;
-
-    game_mode_world_to_cell(self, inv_len * dx * dist + to_x, inv_len * dz * dist + to_z, x, y);
-    start_x = *x;
-    start_y = *y;
-    if (cell_is_walkable(self->world->attr, start_x, start_y))
-        return;
-
-    for (i = 1; i < 9; i++) {
-        *x = start_x + kNeighbours[i].dx;
-        *y = start_y + kNeighbours[i].dy;
-        if (cell_is_walkable(self->world->attr, *x, *y))
-            return;
-    }
 }
 
 static int find_free_neighbour(struct GameMode *self, int x, int y, int *out_x, int *out_y)

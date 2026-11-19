@@ -53,11 +53,6 @@ uint32_t path_info_end_time(const struct PathInfo *path)
     return path->count ? path->cells[path->count - 1].time : 0;
 }
 
-int path_info_end_direction(const struct PathInfo *path)
-{
-    return path->count ? path->cells[path->count - 1].dir : -1;
-}
-
 int path_info_next_cell(const struct PathInfo *path, uint32_t time,
                         uint32_t *deadline, float *x, float *y)
 {

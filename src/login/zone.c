@@ -41,7 +41,7 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
     memcpy(g_mapServerIp.host, string_cstr(&host),
              host.size + 1 > 0x81 ? 0x81 : host.size + 1);
 
-    connection_disconnect(rag_connection_transport(rag_connection_instance()));
+    connection_hop(rag_connection_transport(rag_connection_instance()));
     self->base.next_sub_mode = 0xc;
     string_free(&map);
     string_free(&mapName);

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "game/packet_handlers.h"
 #include "game/packets.h"
 #include "game/mode_msg.h"
@@ -8,6 +9,13 @@
 #include "session/session_talk.h"
 #include "world/actor_lookup.h"
 #include "world/object_lookup.h"
+#include "world/act_track.h"
+#include "game/net_clock.h"
+#include "game/own_body.h"
+#include "game/cells.h"
+#include "actor/render_object.h"
+#include "actor/cast_stop.h"
+#include "game/skill_cast.h"
 
 #define ACTOR_MSG_ATTACK        0xb
 #define DAMAGE_NONE             (-30000)
@@ -26,6 +34,37 @@ static struct GameActor *attacker(struct GameMode *self, unsigned aid)
     if (!actor)
         actor = (struct GameActor *)world_get_skill_by_aid(self->world, (int)aid);
     return actor;
+}
+
+/* Forgets the swing the server announced for `aid`, if one is open, and gives its target. */
+static int swing_close(struct GameMode *self, unsigned aid, unsigned *target)
+{
+    int i, n = self->open_swing_count;
+
+    for (i = 0; i < n; i++) {
+        if (self->open_swings[i].aid != aid)
+            continue;
+        *target = self->open_swings[i].target;
+        for (n--; i < n; i++)
+            self->open_swings[i] = self->open_swings[i + 1];
+        self->open_swing_count = n;
+        return 1;
+    }
+    return 0;
+}
+
+/* Remembers the swing the server announced for `aid`; when the list is full the oldest goes. */
+static void swing_open(struct GameMode *self, unsigned aid, unsigned target)
+{
+    int max = (int)(sizeof self->open_swings / sizeof self->open_swings[0]);
+    unsigned old;
+
+    swing_close(self, aid, &old);
+    if (self->open_swing_count == max)
+        swing_close(self, self->open_swings[0].aid, &old);
+    self->open_swings[self->open_swing_count].aid = aid;
+    self->open_swings[self->open_swing_count].target = target;
+    self->open_swing_count++;
 }
 
 static void pet_attack_emotion(struct GameMode *self, unsigned aid)
@@ -49,6 +88,7 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
 {
     struct ActorAttack attack;
     struct GameActor *actor;
+    unsigned swing_target;
 
     if (damage == DAMAGE_NONE)
         return;
@@ -65,6 +105,7 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
     if (attacked_mt == 0 && !session_is_attack(&g_session1, attack.action))
         attack.attacked_mt = DEFAULT_MOTION_TIME;
     attack.is_sp_damage = (unsigned char)is_sp_damage != 0;
+    attack.impact = swing_close(self, aid, &swing_target) && swing_target == target;
 
     actor = attacker(self, aid);
     if (!actor)
@@ -73,6 +114,463 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
         && attack.action != 1 && attack.action != 2 && attack.action != 3)
         pet_attack_emotion(self, aid);
     actor_send(actor, ACTOR_MSG_ATTACK, (intptr_t)&attack, 0);
+}
+
+static struct GameActor *swing_actor(struct GameMode *self, unsigned aid)
+{
+    if (aid == (unsigned)g_session1.ownAid)
+        return (struct GameActor *)self->world->player;
+    return world_get_game_actor_by_aid(self->world, aid);
+}
+
+/* The server's action timing (plans/action-timing.md): a swing of `source` at `target` starts,
+   with nothing decided about its hit. Then either a hit brings its impact (game_mode_notify_act)
+   or the swing is cancelled (swing_cancel). Its hit is to show `lands_ms` from now, and the
+   actor paces its attack animation to that (game_actor_swing_begin). */
+static void swing_begin(struct GameMode *self, unsigned source, unsigned target, unsigned attack_motion_ms, int lands_ms)
+{
+    struct GameActor *actor = swing_actor(self, source);
+
+    if (!actor)
+        return;
+    swing_open(self, source, target);
+    render_object_send(actor, NULL, ACTOR_MSG_SWING_BEGIN, (int)target,
+                       attack_motion_ms ? attack_motion_ms : DEFAULT_MOTION_TIME, lands_ms, 0);
+}
+
+/* The swing of `source` that is open ends without a hit. */
+static void swing_cancel(struct GameMode *self, unsigned source)
+{
+    struct GameActor *actor;
+    unsigned target;
+
+    if (!swing_close(self, source, &target))
+        return;
+    actor = swing_actor(self, source);
+    if (actor)
+        actor_send(actor, ACTOR_MSG_SWING_CANCEL, 0, 0);
+}
+
+/* The server sends what an actor does as a record (ZC_TRACK_ACT, plans/core-loop.md), a hit as
+   a notice (ZC_NOTICE_HIT) and a monster's HP as a record (ZC_TRACK_VITALS), each with the
+   server tick it belongs to and often ahead of it. They wait in the mode's queue and are played
+   when the clock they are played on reaches the tick: the render clock, or the own clock for
+   what the player's own character does and for what is aimed at it (world/act_track.h). Played,
+   a swing begins (swing_begin) and idle ends it without a hit (swing_cancel), a cast is
+   ZC_USESKILL_ACK with the time the cast still has on that clock, so its bar ends at the cast's
+   tick however late the record came, idle also ends a cast as ZC_DISPEL does, a hit is the
+   impact of ZC_NOTIFY_ACT2, and the HP is ZC_HP_INFO's. */
+#define AM_SET_HP_BAR   0x91
+
+static void play_vitals(struct GameMode *self, const struct VitalsRecord *vitals)
+{
+    struct GameActor *actor = world_get_game_actor_by_aid(self->world, vitals->gid);
+
+    if (actor)
+        render_object_send(actor, NULL, AM_SET_HP_BAR, vitals->hp, vitals->max_hp, 0, 0);
+}
+
+#define ACTOR_STATE_CASTING 8
+
+/* The cast `gid` shows ends without its skill, if it shows one. */
+static void cast_cancel(struct GameMode *self, unsigned gid)
+{
+    struct GameActor *actor = swing_actor(self, gid);
+
+    if (actor && (actor->casting || actor->state == ACTOR_STATE_CASTING))
+        game_actor_stop_cast(actor, gid == (unsigned)g_session1.ownAid);
+}
+
+static void play_taken(struct GameMode *self, const struct TimedItem *item, DWORD now);
+
+/* How long after its impact a swing's damage number is here, on the clock the character is
+   drawn on: the way down and the own clock's lead over the server's. */
+static unsigned own_swing_late(struct GameMode *self)
+{
+    return self->clock_sync.round_trip / 2 + (unsigned)(game_mode_own_time(self) - game_mode_true_time(self));
+}
+
+/* `now` is the clock the item is played on. A swing's hit is to show when that clock reaches
+   the tick the swing lands at, and the swing begins now, however late on that clock: its
+   animation is paced to the time that is left. The player's own swing is paced to when its
+   damage number is here, which is later by own_swing_late: nothing waits on that swing, and its
+   hit and its number show together. */
+static void play_item(struct GameMode *self, const struct TimedItem *item, DWORD now)
+{
+    struct TimedItem hp;
+    int left;
+
+    switch (item->kind) {
+    case TIMED_ACT:
+        if (item->u.act.kind == ACT_SWING) {
+            left = (int)(item->u.act.mark_tick - now);
+            if (item->u.act.gid == (uint32_t)g_session1.ownAid)
+                left += (int)own_swing_late(self);
+            swing_begin(self, item->u.act.gid, item->u.act.target, item->u.act.motion_ms, left);
+        } else if (item->u.act.kind == ACT_CAST) {
+            left = (int)(item->u.act.end_tick - now);
+            game_mode_zc_useskill_ack(self, item->u.act.gid, item->u.act.target, item->u.act.x, item->u.act.y,
+                                      (int)item->u.act.skill_id, item->u.act.element, left > 0 ? (unsigned)left : 0,
+                                      item->u.act.disposable, (int)item->u.act.motion_ms);
+        } else {
+            swing_cancel(self, item->u.act.gid);
+            cast_cancel(self, item->u.act.gid);
+        }
+        break;
+    case TIMED_HIT:
+        /* the HP this hit took moves with its number, also when the hit is the player's own and
+           shown ahead of the render clock */
+        while (timed_queue_take_vitals(&self->tracks, item->u.hit.target, item->u.hit.at_tick, &hp))
+            play_taken(self, &hp, now);
+        game_mode_notify_act(self, item->u.hit.source, item->u.hit.target, (int)item->u.hit.at_tick, 0,
+                             (int)item->u.hit.flinch_ms, item->u.hit.damage, item->u.hit.count, item->u.hit.kind,
+                             item->u.hit.left_damage, item->u.hit.sp_damage);
+        break;
+    case TIMED_VITALS:
+        play_vitals(self, &item->u.vitals);
+        break;
+    }
+}
+
+/* The own clock: the one the player's own character is drawn on once the server's clock is
+   known, and the render clock until then. */
+static DWORD own_clock(struct GameMode *self)
+{
+    if (game_mode_knows_clock(self))
+        return game_mode_own_time(self);
+    return session_get_server_time(&g_session1);
+}
+
+/* The clock `item` is played on (timed_queue_on_own_clock). */
+static DWORD item_clock(struct GameMode *self, const struct TimedItem *item)
+{
+    if (timed_queue_on_own_clock(&self->tracks, item, (uint32_t)g_session1.ownAid))
+        return own_clock(self);
+    return session_get_server_time(&g_session1);
+}
+
+/* What another actor aims at the player's own character is played on the own clock, which is
+   ahead of the clock the actor's walk is drawn on. So when the server has the actor standing
+   and beginning a swing, the screen can still have it on the last of its walk; an attack or a
+   cast begun then would stop it short of its cell's middle. Such a swing or cast waits here
+   until the actor is drawn where it stands, as the player's own swing waits for the character
+   (game_mode_own_swing), and no longer than until the clock the walk is drawn on reaches the
+   act's tick: the walk the server ended before the act is over on that clock then, and what
+   is left of it on the screen is an actor that runs behind its walk. One waits for an actor at
+   most. */
+
+#define ACTOR_STATE_WALKING 1
+
+/* When an act that begins at `tick` can begin on `actor` as it is drawn. */
+enum {
+    AIMED_NOW,   /* it is drawn where it stands for the act */
+    AIMED_WAITS, /* it has yet to arrive there */
+    AIMED_PAST   /* it is drawn on what it did after the act began */
+};
+
+/* An actor has yet to arrive when the walk it is drawn on, or one that waits for its first
+   step, ends by `tick`, so the server had ended it before the act; or when a move record that
+   waits, of a tick not after it, will move the actor. The record that says the actor stands
+   where it is drawn, which the server sends when an actor stops to swing, is not waited for.
+   Once the render clock, which the walk is drawn on, has reached `tick`, nothing is waited
+   for. A walk that ends later is what the actor did next (a monster walks on while its swing
+   is under way): drawn on that walk, the actor is past the act's beginning, and an attack
+   begun now would stop the walk. */
+static int aimed_when(struct GameMode *self, const struct GameActor *actor, DWORD tick)
+{
+    int waited = (int)(session_get_server_time(&g_session1) - tick) >= 0;
+    int x, y;
+
+    if ((actor->state == ACTOR_STATE_WALKING || actor->track_waiting) && actor->path.count) {
+        if ((int)(path_info_end_time(&actor->path) - tick) <= 0)
+            return waited ? AIMED_NOW : AIMED_WAITS;
+        if (actor->state == ACTOR_STATE_WALKING)
+            return AIMED_PAST;
+    }
+    if (waited)
+        return AIMED_NOW;
+    game_mode_world_to_cell(self, actor->pos.x, actor->pos.z, &x, &y);
+    return move_track_will_move(&actor->move_track, x, y, tick) ? AIMED_WAITS : AIMED_NOW;
+}
+
+/* Where the act of `gid` that waits for its actor to stand is, or -1. */
+static int waiting_index(const struct GameMode *self, unsigned gid)
+{
+    int i;
+
+    for (i = 0; i < self->aimed_waiting_count; i++)
+        if (self->aimed_waiting[i].gid == gid)
+            return i;
+    return -1;
+}
+
+static void waiting_remove(struct GameMode *self, int at)
+{
+    for (at++; at < self->aimed_waiting_count; at++)
+        self->aimed_waiting[at - 1] = self->aimed_waiting[at];
+    self->aimed_waiting_count--;
+}
+
+/* Plays a swing or a cast of another actor at the player's own character at `now`, the own
+   clock. That clock had passed the act's tick before its record could be here, and may have run
+   on while the act waited: a swing is paced to the time it has left, so that it lands when the
+   own clock reaches the tick it lands at, and a cast shows the time it still has (play_item).
+   With `shown` 0 the actor is drawn on what it did next: the swing is open, so that its hit is
+   its impact, and neither its animation nor a cast shows. */
+static void play_aimed(struct GameMode *self, const struct ActRecord *act, DWORD now, int shown)
+{
+    struct TimedItem item;
+
+    if (!shown) {
+        if (act->kind == ACT_SWING && swing_actor(self, act->gid))
+            swing_open(self, act->gid, act->target);
+        return;
+    }
+    item.kind = TIMED_ACT;
+    item.tick = act->at_tick;
+    item.actor = act->gid;
+    item.u.act = *act;
+    play_item(self, &item, now);
+}
+
+/* What waited for its actor to arrive and has it there is played; what waited for an actor
+   that is gone is forgotten. */
+static void play_waiting(struct GameMode *self, DWORD own_now)
+{
+    int i = 0;
+
+    while (i < self->aimed_waiting_count) {
+        struct ActRecord act = self->aimed_waiting[i];
+        struct GameActor *actor = swing_actor(self, act.gid);
+        int when = actor ? aimed_when(self, actor, act.at_tick) : AIMED_NOW;
+
+        if (when == AIMED_WAITS) {
+            i++;
+            continue;
+        }
+        waiting_remove(self, i);
+        if (actor)
+            play_aimed(self, &act, own_now, when == AIMED_NOW);
+    }
+}
+
+/* An item leaves the queue and is played: an act or vitals record is the newest of its track
+   that was, for whatever of that track comes later (world/act_track.h). A swing or a cast of
+   another actor at the player's own character waits while that actor has yet to arrive
+   (play_waiting); with as many waiting as there is room for, it is played as it comes. A newer
+   act record of the actor takes the place of the one that waited, which then was never shown.
+   The hit of a swing that still waits is that swing's impact: the swing begins first, without
+   its animation when the actor is drawn walking, which the attack would stop. */
+static void play_taken(struct GameMode *self, const struct TimedItem *item, DWORD now)
+{
+    struct GameActor *actor = item->kind != TIMED_HIT ? swing_actor(self, item->actor) : NULL;
+    unsigned own = (unsigned)g_session1.ownAid;
+    int at;
+
+    if (actor)
+        record_floors_played(&actor->record_floors, item);
+    if (item->kind == TIMED_ACT && item->actor != own) {
+        if ((at = waiting_index(self, item->actor)) >= 0)
+            waiting_remove(self, at);
+        if (item->u.act.kind != ACT_IDLE && item->u.act.target == own) {
+            int room = self->aimed_waiting_count < (int)(sizeof self->aimed_waiting / sizeof self->aimed_waiting[0]);
+            int when = actor ? aimed_when(self, actor, item->u.act.at_tick) : AIMED_NOW;
+
+            if (when == AIMED_WAITS && room)
+                self->aimed_waiting[self->aimed_waiting_count++] = item->u.act;
+            else
+                play_aimed(self, &item->u.act, now, when != AIMED_PAST);
+            return;
+        }
+    } else if (item->kind == TIMED_HIT && (at = waiting_index(self, item->u.hit.source)) >= 0
+               && self->aimed_waiting[at].kind == ACT_SWING && self->aimed_waiting[at].target == item->u.hit.target) {
+        struct ActRecord swing = self->aimed_waiting[at];
+        const struct GameActor *source = swing_actor(self, swing.gid);
+
+        waiting_remove(self, at);
+        play_aimed(self, &swing, now, !source || source->state != ACTOR_STATE_WALKING);
+    }
+    play_item(self, item, now);
+}
+
+/* Files an item in the queue, in whatever order items come. An act or vitals record whose
+   actor is not there waits for it (game_mode_play_tracks): through the delivery piece a record
+   can come before the packet that makes its actor known. An item the full queue hands back is
+   played at once. */
+static void file_timed(struct GameMode *self, const struct TimedItem *item)
+{
+    struct GameActor *actor = NULL;
+    struct TimedItem early;
+
+    if (item->kind != TIMED_HIT && !(actor = swing_actor(self, item->actor))) {
+        struct RecordWaiting waiting;
+
+        waiting.gid = item->actor;
+        waiting.kind = RECORD_WAIT_TIMED;
+        waiting.u.timed = *item;
+        record_wait_put(&self->record_wait, platform_ticks_ms(), &waiting);
+        return;
+    }
+    if (timed_queue_file(&self->tracks, item, actor ? &actor->record_floors : NULL, (uint32_t)g_session1.ownAid, &early)
+        == TIMED_FILED_EARLY)
+        play_taken(self, &early, item_clock(self, &early));
+}
+
+/* Files what arrived. How long after its tick it came feeds the render delay; what was sent
+   ahead of its tick does not (render_delay_sample). */
+static void file_item(struct GameMode *self, const struct TimedItem *item)
+{
+    if (game_mode_knows_clock(self))
+        render_delay_sample(&self->render_delay, (int)(game_mode_true_time(self) - item->tick));
+    file_timed(self, item);
+}
+
+static int actor_present(void *context, uint32_t gid)
+{
+    return swing_actor((struct GameMode *)context, gid) != NULL;
+}
+
+/* What waited for its actor and has it now is filed as if it had just come. */
+static void file_waiting(struct GameMode *self)
+{
+    struct RecordWaiting waiting;
+
+    while (record_wait_take(&self->record_wait, platform_ticks_ms(), actor_present, self, &waiting)) {
+        struct GameActor *actor = swing_actor(self, waiting.gid);
+
+        if (waiting.kind == RECORD_WAIT_MOVE)
+            move_track_file(&actor->move_track, &waiting.u.move);
+        else
+            file_timed(self, &waiting.u.timed);
+    }
+}
+
+/* The own body's swing as the predicted world has it, once a frame (game_mode_play_tracks): with
+   `has` one in its windup at `target`, begun at at_tick, landing at `lands`, of a body whose
+   attack motion is motion_ms. What is shown follows it (world/own_swing.h). A swing the
+   world's body began is shown at once, on the own clock, its animation paced so that its hit
+   meets the damage number, which comes with the server's notice (play_item). One the world has no
+   more before it landed is taken back. The server's record of a swing that is shown is not
+   played (game_mode_zc_track_act). A swing begins on a character that stands: while the
+   character still walks the last of the way to the cell the body swings on (it is steered
+   there after a correction), the swing waits, and begins when the character is there. */
+void game_mode_own_swing(struct GameMode *self, int has, unsigned target, DWORD at_tick, DWORD lands,
+                         unsigned motion_ms)
+{
+    DWORD own_now = game_mode_own_time(self);
+    const struct GameActor *own = (const struct GameActor *)self->world->player;
+    struct TimedItem item;
+    int what;
+
+    if (has && own && own->state == ACTOR_STATE_WALKING && !own_swing_is_shown(&self->own_swing, target, at_tick))
+        return;
+    what = own_swing_follow(&self->own_swing, has, target, at_tick, lands, own_now);
+
+    if (what == OWN_SWING_TAKE_BACK || what == OWN_SWING_REPLACE)
+        swing_cancel(self, (unsigned)g_session1.ownAid);
+    if (what == OWN_SWING_SHOW || what == OWN_SWING_REPLACE) {
+        own_swing_shown(&self->own_swing, (uint32_t)g_session1.ownAid, motion_ms ? motion_ms : DEFAULT_MOTION_TIME,
+                        &item.u.act);
+        item.kind = TIMED_ACT;
+        item.tick = item.u.act.at_tick;
+        item.actor = item.u.act.gid;
+        play_item(self, &item, own_now);
+    }
+}
+
+void game_mode_zc_track_act(struct GameMode *self, const unsigned char *pkt)
+{
+    struct TimedItem item;
+
+    if (!act_record_read(pkt, &item.u.act))
+        return;
+    if (item.u.act.gid == (uint32_t)g_session1.ownAid) {
+        /* the record of the swing that is already shown is not played again */
+        if (item.u.act.kind == ACT_SWING && own_swing_record(&self->own_swing, &item.u.act))
+            return;
+    }
+    item.kind = TIMED_ACT;
+    item.tick = item.u.act.at_tick;
+    item.actor = item.u.act.gid;
+    file_item(self, &item);
+}
+
+void game_mode_zc_track_vitals(struct GameMode *self, const unsigned char *pkt)
+{
+    struct TimedItem item;
+
+    vitals_record_read(pkt, &item.u.vitals);
+    item.kind = TIMED_VITALS;
+    item.tick = item.u.vitals.at_tick;
+    item.actor = item.u.vitals.gid;
+    file_item(self, &item);
+}
+
+void game_mode_zc_notice_hit(struct GameMode *self, const unsigned char *pkt)
+{
+    struct TimedItem item;
+
+    hit_notice_read(pkt, &item.u.hit);
+    item.kind = TIMED_HIT;
+    item.tick = item.u.hit.at_tick;
+    item.actor = item.u.hit.source;
+    file_item(self, &item);
+}
+
+void game_mode_play_tracks(struct GameMode *self)
+{
+    DWORD render = session_get_server_time(&g_session1);
+    DWORD own = own_clock(self);
+    struct TimedItem item;
+    unsigned target = 0, motion_ms = 0;
+    DWORD at_tick = 0, lands = 0;
+    uint32_t now;
+    int has = game_mode_own_body_swing(&target, &at_tick, &lands, &motion_ms);
+
+    game_mode_own_swing(self, has, target, at_tick, lands, motion_ms);
+    file_waiting(self);
+    play_waiting(self, own);
+    while (timed_queue_take(&self->tracks, (uint32_t)g_session1.ownAid, own, render, &item, &now))
+        play_taken(self, &item, now);
+}
+
+/* The server ended the player's intent on its own (plans/intents.md): the attack cursor state
+   goes. An end of an older intent says nothing about the one that replaced it. */
+static void intent_ended(struct GameMode *self, unsigned seq)
+{
+    if (seq != self->intent_seq)
+        return;
+    if (self->world->player)
+        self->world->player->intent_hold = 0;
+    mode_send_msg(self, MODE_MSG_SET_ATTACK_IN_PROGRESS, 0, 0, 0, 0);
+}
+
+/* ZC_OWN_INTENT (plans/core-loop.md): the end of one of the player's intents, by the intent's
+   number, which is its stamp's (game_mode_send_intent). It clears the attack cursor state
+   (intent_ended). What the intent makes of the character before that, its walk into reach and
+   its swing, is the predicted world's to show, from the server's word of the body
+   (game/own_body.c), and the server says nothing else of it. Its seq and state are read. */
+#pragma pack(push, 1)
+struct PACKET_ZC_OWN_INTENT {
+    unsigned short id;
+    unsigned short seq;
+    unsigned char state;
+    unsigned char reason;
+    unsigned tick;
+    unsigned short x, y;
+};
+#pragma pack(pop)
+SIZE_ASSERT(PACKET_ZC_OWN_INTENT, 14);
+
+/* The state the server sends: ended. */
+enum { OWN_INTENT_ENDED = 3 };
+
+void game_mode_zc_own_intent(struct GameMode *self, const unsigned char *pkt)
+{
+    const struct PACKET_ZC_OWN_INTENT *packet = (const struct PACKET_ZC_OWN_INTENT *)pkt;
+
+    if (packet->state == OWN_INTENT_ENDED)
+        intent_ended(self, packet->seq);
 }
 
 #pragma pack(push, 1)
@@ -109,6 +607,7 @@ void game_mode_zc_notify_act_position(struct GameMode *self, const struct PACKET
     attack.attack_mt = ATTACK_POSITION_MT;
     attack.attacked_mt = ATTACKED_POSITION_MT;
     attack.is_sp_damage = 0;
+    attack.impact = 0;
     if (packet->aid == (unsigned)g_session1.ownAid)
         actor = (struct GameActor *)self->world->player;
     else

@@ -48,6 +48,10 @@ void session_add_plate_record(struct Session *self, int key, int cell);
 void session_set_plate_cell(struct Session *self, int key, int value);
 void session_set_server_time(struct Session *self, DWORD serverTime);
 void session_sync_server_time(struct Session *self, DWORD serverTime);
+/* Makes session_get_server_time read `shown` now. Until the next session_set_server_time the
+   clock is the caller's, set again whenever it should move, and session_sync_server_time
+   leaves it alone. */
+void session_pin_server_time(struct Session *self, DWORD shown);
 void session_set_player_pos_dir(struct Session *self, int x, int y, int dir);
 
 int session_load_buying_store_items(struct Session *self);

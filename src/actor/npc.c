@@ -379,6 +379,7 @@ static void npc_set_state_general(struct Npc *self, int state)
             render_object_set_action((struct RenderObject *)self, 0x10, 1);
         }
         self->attack_motion_count = (float)actor_get_attack_motion(self);
+        game_actor_pace_attack(actor);
         actor_set_unit_cell(self);
         game_actor_launch_ranged_attack(actor, self->attack_target_aid, self->motion_delay * self->attack_motion_count);
         break;

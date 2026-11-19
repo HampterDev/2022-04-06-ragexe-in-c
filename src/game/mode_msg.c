@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game/mode_msg.h"
+#include "game/net_clock.h"
 #include "platform/language.h"
 #include "game/chat.h"
 #include "game/mode_misc.h"
@@ -182,6 +183,7 @@ intptr_t game_mode_send_msg(struct Mode *mode, int msg, intptr_t a, intptr_t b, 
     case MODE_MSG_AIM_SKILL:
         return game_mode_msg_aim_skill(self, a, (const struct SkillInfo *)b, c);
     case MODE_MSG_CANCEL_LOCKON:
+        game_mode_send_input_stamp(self);
         send_id(0x118);
         return 0;
     case MODE_MSG_SELECT_WARP_POINT: {
@@ -351,9 +353,6 @@ intptr_t game_mode_send_msg(struct Mode *mode, int msg, intptr_t a, intptr_t b, 
         return game_mode_msg_drag_by_name(self, (const char *)a);
     case MODE_MSG_SET_VIEW:
         view_set_quake_amplitude(self->view, *(const float *)a, *(const float *)b, *(const float *)c);
-        return 0;
-    case MODE_MSG_PICKUP_ITEM:
-        send_u32(0x362, a);
         return 0;
     case MODE_MSG_REQUEST_ACT:
         return game_mode_msg_request_act(self, a, b);

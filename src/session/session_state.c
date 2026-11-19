@@ -287,14 +287,28 @@ void session_set_plate_cell(struct Session *self, int memberId, int value)
         }
 }
 
+/* The clock is set every frame (session_pin_server_time), so the walk packets' ticks do not move
+   it. Kept beside the one session there is and not in it, so that the session's bytes, which
+   test_window_lists traces, stay what they were. */
+static int s_server_time_pinned;
+
 void session_set_server_time(struct Session *self, DWORD serverTime)
 {
     self->serverTimeOffset = platform_ticks_ms() - serverTime;
     self->serverTimeLagCount = 0;
+    s_server_time_pinned = 0;
+}
+
+void session_pin_server_time(struct Session *self, DWORD shown)
+{
+    self->serverTimeOffset = platform_ticks_ms() - 72 - shown;
+    s_server_time_pinned = 1;
 }
 
 void session_sync_server_time(struct Session *self, DWORD serverTime)
 {
+    if (s_server_time_pinned)
+        return;
     DWORD now = platform_ticks_ms() - 72 - self->serverTimeOffset;
 
     if (now + 72 < serverTime) {

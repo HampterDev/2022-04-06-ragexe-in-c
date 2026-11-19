@@ -124,6 +124,24 @@ static void run_case(int second, int id, size_t size, int null_packet)
         assert(trace[5] == hash_bytes(UINT64_C(14695981039346656037), "adventurer_agency_receive", strlen("adventurer_agency_receive")));
         assert(trace[6] == 0x10000 && trace[7] == size);
     }
+    if (second && (id == 0x0f12 || id == 0x0f14 || (id >= 0x0f20 && id <= 0x0f24)) && !null_packet && size >= 2) {
+        static const char *const tracks[] = { "game_mode_zc_track_move", "game_mode_zc_track_act",
+            "game_mode_zc_track_vitals", "game_mode_zc_notice_hit", "game_mode_zc_own_intent" };
+        const char *name = id == 0x0f12 ? "game_mode_zc_time_sync" : id == 0x0f14 ? "game_mode_zc_hold_back"
+                                                                            : tracks[id - 0x0f20];
+
+        assert(trace_count == 8);
+        assert(trace[4] == UINT64_MAX);
+        assert(trace[5] == hash_bytes(UINT64_C(14695981039346656037), name, strlen(name)));
+        assert(trace[6] == 1 && trace[7] == 0x10000);
+    }
+    /* ZC_OWN_BODY: the handler gets the packet with its length, as it came */
+    if (second && id == 0x0f25 && !null_packet && size >= 2) {
+        assert(trace_count == 9);
+        assert(trace[4] == UINT64_MAX);
+        assert(trace[5] == hash_bytes(UINT64_C(14695981039346656037), "game_mode_zc_own_body", strlen("game_mode_zc_own_body")));
+        assert(trace[6] == 1 && trace[7] == 0x10000 && trace[8] == size);
+    }
     assert(!memcmp(&mode, &expected_mode, sizeof mode));
     assert(!memcmp(packet, expected_packet, sizeof packet));
     packet_trace_value(mode.server_move_pending);
@@ -177,7 +195,7 @@ int main(int argc, char **argv)
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0xd77aaadbb5fc63b7));
+    assert(digest == UINT64_C(0x3e1222f7c952abbb));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }

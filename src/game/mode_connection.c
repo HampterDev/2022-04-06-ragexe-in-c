@@ -33,9 +33,11 @@
 #include "core/text_util.h"
 #include "login/zone.h"
 
-static unsigned int g_keepAliveInterval = 12000u;
-
 #define CZ_KEEP_ALIVE       0x360
+/* The keep-alive is the timed exchange (plans/netcode.md): often until the estimate has its
+   samples, then often enough to follow drift. */
+#define SYNC_FAST_MS        250
+#define SYNC_SLOW_MS        2000
 #define CZ_ENTER            0x436
 
 struct List g_keepAliveTimes;
@@ -43,6 +45,7 @@ DWORD g_firstKeepAliveTime;
 
 #include "actor/render_ops.h"
 #include "platform/clock.h"
+#include "game/net_clock.h"
 
 #define WND_LOADING          6
 #define MSGBOX_RESULT_CLOSED 0x105
@@ -64,11 +67,16 @@ struct PacketEnter {
 };
 #pragma pack(pop)
 
+static unsigned keep_alive_interval(const struct GameMode *self)
+{
+    return self->clock_sync.count < CLOCK_SYNC_SAMPLES ? SYNC_FAST_MS : SYNC_SLOW_MS;
+}
+
 void game_mode_send_keep_alive(struct GameMode *self, char force)
 {
     struct PacketKeepAlive packet;
 
-    if (!force && platform_ticks_ms() <= self->server_time_requested_at + g_keepAliveInterval)
+    if (!force && platform_ticks_ms() <= self->server_time_requested_at + keep_alive_interval(self))
         return;
 
     self->server_time_answered = 0;
@@ -118,6 +126,45 @@ void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt)
     self->server_time_syncs++;
     self->server_time_answered = 1;
     session_push_ping_sample(&g_session1, platform_ticks_ms() - self->server_time_requested_at);
+}
+
+#pragma pack(push, 1)
+struct PACKET_ZC_HOLD_BACK {
+    unsigned short id;
+    unsigned short hold_back_ms;
+};
+struct PACKET_ZC_TIME_SYNC {
+    unsigned short id;
+    DWORD client_tick;
+    DWORD server_receive;
+    DWORD server_send;
+};
+#pragma pack(pop)
+SIZE_ASSERT(PACKET_ZC_HOLD_BACK, 4);
+SIZE_ASSERT(PACKET_ZC_TIME_SYNC, 14);
+
+/* The least time the server wants a request to wait after its press (plans/netcode.md), which the
+   own clock keeps. It says so each time the map is loaded. */
+void game_mode_zc_hold_back(struct GameMode *self, const unsigned char *pkt)
+{
+    const struct PACKET_ZC_HOLD_BACK *packet = (const struct PACKET_ZC_HOLD_BACK *)pkt;
+
+    self->hold_back_ms = packet->hold_back_ms;
+}
+
+/* The server's half of a timed exchange: the tick this client sent in its keep-alive, and the
+   server's clock when that arrived and when the answer left. */
+void game_mode_zc_time_sync(struct GameMode *self, const unsigned char *pkt)
+{
+    const struct PACKET_ZC_TIME_SYNC *packet = (const struct PACKET_ZC_TIME_SYNC *)pkt;
+
+    /* An answer to a request from before this map was loaded waited out the load: its round
+       trip is the load, not the way to the server. */
+    if ((int)(packet->client_tick - self->initialized_at) < 0)
+        return;
+    if (clock_sync_sample(&self->clock_sync, packet->client_tick, packet->server_receive, packet->server_send,
+                          platform_ticks_ms()))
+        way_up_sample(&self->way_up, packet->client_tick, packet->server_receive);
 }
 
 static int enter_zone(struct GameMode *self)

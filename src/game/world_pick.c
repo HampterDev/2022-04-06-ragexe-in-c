@@ -357,7 +357,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
     }
 
     due = platform_ticks_ms() > self->click_repeat_time + 600;
-    if (self->world->player->pending == 0 && g_mouse.button[MOUSE_LEFT] == BUTTON_HELD) {
+    if (g_mouse.button[MOUSE_LEFT] == BUTTON_HELD) {
         if (!due || self->held_walk_allowed == 0)
             return picked;
     } else {

@@ -137,7 +137,7 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
         break;
     }
 
-    connection_disconnect(rag_connection_transport(rag_connection_instance()));
+    connection_hop(rag_connection_transport(rag_connection_instance()));
     self->base.next_sub_mode = SUBMODE_SERVER_SELECT;
 }
 

@@ -10,6 +10,7 @@
 #include <string.h>
 #include "platform/win_types.h"
 #include "game/mode_msg.h"
+#include "game/net_clock.h"
 #include "platform/language.h"
 #include "core/text_util.h"
 #include "game/chat.h"
@@ -154,7 +155,9 @@ int game_mode_msg_request_move(struct GameMode *self, int x, int y)
     packet.cell[0] = (unsigned char)(x >> 2);
     packet.cell[1] = (unsigned char)(((y >> 4) & 0x3f) | (x << 6));
     packet.cell[2] = (unsigned char)(y << 4);
+    self->move_seq = game_mode_send_input_stamp(self);
     send_packet(CZ_REQUEST_MOVE2, &packet);
+    game_mode_own_body_walk(self, self->move_seq, x, y);
     return 0;
 }
 
@@ -175,6 +178,7 @@ int game_mode_msg_request_act(struct GameMode *self, int action, int target)
     packet.action = (unsigned char)action;
     packet.id = CZ_REQUEST_ACT2;
     packet.target = target;
+    game_mode_send_input_stamp(self);
     send_packet(CZ_REQUEST_ACT2, &packet);
     return 0;
 }
