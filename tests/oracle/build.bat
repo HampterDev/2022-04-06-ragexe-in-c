@@ -198,6 +198,12 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_packet_handlers.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+cl %CFLAGS% "%ROOT%\tests\oracle\test_merchant_handlers.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\tests\oracle\merchant_handlers_unreached.c" "%ROOT%\src\std\string.c" /Fe:test_merchant_handlers.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_merchant_handlers.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 cl %CFLAGS% "%ROOT%\tests\oracle\test_canvas_texels.c" "%ROOT%\tests\oracle\oracle_image.c" ^
   "%ROOT%\src\render\cdcbitmap.c" /Fe:test_canvas_texels.exe %LFLAGS% ddraw.lib dxguid.lib
 if errorlevel 1 (popd & exit /b 1)
