@@ -2,9 +2,7 @@
 
 How an actor's coming into view and its going take part in the order of its records, so that
 records, hits and the player's own body can travel in any order and the screen still shows what
-the server had. Status, 2026-11-19: the client's part of steps 1 to 4 is built
-(`world/view_floors.c`, `world/presence.c`, `world/predicted.c`, the act record's mark in
-`world/act_track.c`; checks 1 and 2); the server's steps 1 and 4 and step 5 are not.
+the server had. Status, 2026-11-19: design only, nothing built.
 
 `plans/delivery.md` has the records' merge and the delivery piece, `plans/core-loop.md` what a
 record is, `plans/predicted-world.md` the own body and the predicted world.
@@ -77,8 +75,9 @@ entry that is held back until its player has loaded the map is stamped when it i
 the revisions of that moment. The original's entry and vanish layouts are untouched.
 
 A going's tick is the tick the server's core lost the body, taken from the core and not from
-the renderer's clock, so that the two are the same number also when the core could not run to
-the present before the unit left. A vanish that leaves the unit in the viewer's world has no
+the renderer's clock, so that the two are one number by construction. A unit that only leaves
+the viewer's sight, or a GM who hides, keeps its body in the core and goes at the tick the
+viewer stopped being told of it. A vanish that leaves the unit in the viewer's world has no
 stamp: a player who dies stays where she fell, in the server's core and on the screen, so her
 death is no going. An entry or a vanish the server sends for a script (an NPC shown or hidden)
 is rendered by the renderer like any other and is stamped.
@@ -157,8 +156,8 @@ can, the tick `ZC_HOLD_BACK` names can stand in for the number.
    target goes and comes back within one round trip.
 3. **The server says it.** A session test: every entry, and every vanish that takes the unit
    out of the viewer's world, has its stamp directly before it; a player's death has none; the
-   stamp's revisions are the renderer's counts; and a going's tick is the tick the core lost
-   the body, also when the core had a question open as the unit left.
+   stamp's revisions are the renderer's counts; and for every body the core lost, a going of
+   that unit carries the tick it was lost at.
 4. **On screen.** The playground with Zombies, 30 of 100 datagrams lost and 10 repeated, shows
    no finding it does not show on a wire that loses nothing, and has a check of its own for an
    actor that one side has and the other does not for longer than the line's delay.
