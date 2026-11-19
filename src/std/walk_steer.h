@@ -12,4 +12,10 @@
 int walk_steer(float from_x, float from_z, float want_x, float want_z, float reach, float jump,
                float *x, float *z);
 
+/* The ms a frame's steer may cover: what the clock the walk is played on advanced since the last
+   frame, but no more than the time that passed. A clock can step forward at once (the own clock
+   when its lead grows); the character then runs behind its walk and catches up as any steered
+   walk does, rather than being carried the whole step in one frame. Never negative. */
+int walk_steer_ms(int clock_ms, int real_ms);
+
 #endif

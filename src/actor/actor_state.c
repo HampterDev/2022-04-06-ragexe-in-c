@@ -270,7 +270,11 @@ unsigned char game_actor_process_state(struct GameActor * self)
             self->pos.z = (to_z - from.z) * t + from.z;
         }
         if (self->steered && !self->glide && !self->motion_held && !self->body_relocation) {
-            cut = steer_walk(self, world, &from, to_x, to_z, done, self->path_cell == -1 && server_now >= deadline);
+            /* a clock that stepped forward (the own clock when its lead grows) is steered at the
+               time that passed */
+            cut = steer_walk(self, world, &from, to_x, to_z,
+                             walk_steer_ms(done, (int)(platform_ticks_ms() - self->process_tick)),
+                             self->path_cell == -1 && server_now >= deadline);
             if (from.x != self->pos.x || from.z != self->pos.z)
                 moved = 1;
         }

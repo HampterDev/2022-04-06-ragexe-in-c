@@ -16,3 +16,10 @@ int walk_steer(float from_x, float from_z, float want_x, float want_z, float rea
     *z = from_z + dz * (reach / far);
     return 1;
 }
+
+int walk_steer_ms(int clock_ms, int real_ms)
+{
+    int ms = clock_ms < real_ms ? clock_ms : real_ms;
+
+    return ms > 0 ? ms : 0;
+}

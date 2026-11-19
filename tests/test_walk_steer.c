@@ -50,12 +50,32 @@ static void a_cut_walk_catches_up(void)
     assert(at == walk && frames >= 30 && frames <= 33);
 }
 
+/* A clock that steps forward at once is followed at the pace of the time that passed: a frame of
+   16 ms in which the own clock moved 88 (its lead grew) steers 16 ms worth, so a character walking
+   at 150 ms a cell is carried a fraction of a cell, not the whole cell that 88 ms would give
+   (the jump of 0.76 cells the playground found). The clock's own advance bounds it too, and
+   nothing is negative. */
+static void a_clock_that_steps_forward_is_steered_at_the_time_that_passed(void)
+{
+    float x = 0.0f, z = 0.0f;
+    float reach = 5.0f * (float)walk_steer_ms(88, 16) * 1.3f / 150.0f;
+
+    assert(walk_steer_ms(88, 16) == 16);
+    assert(walk_steer_ms(16, 16) == 16);
+    assert(walk_steer_ms(10, 16) == 10);
+    assert(walk_steer_ms(-5, 16) == 0 && walk_steer_ms(16, -3) == 0);
+    /* the walk wants the character a cell on; the frame takes it 0.69 units (0.14 of a cell) */
+    assert(walk_steer(0.0f, 0.0f, 5.0f, 0.0f, reach, 20.0f, &x, &z) == 1);
+    assert(x > 0.68f && x < 0.70f && z == 0.0f);
+}
+
 int main(void)
 {
     a_step_within_reach_is_taken_whole();
     a_longer_step_is_cut_along_its_line();
     a_gap_too_far_to_walk_off_is_taken_at_once();
     a_cut_walk_catches_up();
+    a_clock_that_steps_forward_is_steered_at_the_time_that_passed();
     puts("walk_steer: ok");
     return 0;
 }
