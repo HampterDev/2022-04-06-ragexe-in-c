@@ -89,7 +89,8 @@ struct PredictedOther {
     uint8_t used;
     uint8_t count;                             /* records held */
     uint8_t out;                               /* gone, and out of the world as it runs */
-    uint8_t reserved;
+    uint8_t slot;                              /* its slot in the core: every stay of an id has the same */
+    uint64_t from;                             /* the tick it came into the world at; 0 for a body known without a coming */
     uint64_t gone;                             /* the tick it left the world at; 0 while it is in it */
     struct BodyMove record[PREDICTED_RECORDS]; /* by at_tick, earliest first */
 };
@@ -142,15 +143,18 @@ int predicted_request(struct Predicted *predicted, const struct PredictedRequest
  * the body where its last record has it, on the same steps at the same ticks, says nothing
  * new and changes nothing, so a caller may say what it sees of a body every frame. Returns 0
  * when the world holds PREDICTED_OTHERS others already and none of them can go: the own body
- * names each. */
+ * names each. A record is of the stay of the body its tick is in; one dated at or after the
+ * body's last going is of the body that came back, which is in the world from its earliest
+ * record on. */
 int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyMove *record);
 
-/* Another body is gone: it leaves the world at the world's clock. A world made again from the
- * server's last word has it until then, as the world had it, so what the own body did with it
- * before stays as it was. A word that comes after this left the server after the body went
- * there: it is in no world made from that word, and is let go. A record of it after this is of
- * a body that came back. */
-void predicted_gone(struct Predicted *predicted, uint32_t id);
+/* Another body is gone from the tick `tick` of the server on (ZC_VIEW_STAMP, plans/presence.md):
+ * it is in the worlds made of words before that tick and in none of later ones, whatever arrived
+ * first. What is due at that tick runs before it goes, so a swing that lands then lands. A going
+ * the world is already past is a change of the past: the world is made again. Its records of
+ * that tick or later are of a later stay, which comes into the world at the earliest of them.
+ * The same going told again changes nothing. */
+void predicted_gone(struct Predicted *predicted, uint32_t id, uint64_t tick);
 
 /* Runs the world to `tick`, the own clock, making it again first when the past changed. A tick
  * behind the world's clock changes nothing. Returns 1 while the own body is predicted. */

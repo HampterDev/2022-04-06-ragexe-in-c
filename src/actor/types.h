@@ -7,7 +7,6 @@
 #include "render/vec3.h"
 #include "world/path_info.h"
 #include "world/move_track.h"
-#include "world/act_track.h"
 
 enum { ACTOR_EFFECT_SLOT_COUNT = 5 };
 
@@ -144,9 +143,6 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
        waiting for their tick; a walk that waits for its first step, and when that starts;    \
        and whether the walk under way is joined at a capped speed and never set onto. */       \
     struct MoveTrack move_track;               \
-    /* What of its act and vitals tracks was played last (world/act_track.h): a record not     \
-       newer than that is the past. */                                                         \
-    struct RecordFloors record_floors;         \
     /* While the attack of a swing the server announced is set up (game_actor_swing_begin):    \
        the time until its hit is to show, and the frame delay the attack has on its own        \
        (game_actor_pace_attack). */                                                            \

@@ -56,7 +56,7 @@
 #include "world/view_types.h"
 #include "game/context.h"
 
-#define EXPECTED_DIGEST 0xb1ff4796071f93fbull
+#define EXPECTED_DIGEST 0x41a27d412ba7eb76ull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400

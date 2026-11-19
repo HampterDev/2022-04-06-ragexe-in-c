@@ -10,6 +10,7 @@
 #include "world/actor_lookup.h"
 #include "world/object_lookup.h"
 #include "world/act_track.h"
+#include "world/presence.h"
 #include "game/net_clock.h"
 #include "game/own_body.h"
 #include "game/cells.h"
@@ -365,10 +366,11 @@ static void play_taken(struct GameMode *self, const struct TimedItem *item, DWOR
 {
     struct GameActor *actor = item->kind != TIMED_HIT ? swing_actor(self, item->actor) : NULL;
     unsigned own = (unsigned)g_session1.ownAid;
+    struct ViewUnit *unit;
     int at;
 
-    if (actor)
-        record_floors_played(&actor->record_floors, item);
+    if (item->kind != TIMED_HIT && (unit = view_floors_unit(&self->view_floors, item->actor)) != NULL)
+        record_floors_played(&unit->floors, item);
     if (item->kind == TIMED_ACT && item->actor != own) {
         if ((at = waiting_index(self, item->actor)) >= 0)
             waiting_remove(self, at);
@@ -393,56 +395,120 @@ static void play_taken(struct GameMode *self, const struct TimedItem *item, DWOR
     play_item(self, item, now);
 }
 
-/* Files an item in the queue, in whatever order items come. An act or vitals record whose
-   actor is not there waits for it (game_mode_play_tracks): through the delivery piece a record
-   can come before the packet that makes its actor known. An item the full queue hands back is
-   played at once. */
+/* The move track of the actor of `gid`, or NULL when it has none. */
+static struct MoveTrack *track_of(void *context, uint32_t gid)
+{
+    struct GameActor *actor = swing_actor((struct GameMode *)context, gid);
+
+    return actor ? &actor->move_track : NULL;
+}
+
+/* Where a unit's records go (world/presence.h): against the floors of its unit id, which
+   outlive its actor. */
+static struct Presence presence_of(struct GameMode *self)
+{
+    struct Presence presence;
+
+    presence.view = &self->view_floors;
+    presence.queue = &self->tracks;
+    presence.wait = &self->record_wait;
+    presence.own = (uint32_t)g_session1.ownAid;
+    presence.track_of = track_of;
+    presence.context = self;
+    return presence;
+}
+
+/* Files an item in the queue, in whatever order items come. An act or vitals record whose unit
+   is out of view or has no actor waits for it (game_mode_play_tracks): through the delivery
+   piece a record can come before the packet that makes its actor known. An item the full queue
+   hands back is played at once. */
 static void file_timed(struct GameMode *self, const struct TimedItem *item)
 {
-    struct GameActor *actor = NULL;
+    struct Presence presence = presence_of(self);
     struct TimedItem early;
 
-    if (item->kind != TIMED_HIT && !(actor = swing_actor(self, item->actor))) {
-        struct RecordWaiting waiting;
-
-        waiting.gid = item->actor;
-        waiting.kind = RECORD_WAIT_TIMED;
-        waiting.u.timed = *item;
-        record_wait_put(&self->record_wait, platform_ticks_ms(), &waiting);
-        return;
-    }
-    if (timed_queue_file(&self->tracks, item, actor ? &actor->record_floors : NULL, (uint32_t)g_session1.ownAid, &early)
-        == TIMED_FILED_EARLY)
+    if (presence_file_timed(&presence, platform_ticks_ms(), item, &early) == TIMED_FILED_EARLY)
         play_taken(self, &early, item_clock(self, &early));
 }
 
+static void file_move(struct GameMode *self, unsigned gid, const struct MoveRecord *record)
+{
+    struct Presence presence = presence_of(self);
+
+    presence_file_move(&presence, platform_ticks_ms(), gid, record);
+}
+
+/* ZC_TRACK_MOVE (plans/core-loop.md): where another actor is from a server tick on. The record
+   waits on the actor until the render clock reaches its tick (game_actor_process_state), and
+   the track takes it in whatever order records come (world/move_track.h) against its unit's floors (world/presence.h). One whose actor is
+   not there yet waits for it (game_mode_play_tracks): through the delivery piece a record can
+   come before the packet that makes its actor known. How long after its tick it came, by the
+   server's clock, feeds the render delay; a record the server sent later than it made it says
+   nothing about that. The player's own character has none: its walk is the predicted world's
+   (game/own_body.c). */
+void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt)
+{
+    struct MoveRecord record;
+    uint32_t gid;
+
+    if (!move_record_read(pkt, (size_t)(pkt[2] | pkt[3] << 8), &gid, &record))
+        return;
+    if (game_mode_knows_clock(self) && !record.old)
+        render_delay_sample(&self->render_delay, (int)(game_mode_true_time(self) - record.at_tick));
+    if (gid == (uint32_t)g_session1.ownAid)
+        return;
+    file_move(self, gid, &record);
+}
+
+/* ZC_VIEW_STAMP (plans/presence.md): the unit `gid` comes into view or goes. The stamp belongs
+   to the very next packet only, and is kept until then (game_mode_view_stamped). */
+void game_mode_zc_view_stamp(struct GameMode *self, const unsigned char *pkt, unsigned size)
+{
+    self->view_stamp_waits = (unsigned char)view_stamp_read(pkt, size, &self->view_stamp);
+}
+
+void game_mode_view_stamped(struct GameMode *self, int packet_id, const unsigned char *pkt, unsigned size)
+{
+    struct Presence presence = presence_of(self);
+    const struct ViewStamp *stamp = &self->view_stamp;
+    int at;
+
+    if (!self->view_stamp_waits)
+        return;
+    self->view_stamp_waits = 0;
+    if (!view_stamp_stamps(stamp, packet_id, pkt, size))
+        return;
+    /* its floors are set, what it holds is filed again against them, and the predicted world is
+       told the going's tick */
+    if (!presence_stamp(&presence, platform_ticks_ms(), stamp) || stamp->kind != VIEW_GOES)
+        return;
+    /* a swing at the own character that waited for its actor goes with it */
+    if ((at = waiting_index(self, stamp->gid)) >= 0)
+        waiting_remove(self, at);
+    game_mode_own_body_gone(stamp->gid, stamp->tick);
+}
+
 /* Files what arrived. How long after its tick it came feeds the render delay; what was sent
-   ahead of its tick does not (render_delay_sample). */
+   ahead of its tick does not (render_delay_sample), nor does a record sent later than it was
+   made. */
 static void file_item(struct GameMode *self, const struct TimedItem *item)
 {
-    if (game_mode_knows_clock(self))
+    if (game_mode_knows_clock(self) && !(item->kind == TIMED_ACT && item->u.act.old))
         render_delay_sample(&self->render_delay, (int)(game_mode_true_time(self) - item->tick));
     file_timed(self, item);
 }
 
-static int actor_present(void *context, uint32_t gid)
-{
-    return swing_actor((struct GameMode *)context, gid) != NULL;
-}
-
-/* What waited for its actor and has it now is filed as if it had just come. */
+/* What waited for its unit and has it in view with an actor now is filed as if it had just
+   come. */
 static void file_waiting(struct GameMode *self)
 {
-    struct RecordWaiting waiting;
+    struct Presence presence = presence_of(self);
+    struct TimedItem early;
+    int filed;
 
-    while (record_wait_take(&self->record_wait, platform_ticks_ms(), actor_present, self, &waiting)) {
-        struct GameActor *actor = swing_actor(self, waiting.gid);
-
-        if (waiting.kind == RECORD_WAIT_MOVE)
-            move_track_file(&actor->move_track, &waiting.u.move);
-        else
-            file_timed(self, &waiting.u.timed);
-    }
+    while (presence_file_waiting(&presence, platform_ticks_ms(), &early, &filed))
+        if (filed == TIMED_FILED_EARLY)
+            play_taken(self, &early, item_clock(self, &early));
 }
 
 /* The own body's swing as the predicted world has it, once a frame (game_mode_play_tracks): with
@@ -492,6 +558,9 @@ void game_mode_zc_track_act(struct GameMode *self, const unsigned char *pkt)
     item.kind = TIMED_ACT;
     item.tick = item.u.act.at_tick;
     item.actor = item.u.act.gid;
+    /* one sent later than it was made, as with an entry, is played at once */
+    if (item.u.act.old && game_mode_knows_clock(self) && (int32_t)(item.tick - item_clock(self, &item)) > 0)
+        item.tick = item_clock(self, &item);
     file_item(self, &item);
 }
 

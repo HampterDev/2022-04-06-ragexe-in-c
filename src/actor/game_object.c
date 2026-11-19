@@ -385,7 +385,6 @@ void game_actor_on_init(struct GameActor *self)
     self->attack_motion_count = -1.0f;
     self->path_cell = -1;
     memset(&self->move_track, 0, sizeof self->move_track);
-    memset(&self->record_floors, 0, sizeof self->record_floors);
     self->swing_lands_ms = 0;
     self->swing_own_delay = 0.0f;
     self->swing_paces = 0;

@@ -138,7 +138,15 @@ static void an_act_of_a_kind_it_does_not_know_is_not_read(void)
     assert(!act_record_read(packet, &record));
     assert(record.kind == 0x5a);
     packet[10] = ACT_IDLE;
-    assert(act_record_read(packet, &record) && record.kind == ACT_IDLE);
+    assert(act_record_read(packet, &record) && record.kind == ACT_IDLE && !record.old);
+    /* the top bit marks a record sent later than it was made, and is not part of the kind */
+    packet[10] = ACT_RECORD_OLD | ACT_SWING;
+    assert(act_record_read(packet, &record) && record.kind == ACT_SWING && record.old);
+    memset(&record, 0x5a, sizeof record);
+    packet[10] = ACT_RECORD_OLD | 3;
+    assert(!act_record_read(packet, &record) && record.kind == 0x5a);
+    packet[10] = 0xFF;
+    assert(!act_record_read(packet, &record));
     /* a negative element is kept */
     packet[10] = ACT_CAST;
     packet[33] = 0xff;

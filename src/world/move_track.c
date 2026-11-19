@@ -85,28 +85,22 @@ int move_record_stand(const struct MoveRecord *record, const struct MoveStandAsk
     return MOVE_STAND_WALK;
 }
 
-/* Whether revision `a` is newer than `b`, however the counter has wrapped. */
-static int newer(uint16_t a, uint16_t b)
-{
-    return (int16_t)(uint16_t)(a - b) > 0;
-}
-
-int move_track_file(struct MoveTrack *track, const struct MoveRecord *record)
+int move_track_file(struct MoveTrack *track, const struct RecordFloors *floors, const struct MoveRecord *record)
 {
     int i, kept = 0, at;
 
-    if (track->played && !newer(record->rev, track->played_rev))
+    if (floors->has_move && !record_rev_newer(record->rev, floors->move))
         return 0;
     for (i = 0; i < track->count; i++) {
         const struct MoveRecord *held = &track->held[i];
 
         if (held->rev == record->rev
-            || (newer(held->rev, record->rev) && (int32_t)(held->at_tick - record->at_tick) <= 0))
+            || (record_rev_newer(held->rev, record->rev) && (int32_t)(held->at_tick - record->at_tick) <= 0))
             return 0;
     }
     /* what is left is newer and later, or older and earlier: it stays in order by tick */
     for (i = 0; i < track->count; i++)
-        if (newer(track->held[i].rev, record->rev) || (int32_t)(track->held[i].at_tick - record->at_tick) < 0)
+        if (record_rev_newer(track->held[i].rev, record->rev) || (int32_t)(track->held[i].at_tick - record->at_tick) < 0)
             track->held[kept++] = track->held[i];
     track->count = kept;
     if (track->count == MOVE_TRACK_HELD) {
@@ -127,7 +121,7 @@ void move_track_drop_after(struct MoveTrack *track, uint32_t now)
         track->count--;
 }
 
-int move_track_take(struct MoveTrack *track, uint32_t now, struct MoveRecord *record)
+int move_track_take(struct MoveTrack *track, struct RecordFloors *floors, uint32_t now, struct MoveRecord *record)
 {
     int due = 0, i;
 
@@ -136,8 +130,10 @@ int move_track_take(struct MoveTrack *track, uint32_t now, struct MoveRecord *re
     if (!due)
         return 0;
     *record = track->held[due - 1];
-    track->played_rev = record->rev;
-    track->played = 1;
+    if (!floors->has_move || record_rev_newer(record->rev, floors->move)) {
+        floors->move = record->rev;
+        floors->has_move = 1;
+    }
     for (i = due; i < track->count; i++)
         track->held[i - due] = track->held[i];
     track->count -= due;

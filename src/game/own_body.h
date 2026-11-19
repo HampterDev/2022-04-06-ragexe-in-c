@@ -31,6 +31,8 @@ void game_mode_own_body_intent(struct GameMode *self, unsigned number, int kind,
 /* Once a frame: the other bodies are said as they are seen, the world runs to the own clock,
    and the character is given the body's move when that is news. */
 void game_mode_own_body_frame(struct GameMode *self);
+/* The body `id` went from the predicted world at the server tick `tick` (ZC_VIEW_STAMP). */
+void game_mode_own_body_gone(unsigned id, DWORD tick);
 /* The swing the own body has in its windup, as the world has it now: at whom, when it began
    and lands (ticks of the wire), and the body's attack motion. Returns 0 when it has none.
    What is shown of it follows this once a frame (game_mode_own_swing). */

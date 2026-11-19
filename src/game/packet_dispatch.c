@@ -539,6 +539,8 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     if (!pkt || packet_size < sizeof(unsigned short))
         return;
 
+    if (packet_id != 0x0f26)
+        game_mode_view_stamped(self, packet_id, pkt, (unsigned)packet_size);
     handle = GAME_PACKET_HANDLER(k_game_packets_1, packet_id);
     if (handle)
         handle(self, pkt, packet_size);

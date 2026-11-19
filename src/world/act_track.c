@@ -12,11 +12,12 @@ static uint32_t get32(const unsigned char *p)
 
 int act_record_read(const unsigned char *packet, struct ActRecord *record)
 {
-    if (packet[10] > ACT_CAST)
+    if ((packet[10] & ~ACT_RECORD_OLD) > ACT_CAST)
         return 0;
     record->gid = get32(packet + 2);
     record->at_tick = get32(packet + 6);
-    record->kind = packet[10];
+    record->kind = (unsigned char)(packet[10] & ~ACT_RECORD_OLD);
+    record->old = (unsigned char)(packet[10] >> 7);
     record->end_tick = get32(packet + 11);
     record->mark_tick = get32(packet + 15);
     record->target = get32(packet + 19);
@@ -62,12 +63,6 @@ static void remove_at(struct TimedQueue *queue, int at)
     queue->count--;
 }
 
-/* Whether revision `a` is newer than `b`, however the counter has wrapped. */
-static int newer(uint16_t a, uint16_t b)
-{
-    return (int16_t)(uint16_t)(a - b) > 0;
-}
-
 static uint16_t rev_of(const struct TimedItem *item)
 {
     return item->kind == TIMED_ACT ? item->u.act.rev : item->u.vitals.rev;
@@ -77,8 +72,8 @@ static uint16_t rev_of(const struct TimedItem *item)
 static int is_past(const struct TimedItem *item, const struct RecordFloors *floors)
 {
     if (item->kind == TIMED_ACT)
-        return floors->has_act && !newer(item->u.act.rev, floors->act);
-    return floors->has_vitals && !newer(item->u.vitals.rev, floors->vitals);
+        return floors->has_act && !record_rev_newer(item->u.act.rev, floors->act);
+    return floors->has_vitals && !record_rev_newer(item->u.vitals.rev, floors->vitals);
 }
 
 void timed_queue_clear(struct TimedQueue *queue)
@@ -155,13 +150,13 @@ int timed_queue_file(struct TimedQueue *queue, const struct TimedItem *item, con
 
             if (held->kind != item->kind || held->actor != item->actor)
                 continue;
-            if (rev_of(held) == rev || (newer(rev_of(held), rev) && (int32_t)(held->tick - item->tick) <= 0))
+            if (rev_of(held) == rev || (record_rev_newer(rev_of(held), rev) && (int32_t)(held->tick - item->tick) <= 0))
                 return TIMED_DROPPED;
         }
         for (i = queue->count - 1; i >= 0; i--) {
             const struct TimedItem *held = &queue->items[i];
 
-            if (held->kind == item->kind && held->actor == item->actor && newer(rev, rev_of(held))
+            if (held->kind == item->kind && held->actor == item->actor && record_rev_newer(rev, rev_of(held))
                 && (int32_t)(held->tick - item->tick) >= 0)
                 remove_at(queue, i);
         }
@@ -184,10 +179,10 @@ int timed_queue_file(struct TimedQueue *queue, const struct TimedItem *item, con
 
 void record_floors_played(struct RecordFloors *floors, const struct TimedItem *item)
 {
-    if (item->kind == TIMED_ACT && (!floors->has_act || newer(item->u.act.rev, floors->act))) {
+    if (item->kind == TIMED_ACT && (!floors->has_act || record_rev_newer(item->u.act.rev, floors->act))) {
         floors->act = item->u.act.rev;
         floors->has_act = 1;
-    } else if (item->kind == TIMED_VITALS && (!floors->has_vitals || newer(item->u.vitals.rev, floors->vitals))) {
+    } else if (item->kind == TIMED_VITALS && (!floors->has_vitals || record_rev_newer(item->u.vitals.rev, floors->vitals))) {
         floors->vitals = item->u.vitals.rev;
         floors->has_vitals = 1;
     }
@@ -250,5 +245,23 @@ int timed_queue_take_vitals(struct TimedQueue *queue, uint32_t gid, uint32_t tic
             return 1;
         }
     }
+    return 0;
+}
+
+int timed_queue_take_actor(struct TimedQueue *queue, uint32_t actor, struct TimedItem *item)
+{
+    int i, at = aimed_index(queue, actor);
+
+    if (at >= 0) {
+        for (i = at + 1; i < queue->aimed_count; i++)
+            queue->aimed[i - 1] = queue->aimed[i];
+        queue->aimed_count--;
+    }
+    for (i = 0; i < queue->count; i++)
+        if (queue->items[i].actor == actor) {
+            *item = queue->items[i];
+            remove_at(queue, i);
+            return 1;
+        }
     return 0;
 }

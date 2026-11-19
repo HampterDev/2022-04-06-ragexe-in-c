@@ -104,6 +104,7 @@ struct UITransBalloonText;
 #include "std/render_delay.h"
 #include "world/act_track.h"
 #include "world/record_wait.h"
+#include "world/view_floors.h"
 #include "world/own_swing.h"
 
 struct GameMode {
@@ -170,8 +171,15 @@ struct GameMode {
     struct RenderDelay render_delay;
     /* The acts, hits and HP the server sent, waiting for their tick (game_mode_play_tracks). */
     struct TimedQueue tracks;
-    /* Records whose actor was not there when they came (plans/delivery.md), waiting for it. */
+    /* Records whose unit was out of view or had no actor when they came (plans/delivery.md),
+       waiting for it. */
     struct RecordWait record_wait;
+    /* What the client has of each unit by its id, whichever actor shows it: its tracks' floors
+       and its last coming and going (plans/presence.md). */
+    struct ViewFloors view_floors;
+    /* A ZC_VIEW_STAMP that waits for the very next packet (game_mode_view_stamped). */
+    struct ViewStamp view_stamp;
+    unsigned char view_stamp_waits;
     /* The book of the player's own swing that is shown, which follows the predicted world's
        word of it (game_mode_own_swing). */
     struct OwnSwing own_swing;

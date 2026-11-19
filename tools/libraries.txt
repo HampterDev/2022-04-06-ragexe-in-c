@@ -92,7 +92,7 @@ paths   ui/
         ui/character/selection_buttons.h ui/chat/readable_links.h ui/chat/sub_chat_map.h
         ui/items/styling_shop_std.h ui/render/draw_list.c ui/render/render.h world/mode_actions.h
         world/mode_context.c world/mode_dispatch.* world/mode_types.h world/move_track.h
-        world/act_track.h world/path_info.h
+        world/act_track.h world/path_info.h world/view_floors.h
 
 library gamedata
 note    The rest of the library layer below game-state: game-side modules the libraries above use

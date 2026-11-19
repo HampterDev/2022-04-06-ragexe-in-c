@@ -332,11 +332,14 @@ static void test_world(void)
     /* one that is still to come does not: the world takes it when its clock is there */
     mob = standing(T + 2000, 13, 12, 200);
     CHECK(predicted_other(&predicted, MOB_ID, &mob) == 1 && !predicted.stale);
-    /* gone: it leaves at the world's clock and the past stays; the attack finds nobody, and its
+    /* gone at a tick still to come: nothing of the past changes, it leaves when the world's
+       clock is there, and told again changes nothing; then the attack finds nobody, and its
        intent ends */
-    predicted_gone(&predicted, MOB_ID);
-    CHECK(!predicted.stale && predicted.other[0].gone == T + 1600);
-    CHECK(predicted_run(&predicted, &ground, T + 1700) && predicted_intent(&predicted, &intent) && !intent.has);
+    predicted_gone(&predicted, MOB_ID, T + 2100);
+    CHECK(!predicted.stale && predicted.other[0].gone == T + 2100);
+    predicted_gone(&predicted, MOB_ID, T + 2100);
+    CHECK(!predicted.stale && predicted.other[0].gone == T + 2100 && !predicted.other[1].used);
+    CHECK(predicted_run(&predicted, &ground, T + 2200) && predicted_intent(&predicted, &intent) && !intent.has);
 
     /* the others the world holds: one that went gives its place first, and a fourth then takes
        the place of one the own body does not name */
@@ -693,11 +696,12 @@ static int server_attack(struct BodyWorld *server, uint64_t tick, int number, in
     return body_input(server, &ground, &in);
 }
 
-/* A body that goes leaves the world at the world's clock, and the past keeps it: a world made
-   again from an earlier word of the server's has it until then. Her one swing at the monster
-   lands and kills it on the server, and its actor goes here a while later, when the world is to
-   be made again from the word of the swing's start: the swing lands in it as on the server, and
-   her attack delay runs from the swing's start as there. */
+/* A body is in the worlds of the ticks between its coming and its going, whatever arrived first
+   (plans/presence.md, part 3). Her one swing at the monster lands and kills it on the server,
+   and its going, dated at that tick, is read here a while later: the world is made again, the
+   swing lands in it as on the server, and her attack delay runs from the swing's start as
+   there. Killed by another a tick before her swing lands, the swing lands on nobody. A word of a
+   tick before the going that arrives after it has the body. */
 static void test_gone(void)
 {
     static struct Predicted predicted;
@@ -705,11 +709,12 @@ static void test_gone(void)
     const uint64_t T = 0x12a05f200ull;
     struct PredictedRequest order = attack_on(1, T + 100, MOB_ID, BODY_ATTACK_ONCE);
     struct BodyWorld *server = begin(&predicted, arena, T, 10, 10, 11, 10);
-    struct BodyMove somebody = standing(T, 30, 30, 200), back = standing(T + 900, 11, 10, 200);
-    struct PredictedBody word;
+    struct BodyMove somebody = standing(T, 30, 30, 200), back = standing(T + 900, 14, 10, 200);
+    struct PredictedBody word, late, mid;
     struct BodyAttack attack;
     struct BodyInput out;
     struct BodyEvent event;
+    int i, stays;
 
     CHECK(predicted_request(&predicted, &order) == 1 && server_attack(server, T + 100, 1, BODY_ATTACK_ONCE) == BODY_OK);
     CHECK(differences(&predicted, server, T + 100, T + 120) == 0);
@@ -723,31 +728,85 @@ static void test_gone(void)
     }
     out = input(T + 250, BODY_INPUT_REMOVE, MOB_SLOT, MOB_ID);
     CHECK(body_input(server, &ground, &out) == BODY_OK);
-    CHECK(differences(&predicted, server, T + 250, T + 300) == 0);
-    /* another body's first record changes the past, and the monster's actor goes */
+    /* the client has it a while longer, until its going is read */
+    CHECK(predicted_run(&predicted, &ground, T + 300));
     CHECK(predicted_other(&predicted, 21, &somebody) == 1 && predicted.stale);
-    predicted_gone(&predicted, MOB_ID);
-    CHECK(predicted.other[0].id == MOB_ID && predicted.other[0].gone == T + 300);
-    CHECK(differences(&predicted, server, T + 310, T + 900) == 0);
+    predicted_gone(&predicted, MOB_ID, T + 250);
+    CHECK(predicted.other[0].id == MOB_ID && predicted.other[0].gone == T + 250);
+    CHECK(differences(&predicted, server, T + 310, T + 600) == 0);
+    mid = word_of(server, 17, 150);
+    CHECK(differences(&predicted, server, T + 601, T + 900) == 0);
     CHECK(predicted_attack(&predicted, &attack) && !attack.swing_open && attack.attackable == T + 700);
-    /* one that comes back is in the world again, and the past changed */
-    CHECK(predicted_other(&predicted, MOB_ID, &back) == 1 && predicted.stale && predicted.other[0].used && predicted.other[0].gone == 0);
+    /* told again, nothing changes */
+    predicted_gone(&predicted, MOB_ID, T + 250);
+    CHECK(!predicted.stale && predicted.other[0].gone == T + 250);
+    /* one that comes back is another stay, in the world from its first record on, in the core's
+       slot of the one that went; and the past changed */
+    CHECK(predicted_other(&predicted, MOB_ID, &back) == 1 && predicted.stale);
+    for (i = 0, stays = 0; i < PREDICTED_OTHERS; i++)
+        if (predicted.other[i].used && predicted.other[i].id == MOB_ID)
+            stays += predicted.other[i].gone == T + 250 ? 1 : predicted.other[i].gone == 0 && predicted.other[i].from == T + 900 ? 2 : 100;
+    CHECK(stays == 3);
+    /* made again, the world has no monster between its going and its first record back */
+    {
+        struct BodyMove mob;
 
-    /* gone while the world runs on: it leaves at the next run, and nothing of the past changes */
+        CHECK(predicted_confirm(&predicted, &ground, &mid) != PREDICTED_REFUSED);
+        CHECK(predicted_run(&predicted, &ground, T + 850) && predicted_now(&predicted) == T + 850);
+        CHECK(body_move((const struct BodyWorld *)predicted.world, predicted.other[0].slot, &mob) != BODY_OK);
+        CHECK(predicted_run(&predicted, &ground, T + 900));
+        CHECK(body_move((const struct BodyWorld *)predicted.world, predicted.other[0].slot, &mob) == BODY_OK && mob.x == 14);
+    }
+    for (i = 1; i < PREDICTED_OTHERS; i++)
+        if (predicted.other[i].used && predicted.other[i].id == MOB_ID)
+            CHECK(predicted.other[i].slot == predicted.other[0].slot);
+
+    /* another's hit kills it a tick before her swing lands: the swing lands on nobody */
+    server = begin(&predicted, arena, T, 10, 10, 11, 10);
+    CHECK(predicted_request(&predicted, &order) == 1 && server_attack(server, T + 100, 1, BODY_ATTACK_ONCE) == BODY_OK);
+    CHECK(differences(&predicted, server, T + 100, T + 240) == 0);
+    server_yes_to(server, T + 249);
+    while (body_take_event(server, &event)) {
+    }
+    out = input(T + 249, BODY_INPUT_REMOVE, MOB_SLOT, MOB_ID);
+    CHECK(body_input(server, &ground, &out) == BODY_OK);
+    CHECK(predicted_run(&predicted, &ground, T + 320));
+    predicted_gone(&predicted, MOB_ID, T + 249);
+    CHECK(predicted.stale);
+    CHECK(differences(&predicted, server, T + 330, T + 900) == 0);
+
+    /* a word of a tick before the going that arrives after it has the body, and the first word
+       after it lets the body go for good */
     server = begin(&predicted, arena, T, 10, 10, 11, 10);
     CHECK(predicted_request(&predicted, &order) == 1 && server_attack(server, T + 100, 1, BODY_ATTACK_ONCE) == BODY_OK);
     CHECK(differences(&predicted, server, T + 100, T + 260) == 0);
-    word = word_of(server, 17, 150);
-    CHECK(differences(&predicted, server, T + 270, T + 300) == 0);
-    predicted_gone(&predicted, MOB_ID);
-    CHECK(!predicted.stale && predicted.other[0].used && predicted.other[0].gone == T + 300);
-    /* a word that comes after the going left the server after the body went there, even one of
-       an earlier tick: the body is in no world made from it */
-    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_SAME && predicted.other[0].gone == T + 260);
-    CHECK(differences(&predicted, server, T + 310, T + 600) == 0 && predicted.other[0].out);
-    /* and the next lets it go for good */
+    late = word_of(server, 17, 150);
+    CHECK(differences(&predicted, server, T + 261, T + 300) == 0);
+    out = input(T + 300, BODY_INPUT_REMOVE, MOB_SLOT, MOB_ID);
+    CHECK(body_input(server, &ground, &out) == BODY_OK);
+    predicted_gone(&predicted, MOB_ID, T + 300);
+    CHECK(differences(&predicted, server, T + 301, T + 600) == 0 && predicted.other[0].out);
+    CHECK(predicted_confirm(&predicted, &ground, &late) == PREDICTED_SAME && predicted.other[0].used);
+    CHECK(differences(&predicted, server, T + 601, T + 700) == 0);
     word = word_of(server, 17, 150);
     CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_SAME && !predicted.other[0].used);
+
+    /* a going dated behind the word the client holds already, as the server's core lost the body
+       before it could run to the present: the world is made again from that word without it */
+    server = begin(&predicted, arena, T, 10, 10, 11, 10);
+    CHECK(predicted_request(&predicted, &order) == 1 && server_attack(server, T + 100, 1, BODY_ATTACK_ONCE) == BODY_OK);
+    CHECK(differences(&predicted, server, T + 100, T + 280) == 0);
+    out = input(T + 280, BODY_INPUT_REMOVE, MOB_SLOT, MOB_ID);
+    CHECK(body_input(server, &ground, &out) == BODY_OK);
+    CHECK(predicted_run(&predicted, &ground, T + 300));
+    server_yes_to(server, T + 300);
+    while (body_take_event(server, &event)) {
+    }
+    word = word_of(server, 17, 150);
+    CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED && word.tick == T + 300);
+    predicted_gone(&predicted, MOB_ID, T + 280);
+    CHECK(predicted.stale);
+    CHECK(differences(&predicted, server, T + 301, T + 900) == 0);
 }
 
 /* A request the core refuses is what the server makes of it: a walk one that did nothing, whose
@@ -817,13 +876,16 @@ static uint64_t digest(const unsigned char *bytes, size_t size)
 }
 
 /* What travels down the line: the server's word of the own body, a record of the monster, or
-   that the monster is gone. */
+   that the monster is gone, with the tick it went at (ZC_VIEW_STAMP). A record carries its
+   revision and a going the revision of the move track then, as the server counts them by unit. */
 enum { DOWN_BODY = 1, DOWN_RECORD = 2, DOWN_GONE = 3 };
 
 struct Down {
     uint64_t arrives;
+    uint64_t tick;
     int kind;
     uint32_t id;
+    uint16_t rev;
     struct PredictedBody body;
     struct BodyMove record;
 };
@@ -837,10 +899,13 @@ struct Up {
 enum { LINE = 256, RUN_MS = 14000, QUIET_MS = 4000, SETTLE_MS = 1000, HOLD_MS = 60, FRAME_MS = 16 };
 
 struct Line {
-    struct Down down[LINE];
+    struct Down down[LINE]; /* in the order sent; each leaves when it arrives */
     struct Up up[LINE];
-    int down_first, down_count, up_first, up_count;
-    uint64_t last_down, last_up; /* neither way does one packet overtake another */
+    int down_count, up_first, up_count;
+    uint64_t last_down, last_up; /* in order, neither way does one packet overtake another */
+    /* down the line, what the server says overtakes what it said before and comes twice, as
+       the words, the others' records and the goings may when each travels on its own */
+    int disorder;
 };
 
 struct Server {
@@ -850,6 +915,12 @@ struct Server {
     struct BodyMove mob_sent;   /* what the client was last told of it */
     unsigned char told[BODY_STATE_SIZE];
     uint32_t mob_id;
+    uint16_t mob_rev;    /* the revision of the monster's move track, counted on across its stays */
+    uint64_t gone_tick;  /* when it went last */
+    uint64_t back_at;    /* it comes back under the same id then; 0 for not */
+    unsigned lag;
+    int kill;            /* the own swing that landed now kills it */
+    int kills_own, kills_other, returns;
     int has_told, changed, chaos, mob_there;
     uint16_t request_steps;
     uint32_t penalty_ms;
@@ -858,19 +929,57 @@ struct Server {
 
 struct Outcome {
     int requests, refused, not_yes, surprises, same, different, compared, late;
+    int kills_own, kills_other, returns, overtaken;
 };
 
-static void send_down(struct Line *line, struct Down *item, uint64_t now, unsigned lag, unsigned jitter)
+static void put_down(struct Line *line, const struct Down *item)
 {
-    item->arrives = now + lag + (jitter ? rnd() % (jitter + 1u) : 0u);
-    if (item->arrives < line->last_down)
-        item->arrives = line->last_down;
-    line->last_down = item->arrives;
     if (line->down_count == LINE) {
         CHECK(!"the line holds no more");
         return;
     }
-    line->down[(line->down_first + line->down_count++) % LINE] = *item;
+    line->down[line->down_count++] = *item;
+}
+
+static void send_down(struct Line *line, struct Down *item, uint64_t now, unsigned lag, unsigned jitter)
+{
+    item->arrives = now + lag + (jitter ? rnd() % (jitter + 1u) : 0u);
+    if (!line->disorder) {
+        if (item->arrives < line->last_down)
+            item->arrives = line->last_down;
+        line->last_down = item->arrives;
+        put_down(line, item);
+        return;
+    }
+    /* now and then one is held back, as a lost datagram's is until it is sent again, and now
+       and then one comes twice */
+    if (rnd() % 4u == 0)
+        item->arrives += 10u + rnd() % (2u * lag + jitter + 40u);
+    put_down(line, item);
+    if (rnd() % 5u == 0) {
+        item->arrives += 1u + rnd() % (lag + jitter + 30u);
+        put_down(line, item);
+    }
+}
+
+/* Takes what has arrived by `now` and came first, of what was sent first. Returns 0 when nothing
+   has. */
+static int take_down(struct Line *line, uint64_t now, struct Down *item, int *overtaken)
+{
+    int i, at = -1;
+
+    for (i = 0; i < line->down_count; i++)
+        if (line->down[i].arrives <= now && (at < 0 || line->down[i].arrives < line->down[at].arrives))
+            at = i;
+    if (at < 0)
+        return 0;
+    if (at > 0)
+        (*overtaken)++;
+    *item = line->down[at];
+    for (i = at + 1; i < line->down_count; i++)
+        line->down[i - 1] = line->down[i];
+    line->down_count--;
+    return 1;
 }
 
 /* An input of the server's game. One that changed the own body is news for its player. */
@@ -927,6 +1036,9 @@ static void server_settle(struct Server *server)
                 break;
             case BODY_EVENT_ASK_HIT:
                 in.value = yes ? BODY_ANSWER_HIT : 0;
+                /* now and then the own swing kills the monster it lands on */
+                if (yes && server->chaos && server->mob_there && rnd() % 2u == 0)
+                    server->kill = 1;
                 break;
             case BODY_EVENT_ASK_CAST:
                 in.value = BODY_ANSWER_ACTED;
@@ -1044,12 +1156,69 @@ static void server_mob_walk(struct Server *server, int x, int y)
     server->mob_walk = at;
 }
 
+/* The monster dies at the server's clock, and now and then comes back under its id within a
+   round trip, elsewhere. */
+static void server_mob_dies(struct Server *server)
+{
+    struct BodyEvent event;
+
+    server_put(server, input(0, BODY_INPUT_REMOVE, MOB_SLOT, server->mob_id));
+    server->mob_there = 0;
+    server->gone_tick = body_now(server->world);
+    server->back_at = rnd() % 2u ? server->gone_tick + between(5, 2u * server->lag + 5u) : 0;
+    while (body_take_event(server->world, &event)) {
+    }
+}
+
+/* The monster appears on a cell that can be stood on: under a new id, or under its own when it
+   comes back. Returns 0 when the cell drawn cannot be. */
+static int server_mob_appears(struct Server *server, int same_id)
+{
+    struct BodyInput in = input(0, BODY_INPUT_ADD, MOB_SLOT, same_id ? server->mob_id : server->mob_id + 1);
+    struct BodyEvent event;
+
+    in.x = (int16_t)between(6, WIDTH - 7);
+    in.y = (int16_t)between(6, HEIGHT - 7);
+    if (!cells[in.y * WIDTH + in.x])
+        return 0;
+    in.value = 200;
+    if (server_put(server, in) != BODY_OK)
+        return 0;
+    server->mob_id = in.id;
+    server->mob_there = 1;
+    server->back_at = 0;
+    server->mob_walk = standing(body_now(server->world), in.x, in.y, 200);
+    memset(&server->mob_sent, 0xFF, sizeof server->mob_sent);
+    while (body_take_event(server->world, &event)) {
+    }
+    return 1;
+}
+
+/* What happens to the monster at the server's tick, after what was due: the own swing that
+   landed now killed it; another's hit kills it a tick before the own swing lands; it comes back. */
+static void server_mob_fate(struct Server *server)
+{
+    struct BodyAttack attack;
+
+    if (server->kill && server->mob_there) {
+        server_mob_dies(server);
+        server->kills_own++;
+    }
+    server->kill = 0;
+    if (server->chaos && server->mob_there && body_attack(server->world, OWN_SLOT, &attack) == BODY_OK
+        && attack.swing_open && attack.swing_target_id == server->mob_id && attack.swing_ms == 1 && rnd() % 2u == 0) {
+        server_mob_dies(server);
+        server->kills_other++;
+    }
+    if (!server->mob_there && server->back_at && body_now(server->world) >= server->back_at && server_mob_appears(server, 1))
+        server->returns++;
+}
+
 /* Something happens to the own body that its player's client cannot know before it is told. */
 static void server_surprise(struct Server *server)
 {
     struct BodyInput in = input(0, BODY_INPUT_DELAY, OWN_SLOT, OWN_ID);
     struct BodyMove own;
-    struct BodyEvent event;
     int x, y;
 
     body_move(server->world, OWN_SLOT, &own);
@@ -1095,25 +1264,10 @@ static void server_surprise(struct Server *server)
             server_mob_walk(server, (int)between(4, WIDTH - 5), (int)between(4, HEIGHT - 5));
         return;
     default: /* the monster dies, and another appears elsewhere */
-        if (server->mob_there) {
-            in = input(0, BODY_INPUT_REMOVE, MOB_SLOT, server->mob_id);
-            server_put(server, in);
-            server->mob_there = 0;
-        } else {
-            in = input(0, BODY_INPUT_ADD, MOB_SLOT, ++server->mob_id);
-            in.x = (int16_t)between(6, WIDTH - 7);
-            in.y = (int16_t)between(6, HEIGHT - 7);
-            if (!cells[in.y * WIDTH + in.x])
-                return;
-            in.value = 200;
-            if (server_put(server, in) != BODY_OK)
-                return;
-            server->mob_there = 1;
-            server->mob_walk = standing(body_now(server->world), in.x, in.y, 200);
-            memset(&server->mob_sent, 0xFF, sizeof server->mob_sent);
-        }
-        while (body_take_event(server->world, &event)) {
-        }
+        if (server->mob_there)
+            server_mob_dies(server);
+        else
+            server_mob_appears(server, 0);
         return;
     }
     server_put(server, in);
@@ -1143,6 +1297,8 @@ static void server_tell(struct Server *server, struct Line *line, unsigned lag, 
         if (server->mob_sent.speed_ms != 0) {
             item.kind = DOWN_GONE;
             item.id = server->mob_id;
+            item.tick = server->gone_tick;
+            item.rev = server->mob_rev;
             memset(&server->mob_sent, 0, sizeof server->mob_sent);
             send_down(line, &item, now, lag, jitter);
         }
@@ -1155,6 +1311,7 @@ static void server_tell(struct Server *server, struct Line *line, unsigned lag, 
             /* a new record, as the walk is now */
             item.kind = DOWN_RECORD;
             item.id = server->mob_id;
+            item.rev = ++server->mob_rev;
             item.record = server->mob_walk;
             server->mob_sent = server->mob_walk;
             send_down(line, &item, now, lag, jitter);
@@ -1168,7 +1325,7 @@ static uint64_t server_at[RUN_MS + 2000], client_at[RUN_MS + 2000];
    then quiet. The other body, the one she attacks, is named `other_id` on both sides. Returns
    what happened, and checks that the two bodies are one from when the quiet has settled. */
 static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int clock_error, int chaos, int first_number,
-                               uint32_t other_id)
+                               uint32_t other_id, int disorder)
 {
     static struct Predicted predicted;
     static struct Server server;
@@ -1177,8 +1334,15 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
     const uint64_t chaos_end = start + RUN_MS - QUIET_MS, end = start + RUN_MS;
     struct Outcome outcome;
     struct PredictedRequest request;
-    struct Down *down;
+    struct Down arrived, *down = &arrived;
     struct Up *up;
+    /* the move floor of each id the monster had, as the client keeps it by unit id
+       (world/view_floors.h): a record not newer than it is the past */
+    struct {
+        uint32_t id;
+        uint16_t rev;
+    } floors[64];
+    int floor_count = 0, f;
     struct BodyInput in;
     struct BodyIntentState intent;
     unsigned char state[BODY_STATE_SIZE];
@@ -1191,6 +1355,7 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
 
     memset(&outcome, 0, sizeof outcome);
     memset(&line, 0, sizeof line);
+    line.disorder = disorder;
     memset(&server, 0, sizeof server);
     memset(server_at, 0, sizeof server_at);
     memset(client_at, 0, sizeof client_at);
@@ -1205,6 +1370,7 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
     body_set_request_steps(server.world, server.request_steps);
     body_set_cancel_penalty(server.world, server.penalty_ms);
     server.mob_id = other_id;
+    server.lag = lag;
     server.mob_there = 1;
     server.mob_walk = standing(start, 24, 20, 200);
     memset(&server.mob_sent, 0xFF, sizeof server.mob_sent);
@@ -1216,6 +1382,7 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
     for (t = start; t < end; t++) {
         /* --- the server: what is due, the requests that are applied now, what else happens --- */
         server_run_to(&server, t);
+        server_mob_fate(&server);
         while (line.up_count > 0 && line.up[line.up_first].applies <= t) {
             up = &line.up[line.up_first];
             line.up_first = (line.up_first + 1) % LINE;
@@ -1263,23 +1430,34 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
         /* --- the client, a frame every 16 ms: what arrived, what the player asks, the world --- */
         if ((t - start) % FRAME_MS != 0)
             continue;
-        while (line.down_count > 0 && line.down[line.down_first].arrives <= t) {
-            down = &line.down[line.down_first];
-            line.down_first = (line.down_first + 1) % LINE;
-            line.down_count--;
+        while (take_down(&line, t, &arrived, &outcome.overtaken)) {
+            for (f = 0; f < floor_count && floors[f].id != down->id; f++) {
+            }
+            if (down->kind != DOWN_BODY && f == floor_count) {
+                CHECK(floor_count < 64);
+                floors[floor_count].id = down->id;
+                floors[floor_count].rev = (uint16_t)(down->rev - 1u);
+                floor_count++;
+            }
             if (down->kind == DOWN_BODY) {
+                /* a word older than the last taken, or the same again, is refused */
                 result = predicted_confirm(&predicted, &ground, &down->body);
-                CHECK(result == PREDICTED_SAME || result == PREDICTED_DIFFERENT);
+                CHECK(result == PREDICTED_SAME || result == PREDICTED_DIFFERENT || (disorder && result == PREDICTED_REFUSED));
             } else if (down->kind == DOWN_RECORD) {
-                CHECK(predicted_other(&predicted, down->id, &down->record) == 1);
+                if ((int16_t)(uint16_t)(down->rev - floors[f].rev) > 0) {
+                    floors[f].rev = down->rev;
+                    CHECK(predicted_other(&predicted, down->id, &down->record) == 1);
+                }
             } else {
-                predicted_gone(&predicted, down->id);
+                if ((int16_t)(uint16_t)(down->rev - floors[f].rev) > 0)
+                    floors[f].rev = down->rev;
+                predicted_gone(&predicted, down->id, down->tick);
             }
         }
         /* the own clock: the server's when a request sent now is applied there, as the client
            reckons it, which may be a little off */
         own_clock = t + lead + (uint64_t)(int64_t)clock_error;
-        if (t >= next_request && t < chaos_end && predicted.live) {
+        if (t >= next_request && t < chaos_end && predicted.live && predicted.past_count > 0) {
             memset(&request, 0, sizeof request);
             if (++number == 0)
                 number = 1;
@@ -1365,7 +1543,7 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
             outcome.requests++;
         }
         if (!predicted_run(&predicted, &ground, own_clock)) {
-            CHECK(!predicted.live && t < start + 400); /* before the server's first word arrived */
+            CHECK(!predicted.live && predicted.confirmed.tick == 0); /* before the server's first word arrived */
             continue;
         }
         if (predicted_state(&predicted, state) && predicted_now(&predicted) == own_clock && own_clock < end)
@@ -1382,7 +1560,8 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
             continue;
         outcome.compared++;
         if (client_at[t - start] != server_at[t - start] && !mismatch++)
-            fprintf(stderr, "seed %u lag %u jitter %u: the bodies differ at tick +%u\n", (unsigned)seed, lag, jitter, (unsigned)(t - start));
+            fprintf(stderr, "seed %u lag %u jitter %u disorder %d: the bodies differ at tick +%u\n", (unsigned)seed, lag, jitter, disorder,
+                    (unsigned)(t - start));
     }
     CHECK(mismatch == 0);
     CHECK(settled != 0 && outcome.compared > 100);
@@ -1392,6 +1571,9 @@ static struct Outcome converge(uint32_t seed, unsigned lag, unsigned jitter, int
     /* every request was taken once: the server's body has the number of the last */
     CHECK(body_intent(server.world, OWN_SLOT, &intent) == BODY_OK && intent.request == number);
     CHECK(predicted_intent(&predicted, &intent) && intent.request == number);
+    outcome.kills_own = server.kills_own;
+    outcome.kills_other = server.kills_other;
+    outcome.returns = server.returns;
     outcome.refused = server.refused;
     outcome.not_yes = server.not_yes;
     outcome.surprises = server.surprises;
@@ -1469,18 +1651,22 @@ static void test_convergence(void)
        the client reckoned, answers yes to everything, and nothing happens that the client
        cannot know. Not one of its words is a correction */
     for (seed = 1; seed <= 6; seed++) {
-        one = converge(seed, 0, 0, 0, 0, 100, MOB_ID);
+        one = converge(seed, 0, 0, 0, 0, 100, MOB_ID, 0);
         CHECK(one.requests > 10 && one.different == 0 && one.same > 10 && one.late == 0);
     }
-    /* with all of it */
+    /* with all of it: in order, and with what the server says overtaking what it said before and
+       coming twice, which converges on the same world */
     memset(&total, 0, sizeof total);
     without = failures;
-    for (k = 0; k < sizeof lines / sizeof lines[0]; k++) {
+    for (k = 0; k < 2 * (sizeof lines / sizeof lines[0]); k++) {
+        size_t line = k % (sizeof lines / sizeof lines[0]);
+        int disorder = k >= sizeof lines / sizeof lines[0];
+
         for (seed = 1; seed <= 24; seed++) {
             /* some runs start with numbers that wrap in the run, and in some she attacks another
                player, whom the server's core names by her account as her client knows her */
-            one = converge(seed * 31u + (uint32_t)k, lines[k].lag, lines[k].jitter, lines[k].clock_error, 1, seed % 4u == 0 ? 0xFFF0 : 1,
-                           seed % 3u == 0 ? PLAYER_ACCOUNT : MOB_ID);
+            one = converge(seed * 31u + (uint32_t)line, lines[line].lag, lines[line].jitter, lines[line].clock_error, 1,
+                           seed % 4u == 0 ? 0xFFF0 : 1, seed % 3u == 0 ? PLAYER_ACCOUNT : MOB_ID, disorder);
             total.requests += one.requests;
             total.refused += one.refused;
             total.not_yes += one.not_yes;
@@ -1489,14 +1675,22 @@ static void test_convergence(void)
             total.different += one.different;
             total.compared += one.compared;
             total.late += one.late;
+            total.kills_own += one.kills_own;
+            total.kills_other += one.kills_other;
+            total.returns += one.returns;
+            total.overtaken += one.overtaken;
         }
     }
     /* the runs are worth it only if all of that happened in them */
     CHECK(total.requests > 2000 && total.refused > 100 && total.not_yes > 300 && total.surprises > 500);
     CHECK(total.same > 1000 && total.different > 500 && total.late > 100 && total.compared > 20000);
-    if (failures != without)
+    CHECK(total.kills_own > 15 && total.kills_other > 15 && total.returns > 100 && total.overtaken > 400);
+    if (failures != without) {
         fprintf(stderr, "convergence: %d requests, %d refused, %d answers not yes, %d surprises, %d words as predicted, %d corrections, %d applied late, %d ticks compared\n",
                 total.requests, total.refused, total.not_yes, total.surprises, total.same, total.different, total.late, total.compared);
+        fprintf(stderr, "convergence: %d own swings killed, %d killed a tick before the own swing landed, %d came back, %d overtaken\n",
+                total.kills_own, total.kills_other, total.returns, total.overtaken);
+    }
 }
 
 int main(void)

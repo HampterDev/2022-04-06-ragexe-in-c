@@ -186,8 +186,9 @@ static void apply_move_record(struct GameActor *self, struct GameMode *mode, con
 static void play_move_track(struct GameActor *self, struct GameMode *mode, unsigned now)
 {
     struct MoveRecord record;
+    struct ViewUnit *unit = view_floors_unit(&mode->view_floors, (uint32_t)self->aid);
 
-    if (move_track_take(&self->move_track, now, &record))
+    if (unit && move_track_take(&self->move_track, &unit->floors, now, &record))
         apply_move_record(self, mode, &record, now);
     if (self->track_waiting && (int)(now - self->track_go) >= 0) {
         self->track_waiting = 0;

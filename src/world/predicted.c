@@ -85,6 +85,38 @@ void predicted_init(struct Predicted *predicted, int32_t width, int32_t height)
     predicted->height = height;
 }
 
+/* `other` becomes a stay of the body `id` that holds nothing yet, in the core's slot of the
+   body's other stays, or in one no other body has. */
+static void open_stay(struct Predicted *predicted, struct PredictedOther *other, uint32_t id, uint64_t from)
+{
+    uint32_t i, slot, taken;
+
+    zero(other, sizeof *other);
+    for (i = 0; i < PREDICTED_OTHERS; i++)
+        if (predicted->other[i].used && predicted->other[i].id == id) {
+            other->slot = predicted->other[i].slot;
+            break;
+        }
+    if (i == PREDICTED_OTHERS)
+        for (slot = 0; slot < PREDICTED_OTHERS; slot++) {
+            for (i = 0, taken = 0; i < PREDICTED_OTHERS; i++)
+                taken |= predicted->other[i].used && predicted->other[i].slot == slot;
+            if (!taken) {
+                other->slot = (uint8_t)slot;
+                break;
+            }
+        }
+    other->used = 1;
+    other->id = id;
+    other->from = from;
+}
+
+/* Whether the stay `other` has the body in the world at `tick`: from its coming, before its going. */
+static int holds(const struct PredictedOther *other, uint64_t tick)
+{
+    return other->from <= tick && (!other->gone || tick < other->gone);
+}
+
 /* The record of another body that holds at `tick`: the latest whose tick has come, or the
  * earliest it has when none has. */
 static const struct BodyMove *record_at(const struct PredictedOther *other, uint64_t tick)
@@ -169,8 +201,8 @@ static struct BodyWorld *make(const struct Predicted *predicted, void *arena, co
     body_set_cancel_penalty(world, body->penalty_ms);
     body_set_request_steps(world, body->request_steps);
     for (i = 0; i < PREDICTED_OTHERS; i++)
-        if (predicted->other[i].used && (predicted->other[i].gone == 0 || predicted->other[i].gone > body->tick))
-            put_other(world, ground, i, predicted->other[i].id, record_at(&predicted->other[i], body->tick));
+        if (predicted->other[i].used && holds(&predicted->other[i], body->tick))
+            put_other(world, ground, predicted->other[i].slot, predicted->other[i].id, record_at(&predicted->other[i], body->tick));
     if (body_put_state(world, OWN, body->state) != BODY_OK || !body_take_event(world, &event))
         return NULL;
     *id = event.id;
@@ -260,16 +292,12 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
         predicted->stale = 1;
     }
     predicted->live = 1;
-    /* a word that came after a body went left the server after it let the body go, whatever its
-       tick: the body is in no world made from it. One the world runs with yet leaves at once */
-    for (i = 0; i < PREDICTED_OTHERS; i++) {
-        if (!predicted->other[i].gone)
-            continue;
-        if (predicted->other[i].out || predicted->stale)
+    /* a body that went at the word's tick or before is in no world made from now on, which are
+       made from this word or a later one: once the world has let it go too, it is forgotten */
+    for (i = 0; i < PREDICTED_OTHERS; i++)
+        if (predicted->other[i].gone && predicted->other[i].gone <= body->tick
+            && (predicted->other[i].out || predicted->stale))
             zero(&predicted->other[i], sizeof predicted->other[i]);
-        else if (predicted->other[i].gone > body->tick)
-            predicted->other[i].gone = body->tick;
-    }
     return was ? PREDICTED_SAME : PREDICTED_DIFFERENT;
 }
 
@@ -321,7 +349,7 @@ int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyM
 {
     struct PredictedOther *other = NULL;
     struct BodyMove said = *record;
-    uint64_t from;
+    uint64_t from, came = 0;
     int i, k, fresh = 0;
 
     /* a record from outside: only what a record can say */
@@ -336,15 +364,25 @@ int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyM
         said.speed_ms = BODY_MAX_SPEED_MS;
     if (said.steps == 0)
         said.land_ms = 0;
-    for (i = 0; i < PREDICTED_OTHERS && other == NULL; i++)
-        if (predicted->other[i].used && predicted->other[i].id == id)
-            other = &predicted->other[i];
-    /* one that went and comes back is a body the world did not have */
-    if (other != NULL && other->gone) {
-        zero(other, sizeof *other);
-        other->used = 1;
-        other->id = id;
-        fresh = 1;
+    /* the stay of the body the record is of: the one between whose coming and going its tick
+       is. A record after the last going is of the stay that came after it, which is in the world
+       from its earliest record on; one after every going and before every record of a stay is a
+       body the world did not have */
+    for (i = 0; i < PREDICTED_OTHERS; i++)
+        if (predicted->other[i].used && predicted->other[i].id == id && predicted->other[i].gone
+            && predicted->other[i].gone <= said.at_tick && predicted->other[i].gone > came)
+            came = predicted->other[i].gone;
+    for (i = 0; i < PREDICTED_OTHERS && other == NULL; i++) {
+        struct PredictedOther *stay = &predicted->other[i];
+
+        if (!stay->used || stay->id != id)
+            continue;
+        if (holds(stay, said.at_tick)) {
+            other = stay;
+        } else if (!stay->gone && came && came <= said.at_tick && said.at_tick < stay->from) {
+            stay->from = said.at_tick;
+            other = stay;
+        }
     }
     /* what its last record has it do already is nothing new */
     if (other != NULL && other->count > 0 && other->record[other->count - 1].at_tick <= said.at_tick) {
@@ -368,10 +406,9 @@ int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyM
             other = &predicted->other[i];
     if (other == NULL)
         return 0;
-    if (!other->used || other->id != id) {
-        zero(other, sizeof *other);
-        other->used = 1;
-        other->id = id;
+    if (!other->used || other->id != id || !holds(other, said.at_tick)) {
+        other->used = 0;
+        open_stay(predicted, other, id, came ? said.at_tick : 0);
         fresh = 1;
     }
     /* the record takes the place of every one with the same or a later tick; with no room
@@ -391,22 +428,38 @@ int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyM
     return 1;
 }
 
-void predicted_gone(struct Predicted *predicted, uint32_t id)
+void predicted_gone(struct Predicted *predicted, uint32_t id, uint64_t tick)
 {
-    struct PredictedOther *other;
-    int i;
+    struct PredictedOther *other, *later = NULL;
+    int i, k, kept;
 
     for (i = 0; i < PREDICTED_OTHERS; i++) {
         other = &predicted->other[i];
-        if (!other->used || other->id != id || other->gone)
+        if (!other->used || other->id != id || !holds(other, tick > other->from ? tick - 1 : tick))
             continue;
-        if (predicted->live) {
-            /* it leaves at the world's clock, at the next run; the past keeps it */
-            other->gone = body_now(world_at(predicted));
-            other->out = 0;
-        } else {
-            zero(other, sizeof *other);
+        if (other->gone == tick)
+            return;
+        /* its records of the going's tick or later are of a later stay */
+        for (k = 0, kept = 0; k < other->count; k++)
+            if (other->record[k].at_tick < tick)
+                other->record[kept++] = other->record[k];
+        if (kept < other->count) {
+            for (k = 0; k < PREDICTED_OTHERS && later == NULL; k++)
+                if (!predicted->other[k].used)
+                    later = &predicted->other[k];
+            if (later != NULL) {
+                open_stay(predicted, later, id, other->record[kept].at_tick);
+                for (k = kept; k < other->count; k++)
+                    later->record[later->count++] = other->record[k];
+            }
+            other->count = (uint8_t)kept;
         }
+        other->gone = tick;
+        other->out = 0;
+        /* a going the world is past is a change of the past, as a record dated behind it is */
+        if (predicted->live && !predicted->stale && tick <= body_now(world_at(predicted)))
+            predicted->stale = 1;
+        return;
     }
 }
 
@@ -579,16 +632,20 @@ static int advance(struct Predicted *predicted, const struct BodyGround *ground,
             return 0;
         acted = 0;
         if (!(body_next_due(world, &due) && due <= next)) {
+            /* the goings first: a body that comes back at the tick it went is another stay */
+            for (i = 0; i < PREDICTED_OTHERS; i++) {
+                other = &predicted->other[i];
+                if (other->used && other->gone && !other->out && other->gone <= next) {
+                    take_out(world, ground, other->slot, other->id);
+                    other->out = 1;
+                }
+            }
             for (i = 0; i < PREDICTED_OTHERS; i++) {
                 other = &predicted->other[i];
                 for (k = 0; other->used && k < other->count; k++) {
                     at = other->record[k].at_tick;
                     if (at > predicted->records_tick && at <= next && !(other->gone && at >= other->gone))
-                        put_other(world, ground, i, other->id, &other->record[k]);
-                }
-                if (other->used && other->gone && !other->out && other->gone <= next) {
-                    take_out(world, ground, i, other->id);
-                    other->out = 1;
+                        put_other(world, ground, other->slot, other->id, &other->record[k]);
                 }
             }
             predicted->records_tick = next;

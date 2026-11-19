@@ -208,7 +208,7 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_quest_packets.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_pathfinder_owner.c" "%ROOT%\src\body\grid_path.c" "%ROOT%\src\body\body.c" "%ROOT%\src\world\move_track.c" "%ROOT%\tests\fixtures\pathfinder_reference.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\render\math3d.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_pathfinder_owner.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_pathfinder_owner.c" "%ROOT%\src\body\grid_path.c" "%ROOT%\src\body\body.c" "%ROOT%\src\world\move_track.c" "%ROOT%\src\world\view_floors.c" "%ROOT%\tests\fixtures\pathfinder_reference.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\render\math3d.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_pathfinder_owner.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_pathfinder_owner.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -556,7 +556,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_kafra_services.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_path_info.c" "%ROOT%\src\world\pathfinder.c" "%ROOT%\src\body\grid_path.c" "%ROOT%\src\body\body.c" "%ROOT%\src\world\move_track.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\render\math3d.c" /Fe:test_path_info.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_path_info.c" "%ROOT%\src\world\pathfinder.c" "%ROOT%\src\body\grid_path.c" "%ROOT%\src\body\body.c" "%ROOT%\src\world\move_track.c" "%ROOT%\src\world\view_floors.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\render\math3d.c" /Fe:test_path_info.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_path_info.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -732,6 +732,8 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_delivery_route.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_record_wait.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_view_floors.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_lossy_link.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)

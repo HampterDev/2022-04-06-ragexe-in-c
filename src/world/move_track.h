@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "world/view_floors.h"
 
 /* Where an actor is, as the server sends it in ZC_TRACK_MOVE (plans/core-loop.md): a record
  * that holds from a server tick on and is complete without what the client knew before. In
@@ -57,13 +58,11 @@ struct MoveCell {
     uint32_t tick;
 };
 
-/* An actor's move track. All zero is a track that holds nothing and has played nothing, as a new
- * actor's must: a track made otherwise drops what it takes for the past. */
+/* An actor's move track: the records that wait for their tick. What was played of it is the
+ * floor of its unit (world/view_floors.h), which outlives the actor. All zero holds nothing. */
 struct MoveTrack {
     struct MoveRecord held[MOVE_TRACK_HELD]; /* by at_tick, earliest first, and so by revision */
     int count;
-    uint16_t played_rev;                     /* the revision of the record taken last */
-    unsigned char played;                    /* one was */
 };
 
 /* Reads a ZC_TRACK_MOVE of `size` bytes. Returns 0 and writes nothing when the packet is
@@ -102,23 +101,23 @@ struct MoveStandAsk {
 int move_record_stand(const struct MoveRecord *record, const struct MoveStandAsk *ask);
 
 /* Files a record that arrived, in whatever order and however often records arrive
- * (plans/delivery.md, part 1). It is dropped when it is not newer than the record taken last
- * (it is the past), when a record of its revision is held (it came twice), or when a newer held
+ * (plans/delivery.md, part 1). It is dropped when it is not newer than the move floor of
+ * `floors` (it is the past), when a record of its revision is held (it came twice), or when a newer held
  * record has the same or an earlier tick (that one was made knowing it). Otherwise every older
  * held record with the same or a later tick goes, as the server made this one knowing them.
  * Filed in any order, the same records leave the same track; in the order they were made it is
  * the rule of plans/core-loop.md. When MOVE_TRACK_HELD earlier ones wait, the earliest goes: a
  * later record is complete without it. Returns 1 when the record was filed. */
-int move_track_file(struct MoveTrack *track, const struct MoveRecord *record);
+int move_track_file(struct MoveTrack *track, const struct RecordFloors *floors, const struct MoveRecord *record);
 
 /* Every record that waits for a tick after `now` leaves the track: what was filed here ahead of
  * the server (the player's own walk, planned) and is not to come. */
 void move_track_drop_after(struct MoveTrack *track, uint32_t now);
 
 /* Takes the record that holds at `now`: the latest one whose tick has come. It and every
- * earlier one leave the track, and a record not newer than it is the past from then on.
- * Returns 0 when none is due. */
-int move_track_take(struct MoveTrack *track, uint32_t now, struct MoveRecord *record);
+ * earlier one leave the track, and it is the move floor of `floors` unless that is newer: a
+ * record not newer than it is the past from then on. Returns 0 when none is due. */
+int move_track_take(struct MoveTrack *track, struct RecordFloors *floors, uint32_t now, struct MoveRecord *record);
 
 /* Whether a record that waits, with a tick not after `until`, will move an actor that is drawn
  * standing on the cell (x, y): a walk, or a record without steps that asks anything of such an

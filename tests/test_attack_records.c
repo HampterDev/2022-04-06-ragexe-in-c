@@ -155,6 +155,12 @@ void game_actor_stop_cast(struct GameActor *actor, int own)
    last (says), which the frame's play of the tracks asks for again. */
 static struct { int has; unsigned target, motion_ms; DWORD at_tick, lands; } world_swing;
 
+void game_mode_own_body_gone(unsigned id, DWORD tick)
+{
+    (void)id;
+    (void)tick;
+}
+
 int game_mode_own_body_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms)
 {
     *target = world_swing.target;
@@ -243,6 +249,21 @@ static void setup(void)
     timed_queue_clear(&mode.tracks);
     mode.aimed_waiting_count = 0;
     mode.record_wait.count = 0;
+    /* every unit came into view before its records, as the server stamps its entry */
+    view_floors_clear(&mode.view_floors);
+    view_floors_pin(&mode.view_floors, OWN_AID);
+    {
+        struct ViewStamp stamp;
+        int i;
+
+        memset(&stamp, 0, sizeof stamp);
+        stamp.kind = VIEW_COMES;
+        for (i = -2; i < TIMED_AIMED_ACTORS; i++) {
+            stamp.gid = i == -2 ? MONSTER_AID : i == -1 ? UNIT_AID : CROWD_AID + (uint32_t)i;
+            view_floors_stamp(&mode.view_floors, &stamp);
+        }
+    }
+    mode.view_stamp_waits = 0;
     mode.hold_back_ms = 0;
     clock_sync_reset(&mode.clock_sync);
     way_up_reset(&mode.way_up);
@@ -606,6 +627,7 @@ static void swing(void)
 static void tracks(void)
 {
     DWORD t0, t1, own;
+    int i;
     unsigned char unknown[37], cast[37];
 
     /* A monster's swing and its hit, sent together when the swing starts: each waits for its
@@ -741,6 +763,19 @@ static void tracks(void)
     assert(sent_count == 3 && sent[0].what == SENT_SWING_BEGIN && sent[0].to == &player && mode.tracks.count == 1);
     play_at(own - 5000);
     assert(sent_count == 6 && sent[3].what == SENT_SWING_BEGIN && sent[3].to == &monster && sent[3].value[1] == 600);
+
+    /* An act record sent later than it was made, as the one with an entry, is played at once
+       and says nothing about the render delay; one sent when it was made is measured */
+    setup();
+    t0 = timeGetTime();
+    assert(clock_sync_sample(&mode.clock_sync, t0, t0 + 0x10000000, t0 + 0x10000000, t0));
+    own = t0 + 0x10000000;
+    i = mode.render_delay.count;
+    send_act(MONSTER_AID, own - 50, 0x80 | 1, UNIT_AID, 600);
+    assert(mode.render_delay.count == i && mode.tracks.count == 1 && mode.tracks.items[0].u.act.kind == 1);
+    assert(mode.tracks.items[0].u.act.at_tick == own - 50 && (int)(mode.tracks.items[0].tick - (own - 50)) < 0);
+    send_act(MONSTER_AID, own - 40, 0, 0, 0);
+    assert(mode.render_delay.count == i + 1 && mode.tracks.count == 2 && mode.tracks.items[1].tick == own - 40);
     setup();
 }
 

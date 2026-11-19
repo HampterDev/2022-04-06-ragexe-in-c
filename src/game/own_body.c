@@ -74,6 +74,7 @@ static void own_draw(struct GameMode *self)
 {
     struct Player *player = self->world ? self->world->player : NULL;
     struct BodyMove move;
+    struct ViewUnit *floors;
     struct MoveRecord record;
     int news;
 
@@ -98,7 +99,9 @@ static void own_draw(struct GameMode *self)
     record.steps = move.steps > MOVE_TRACK_STEPS ? MOVE_TRACK_STEPS : move.steps;
     memcpy(record.path, move.path, record.steps);
     record.rev = ++g_drawn_rev;
-    move_track_file(&player->move_track, &record);
+    floors = view_floors_unit(&self->view_floors, (uint32_t)g_session1.ownAid);
+    if (floors)
+        move_track_file(&player->move_track, &floors->floors, &record);
 }
 
 /* A record of the wire as the core's. */
@@ -169,21 +172,21 @@ static void other_move(struct GameMode *self, struct GameActor *actor, struct Bo
     move->speed_ms = (uint16_t)(actor->walk_speed < 0 ? 0 : actor->walk_speed > 0xFFFF ? 0xFFFF : actor->walk_speed);
 }
 
-/* The world is told of the body `id`: where its actor is, or that there is none any more. The
+/* The world is told where the body `id` is, while its unit is in view and has an actor. The
    server's body core names a body by the id the client knows its unit by (a player's account
-   id, a monster's own), so the actor of that id is the body's. */
+   id, a monster's own), so the actor of that id is the body's. Its going is told with its tick
+   when its stamp is read (game_mode_own_body_gone): an actor that is still shown after that,
+   dying, is no body. */
 static void own_other(struct GameMode *self, uint32_t id)
 {
     struct GameActor *actor;
     struct BodyMove move;
 
-    if (!id || id == (uint32_t)g_session1.ownAid || !self->world)
+    if (!id || id == (uint32_t)g_session1.ownAid || !self->world || !view_floors_in_view(&self->view_floors, id))
         return;
     actor = world_get_game_actor_by_aid(self->world, id);
-    if (!actor) {
-        predicted_gone(&g_own, id);
+    if (!actor)
         return;
-    }
     other_move(self, actor, &move);
     predicted_other(&g_own, id, &move);
 }
@@ -348,6 +351,12 @@ void game_mode_own_body_intent(struct GameMode *self, unsigned number, int kind,
         own_other(self, target);
     }
     own_request(self, &request, number);
+}
+
+void game_mode_own_body_gone(unsigned id, DWORD tick)
+{
+    if (id != (unsigned)g_session1.ownAid)
+        predicted_gone(&g_own, id, predicted_wide(&g_own, tick));
 }
 
 void game_mode_own_body_frame(struct GameMode *self)

@@ -2,6 +2,7 @@
 #define WORLD_ACT_TRACK_H
 
 #include <stdint.h>
+#include "world/view_floors.h"
 
 /* What an actor does, a hit, and an actor's HP, as the server sends them
  * (plans/core-loop.md), and the queue they wait in until the clock they are played on reaches
@@ -15,7 +16,8 @@
  *     0    2 id
  *     2    4 gid
  *     6    4 at_tick
- *    10    1 kind       ACT_*
+ *    10    1 kind       ACT_*; the top bit (ACT_RECORD_OLD) marks a record sent later than it
+ *                       was made, as the one that comes with an entry
  *    11    4 end_tick   a swing's animation or a cast ends; 0 for idle, which holds until the
  *                       next record
  *    15    4 mark_tick  a swing lands
@@ -55,6 +57,8 @@
  *    28    4              skill of the hits still to come; 0 */
 
 enum { ACT_IDLE = 0, ACT_SWING = 1, ACT_CAST = 2 };
+/* The top bit of the kind byte; the kind is the other seven. */
+#define ACT_RECORD_OLD 0x80
 
 struct ActRecord {
     uint32_t gid, at_tick, end_tick, mark_tick, target;
@@ -63,6 +67,7 @@ struct ActRecord {
     int element;
     uint16_t rev;
     unsigned char kind, disposable;
+    unsigned char old; /* sent later than it was made */
 };
 
 struct VitalsRecord {
@@ -79,7 +84,8 @@ struct HitNotice {
     unsigned char kind, sp_damage;
 };
 
-/* Reads a ZC_TRACK_ACT. Returns 0 and writes nothing for a kind this client does not know. */
+/* Reads a ZC_TRACK_ACT. Returns 0 and writes nothing for a kind this client does not know, its
+ * top bit taken off. */
 int act_record_read(const unsigned char *packet, struct ActRecord *record);
 void vitals_record_read(const unsigned char *packet, struct VitalsRecord *record);
 void hit_notice_read(const unsigned char *packet, struct HitNotice *notice);
@@ -133,19 +139,11 @@ void timed_queue_clear(struct TimedQueue *queue);
 int timed_queue_on_own_clock(const struct TimedQueue *queue, const struct TimedItem *item, uint32_t own);
 
 
-/* What of an actor's act and vitals tracks was played last. It is kept with the actor: a record
- * of a track that is not newer than the one played last is the past. All zero is nothing played,
- * as a new actor's must be. */
-struct RecordFloors {
-    uint16_t act, vitals;
-    unsigned char has_act, has_vitals;
-};
-
 enum { TIMED_DROPPED = 0, TIMED_FILED = 1, TIMED_FILED_EARLY = 2 };
 
 /* Files an item that arrived, in whatever order and however often records arrive
- * (plans/delivery.md, part 1). An act or vitals record is a track's, the actor's of `floors`:
- * it is dropped when it is not newer than the one of its track played last, when one of its
+ * (plans/delivery.md, part 1). An act or vitals record is a track's, of the unit whose floors are `floors`:
+ * it is dropped when it is not newer than its track's floor (world/view_floors.h), when one of its
  * revision is held (it came twice), or when a newer held one of its track has the same or an
  * earlier tick (that one was made knowing it). Otherwise every older held record of its track
  * with the same or a later tick goes: the server made it knowing them, and it is how a swing is
@@ -157,7 +155,7 @@ enum { TIMED_DROPPED = 0, TIMED_FILED = 1, TIMED_FILED_EARLY = 2 };
 int timed_queue_file(struct TimedQueue *queue, const struct TimedItem *item, const struct RecordFloors *floors,
                      uint32_t own, struct TimedItem *early);
 
-/* An item was played: its record is the newest of its track that was, unless a newer one was. */
+/* An item was played: its record is its track's floor, unless the floor is newer. */
 void record_floors_played(struct RecordFloors *floors, const struct TimedItem *item);
 
 /* Takes the earliest item that is due, and writes the clock it was taken on to `now`. An item
@@ -167,6 +165,11 @@ void record_floors_played(struct RecordFloors *floors, const struct TimedItem *i
  * hit of its actor with it, on the own clock too. Returns 0 when none is due. */
 int timed_queue_take(struct TimedQueue *queue, uint32_t own, uint32_t own_now, uint32_t render_now,
                      struct TimedItem *item, uint32_t *now);
+
+/* Takes the earliest item of `actor`, due or not, and forgets that the actor is in the middle of
+ * something aimed at the own character: the unit went (plans/presence.md, part 2). Returns 0
+ * when it has none. */
+int timed_queue_take_actor(struct TimedQueue *queue, uint32_t actor, struct TimedItem *item);
 
 /* Takes the earliest vitals record of `gid` whose tick is not after `tick`, due or not: a hit
  * that is shown ahead of the render clock brings the HP it took with it. */

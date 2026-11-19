@@ -179,6 +179,9 @@ void game_mode_initialize(struct GameMode *self)
     timed_queue_clear(&self->tracks);
     self->aimed_waiting_count = 0;
     record_wait_clear(&self->record_wait);
+    view_floors_clear(&self->view_floors);
+    self->view_stamp_waits = 0;
+    view_floors_pin(&self->view_floors, (uint32_t)g_session1.ownAid);
     self->input_seq = 0;
     self->move_seq = 0;
     self->stamp_tick = 0;

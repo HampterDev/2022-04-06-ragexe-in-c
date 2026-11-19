@@ -142,6 +142,14 @@ static void run_case(int second, int id, size_t size, int null_packet)
         assert(trace[5] == hash_bytes(UINT64_C(14695981039346656037), "game_mode_zc_own_body", strlen("game_mode_zc_own_body")));
         assert(trace[6] == 1 && trace[7] == 0x10000 && trace[8] == size);
     }
+    /* ZC_VIEW_STAMP: the handler gets the packet with its length; the stamp waits for the next
+       packet, which every other packet passes first (not traced) */
+    if (second && id == 0x0f26 && !null_packet && size >= 2) {
+        assert(trace_count == 9);
+        assert(trace[4] == UINT64_MAX);
+        assert(trace[5] == hash_bytes(UINT64_C(14695981039346656037), "game_mode_zc_view_stamp", strlen("game_mode_zc_view_stamp")));
+        assert(trace[6] == 1 && trace[7] == 0x10000 && trace[8] == size);
+    }
     assert(!memcmp(&mode, &expected_mode, sizeof mode));
     assert(!memcmp(packet, expected_packet, sizeof packet));
     packet_trace_value(mode.server_move_pending);
@@ -195,7 +203,7 @@ int main(int argc, char **argv)
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0x3e1222f7c952abbb));
+    assert(digest == UINT64_C(0xb80a3c475d6ddf57));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }

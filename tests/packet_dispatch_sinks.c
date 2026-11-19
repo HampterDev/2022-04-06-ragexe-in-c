@@ -2345,6 +2345,24 @@ void game_mode_zc_own_body(struct GameMode *arg0, const unsigned char *arg1, siz
     packet_trace_value(arg2);
 }
 
+void game_mode_zc_view_stamp(struct GameMode *arg0, const unsigned char *arg1, unsigned arg2)
+{
+    packet_trace_call("game_mode_zc_view_stamp");
+    packet_trace_pointer(arg0);
+    packet_trace_pointer(arg1);
+    packet_trace_value(arg2);
+}
+
+/* Not a packet's handler: what every packet but a stamp passes first. It is not traced, so the
+   trace of each packet stays its handler's. */
+void game_mode_view_stamped(struct GameMode *arg0, int arg1, const unsigned char *arg2, unsigned arg3)
+{
+    (void)arg0;
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+}
+
 void game_mode_zc_blade_stop(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_BladeStop");

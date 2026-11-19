@@ -1017,6 +1017,7 @@ static void zc_ack_takeoff_equip_all(struct GameMode *self, unsigned char *pkt)
     PACKET(0x0f23, game_mode_zc_notice_hit(self, pkt)) \
     PACKET(0x0f24, game_mode_zc_own_intent(self, pkt)) \
     PACKET(0x0f25, game_mode_zc_own_body(self, pkt, packet_size)) \
+    PACKET(0x0f26, game_mode_zc_view_stamp(self, pkt, (unsigned)packet_size)) \
     PACKET(HEADER_ZC_NOTIFY_HP_TO_GROUPM_R2, game_mode_zc_notify_hp_to_group_m_r2(self, pkt)) \
     PACKET(HEADER_ZC_ADD_EXCHANGE_ITEM2, game_mode_add_exchange_item2(pkt)) \
     PACKET(HEADER_ZC_OPEN_BUYING_STORE, game_mode_zc_open_buying_store(self, pkt)) \

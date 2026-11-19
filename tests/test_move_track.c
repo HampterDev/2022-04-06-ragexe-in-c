@@ -158,56 +158,59 @@ static void a_standing_record_is_one_cell(void)
 static void the_record_that_holds_is_the_latest_one_due(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord a = at(1000), b = at(1200), c = at(1500), got;
 
-    assert(!move_track_take(&track, 5000, &got));
-    move_track_file(&track, &a);
-    move_track_file(&track, &b);
-    move_track_file(&track, &c);
-    assert(!move_track_take(&track, 999, &got));
-    assert(move_track_take(&track, 1300, &got) && got.at_tick == 1200); /* 1000 is behind it */
+    assert(!move_track_take(&track, &floors, 5000, &got));
+    move_track_file(&track, &floors, &a);
+    move_track_file(&track, &floors, &b);
+    move_track_file(&track, &floors, &c);
+    assert(!move_track_take(&track, &floors, 999, &got));
+    assert(move_track_take(&track, &floors, 1300, &got) && got.at_tick == 1200); /* 1000 is behind it */
     assert(track.count == 1);
-    assert(!move_track_take(&track, 1499, &got));
-    assert(move_track_take(&track, 1500, &got) && got.at_tick == 1500);
+    assert(!move_track_take(&track, &floors, 1499, &got));
+    assert(move_track_take(&track, &floors, 1500, &got) && got.at_tick == 1500);
     assert(track.count == 0);
 }
 
 static void a_newer_record_removes_what_it_replaces(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord a = at(1000), turn = at(1450), again = at(1450), stop = at(1100), got;
 
-    move_track_file(&track, &a);
-    move_track_file(&track, &turn);
+    move_track_file(&track, &floors, &a);
+    move_track_file(&track, &floors, &turn);
     again.x = 7;
-    move_track_file(&track, &again); /* the same tick: the later one made is the one */
+    move_track_file(&track, &floors, &again); /* the same tick: the later one made is the one */
     assert(track.count == 2 && track.held[1].x == 7);
-    move_track_file(&track, &stop);  /* made knowing the turn: the turn is gone */
+    move_track_file(&track, &floors, &stop);  /* made knowing the turn: the turn is gone */
     assert(track.count == 2 && track.held[0].at_tick == 1000 && track.held[1].at_tick == 1100);
-    assert(move_track_take(&track, 2000, &got) && got.at_tick == 1100 && track.count == 0);
+    assert(move_track_take(&track, &floors, 2000, &got) && got.at_tick == 1100 && track.count == 0);
 }
 
 static void what_waits_for_later_can_be_dropped(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord a = at(1000), b = at(1200), c = at(1500), got;
 
     move_track_drop_after(&track, 1000);
     assert(track.count == 0);
-    move_track_file(&track, &a);
-    move_track_file(&track, &b);
-    move_track_file(&track, &c);
+    move_track_file(&track, &floors, &a);
+    move_track_file(&track, &floors, &b);
+    move_track_file(&track, &floors, &c);
     move_track_drop_after(&track, 1500); /* its tick has come: it stays */
     assert(track.count == 3);
     move_track_drop_after(&track, 1200);
     assert(track.count == 2 && track.held[1].at_tick == 1200);
     move_track_drop_after(&track, 999);
-    assert(track.count == 0 && !move_track_take(&track, 5000, &got));
+    assert(track.count == 0 && !move_track_take(&track, &floors, 5000, &got));
     /* across the wrap */
     a = at(0xfffffff0u);
     b = at(0x10);
-    move_track_file(&track, &a);
-    move_track_file(&track, &b);
+    move_track_file(&track, &floors, &a);
+    move_track_file(&track, &floors, &b);
     move_track_drop_after(&track, 0xfffffff8u);
     assert(track.count == 1 && track.held[0].at_tick == 0xfffffff0u);
 }
@@ -215,29 +218,31 @@ static void what_waits_for_later_can_be_dropped(void)
 static void a_full_track_lets_its_earliest_go(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord record, got;
     uint32_t tick;
 
     for (tick = 100; tick <= 100 * (MOVE_TRACK_HELD + 1); tick += 100) {
         record = at(tick);
-        move_track_file(&track, &record);
+        move_track_file(&track, &floors, &record);
     }
     assert(track.count == MOVE_TRACK_HELD && track.held[0].at_tick == 200);
-    assert(move_track_take(&track, 250, &got) && got.at_tick == 200);
+    assert(move_track_take(&track, &floors, 250, &got) && got.at_tick == 200);
 }
 
 static void ticks_may_wrap(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord a = at(0xfffffff0u), b = at(0x10), got;
 
-    move_track_file(&track, &a);
-    move_track_file(&track, &b);
+    move_track_file(&track, &floors, &a);
+    move_track_file(&track, &floors, &b);
     assert(track.count == 2);
-    assert(!move_track_take(&track, 0xffffffe0u, &got));
-    assert(move_track_take(&track, 0xfffffff8u, &got) && got.at_tick == 0xfffffff0u);
-    assert(!move_track_take(&track, 0xf, &got));
-    assert(move_track_take(&track, 0x10, &got) && got.at_tick == 0x10);
+    assert(!move_track_take(&track, &floors, 0xffffffe0u, &got));
+    assert(move_track_take(&track, &floors, 0xfffffff8u, &got) && got.at_tick == 0xfffffff0u);
+    assert(!move_track_take(&track, &floors, 0xf, &got));
+    assert(move_track_take(&track, &floors, 0x10, &got) && got.at_tick == 0x10);
 }
 
 /* The records a track holds, by tick, as revision and tick pairs, for comparing two tracks. */
@@ -284,6 +289,7 @@ static void any_order_leaves_the_same_track(void)
     for (round = 0; round < 2000; round++) {
         struct MoveRecord made[4];
         struct MoveTrack in_order = { 0 };
+        struct RecordFloors in_order_floors = { 0 };
         int o;
 
         /* ticks around the wrap, revisions around theirs */
@@ -291,14 +297,15 @@ static void any_order_leaves_the_same_track(void)
         for (i = 0; i < 4; i++)
             made[i] = at(0xffffff00u + 100 * (rnd() % 5));
         for (i = 0; i < 4; i++)
-            move_track_file(&in_order, &made[i]);
+            move_track_file(&in_order, &in_order_floors, &made[i]);
         for (o = 0; o < orders; o++) {
             struct MoveTrack track = { 0 };
+            struct RecordFloors floors = { 0 };
 
             for (i = 0; i < 4; i++) {
-                move_track_file(&track, &made[order[o][i]]);
+                move_track_file(&track, &floors, &made[order[o][i]]);
                 if (rnd() % 3 == 0)
-                    assert(!move_track_file(&track, &made[order[o][rnd() % (unsigned)(i + 1)]]));
+                    assert(!move_track_file(&track, &floors, &made[order[o][rnd() % (unsigned)(i + 1)]]));
             }
             assert(same_track(&track, &in_order));
         }
@@ -309,14 +316,15 @@ static void any_order_leaves_the_same_track(void)
 static void a_record_twice_or_overtaken_is_dropped(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord walk = at(1000), stop = at(900), late = at(1200);
 
-    assert(move_track_file(&track, &walk));
-    assert(!move_track_file(&track, &walk));             /* twice */
-    assert(move_track_file(&track, &stop));              /* newer and earlier: the walk is gone */
+    assert(move_track_file(&track, &floors, &walk));
+    assert(!move_track_file(&track, &floors, &walk));             /* twice */
+    assert(move_track_file(&track, &floors, &stop));              /* newer and earlier: the walk is gone */
     assert(track.count == 1 && track.held[0].rev == stop.rev);
-    assert(!move_track_file(&track, &walk));             /* the stop was made knowing it */
-    assert(move_track_file(&track, &late));
+    assert(!move_track_file(&track, &floors, &walk));             /* the stop was made knowing it */
+    assert(move_track_file(&track, &floors, &late));
     assert(track.count == 2 && track.held[1].rev == late.rev);
 }
 
@@ -324,33 +332,35 @@ static void a_record_twice_or_overtaken_is_dropped(void)
 static void what_was_played_is_a_floor(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord walk = at(1000), turn = at(1400), cancel = at(1100), got;
 
     /* the turn came, the walk is late */
-    assert(move_track_file(&track, &turn));
-    assert(move_track_take(&track, 1500, &got) && got.rev == turn.rev);
-    assert(!move_track_file(&track, &walk));             /* older than the turn on screen */
-    assert(!move_track_file(&track, &turn));             /* the turn again */
+    assert(move_track_file(&track, &floors, &turn));
+    assert(move_track_take(&track, &floors, 1500, &got) && got.rev == turn.rev);
+    assert(!move_track_file(&track, &floors, &walk));             /* older than the turn on screen */
+    assert(!move_track_file(&track, &floors, &turn));             /* the turn again */
     assert(track.count == 0);
     /* a newer record from before the turn's tick puts the turn right, at once */
-    assert(move_track_file(&track, &cancel));
-    assert(move_track_take(&track, 1500, &got) && got.rev == cancel.rev);
+    assert(move_track_file(&track, &floors, &cancel));
+    assert(move_track_take(&track, &floors, 1500, &got) && got.rev == cancel.rev);
 }
 
 /* Revisions are compared by their difference: one after the wrap is newer. */
 static void revisions_may_wrap(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord a = at(100), b, got;
 
     a.rev = 0xfffe;
     b = at(50);
     b.rev = 0x0001;
-    assert(move_track_file(&track, &a));
-    assert(move_track_file(&track, &b));                 /* newer and earlier: a goes */
+    assert(move_track_file(&track, &floors, &a));
+    assert(move_track_file(&track, &floors, &b));                 /* newer and earlier: a goes */
     assert(track.count == 1 && track.held[0].rev == 0x0001);
-    assert(move_track_take(&track, 60, &got));
-    assert(!move_track_file(&track, &a));
+    assert(move_track_take(&track, &floors, 60, &got));
+    assert(!move_track_file(&track, &floors, &a));
 }
 
 /* A record without steps: what it asks of an actor drawn on (drawn_x, drawn_y). */
@@ -402,13 +412,14 @@ static void a_standing_record_is_walked_to_or_set(void)
 static void a_record_that_waits_will_move_the_actor_or_not(void)
 {
     struct MoveTrack track = { 0 };
+    struct RecordFloors floors = { 0 };
     struct MoveRecord here = at(1000), there = at(1100), walk = at(1200), pushed = at(1300);
 
     here.x = there.x = walk.x = pushed.x = 150;
     here.y = there.y = walk.y = pushed.y = 160;
     assert(!move_track_will_move(&track, 150, 160, 9000));
     /* it stands on the record's cell: nothing is asked of it */
-    assert(move_track_file(&track, &here) && !move_track_will_move(&track, 150, 160, 9000));
+    assert(move_track_file(&track, &floors, &here) && !move_track_will_move(&track, 150, 160, 9000));
     /* drawn on another cell, by one or by many, it walks or is set there */
     assert(move_track_will_move(&track, 151, 160, 9000) && move_track_will_move(&track, 150, 159, 9000));
     assert(move_track_will_move(&track, 150, 190, 9000));
@@ -416,19 +427,19 @@ static void a_record_that_waits_will_move_the_actor_or_not(void)
     assert(!move_track_will_move(&track, 151, 160, 999) && move_track_will_move(&track, 151, 160, 1000));
     /* a walk moves it wherever it starts, from its tick on */
     walk.steps = 1;
-    assert(move_track_file(&track, &walk) && track.count == 2 && move_track_will_move(&track, 150, 160, 9000));
+    assert(move_track_file(&track, &floors, &walk) && track.count == 2 && move_track_will_move(&track, 150, 160, 9000));
     assert(!move_track_will_move(&track, 150, 160, 1199) && move_track_will_move(&track, 150, 160, 1200));
     /* taken, the record is no more to come */
-    assert(move_track_take(&track, 1250, &there) && track.count == 0 && !move_track_will_move(&track, 150, 160, 9000));
+    assert(move_track_take(&track, &floors, 1250, &there) && track.count == 0 && !move_track_will_move(&track, 150, 160, 9000));
     /* pushed or placed, it is set, also onto the cell it is on */
     pushed.cause = MOVE_CAUSE_PUSHED;
-    assert(move_track_file(&track, &pushed) && move_track_will_move(&track, 150, 160, 9000));
+    assert(move_track_file(&track, &floors, &pushed) && move_track_will_move(&track, 150, 160, 9000));
     /* ticks wrap */
     walk = at(0x00000010);
     walk.steps = 1;
     track.count = 0;
-    track.played = 0;
-    assert(move_track_file(&track, &walk));
+    floors.has_move = 0;
+    assert(move_track_file(&track, &floors, &walk));
     assert(!move_track_will_move(&track, 150, 160, 0xfffffff0u) && move_track_will_move(&track, 150, 160, 0x00000020));
 }
 

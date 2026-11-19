@@ -28,8 +28,6 @@
 #include "session/session_talk.h"
 #include "session/session_windows.h"
 #include "actor/game_actor.h"
-#include "game/net_clock.h"
-#include "world/move_track.h"
 #include "world/world.h"
 #include "session/session_skills.h"
 #include "platform/clock.h"
@@ -440,39 +438,6 @@ void game_mode_zc_stopmove(struct GameMode *self, unsigned aid, short x, short y
     if (aid == ((unsigned)g_session1.ownAid) || !(actor = world_get_game_actor_by_aid(self->world, aid)))
         return;
     render_object_send(actor, NULL, ACTOR_MSG_STOP, x, y, 0, dir);
-}
-
-/* ZC_TRACK_MOVE (plans/core-loop.md): where another actor is from a server tick on. The record
-   waits on the actor until the render clock reaches its tick (game_actor_process_state), and
-   the track takes it in whatever order records come (world/move_track.h). One whose actor is
-   not there yet waits for it (game_mode_play_tracks): through the delivery piece a record can
-   come before the packet that makes its actor known. How long after its tick it came, by the
-   server's clock, feeds the render delay; a record the server sent later than it made it says
-   nothing about that. The player's own character has none: its walk is the predicted world's
-   (game/own_body.c). */
-void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt)
-{
-    struct MoveRecord record;
-    struct GameActor *actor;
-    uint32_t gid;
-
-    if (!move_record_read(pkt, (size_t)(pkt[2] | pkt[3] << 8), &gid, &record))
-        return;
-    if (game_mode_knows_clock(self) && !record.old)
-        render_delay_sample(&self->render_delay, (int)(game_mode_true_time(self) - record.at_tick));
-    if (gid == (uint32_t)g_session1.ownAid)
-        return;
-    actor = world_get_game_actor_by_aid(self->world, gid);
-    if (actor) {
-        move_track_file(&actor->move_track, &record);
-    } else {
-        struct RecordWaiting waiting;
-
-        waiting.gid = gid;
-        waiting.kind = RECORD_WAIT_MOVE;
-        waiting.u.move = record;
-        record_wait_put(&self->record_wait, platform_ticks_ms(), &waiting);
-    }
 }
 
 void game_mode_zc_sprite_change2(struct GameMode *self, const struct PACKET_ZC_SPRITE_CHANGE2 *pkt)

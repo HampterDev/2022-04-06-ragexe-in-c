@@ -385,6 +385,10 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
 void game_mode_zc_hold_back(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_time_sync(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt);
+void game_mode_zc_view_stamp(struct GameMode *self, const unsigned char *pkt, unsigned size);
+/* Every packet but a ZC_VIEW_STAMP, before its handler: a stamp that came directly before the
+   entry or vanish of its unit takes effect. */
+void game_mode_view_stamped(struct GameMode *self, int packet_id, const unsigned char *pkt, unsigned size);
 void game_mode_zc_track_act(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_track_vitals(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_notice_hit(struct GameMode *self, const unsigned char *pkt);
