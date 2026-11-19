@@ -15626,6 +15626,6 @@ in `plans/netcode.md` and of "Told again when nothing told it" in `plans/predict
   answers no request, no waiting request was due by its tick and no record came since the last
   word, unless a record of its tick or before comes before the next word (the body travels first
   and may overtake the record that explains it). Records are the units' track records, hits,
-  view stamps and `ZC_OWN_INTENT`. Each one counted is a line on standard error.
+  view stamps and `ZC_OWN_INTENT`. The playground reads the count through its driver.
 - **The playground.** The driver reports per actor whether the client has its unit in view, for
   the runner's presence check, and on exit how late the own body was through the piece.
