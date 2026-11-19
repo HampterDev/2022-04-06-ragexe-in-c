@@ -116,6 +116,44 @@ static void ticks_may_wrap(void)
     assert(way_up_arrival(&way, 0x20u) == 0x20u + OFFSET + 50);
 }
 
+/* The samples of both sources, the timed exchanges every two seconds and the confirmed requests
+   at the pace of the clicks, are one kind: the client's clock when it sent, the server's when it
+   arrived. A line that becomes slower is followed at the next request, where the exchanges alone
+   would follow it two seconds later at the earliest; a request that lost a datagram on its way
+   is one long sample, which does not set the lead by itself. */
+static void exchanges_and_requests(void)
+{
+    struct WayUp alone, both;
+    uint32_t now = 1000, slow = 0;
+    int i;
+
+    way_up_reset(&alone);
+    way_up_reset(&both);
+    /* a line of 40 ms: an exchange every 2000 ms, a request every 100 ms between them */
+    for (i = 0; i < 80; i++, now += 100) {
+        if (i % 20 == 0) {
+            sample(&alone, now, 40);
+            sample(&both, now, 40);
+        } else {
+            sample(&both, now, i == 45 ? 400 : 40); /* one lost a datagram on its way */
+        }
+    }
+    assert(way_up_arrival(&alone, now) == now + OFFSET + 40);
+    assert(way_up_arrival(&both, now) == now + OFFSET + 40);
+    /* the line becomes 120 ms: two requests later the lead is the new line's */
+    for (i = 0; i < 40 && !slow; i++, now += 100) {
+        if (i % 20 == 0)
+            sample(&alone, now, 120);
+        else
+            sample(&both, now, 120);
+        if (way_up_arrival(&both, now) - now - OFFSET >= 120)
+            slow = (uint32_t)i;
+    }
+    assert(slow == 2);
+    /* the exchanges alone: one slow exchange is the longest, not yet the second longest */
+    assert(way_up_arrival(&alone, now) - now - OFFSET < 120);
+}
+
 int main(void)
 {
     nothing_known_before_the_first_exchange();
@@ -124,6 +162,7 @@ int main(void)
     the_lead_grows_at_once();
     the_lead_shrinks_slowly_and_its_tick_never_runs_backward();
     ticks_may_wrap();
+    exchanges_and_requests();
     puts("way_up: ok");
     return 0;
 }

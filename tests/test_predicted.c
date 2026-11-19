@@ -47,6 +47,7 @@ static size_t packet_of(unsigned char *out, const struct PredictedBody *body, si
     put16(out + 18, body->request_steps);
     put32(out + 20, body->penalty_ms);
     put32(out + 24, body->placement);
+    put32(out + 28, body->arrival);
     memcpy(out + PREDICTED_PACKET_HEAD, body->state, state_size < BODY_STATE_SIZE ? state_size : BODY_STATE_SIZE);
     return PREDICTED_PACKET_HEAD + state_size;
 }
@@ -133,12 +134,13 @@ static void test_read(void)
     body.request_steps = 17;
     body.penalty_ms = 150;
     body.placement = 0x89abcdefu;
+    body.arrival = 0x01234567u;
     for (i = 0; i < (int)BODY_STATE_SIZE; i++)
         body.state[i] = (unsigned char)(i * 7 + 1);
     size = packet_of(packet, &body, BODY_STATE_SIZE);
-    CHECK(size == 252 && predicted_read(packet, size, &read) == 1);
+    CHECK(size == 256 && predicted_read(packet, size, &read) == 1);
     CHECK(read.version == BODY_RULES_VERSION && read.tick == 0x12a05f2a0ull && read.request == 0xbeef);
-    CHECK(read.placement == 0x89abcdefu);
+    CHECK(read.placement == 0x89abcdefu && read.arrival == 0x01234567u);
     CHECK(read.request_steps == 17 && read.penalty_ms == 150 && memcmp(read.state, body.state, BODY_STATE_SIZE) == 0);
     /* shorter than it says, longer than it says, shorter than its head */
     memset(&read, 0xEE, sizeof read);
@@ -1642,6 +1644,34 @@ static void test_walk_news(void)
     CHECK(predicted_walk_news(&before, &before) == PREDICTED_WALK_ON);
 }
 
+/* A word that answers a waiting request and carries that request's arrival hands back when the
+   request left and when it arrived, once: a sample of the way up. A word without an arrival, or
+   one that answers it again, hands back nothing. */
+static void test_way_up_samples(void)
+{
+    static struct Predicted predicted;
+    static uint64_t arena[(SERVER_ARENA + 7) / 8];
+    const uint64_t T = 0x12a05f200ull;
+    struct BodyWorld *server = begin(&predicted, arena, T, 10, 10, 30, 30);
+    struct PredictedRequest first = walk_to(5, T + 60, 13, 10), second = walk_to(6, T + 200, 10, 13);
+    struct PredictedBody word;
+
+    first.left = 0xfffffff0u;
+    second.left = 77;
+    CHECK(predicted_request(&predicted, &first) == 1 && predicted_request(&predicted, &second) == 1);
+    server_takes(server, T + 60, &first);
+    word = word_of(server, 17, 150);
+    word.arrival = 0;
+    CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED && !predicted.way_new);
+    server_takes(server, T + 200, &second);
+    word = word_of(server, 17, 150);
+    word.arrival = 0x12345;
+    CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED && predicted.way_new);
+    CHECK(predicted.way_left == 77 && predicted.way_arrival == 0x12345);
+    predicted.way_new = 0;
+    CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED && !predicted.way_new);
+}
+
 /* A word is taken only when it is of the placement the player is in: one that comes before
    the number is known waits, the newest of them, and one of another placement is refused,
    in whichever order the words of two maps and the number arrive. */
@@ -1766,6 +1796,7 @@ int main(void)
     test_refused();
     test_walk_news();
     test_placement();
+    test_way_up_samples();
     test_convergence();
     if (failures) {
         fprintf(stderr, "predicted: %d failed\n", failures);

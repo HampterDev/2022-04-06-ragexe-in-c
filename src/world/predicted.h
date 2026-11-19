@@ -49,7 +49,7 @@
 /* The bytes of the world's arena: the core's header, the bodies and a ring of sixteen events. */
 #define PREDICTED_ARENA 1464u
 
-/* ZC_OWN_BODY, 0x0F25, little-endian and packed, 28 bytes and the state:
+/* ZC_OWN_BODY, 0x0F25, little-endian and packed, 32 bytes and the state:
  *
  *   off size field
  *     0    2 id            0x0F25
@@ -60,15 +60,18 @@
  *    18    2 request_steps the longest way a request's walk may take (body_set_request_steps)
  *    20    4 penalty_ms    how long after a cancelled swing the next may begin
  *    24    4 placement     the number of the player's placement on a map the body is of
- *    28    n state         the body (body_state): BODY_STATE_SIZE bytes of this version
+ *    28    4 arrival       the low 32 bits of the server's clock when the request the body names
+ *                          arrived; 0 when the body names none anew
+ *    32    n state         the body (body_state): BODY_STATE_SIZE bytes of this version
  */
-#define PREDICTED_PACKET_HEAD 28u
+#define PREDICTED_PACKET_HEAD 32u
 
 struct PredictedBody {
     uint64_t tick;
     uint32_t version;
     uint32_t penalty_ms;
     uint32_t placement;
+    uint32_t arrival;
     uint16_t request;
     uint16_t request_steps;
     unsigned char state[BODY_STATE_SIZE]; /* zero when the version is not this core's */
@@ -84,6 +87,7 @@ int predicted_read(const unsigned char *packet, size_t size, struct PredictedBod
 struct PredictedRequest {
     uint64_t apply_tick; /* the server's tick it is applied at: the one its stamp named */
     uint32_t target_id;  /* an attack, a skill on a body: whom (the own body's id for a skill on itself) */
+    uint32_t left;       /* the caller's clock when it left for the server, handed back when a word answers it */
     uint16_t number;     /* its number: the stamp's */
     uint8_t kind;        /* BODY_REQUEST_WALK to _PICKUP, but _NONE */
     uint8_t mode;        /* an attack: BODY_ATTACK_* */
@@ -125,11 +129,15 @@ struct Predicted {
     uint32_t different;   /* and those that were not: corrections */
     uint32_t own_id;      /* the own body's id, as the server's word has it */
     uint32_t placement;   /* the number of the placement the player is in (while `placed`) */
+    uint32_t way_left;    /* while `way_new`: the clock the request a word answered left at, */
+    uint32_t way_arrival; /* and the server's clock when it arrived there */
     int32_t width, height;
     uint8_t live;         /* the server said what the body is, in this core's version */
     uint8_t stale;        /* the past changed: the world is made again before it runs on */
     uint8_t placed;       /* the number of this placement is known */
     uint8_t has_waiting;  /* `waiting` holds a word */
+    uint8_t way_new;      /* a word answered a request with its arrival: how long the way up took */
+    uint8_t reserved[3];
 };
 
 enum {
@@ -142,7 +150,10 @@ enum {
 /* An empty prediction for a map of width by height cells. */
 void predicted_init(struct Predicted *predicted, int32_t width, int32_t height);
 
-/* The server's word of the own body. `ground` is the map as the core reads it. Before the
+/* The server's word of the own body. `ground` is the map as the core reads it. When it names a
+ * request that waits and the arrival of that request, the request's `left` and the arrival are
+ * kept in `way_left` and `way_arrival` and `way_new` is set, for the caller to take: a sample of
+ * the way up (std/way_up.h). Before the
  * number of the placement is known the word is kept aside, if it is the newest so far, and
  * PREDICTED_REFUSED is returned. */
 int predicted_confirm(struct Predicted *predicted, const struct BodyGround *ground, const struct PredictedBody *body);

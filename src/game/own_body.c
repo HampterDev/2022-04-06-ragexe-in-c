@@ -240,6 +240,16 @@ int game_mode_own_body_swing(unsigned *target, DWORD *at_tick, DWORD *lands, uns
     return 1;
 }
 
+/* A word that answered a request with its arrival says how long the request's way up took: a
+   sample for the own clock's lead, as a timed exchange is (plans/netcode.md). */
+static void own_way_up(struct GameMode *self)
+{
+    if (!g_own.way_new)
+        return;
+    g_own.way_new = 0;
+    way_up_sample(&self->way_up, g_own.way_left, g_own.way_arrival);
+}
+
 void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size_t size)
 {
     struct PredictedBody body;
@@ -247,6 +257,7 @@ void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size
 
     if (pkt && predicted_read(pkt, size, &body) && own_ground(&ground)) {
         predicted_confirm(&g_own, &ground, &body);
+        own_way_up(self);
         game_mode_own_body_frame(self);
     }
 }
@@ -255,8 +266,10 @@ void game_mode_own_body_placed(struct GameMode *self, unsigned placement)
 {
     struct BodyGround ground;
 
-    if (own_ground(&ground) && predicted_placed(&g_own, &ground, (uint32_t)placement) != PREDICTED_REFUSED)
+    if (own_ground(&ground) && predicted_placed(&g_own, &ground, (uint32_t)placement) != PREDICTED_REFUSED) {
+        own_way_up(self);
         game_mode_own_body_frame(self);
+    }
 }
 
 /* The request joins the ones that wait for the server's word, at the tick its stamp named for
@@ -270,6 +283,7 @@ static void own_request(struct GameMode *self, struct PredictedRequest *request,
         return;
     request->number = (uint16_t)number;
     request->apply_tick = predicted_wide(&g_own, self->stamp_tick);
+    request->left = platform_ticks_ms();
     if (predicted_request(&g_own, request))
         game_mode_own_body_frame(self);
 }

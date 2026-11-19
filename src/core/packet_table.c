@@ -18,7 +18,7 @@ static const struct PacketLengthRow k_packetLengthsFirst[] = {
     { 0x0f22,  20,   20 },
     { 0x0f23,  32,   32 },
     { 0x0f24,  14,   14 },
-    { 0x0f25,  -1,   28 },
+    { 0x0f25,  -1,   32 },
     { 0x0f26,  17,   17 },
     { 0x0437,   7,    7 },
     { 0x0438,  10,   10 },

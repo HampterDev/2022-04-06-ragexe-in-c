@@ -64,6 +64,7 @@ int predicted_read(const unsigned char *packet, size_t size, struct PredictedBod
     body->request_steps = (uint16_t)get16(packet + 18);
     body->penalty_ms = get32(packet + 20);
     body->placement = get32(packet + 24);
+    body->arrival = get32(packet + 28);
     if (version == BODY_RULES_VERSION)
         copy(body->state, packet + PREDICTED_PACKET_HEAD, BODY_STATE_SIZE);
     return 1;
@@ -291,8 +292,13 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
     predicted->own_id = id;
     /* the requests the word includes have been answered: they wait no longer */
     for (i = 0; i < predicted->pending_count; i++)
-        if ((int16_t)(predicted->pending[i].number - body->request) > 0)
+        if ((int16_t)(predicted->pending[i].number - body->request) > 0) {
             predicted->pending[kept++] = predicted->pending[i];
+        } else if (predicted->pending[i].number == body->request && body->arrival) {
+            predicted->way_left = predicted->pending[i].left;
+            predicted->way_arrival = body->arrival;
+            predicted->way_new = 1;
+        }
     i = predicted->pending_count - kept;
     predicted->pending_count = kept;
     predicted->applied = predicted->applied > i ? predicted->applied - i : 0;
