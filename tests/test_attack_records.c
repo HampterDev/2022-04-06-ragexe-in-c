@@ -161,6 +161,11 @@ void game_mode_own_body_gone(unsigned id, DWORD tick)
     (void)tick;
 }
 
+void game_mode_own_body_heard(DWORD tick)
+{
+    (void)tick;
+}
+
 int game_mode_own_body_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms)
 {
     *target = world_swing.target;
