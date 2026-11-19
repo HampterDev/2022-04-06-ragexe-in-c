@@ -1720,7 +1720,6 @@ static void test_told_again(void)
         word = word_of(server, 17, 150);
         CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_SAME);
         CHECK(predicted.unexplained == (uint32_t)(heard == 0 || heard == 3) && !predicted.suspect);
-        CHECK(predicted.unexplained == 0 || predicted.unexplained_tick == T + 2000);
     }
 }
 

@@ -110,4 +110,5 @@ by the piece when the driver next ticks, 16 ms on, unless something newer replac
 
 When it ends, the client writes on its standard error how late the own body was through the
 piece, which the runner reads: of each `ZC_OWN_BODY` the client's end handed on, the time from
-the gateway's end being handed it to then, in all and at worst.
+the gateway's end being handed it to then, in all and at worst; and how many words of the own
+body differed from what was predicted with nothing to explain them (`game_mode_own_body_unexplained`).

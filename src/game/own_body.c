@@ -1,5 +1,4 @@
 #include "game/own_body.h"
-#include <stdio.h>
 #include <string.h>
 #include "actor/types.h"
 #include "game/cells.h"
@@ -256,24 +255,18 @@ void game_mode_own_body_heard(DWORD tick)
     predicted_heard(&g_own, predicted_wide(&g_own, tick));
 }
 
-/* A word that differed from what was predicted with nothing to explain it is a fault in a rule
-   or in the prediction: a line on the client's standard error says so. */
-static void own_unexplained(uint32_t before)
+unsigned game_mode_own_body_unexplained(void)
 {
-    if (g_own.unexplained != before)
-        fprintf(stderr, "own body: the word of tick %lu differed without a request or a record to explain it (%lu so far)\n",
-                (unsigned long)g_own.unexplained_tick, (unsigned long)g_own.unexplained);
+    return g_own.unexplained;
 }
 
 void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size_t size)
 {
     struct PredictedBody body;
     struct BodyGround ground;
-    uint32_t before = g_own.unexplained;
 
     if (pkt && predicted_read(pkt, size, &body) && own_ground(&ground)) {
         predicted_confirm(&g_own, &ground, &body);
-        own_unexplained(before);
         own_way_up(self);
         game_mode_own_body_frame(self);
     }

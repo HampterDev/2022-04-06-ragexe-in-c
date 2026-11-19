@@ -107,6 +107,7 @@ static void leave(int code, const char *why)
     /* read by the runner */
     fprintf(stderr, "playground: own body through the piece: %lu taken, %lu ms late in all, %lu at worst\n", B.taken,
             B.total_ms, B.worst_ms);
+    fprintf(stderr, "playground: own body words that differed unexplained: %u\n", game_mode_own_body_unexplained());
     fflush(stdout);
     fflush(stderr);
     exit(code);

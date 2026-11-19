@@ -292,7 +292,6 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
        before came after it either, is unexplained */
     if (predicted->suspect) {
         predicted->unexplained++;
-        predicted->unexplained_tick = predicted->suspect_tick;
         predicted->suspect = 0;
     }
     /* a word that is not what was predicted for its tick is suspect when it answers no

@@ -128,7 +128,6 @@ struct Predicted {
     uint32_t same;        /* the server's words that were what had been predicted */
     uint32_t different;   /* and those that were not: corrections */
     uint32_t unexplained; /* of those, the ones without a request or a record to explain them */
-    uint64_t unexplained_tick; /* the tick of the last of them */
     uint64_t suspect_tick;     /* while `suspect`: the tick of a word that may be one of them */
     uint32_t own_id;      /* the own body's id, as the server's word has it */
     uint32_t placement;   /* the number of the placement the player is in (while `placed`) */
@@ -168,7 +167,7 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
  * `unexplained` when it answers no request, no waiting request was due by its tick, no record
  * came since the last word, and none of its tick or before comes until the next word (which
  * travels first and may overtake it): such a word is a fault in a rule or in the prediction.
- * It is counted when the next word comes, its tick in `unexplained_tick`. */
+ * It is counted when the next word comes. */
 void predicted_heard(struct Predicted *predicted, uint64_t tick);
 
 /* The number of the player's placement on this map (ZC_HOLD_BACK). A word kept aside of that

@@ -48,5 +48,8 @@ int game_mode_own_body_walk_waits(void);
 /* The own body as predicted: its bytes (BODY_STATE_SIZE) and the server's tick they are of, as
    the wire has ticks. Returns 0 while nothing is predicted. */
 int game_mode_own_body(DWORD *tick, unsigned char *state);
+/* The words of the server that differed from what was predicted with no request or record to
+   explain them, on this map (world/predicted.h: `unexplained`). */
+unsigned game_mode_own_body_unexplained(void);
 
 #endif
