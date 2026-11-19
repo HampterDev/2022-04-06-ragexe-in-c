@@ -19,6 +19,8 @@ call :library yyjson "/DYYJSON_READER_DEPTH_LIMIT=256 /DYYJSON_WRITER_DEPTH_LIMI
 if errorlevel 1 goto failed
 call :library jpeg "" stb\stb_impl.c
 if errorlevel 1 goto failed
+call :library enet "/Ienet-1.3.18\include" enet-1.3.18\*.c
+if errorlevel 1 goto failed
 call :library crijndael "/EHsc /GR- /I..\src" crijndael\*.cpp
 if errorlevel 1 goto failed
 call :library font_backend "/EHsc /GR- /I..\src" font_backend\*.cpp

@@ -28,6 +28,18 @@ add_library(rage_json STATIC yyjson-0.13.0/yyjson.c)
 target_include_directories(rage_json PUBLIC yyjson-0.13.0)
 target_compile_definitions(rage_json PRIVATE YYJSON_READER_DEPTH_LIMIT=256 YYJSON_WRITER_DEPTH_LIMIT=256)
 
+# ENet 1.3.18, the reliable UDP link of platform/net_enet.c. unix.c is told what every platform
+# built here has, as its own build scripts would find out.
+file(GLOB ENET_SOURCES CONFIGURE_DEPENDS enet-1.3.18/*.c)
+add_library(rage_enet STATIC ${ENET_SOURCES})
+target_include_directories(rage_enet PUBLIC enet-1.3.18/include)
+if(WIN32)
+    target_link_libraries(rage_enet PUBLIC winmm ws2_32)
+else()
+    target_compile_definitions(rage_enet PRIVATE HAS_FCNTL=1 HAS_POLL=1 HAS_GETADDRINFO=1 HAS_GETNAMEINFO=1
+        HAS_INET_PTON=1 HAS_INET_NTOP=1 HAS_MSGHDR_FLAGS=1 HAS_SOCKLEN_T=1)
+endif()
+
 add_library(rage_stb STATIC stb/stb_impl.c)
 add_library(rage_cgltf INTERFACE)
 target_include_directories(rage_cgltf INTERFACE cgltf)
