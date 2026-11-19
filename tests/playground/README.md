@@ -39,7 +39,8 @@ u32 actors, each: u32 gid; f32 x, y; u8 state; u8 is a player; u16 job;
                   u8 the frame its action is on; u8 the frame its attack shows its hit on
                   (255: none); u8 1 when the client has its unit in view
                   (`world/view_floors.h`; an actor shown dying after its going has not);
-                  1 unused
+                  1 unused; u32 the server's tick it is drawn on (0: the client does not
+                  know the server's clock)
 u32 packets, each: u16 size; the packet as the client sent it on its map connection
 u8  the own clock is known; u8 a body is predicted; 2 unused
 u32 own clock                 the server's tick the own character is drawn on

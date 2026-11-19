@@ -19,6 +19,7 @@
    tests/playground/README.md has the messages. */
 #include "core/app.h"
 #include "core/drive_state.h"
+#include "actor/actor_ops.h"
 #include "actor/types.h"
 #include "actor/render_ops.h"
 #include "contents/account_settings_internal.h"
@@ -420,7 +421,7 @@ static size_t report(void)
 
             if (!actor || actor == own)
                 continue;
-            if ((size_t)(p - P.out) + 20 + 4 + P.sent_size + 16 + 24 + BODY_STATE_SIZE > sizeof P.out)
+            if ((size_t)(p - P.out) + 24 + 4 + P.sent_size + 16 + 24 + BODY_STATE_SIZE > sizeof P.out)
                 break;
             cell_of(mode, &actor->pos, &x, &y);
             put32(p, (unsigned long)actor->aid);
@@ -437,7 +438,9 @@ static size_t report(void)
                is shown after its going, dying, is not */
             p[18] = mode && view_floors_in_view(&mode->view_floors, (uint32_t)actor->aid) ? 1 : 0;
             p[19] = 0;
-            p += 20;
+            /* the server's tick the actor is drawn on */
+            put32(p + 20, game_mode_knows_clock(mode) ? game_actor_walk_time(actor) : 0);
+            p += 24;
             actors++;
         }
     }
