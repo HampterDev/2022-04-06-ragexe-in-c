@@ -67,7 +67,7 @@
 
 /* Goes up with every change to what the core does with an input. A server and a client with
  * different versions do not predict each other. */
-#define BODY_RULES_VERSION 13u
+#define BODY_RULES_VERSION 14u
 
 /* The most slots a world has; a slot number fits 16 bits. */
 #define BODY_MAX_BODIES 0xFFFFu
@@ -113,8 +113,9 @@ enum { BODY_CAUSE_WALKED = 0, BODY_CAUSE_PUSHED = 1, BODY_CAUSE_PLACED = 2 };
  * was true before. The body is on (x, y) at at_tick. With steps, the first lands land_ms after
  * at_tick, whatever its own time is: longer, the body stands first; shorter, the step was
  * under way. Each later step takes its own time at speed_ms a straight cell
- * (grid_path_step_ms). Directions are the server's codes, 0 north (y + 1) and on
- * counter-clockwise to 7 north-east. */
+ * (grid_path_step_ms). Without steps, land_ms is how long a push (cause pushed) takes to show,
+ * which no rule reads; it is 0 for every other move without steps. Directions are the server's
+ * codes, 0 north (y + 1) and on counter-clockwise to 7 north-east. */
 struct BodyMove {
     uint64_t at_tick;
     int16_t x, y;
@@ -127,7 +128,9 @@ struct BodyMove {
 enum {
     BODY_INPUT_ADD = 1,    /* a body with `id` appears in the free slot, on (x, y), facing dir, at speed `value` */
     BODY_INPUT_REMOVE = 2, /* the body leaves; its slot is free again */
-    BODY_INPUT_PLACE = 3,  /* the body is on (x, y) from `tick` on, facing dir, by `cause`; a walk ends */
+    BODY_INPUT_PLACE = 3,  /* the body is on (x, y) from `tick` on, facing dir, by `cause`; a walk ends.
+                              Pushed, `value` is how long the push takes to show (the move's
+                              land_ms); otherwise it is 0 */
     BODY_INPUT_WALK = 4,   /* the body walks to (x, y), over at most `value` steps (0: BODY_PATH_STEPS) */
     BODY_INPUT_STOP = 5,   /* a walk ends on the cell the body is on; the step under way is not taken */
     BODY_INPUT_DELAY = 6,  /* the body takes no step before `tick` + `value` ms */

@@ -18,7 +18,8 @@
  *     8    4 at_tick   the record holds from this tick on
  *    12    2 x         the cell the actor is on at at_tick
  *    14    2 y
- *    16    2 land_ms   the first step lands this long after at_tick; 0 without steps
+ *    16    2 land_ms   the first step lands this long after at_tick; without steps, a pushed
+ *                      record's slide takes this long (0: it is set at once), else 0
  *    18    2 speed_ms  a straight step's time
  *    20    1 dir       the way it faces while it stands
  *    21    1 cause     MOVE_CAUSE_*; with MOVE_RECORD_OLD the record was made before it was

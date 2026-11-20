@@ -79,9 +79,6 @@ static void pet_idle_emotion(struct GameActor *self, struct GameMode *mode)
     self->pet_emotion_tick = 0;
 }
 
-/* Asura Strike's dash: the original walks the stop after it at 55 ms a straight cell. */
-#define ASURA_DASH_MS       55
-
 /* The world point of a place in 256ths of a cell, a cell's middle at a whole multiple of 256. */
 static void place_to_world(struct GameMode *mode, int32_t px, int32_t py, float *x, float *z)
 {
@@ -110,8 +107,7 @@ void game_actor_set_place(struct GameActor *self, const struct MoveRecord *recor
     self->cell_y = cells[count - 1].y;
     if (record->steps && record->speed_ms && record->cause == MOVE_CAUSE_WALKED)
         self->walk_speed = (int)record->speed_ms;
-    drawn_take(&self->place, record, game_actor_walk_time(self), (uint32_t)walk_ms(self, mode->world),
-               self->asura_dash ? ASURA_DASH_MS : 0);
+    drawn_take(&self->place, record, game_actor_walk_time(self), (uint32_t)walk_ms(self, mode->world));
 }
 
 unsigned game_actor_walk_time(struct GameActor *self)
@@ -136,7 +132,7 @@ int game_actor_play_place(struct GameActor *self)
     struct World *world = mode->world;
     struct DrawnFrame frame;
     Vec3 from = self->pos;
-    int moved, slid = self->place.sliding;
+    int moved, slid = drawn_motion(&self->place) == DRAWN_SLIDES;
     float dx, dz;
 
     if (self->move_track.count) {
@@ -169,8 +165,8 @@ int game_actor_play_place(struct GameActor *self)
         self->motion_held = 0;
         follow_set_times(0, 0);
     }
-    if (slid && frame.motion != DRAWN_SLIDES && self->asura_dash) {
-        self->asura_dash = 0;
+    if (slid && frame.motion != DRAWN_SLIDES && self->end_motion_after_slide) {
+        self->end_motion_after_slide = 0;
         render_object_play_motion_range((struct RenderObject *)self, 0x60, 2, 2, 0x60, 2, 1, 0xbb8, 0);
     }
     if (self->state == ACTOR_STATE_WALKING) {
@@ -399,8 +395,7 @@ void game_actor_set_state(struct GameActor * self, int state)
         actor_set_unit_cell(self);
         break;
     case 0x01:
-        if (!self->asura_dash)
-            render_object_set_action((struct RenderObject *)self, base, 0);
+        render_object_set_action((struct RenderObject *)self, base, 0);
         actor_clear_unit_cell(self);
         break;
     case 0x07:

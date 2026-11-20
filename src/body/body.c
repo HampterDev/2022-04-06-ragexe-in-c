@@ -340,7 +340,7 @@ static int body_valid(const struct Body *body, const struct BodyWorld *world)
     if (body->can_move > world->now && body->can_move - world->now > BODY_MAX_DELAY_MS)
         return 0;
     if (move->steps == 0)
-        return move->land_ms == 0 && is_zero(&body->walk, sizeof body->walk);
+        return (move->land_ms == 0 || move->cause == BODY_CAUSE_PUSHED) && is_zero(&body->walk, sizeof body->walk);
     if (body->walk.goal > GOAL_BODY || body->walk.range > BODY_MAX_RANGE)
         return 0;
     /* a goal has only what its kind has: no range for a cell, no body but for a chase */
@@ -1868,11 +1868,13 @@ static int input_place(struct BodyWorld *world, struct Body *body, const struct 
 {
     if (!on_map(world->width, world->height, input->x, input->y))
         return BODY_BAD_CELL;
-    if (input->dir > 7 || input->cause > BODY_CAUSE_PLACED)
+    if (input->dir > 7 || input->cause > BODY_CAUSE_PLACED || (input->cause != BODY_CAUSE_PUSHED && input->value != 0))
         return BODY_BAD_VALUE;
     if (event_room(world) == 0)
         return BODY_EVENTS_FULL;
     stand(body, input->tick, input->x, input->y, input->dir, input->cause);
+    /* how long the push takes to show, which no rule reads */
+    body->move.land_ms = input->value;
     body->cell_tick = input->tick;
     push_event(world, input->tick, BODY_EVENT_MOVE, body);
     return BODY_OK;
@@ -2112,7 +2114,8 @@ int body_put_move(struct BodyWorld *world, uint32_t slot, uint32_t id, const str
     if (record->at_tick > world->now || (record->steps > 0 && landing(record) < world->now))
         return BODY_BAD_TICK;
     if (record->steps > BODY_PATH_STEPS || record->dir > 7 || record->cause > BODY_CAUSE_PLACED
-        || record->speed_ms > BODY_MAX_SPEED_MS || (record->steps == 0 && record->land_ms != 0)
+        || record->speed_ms > BODY_MAX_SPEED_MS
+        || (record->steps == 0 && record->land_ms != 0 && record->cause != BODY_CAUSE_PUSHED)
         || !is_zero(record->reserved, sizeof record->reserved))
         return BODY_BAD_VALUE;
     for (i = 0; i < BODY_PATH_STEPS; i++) {

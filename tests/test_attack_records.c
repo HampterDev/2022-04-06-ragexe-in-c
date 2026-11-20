@@ -877,7 +877,7 @@ int game_actor_on_place(struct GameActor *actor)
     int drawn = drawn_walking[actor_index(actor)];
 
     if (drawn == 2)
-        return (int)(render_clock - actor->place.record.at_tick) < 0;
+        return (int)(render_clock - drawn_record(&actor->place)->at_tick) < 0;
     return !drawn;
 }
 
@@ -891,7 +891,7 @@ static void waits_to_walk(struct GameActor *actor)
 /* Its walk is over and its drawn point on its place: it stands. */
 static void arrives(struct GameActor *actor)
 {
-    actor->place.has = 0;
+    memset(&actor->place, 0, sizeof actor->place);
     actor->state = 0;
     drawn_walking[actor_index(actor)] = 0;
 }
@@ -899,13 +899,16 @@ static void arrives(struct GameActor *actor)
 /* The actor walks one step that lands at `ends`, its drawn point on the way. */
 static void walks(struct GameActor *actor, DWORD ends)
 {
+    struct MoveRecord walk;
+
+    memset(&walk, 0, sizeof walk);
+    walk.at_tick = ends - 100;
+    walk.land_ms = 100;
+    walk.speed_ms = 150;
+    walk.steps = 1;
+    walk.path[0] = 6;
     memset(&actor->place, 0, sizeof actor->place);
-    actor->place.record.at_tick = ends - 100;
-    actor->place.record.land_ms = 100;
-    actor->place.record.speed_ms = 150;
-    actor->place.record.steps = 1;
-    actor->place.record.path[0] = 6;
-    actor->place.has = 1;
+    drawn_take(&actor->place, &walk, ends - 100, 150);
     actor->state = 1;
     drawn_walking[actor_index(actor)] = 1;
 }
@@ -931,7 +934,7 @@ static void threats_wait_for_the_walk(void)
     waits_to_walk(&monster);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0);
-    monster.place.has = 0;
+    memset(&monster.place, 0, sizeof monster.place);
     monster.move_track.count = 1;
     monster.move_track.held[0].at_tick = own - 400;
     monster.move_track.held[0].steps = 1;

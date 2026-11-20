@@ -314,7 +314,7 @@ static void test_inputs(void)
     CHECK(body_now(world) == 250);
     CHECK(body_move(world, 1, &move) == BODY_OK);
     CHECK(move.at_tick == 250 && move.x == 9 && move.y == 7 && move.dir == 5 && move.speed_ms == 150);
-    CHECK(move.cause == BODY_CAUSE_PUSHED);
+    CHECK(move.cause == BODY_CAUSE_PUSHED && move.land_ms == 999 && move.steps == 0);
 
     /* the ring holds eight events; the ninth input that makes one is refused until one is taken */
     CHECK(apply(world, input(250, BODY_INPUT_ADD, 0, 5, 0, 0, 150)) == BODY_OK);
@@ -2734,6 +2734,52 @@ static void test_stop_speed_place(void)
     free(world);
 }
 
+/* A push keeps how long it takes to show in its move's land_ms, which no rule reads: its state is
+ * taken back and its record put. A placing or a stop with a time is refused, and so are a state
+ * and a record of another cause without steps that has one. */
+static void test_push_time(void)
+{
+    size_t size;
+    struct BodyWorld *world = walker_world(8, &size);
+    unsigned char state[BODY_STATE_SIZE];
+    struct BodyMove move, record;
+    struct BodyInput in;
+    uint64_t due;
+
+    in = input(1100, BODY_INPUT_PLACE, 1, 7, 6, 4, 270);
+    in.cause = BODY_CAUSE_PUSHED;
+    CHECK(body_input(world, &ground, &in) == BODY_OK);
+    CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1100, 6, 4) && no_event(world));
+    CHECK(body_move(world, 1, &move) == BODY_OK);
+    CHECK(move.at_tick == 1100 && move.steps == 0 && move.cause == BODY_CAUSE_PUSHED && move.land_ms == 270);
+    /* no rule reads it: nothing is due */
+    CHECK(body_next_due(world, &due) == 0);
+    CHECK(body_world_check(world, size) == BODY_OK);
+    CHECK(body_state(world, 1, state) == BODY_OK && body_put_state(world, 1, state) == BODY_OK);
+    CHECK(body_move(world, 1, &move) == BODY_OK && move.land_ms == 270);
+    /* the same time on a placing's state is not a state the core makes */
+    state[BODY_AT_CAUSE] = BODY_CAUSE_PLACED;
+    CHECK(body_put_state(world, 1, state) == BODY_BAD_VALUE);
+    /* a placing and a walked place with a time are refused */
+    in.cause = BODY_CAUSE_PLACED;
+    CHECK(refused(world, size, in, BODY_BAD_VALUE));
+    in.cause = BODY_CAUSE_WALKED;
+    CHECK(refused(world, size, in, BODY_BAD_VALUE));
+    /* a record put: pushed with its time is taken, another cause with a time is not */
+    memset(&record, 0, sizeof record);
+    record.at_tick = 1100;
+    record.x = 5;
+    record.y = 5;
+    record.land_ms = 200;
+    record.speed_ms = 100;
+    record.cause = BODY_CAUSE_PUSHED;
+    CHECK(body_put_move(world, 1, 7, &record) == BODY_OK);
+    CHECK(body_move(world, 1, &move) == BODY_OK && memcmp(&move, &record, sizeof move) == 0);
+    record.cause = BODY_CAUSE_PLACED;
+    CHECK(body_put_move(world, 1, 7, &record) == BODY_BAD_VALUE);
+    free(world);
+}
+
 /* Two bodies land at the same tick, in slot order, and a ring without room stops the run
  * until events are taken. */
 static void test_same_tick(void)
@@ -3257,6 +3303,7 @@ int main(int argc, char **argv)
     test_state();
     test_delay();
     test_stop_speed_place();
+    test_push_time();
     test_same_tick();
     test_move_at();
     test_put_move();

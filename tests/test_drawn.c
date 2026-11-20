@@ -199,7 +199,7 @@ static void a_point_on_a_walking_place_stays_on_it(void)
             memset(&drawn, 0, sizeof drawn);
             walk(&record, tick, 12, speed, speed);
             /* the actor's own speed is another: a walk is joined at the walk's */
-            drawn_take(&drawn, &record, tick, speed * 4, 0);
+            drawn_take(&drawn, &record, tick, speed * 4);
             end = tick + 16 * speed * 2;
             while ((int32_t)(tick - end) < 0) {
                 drawn_frame(&drawn, tick, real, &frame);
@@ -216,10 +216,10 @@ static void a_point_on_a_walking_place_stays_on_it(void)
     }
 }
 
-/* From a point on one cell, a walked record on a cell (dx, dy) off: the frames until the point is
-   on the place, the real time that took, each frame's step no longer than 13/10 of the speed
-   allows and a 256th per axis. */
-static uint32_t walk_a_gap_off(uint32_t speed, int dx, int dy, int pattern, int cause, uint32_t dash)
+/* From a point on one cell, a record by `cause` on a cell (dx, dy) off, a push with the slide time
+   `slide_ms`: the frames until the point is on the place, the real time that took, each walked
+   frame's step no longer than 13/10 of the speed allows and a 256th per axis. */
+static uint32_t walk_a_gap_off(uint32_t speed, int dx, int dy, int pattern, int cause, uint32_t slide_ms)
 {
     struct Drawn drawn;
     struct DrawnFrame frame;
@@ -229,10 +229,12 @@ static uint32_t walk_a_gap_off(uint32_t speed, int dx, int dy, int pattern, int 
 
     memset(&drawn, 0, sizeof drawn);
     stand(&record, tick, 50, 50, MOVE_CAUSE_PLACED);
-    drawn_take(&drawn, &record, tick, speed, 0);
+    drawn_take(&drawn, &record, tick, speed);
     drawn_frame(&drawn, tick, real, &frame);
     stand(&record, tick, 50 + dx, 50 + dy, cause);
-    drawn_take(&drawn, &record, tick, speed, dash);
+    if (cause == MOVE_CAUSE_PUSHED)
+        record.land_ms = slide_ms;
+    drawn_take(&drawn, &record, tick, speed);
     for (;;) {
         int32_t was_x = drawn.x, was_y = drawn.y;
 
@@ -296,27 +298,28 @@ static void a_walked_gap_of_six_cells_is_at_once(void)
     assert(walk_a_gap_off(150, 4, 0, 16, MOVE_CAUSE_WALKED, 0) > 16);
 }
 
-/* A push of 6 and of 18 cells slides over the knockback's time, or over its length at a dash's
-   speed, and not in one frame; one of more than 32 cells is at once. */
+/* A push of 6 and of 18 cells slides over the time its record carries, and not in one frame,
+   whatever its length: a knockback's 200 ms, a dash's 15 ms a cell, Asura Strike's 55; one
+   without a time, or of more than 32 cells, is at once. */
 static void a_push_slides_over_its_time(void)
 {
     int pattern;
 
     for (pattern = 0; pattern <= 50; pattern += 5) {
-        uint32_t a = walk_a_gap_off(150, 6, 0, pattern, MOVE_CAUSE_PUSHED, 0);
-        uint32_t b = walk_a_gap_off(150, -18, 0, pattern, MOVE_CAUSE_PUSHED, 0);
-        uint32_t c = walk_a_gap_off(150, 0, 18, pattern, MOVE_CAUSE_PUSHED, 15);
-        uint32_t d = walk_a_gap_off(150, 12, 12, pattern, MOVE_CAUSE_PUSHED, 15);
+        uint32_t a = walk_a_gap_off(150, 6, 0, pattern, MOVE_CAUSE_PUSHED, 200);
+        uint32_t b = walk_a_gap_off(150, -18, 0, pattern, MOVE_CAUSE_PUSHED, 200);
+        uint32_t c = walk_a_gap_off(150, 0, 18, pattern, MOVE_CAUSE_PUSHED, 18 * 15);
+        uint32_t d = walk_a_gap_off(150, 12, 12, pattern, MOVE_CAUSE_PUSHED, 12 * 55);
 
-        assert(a + 50 >= DRAWN_PUSH_MS && a <= DRAWN_PUSH_MS + 50);
-        assert(b + 50 >= DRAWN_PUSH_MS && b <= DRAWN_PUSH_MS + 50);
+        assert(a + 50 >= 200 && a <= 200 + 50);
+        assert(b + 50 >= 200 && b <= 200 + 50);
         assert(c + 50 >= 18 * 15 && c <= 18 * 15 + 50);
-        /* 12 cells on each axis: 16.97 cells along the line */
-        assert(d + 50 >= 254 && d <= 255 + 50);
+        assert(d + 50 >= 12 * 55 && d <= 12 * 55 + 50);
     }
-    assert(walk_a_gap_off(150, 6, 0, 16, MOVE_CAUSE_PUSHED, 0) > 16);
-    assert(walk_a_gap_off(150, 33, 0, 16, MOVE_CAUSE_PUSHED, 0) == 16);
-    assert(walk_a_gap_off(150, 32, 0, 16, MOVE_CAUSE_PUSHED, 0) > 16);
+    assert(walk_a_gap_off(150, 6, 0, 16, MOVE_CAUSE_PUSHED, 200) > 16);
+    assert(walk_a_gap_off(150, 6, 0, 16, MOVE_CAUSE_PUSHED, 0) == 16);
+    assert(walk_a_gap_off(150, 33, 0, 16, MOVE_CAUSE_PUSHED, 200) == 16);
+    assert(walk_a_gap_off(150, 32, 0, 16, MOVE_CAUSE_PUSHED, 200) > 16);
 }
 
 /* A placing, and an actor's first record, are taken at once. */
@@ -329,16 +332,16 @@ static void a_placing_and_a_first_record_are_at_once(void)
     memset(&drawn, 0, sizeof drawn);
     assert(!drawn_frame(&drawn, 5, 5, &frame) && frame.on_place && drawn_on_place(&drawn) && !drawn_record(&drawn));
     stand(&record, 100, 10, 10, MOVE_CAUSE_WALKED);
-    drawn_take(&drawn, &record, 100, 150, 0);
+    drawn_take(&drawn, &record, 100, 150);
     assert(drawn_frame(&drawn, 100, 1000, &frame) && frame.on_place && frame.x == 10 * 256);
     assert(drawn_record(&drawn)->x == 10);
     stand(&record, 120, 13, 9, MOVE_CAUSE_PLACED);
-    drawn_take(&drawn, &record, 120, 150, 0);
+    drawn_take(&drawn, &record, 120, 150);
     drawn_frame(&drawn, 121, 1001, &frame);
     assert(frame.on_place && frame.x == 13 * 256 && frame.y == 9 * 256 && frame.motion == DRAWN_RESTS);
     /* the old mark of a record sent late does not change its cause */
     stand(&record, 130, 14, 9, MOVE_CAUSE_PLACED | MOVE_RECORD_OLD);
-    drawn_take(&drawn, &record, 130, 150, 0);
+    drawn_take(&drawn, &record, 130, 150);
     drawn_frame(&drawn, 131, 1002, &frame);
     assert(frame.on_place && frame.x == 14 * 256);
 }
@@ -362,7 +365,7 @@ static void a_clock_jump_is_walked_off(void)
     record.speed_ms = 150;
     record.steps = 10;
     memset(record.path, 6, 10); /* east */
-    drawn_take(&drawn, &record, tick, 150, 0);
+    drawn_take(&drawn, &record, tick, 150);
     drawn_frame(&drawn, tick, real, &frame);
     tick += 16;
     real += 16;
@@ -437,7 +440,7 @@ static void records_in_any_order_end_on_the_newest(void)
                 i++;
             }
             if (move_track_take(&track, &floors, tick, &last))
-                drawn_take(&drawn, &last, tick, 150, 0);
+                drawn_take(&drawn, &last, tick, 150);
             drawn_frame(&drawn, tick, real, &frame);
             tick += ms;
             real += ms;
@@ -499,7 +502,7 @@ static void reference_place(const struct MoveRecord *record, uint32_t tick, doub
 }
 
 static void reference_take(struct Reference *r, const struct MoveRecord *record, uint32_t tick, uint32_t speed,
-                           uint32_t dash, int piece_slides)
+                           int piece_slides)
 {
     double px, py, length, bound;
 
@@ -526,14 +529,14 @@ static void reference_take(struct Reference *r, const struct MoveRecord *record,
     /* within the two points' difference of the bound the piece's own measure decides */
     if (fabs(length - bound) <= r->carried + 2.0)
         length = piece_slides ? bound : bound + 1;
-    if ((r->off_x == 0 && r->off_y == 0) || length > bound) {
+    if ((r->off_x == 0 && r->off_y == 0) || length > bound || record->land_ms == 0) {
         r->slide = 0;
         r->x = px;
         r->y = py;
         return;
     }
     r->slide = 1;
-    r->join = dash ? ceil(length * dash / 256.0) : DRAWN_PUSH_MS;
+    r->join = record->land_ms;
 }
 
 /* A frame `ms` after the last; `piece_on`: the piece is on its place, which decides a gap within
@@ -567,7 +570,7 @@ static void reference_frame(struct Reference *r, uint32_t tick, uint32_t ms, int
     }
 }
 
-/* Random records (walks, stops, pushes and placings, some knockbacks some dashes), taken at
+/* Random records (walks, stops, pushes with a slide's time or none, and placings), taken at
    random frames of 1 to 50 ms, on a clock that goes with the real time: the point is the
    reference's within the rounding, every frame. */
 static void the_point_is_the_references(void)
@@ -579,7 +582,7 @@ static void the_point_is_the_references(void)
         struct DrawnFrame frame;
         struct Reference ref;
         struct MoveRecord record;
-        uint32_t speed = 100 + next() % 1901, tick = next(), real = next(), dash = 0;
+        uint32_t speed = 100 + next() % 1901, tick = next(), real = next();
         int frames;
 
         memset(&drawn, 0, sizeof drawn);
@@ -597,12 +600,14 @@ static void the_point_is_the_references(void)
                 } else {
                     stand(&record, tick - next() % 200, 90 + (int)(next() % 20), 90 + (int)(next() % 20), kind - 1);
                 }
-                dash = next() % 2 ? 0 : 15 + next() % 50;
-                drawn_take(&drawn, &record, tick, speed, dash);
+                /* a push carries its slide's time, or none */
+                if (record.cause == MOVE_CAUSE_PUSHED)
+                    record.land_ms = next() % 5 ? 50 + next() % 950 : 0;
+                drawn_take(&drawn, &record, tick, speed);
                 /* the two points may differ by their roundings so far: that much goes into the
                    offset, and shrinks with it */
                 ref.carried = fabs(drawn.x - ref.x) > fabs(drawn.y - ref.y) ? fabs(drawn.x - ref.x) : fabs(drawn.y - ref.y);
-                reference_take(&ref, &record, tick, speed, dash, drawn.sliding);
+                reference_take(&ref, &record, tick, speed, drawn.sliding);
             }
             tick += ms;
             real += ms;

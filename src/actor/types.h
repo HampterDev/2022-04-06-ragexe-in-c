@@ -132,9 +132,9 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int casting;                               \
     int state_locked;                          \
     int wave_pending;                          \
-    /* Asura Strike's dash: a push the actor takes after its motion slides at the dash's speed, \
-       and its end motion plays when the slide is over. */                                       \
-    int asura_dash;                            \
+    /* Asura Strike's end motion is owed: it plays when the slide that follows the strike is   \
+       over. */                                                                                \
+    int end_motion_after_slide;                \
     struct UIWindow *siege_wnd;                \
     struct UIWindow *word_display_wnd;         \
     unsigned char wave_name[128];              \

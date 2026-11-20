@@ -139,13 +139,12 @@ static void slide_offset(const struct Drawn *drawn, int32_t *x, int32_t *y)
     *y = drawn->off_y * left / whole;
 }
 
-void drawn_take(struct Drawn *drawn, const struct MoveRecord *record, uint32_t tick, uint32_t walk_ms,
-                uint32_t dash_ms)
+void drawn_take(struct Drawn *drawn, const struct MoveRecord *record, uint32_t tick, uint32_t walk_ms)
 {
     struct DrawnPlace place;
     int cause = record->cause & ~MOVE_RECORD_OLD;
     int32_t x, y;
-    uint32_t length, ms;
+    uint32_t length;
 
     drawn->record = *record;
     /* a walk's place moves at the walk's own speed, which the point keeps up with */
@@ -168,18 +167,16 @@ void drawn_take(struct Drawn *drawn, const struct MoveRecord *record, uint32_t t
     }
     x = drawn->x - place.x;
     y = drawn->y - place.y;
-    if ((!x && !y) || !within(x, y, DRAWN_SLIDE_CELLS, &length)) {
+    /* the slide's time is the record's; a push with steps or too long is taken at once, and one
+       without a time is over at its first frame */
+    if ((!x && !y) || record->steps || !within(x, y, DRAWN_SLIDE_CELLS, &length)) {
         set_on(drawn, &place);
         return;
     }
-    if (dash_ms > DRAWN_WALK_MS_MAX)
-        dash_ms = DRAWN_WALK_MS_MAX;
-    /* at most 11586 256ths at 10,000 ms a cell: below 2^27 */
-    ms = dash_ms ? (length * dash_ms + DRAWN_CELL - 1) / DRAWN_CELL : DRAWN_PUSH_MS;
     drawn->off_x = x;
     drawn->off_y = y;
     drawn->part_x = drawn->part_y = 0;
-    drawn->join_ms = ms ? (ms < DRAWN_JOIN_MS_MAX ? ms : DRAWN_JOIN_MS_MAX) : 1;
+    drawn->join_ms = record->land_ms > 0xFFFFu ? 0xFFFFu : record->land_ms;
     drawn->gone_ms = 0;
     drawn->sliding = 1;
 }
@@ -228,7 +225,9 @@ int drawn_frame(struct Drawn *drawn, uint32_t tick, uint32_t real, struct DrawnF
     frame->step_x = drawn->step_x;
     frame->step_y = drawn->step_y;
     frame->on_place = drawn->on_place;
-    frame->motion = drawn->sliding ? DRAWN_SLIDES : (!drawn->on_place || place.moving) ? DRAWN_WALKS : DRAWN_RESTS;
+    drawn->motion = (unsigned char)(drawn->sliding ? DRAWN_SLIDES
+                                    : (!drawn->on_place || place.moving) ? DRAWN_WALKS : DRAWN_RESTS);
+    frame->motion = drawn->motion;
     return 1;
 }
 
@@ -240,4 +239,15 @@ const struct MoveRecord *drawn_record(const struct Drawn *drawn)
 int drawn_on_place(const struct Drawn *drawn)
 {
     return !drawn->has || drawn->on_place;
+}
+
+int drawn_motion(const struct Drawn *drawn)
+{
+    return drawn->motion;
+}
+
+void drawn_point(const struct Drawn *drawn, int32_t *x, int32_t *y)
+{
+    *x = drawn->has ? drawn->x : 0;
+    *y = drawn->has ? drawn->y : 0;
 }

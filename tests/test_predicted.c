@@ -1860,6 +1860,39 @@ static void test_convergence(void)
     }
 }
 
+/* A push keeps how long it takes to show (the core's rules version 14): the server's word of a
+   pushed body gives the predicted body's move that time, which the character's record carries
+   (game/own_body.c), so her character slides over it as everyone else does. */
+static void test_push_time(void)
+{
+    static struct Predicted predicted;
+    static uint64_t arena[(SERVER_ARENA + 7) / 8];
+    struct BodyWorld *server;
+    struct PredictedBody word;
+    struct BodyInput in;
+    struct BodyMove move;
+    struct BodyEvent event;
+    const uint64_t T = 0x12a05f200ull;
+
+    memset(cells, 1, sizeof cells);
+    server = server_world(arena, T, 10, 10, MOB_ID, 14, 10);
+    in = input(T + 20, BODY_INPUT_PLACE, OWN_SLOT, OWN_ID);
+    in.x = 13;
+    in.y = 10;
+    in.cause = BODY_CAUSE_PUSHED;
+    in.value = 200;
+    CHECK(body_input(server, &ground, &in) == BODY_OK);
+    while (body_take_event(server, &event)) {
+    }
+    word = word_of(server, 17, 150);
+    predicted_init(&predicted, WIDTH, HEIGHT);
+    CHECK(predicted_placed(&predicted, &ground, 0) == PREDICTED_REFUSED);
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_DIFFERENT);
+    memset(&move, 0, sizeof move);
+    CHECK(predicted_run(&predicted, &ground, T + 40) && predicted_move(&predicted, &move));
+    CHECK(move.x == 13 && move.y == 10 && move.steps == 0 && move.cause == BODY_CAUSE_PUSHED && move.land_ms == 200);
+}
+
 int main(void)
 {
     test_read();
@@ -1874,6 +1907,7 @@ int main(void)
     test_way_up_samples();
     test_told_again();
     test_convergence();
+    test_push_time();
     if (failures) {
         fprintf(stderr, "predicted: %d failed\n", failures);
         return 1;

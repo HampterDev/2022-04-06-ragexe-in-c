@@ -21,10 +21,10 @@
  *               on a walking place stays on it. A gap of more than DRAWN_WALK_CELLS is taken at
  *               once. A record with steps is joined at its own speed. A clock that jumps moves
  *               the place, and the point walks after it like after any other gap;
- *   slid        a pushed record (a knockback, a slide, a body relocation): the point is the
- *               place and the offset it had at the push, which shrinks to nothing over the push's
- *               time, DRAWN_PUSH_MS, or over its length at the dash's ms a cell when the caller
- *               names one; one longer than DRAWN_SLIDE_CELLS is taken at once;
+ *   slid        a pushed record (a knockback, a slide, a dash): the point is the place and the
+ *               offset it had at the push, which shrinks to nothing over the slide's time, which
+ *               the record carries (move_track.h); one without a time, or longer than
+ *               DRAWN_SLIDE_CELLS, is taken at once;
  *   at once     a placed record, and an actor's first record.
  *
  * Places and points are in 256ths of a cell, a cell's middle at a whole multiple of DRAWN_CELL.
@@ -41,11 +41,9 @@
 #define DRAWN_WALK_CELLS 4
 /* A pushed offset longer than this many cells is taken at once. The bound keeps every product
  * in 32 bits: an offset of 32 cells is 8192 256ths, the sum of its squares at most 2^27, and an
- * offset times a slide's time at most 8192 * DRAWN_JOIN_MS_MAX < 2^31. */
+ * offset times a slide's time, at most 65535 ms, below 2^31. */
 #define DRAWN_SLIDE_CELLS 32
-/* A knockback's slide: the original slides a pushed actor onto its cell over this long. */
-#define DRAWN_PUSH_MS 200
-/* The longest slide and the most real time one frame counts, and the slowest walk speed. */
+/* The most real time one frame counts, and the slowest walk speed. */
 #define DRAWN_JOIN_MS_MAX 60000u
 #define DRAWN_WALK_MS_MAX 10000u
 
@@ -82,13 +80,12 @@ struct Drawn {
     unsigned char sliding;    /* the point slides */
     unsigned char clocked;    /* `real` holds a frame's real time */
     unsigned char on_place;   /* the point was on the place at the last frame */
+    unsigned char motion;     /* DRAWN_* of the last frame */
 };
 
 /* `record` becomes the actor's place at `tick`. `walk_ms` is its walk speed, ms a straight
- * cell (0: 150); `dash_ms`, for a pushed record only, is the ms a cell of a dash, 0 for a
- * knockback's fixed time. */
-void drawn_take(struct Drawn *drawn, const struct MoveRecord *record, uint32_t tick, uint32_t walk_ms,
-                uint32_t dash_ms);
+ * cell (0: 150). */
+void drawn_take(struct Drawn *drawn, const struct MoveRecord *record, uint32_t tick, uint32_t walk_ms);
 
 /* What a frame shows. */
 struct DrawnFrame {
@@ -109,5 +106,11 @@ const struct MoveRecord *drawn_record(const struct Drawn *drawn);
 
 /* Whether the point was on its place at the last frame; 1 before the first record. */
 int drawn_on_place(const struct Drawn *drawn);
+
+/* What the point did at the last frame: DRAWN_RESTS before the first. */
+int drawn_motion(const struct Drawn *drawn);
+
+/* The drawn point at the last frame, in 256ths: 0, 0 before the first record. */
+void drawn_point(const struct Drawn *drawn, int32_t *x, int32_t *y);
 
 #endif

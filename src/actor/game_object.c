@@ -416,7 +416,7 @@ void game_actor_on_init(struct GameActor *self)
     self->siege_wnd = NULL;
     self->word_display_wnd = NULL;
     self->wave_extra_flag = 0;
-    self->asura_dash = 0;
+    self->end_motion_after_slide = 0;
     self->attack_target_extra = 0;
     self->homun_ai = NULL;
     self->merc_ai = NULL;

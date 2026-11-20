@@ -331,13 +331,15 @@ static struct GameMode *game(void)
     return g_modeMgr.curModeType == MODE_TYPE_GAME ? (struct GameMode *)g_modeMgr.curMode : NULL;
 }
 
-/* A place of the world in cells: a cell's centre is a whole number. */
 /* Where an actor is drawn, in 256ths of a cell, a cell's middle at a whole multiple of 256: the
    drawn point of its place (world/drawn.h), or 0 before its first record. */
 static void point_of(const struct GameActor *actor, long *x, long *y)
 {
-    *x = drawn_record(&actor->place) ? (long)actor->place.x : 0;
-    *y = drawn_record(&actor->place) ? (long)actor->place.y : 0;
+    int32_t px, py;
+
+    drawn_point(&actor->place, &px, &py);
+    *x = (long)px;
+    *y = (long)py;
 }
 
 /* The own body, for the runner to hold against the server's by tick: the cell the walk the
