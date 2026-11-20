@@ -349,11 +349,16 @@ static void test_world(void)
     CHECK(!predicted.stale && predicted.other[0].gone == T + 2100 && !predicted.other[1].used);
     CHECK(predicted_run(&predicted, &ground, T + 2200) && predicted_intent(&predicted, &intent) && !intent.has);
 
-    /* the others the world holds: one that went gives its place first, and a fourth then takes
-       the place of one the own body does not name */
-    CHECK(predicted_other(&predicted, 21, &mob) && predicted_other(&predicted, 22, &mob) && predicted_other(&predicted, 23, &mob));
-    CHECK(predicted.other[0].id == 23 && predicted.other[1].id == 21 && predicted.other[2].id == 22);
-    CHECK(predicted_other(&predicted, 24, &mob) == 1 && predicted.other[0].id == 24 && predicted.other[1].id == 21);
+    /* the others the world holds: with every place taken, one that went gives its place first,
+       and one more then takes the place of one the own body does not name */
+    {
+        int i;
+
+        for (i = 1; i < PREDICTED_OTHERS; i++)
+            CHECK(predicted_other(&predicted, 20 + (uint32_t)i, &mob) == 1 && predicted.other[i].id == 20 + (uint32_t)i);
+    }
+    CHECK(predicted_other(&predicted, 30, &mob) == 1 && predicted.other[0].id == 30 && predicted.other[1].id == 21);
+    CHECK(predicted_other(&predicted, 31, &mob) == 1 && predicted.other[0].id == 31 && predicted.other[1].id == 21);
     /* more requests than the list holds: the oldest goes */
     {
         int i;
@@ -656,10 +661,16 @@ static void test_records(void)
     CHECK(predicted_other(&predicted, 21, &mob) == 1 && predicted.stale && predicted_run(&predicted, &ground, T + 1650));
     /* made again, the world has the monster on the record that held then, and her as before */
     CHECK(predicted_move(&predicted, &move) && move.steps > 0 && move.at_tick == T + 1600 && move.x == 10);
-    /* with all three places taken, a fourth takes the place of one she does not name: the one
-       she is after stays */
-    CHECK(predicted_other(&predicted, 22, &mob) == 1 && predicted_other(&predicted, 23, &mob) == 1);
-    CHECK(predicted.other[0].id == MOB_ID && predicted.other[1].id == 23 && predicted.other[2].id == 22);
+    /* with every place taken, one more takes the place of one she does not name: the one she
+       is after stays */
+    {
+        int i;
+
+        for (i = 2; i < PREDICTED_OTHERS; i++)
+            CHECK(predicted_other(&predicted, 20 + (uint32_t)i, &mob) == 1);
+    }
+    CHECK(predicted_other(&predicted, 30, &mob) == 1);
+    CHECK(predicted.other[0].id == MOB_ID && predicted.other[1].id == 30 && predicted.other[2].id == 22);
     CHECK(predicted_run(&predicted, &ground, T + 1700) && predicted_intent(&predicted, &intent) && intent.has && intent.target_id == MOB_ID);
 
     /* the world's settings are the server's: a swing that a walk ends in its windup lets the
@@ -855,6 +866,79 @@ static void test_named_by_word(void)
     CHECK(predicted_confirm(&predicted, &ground, &before) != PREDICTED_REFUSED);
     CHECK(differences(&predicted, server, T + 310, T + 790) == 0);
     CHECK(predicted_attack(&predicted, &attack) && attack.has_target && attack.target_id == MOB_ID);
+}
+
+static void put_id(unsigned char *state, size_t at, uint32_t id)
+{
+    state[at] = (unsigned char)id;
+    state[at + 1] = (unsigned char)(id >> 8);
+    state[at + 2] = (unsigned char)(id >> 16);
+    state[at + 3] = (unsigned char)(id >> 24);
+}
+
+/* The room holds every body that may be named at once, each kept with its records taken: the
+   own body names three in the world as it runs (its attack's target, its swing's, its intent's)
+   and three others in the server's last word. The world's arena is the core's size of it. A
+   seventh body finds no room; one named no more is the first to go. The state's three names
+   are written into the server's body bytes (a word is data from outside, and the core takes a
+   state that names three bodies); that the word names three others than the running world is
+   set in its record of them, which a later request of hers brings about bit by bit. */
+static void test_room_for_named(void)
+{
+    static struct Predicted predicted;
+    static uint64_t arena[(SERVER_ARENA + 7) / 8];
+    const uint64_t T = 0x12a05f200ull;
+    /* where struct Body keeps the three names: act at 96 (target_id + 32, swing_target_id + 36),
+       intent at 176 (target_id + 16) */
+    enum { SWING_TARGET_ID = 96 + 36, INTENT_TARGET_ID = 176 + 16 };
+    struct PredictedRequest order = attack_on(1, T + 100, MOB_ID, BODY_ATTACK_REPEAT);
+    struct BodyWorld *server = begin(&predicted, arena, T, 10, 10, 11, 10);
+    const uint32_t ids[7] = {MOB_ID, 31, 32, 41, 42, 43, 51};
+    struct BodyMove at[7], moved;
+    struct PredictedBody word;
+    struct BodyAttack attack;
+    struct BodyIntentState intent;
+    int i, k, held;
+
+    CHECK(body_world_size(PREDICTED_OTHERS + 1, 16) == PREDICTED_ARENA);
+    for (i = 0; i < 7; i++)
+        at[i] = standing(T, 20 + i, 20, 200);
+    at[0] = standing(T, 11, 10, 200);
+    /* her attack, which goes on, has its swing open on the monster and her intent on it too;
+       the word says her swing and her intent are on two others, which the world has */
+    CHECK(predicted_request(&predicted, &order) == 1 && server_attack(server, T + 100, 1, BODY_ATTACK_REPEAT) == BODY_OK);
+    CHECK(differences(&predicted, server, T + 100, T + 120) == 0);
+    CHECK(predicted_other(&predicted, ids[1], &at[1]) == 1 && predicted_other(&predicted, ids[2], &at[2]) == 1);
+    word = word_of(server, 17, 150);
+    put_id(word.state, SWING_TARGET_ID, ids[1]);
+    put_id(word.state, INTENT_TARGET_ID, ids[2]);
+    CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED && predicted_run(&predicted, &ground, T + 130));
+    CHECK(predicted_attack(&predicted, &attack) && attack.has_target && attack.target_id == ids[0]
+          && attack.swing_open && attack.swing_target_id == ids[1]);
+    CHECK(predicted_intent(&predicted, &intent) && intent.has && intent.target_id == ids[2]);
+    /* the word names three others: all six are kept, and each one's record is taken */
+    predicted.word_names[0] = ids[3];
+    predicted.word_names[1] = ids[4];
+    predicted.word_names[2] = ids[5];
+    for (i = 3; i < 6; i++)
+        CHECK(predicted_other(&predicted, ids[i], &at[i]) == 1);
+    for (i = 0; i < 6; i++) {
+        moved = standing(T + 140, at[i].x, at[i].y + 1, 200);
+        CHECK(predicted_other(&predicted, ids[i], &moved) == 1);
+    }
+    /* a seventh finds no room, and nobody goes for it */
+    CHECK(predicted_other(&predicted, ids[6], &at[6]) == 0);
+    for (i = 0, held = 0; i < 6; i++)
+        for (k = 0; k < PREDICTED_OTHERS; k++)
+            held += predicted.other[k].used && predicted.other[k].id == ids[i] && predicted.other[k].record[predicted.other[k].count - 1].at_tick == T + 140;
+    CHECK(held == 6);
+    /* named no more by the word, one goes first, and only it */
+    predicted.word_names[1] = 0;
+    CHECK(predicted_other(&predicted, ids[6], &at[6]) == 1);
+    for (i = 0, held = 0; i < 7; i++)
+        for (k = 0; k < PREDICTED_OTHERS; k++)
+            held += predicted.other[k].used && predicted.other[k].id == ids[i] ? 1 << i : 0;
+    CHECK(held == (0x7F & ~(1 << 4)));
 }
 
 /* A request the core refuses is what the server makes of it: a walk one that did nothing, whose
@@ -1941,6 +2025,7 @@ int main(void)
     test_skills_and_pickups();
     test_gone();
     test_named_by_word();
+    test_room_for_named();
     test_refused();
     test_walk_news();
     test_placement();

@@ -38,16 +38,23 @@
  * The bytes of a ZC_OWN_BODY and the records are data from outside: what does not fit is
  * refused and changes nothing. */
 
-/* The other bodies the world holds beside the own one. */
-#define PREDICTED_OTHERS 3
+/* The other bodies the world holds beside the own one: the most the own body can name at once.
+ * It names up to three, its attack's target, its swing's and its intent's, in the world as it
+ * runs and up to three others in the server's last word, which the world is made again from: a
+ * request the server has not taken yet can let go of a target in the running world that the
+ * word still has. None of these may go for another body's record, or a world made again finds
+ * a target gone and ends what the own body does with it. So the room holds all six, distinct;
+ * a body neither names goes first when another comes. */
+#define PREDICTED_OTHERS 6
 /* The requests that can wait for the server's word. */
 #define PREDICTED_PENDING 16
 /* The records of another body that can wait for their tick. */
 #define PREDICTED_RECORDS 4
 /* The own body's states by tick that are kept, to compare the server's word with. */
 #define PREDICTED_PAST 48
-/* The bytes of the world's arena: the core's header, the bodies and a ring of sixteen events. */
-#define PREDICTED_ARENA 1464u
+/* The bytes of the world's arena: the core's header (56), the bodies, the others and the own one,
+ * and a ring of sixteen events of 32 (body_world_size, which predicted.c holds it to). */
+#define PREDICTED_ARENA (56u + (PREDICTED_OTHERS + 1u) * BODY_STATE_SIZE + 16u * 32u)
 
 /* ZC_OWN_BODY, 0x0F25, little-endian and packed, 36 bytes and the state:
  *
