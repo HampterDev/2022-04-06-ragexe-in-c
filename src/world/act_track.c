@@ -148,16 +148,15 @@ int timed_queue_file(struct TimedQueue *queue, const struct TimedItem *item, con
         for (i = 0; i < queue->count; i++) {
             const struct TimedItem *held = &queue->items[i];
 
-            if (held->kind != item->kind || held->actor != item->actor)
-                continue;
-            if (rev_of(held) == rev || (record_rev_newer(rev_of(held), rev) && (int32_t)(held->tick - item->tick) <= 0))
+            if (held->kind == item->kind && held->actor == item->actor
+                && record_against(held->tick, rev_of(held), item->tick, rev) == RECORD_REFUSED)
                 return TIMED_DROPPED;
         }
         for (i = queue->count - 1; i >= 0; i--) {
             const struct TimedItem *held = &queue->items[i];
 
-            if (held->kind == item->kind && held->actor == item->actor && record_rev_newer(rev, rev_of(held))
-                && (int32_t)(held->tick - item->tick) >= 0)
+            if (held->kind == item->kind && held->actor == item->actor
+                && record_against(held->tick, rev_of(held), item->tick, rev) == RECORD_REPLACES)
                 remove_at(queue, i);
         }
     }

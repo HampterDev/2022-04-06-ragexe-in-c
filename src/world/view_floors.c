@@ -37,6 +37,15 @@ int record_rev_newer(uint16_t a, uint16_t b)
     return (int16_t)(uint16_t)(a - b) > 0;
 }
 
+int record_against(uint32_t held_tick, uint16_t held_rev, uint32_t tick, uint16_t rev)
+{
+    if (held_rev == rev || (record_rev_newer(held_rev, rev) && (int32_t)(held_tick - tick) <= 0))
+        return RECORD_REFUSED;
+    if (record_rev_newer(rev, held_rev) && (int32_t)(held_tick - tick) >= 0)
+        return RECORD_REPLACES;
+    return RECORD_BESIDE;
+}
+
 void view_floors_clear(struct ViewFloors *view)
 {
     view->count = 0;

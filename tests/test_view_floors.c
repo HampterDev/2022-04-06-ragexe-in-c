@@ -487,8 +487,63 @@ static void test_crossing(void)
     CHECK(presence_stamp(&presence, 0, &stamp) == 0);
 }
 
+/* The rules the move track and the timed queue each wrote out before they asked record_against,
+   as they were: whether the arriving record is dropped, and whether a held one stays. */
+static int move_track_refused(uint32_t held_tick, uint16_t held_rev, uint32_t tick, uint16_t rev)
+{
+    return held_rev == rev || (record_rev_newer(held_rev, rev) && (int32_t)(held_tick - tick) <= 0);
+}
+
+static int move_track_keeps(uint32_t held_tick, uint16_t held_rev, uint32_t tick, uint16_t rev)
+{
+    return record_rev_newer(held_rev, rev) || (int32_t)(held_tick - tick) < 0;
+}
+
+static int timed_queue_replaces(uint32_t held_tick, uint16_t held_rev, uint32_t tick, uint16_t rev)
+{
+    return record_rev_newer(rev, held_rev) && (int32_t)(held_tick - tick) >= 0;
+}
+
+/* One rule for every track: refused, replacing, or beside, the revisions wrapping; and the same
+   answers as the rules it took over, but for revisions half the counter apart, where neither is
+   newer and the move track dropped a held record whose tick was not earlier. */
+static void test_record_against(void)
+{
+    static const uint32_t ticks[] = { 0, 1, 999, 1000, 1001, 0x7FFFFFFFu, 0x80000000u, 0xFFFFFFFFu };
+    static const uint16_t revs[] = { 0, 1, 2, 0x7FFF, 0x8000, 0x8001, 0xFFFE, 0xFFFF };
+    unsigned i, j, k, l;
+
+    CHECK(record_against(1000, 5, 1000, 5) == RECORD_REFUSED);  /* it came twice */
+    CHECK(record_against(900, 5, 1000, 5) == RECORD_REFUSED);
+    CHECK(record_against(1000, 6, 1000, 5) == RECORD_REFUSED);  /* made knowing it */
+    CHECK(record_against(900, 6, 1000, 5) == RECORD_REFUSED);
+    CHECK(record_against(1100, 6, 1000, 5) == RECORD_BESIDE);   /* older and earlier */
+    CHECK(record_against(1000, 5, 1000, 6) == RECORD_REPLACES); /* a cancelled swing */
+    CHECK(record_against(1100, 5, 1000, 6) == RECORD_REPLACES);
+    CHECK(record_against(900, 5, 1000, 6) == RECORD_BESIDE);    /* newer and later */
+    CHECK(record_against(1000, 0xFFFF, 1000, 1) == RECORD_REPLACES); /* across the wrap */
+    CHECK(record_against(1000, 1, 1000, 0xFFFF) == RECORD_REFUSED);
+    CHECK(record_against(0xFFFFFFF0u, 5, 0x10, 6) == RECORD_BESIDE); /* the tick wraps too */
+    for (i = 0; i < sizeof ticks / sizeof ticks[0]; i++)
+        for (j = 0; j < sizeof revs / sizeof revs[0]; j++)
+            for (k = 0; k < sizeof ticks / sizeof ticks[0]; k++)
+                for (l = 0; l < sizeof revs / sizeof revs[0]; l++) {
+                    uint32_t ht = ticks[i], t = ticks[k];
+                    uint16_t hr = revs[j], r = revs[l];
+                    int got = record_against(ht, hr, t, r), half = (uint16_t)(hr - r) == 0x8000u;
+
+                    CHECK((got == RECORD_REFUSED) == move_track_refused(ht, hr, t, r));
+                    CHECK((got == RECORD_REPLACES) == timed_queue_replaces(ht, hr, t, r));
+                    if (got != RECORD_REFUSED && !half)
+                        CHECK((got != RECORD_REPLACES) == move_track_keeps(ht, hr, t, r));
+                    if (got != RECORD_REFUSED && half)
+                        CHECK(got == RECORD_BESIDE && move_track_keeps(ht, hr, t, r) == ((int32_t)(ht - t) < 0));
+                }
+}
+
 int main(void)
 {
+    test_record_against();
     test_read();
     test_floors();
     test_bounded();

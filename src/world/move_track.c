@@ -78,16 +78,12 @@ int move_track_file(struct MoveTrack *track, const struct RecordFloors *floors, 
 
     if (floors->has_move && !record_rev_newer(record->rev, floors->move))
         return 0;
-    for (i = 0; i < track->count; i++) {
-        const struct MoveRecord *held = &track->held[i];
-
-        if (held->rev == record->rev
-            || (record_rev_newer(held->rev, record->rev) && (int32_t)(held->at_tick - record->at_tick) <= 0))
+    for (i = 0; i < track->count; i++)
+        if (record_against(track->held[i].at_tick, track->held[i].rev, record->at_tick, record->rev) == RECORD_REFUSED)
             return 0;
-    }
     /* what is left is newer and later, or older and earlier: it stays in order by tick */
     for (i = 0; i < track->count; i++)
-        if (record_rev_newer(track->held[i].rev, record->rev) || (int32_t)(track->held[i].at_tick - record->at_tick) < 0)
+        if (record_against(track->held[i].at_tick, track->held[i].rev, record->at_tick, record->rev) != RECORD_REPLACES)
             track->held[kept++] = track->held[i];
     track->count = kept;
     if (track->count == MOVE_TRACK_HELD) {

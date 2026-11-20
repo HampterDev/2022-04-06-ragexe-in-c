@@ -53,6 +53,18 @@ struct RecordFloors {
 /* Whether revision `a` is newer than `b`, however the counter has wrapped. */
 int record_rev_newer(uint16_t a, uint16_t b);
 
+/* How a record of a track that arrives, of `tick` and revision `rev`, stands to one of the same
+ * track that is held, of `held_tick` and `held_rev` (plans/core-loop.md, rule 3; plans/delivery.md,
+ * part 1). Every track files by this one rule, so records may arrive in any order and more than
+ * once:
+ *   RECORD_REFUSED   the arriving one is dropped: it came twice (the same revision), or the held
+ *                    one is newer and its tick is the same or earlier (it was made knowing it);
+ *   RECORD_REPLACES  the held one goes: the arriving one is newer and its tick the same or
+ *                    earlier, so the server made it knowing the held one (a cancelled swing);
+ *   RECORD_BESIDE    both stay. */
+enum { RECORD_BESIDE = 0, RECORD_REFUSED = 1, RECORD_REPLACES = 2 };
+int record_against(uint32_t held_tick, uint16_t held_rev, uint32_t tick, uint16_t rev);
+
 struct ViewUnit {
     uint32_t gid;
     uint32_t came, went;  /* the ticks of its last coming and its last going */
