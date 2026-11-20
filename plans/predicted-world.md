@@ -133,7 +133,7 @@ went in the step that took its job over (steps 4 and 5; the last row goes with s
 | The own-track clearing in `game_mode_zc_stopmove`, the refusal path of `ZC_OWN_INTENT` | Correction |
 | The client's copy of the intent's rules | Rules the core has |
 
-`world/move_place.c` keeps how a drawn character follows its walk (`plans/drawn-place.md`). `world/own_swing.c` keeps the
+`world/drawn.c` keeps how a drawn character follows its walk (`plans/drawn-place.md`). `world/own_swing.c` keeps the
 book of the swing that is shown, and how a swing shown ahead is stretched to meet its damage
 number.
 

@@ -15668,3 +15668,47 @@ character 0.35 cells off.
   character taken off its walk (`own_astray`) and `path_move`.
 - **`aimed_when`** (`game/packets_act.c`) reads the place's walk and whether the drawn point is
   on the place, where it read the walking state's path and marks.
+
+## The drawn place is one piece, and the original's placing packets that the server does not send are consumed (2026-11-20)
+
+`plans/drawn-place.md`. The follower of the drawn place was a step function in
+`world/move_place.c` with its state loose in the actor (the record, the ms a cell of the step,
+the real time of the last frame, whether there was a record, the glide mark), and the drawn
+point lived in the actor's float position, read back into 256ths every frame. Its step dropped
+the remainder of a division each frame: at frames of 1 ms a walk speed of 400 ms a cell gave
+no step at all until the gap passed four cells and was taken at once. A push of more than four
+cells was taken at once too.
+
+- **The piece** (`world/drawn.c`, `world/drawn.h`, `tests/test_drawn.c`): freestanding integer C
+  with one block per actor. A record becomes the place (`drawn_take`), and each frame
+  (`drawn_frame`) a walked point steps toward the place at most 13/10 of the walk speed for the
+  real time, so it never moves faster than that; the reach a frame leaves short of a 256th, and
+  the share of a 256th a step moves, are carried, as an accumulator carries real time in a
+  fixed-step game loop, so the same real time reaches as far however it is cut into frames; a
+  walked gap of more than four cells is at once. A push is the place and an offset that shrinks
+  over 200 ms, the original's knockback (its hurt state slides the actor onto the hit's cell over
+  200 ms from the hit, read in the original at 0x74ef2d), or at a dash's ms a cell, up to 32
+  cells, beyond at once; a placing and an actor's first record are at once. A clock that jumps
+  moves the place, and the point walks after it as after any other gap.
+- **The actor** keeps `struct Drawn place` in place of the five fields, writes its position from
+  the piece each frame and never reads it back, and asks the piece whether it is on its place.
+  The walk animation follows the piece's motion, so the glide mark went.
+- **The flag the original sets at Asura Strike** (`+0x184`, written at 0x7684b3 in the skill
+  motion case of skill 0x10f) was named `body_relocation`; it is `asura_dash`. The original walks
+  the stop after it at 55 ms a straight cell (0x75494b), so a push the actor takes while it is
+  set slides at that speed, and the strike's end motion plays when the slide is over.
+- **Consumed without effect**: `ZC_NOTIFY_MOVE`, `ZC_NOTIFY_PLAYERMOVE`, `ZC_STOPMOVE`,
+  `ZC_STOPMOVE_FORCE`, `ZC_HIGHJUMP`, `ZC_FASTMOVE`, `ZC_NOTIFY_ACT_POSITION` and
+  `ZC_NOTIFY_SKILL_POSITION`, which the server does not send: their readers, the actor messages
+  only they sent (the move 0x00, the stop 0x13, the dash 0x90, the player's walk 0x00) and the
+  branch of a hit that pushed onto its cell went. A walking entry places the actor on its walk's
+  start cell, and the server's record of the walk, which it sends after the entry, is the walk:
+  the client's own path search for an actor (`game_actor_walk_record`, `actor/actor_path.c`, the
+  actor's `path`) went, and with it the player's message 0x95 that cleared that path. The packet-dispatch digest moved by those eight
+  ids' cases alone (both trees' traces compared case by case). The effect-trace digest moved by
+  the actor's layout alone (the committed sources built with only the new `actor/types.h`, and
+  without the line that masked the removed path's pointer, give the new digest).
+- **The playground** judges with the same piece: `tools/build_drawn_wasm.bat` builds its
+  `drawn_place` to `drawn.wasm` beside the playground's client, the runner loads it and holds it
+  to the core's step times before a run, and the driver reports each actor's drawn point in
+  256ths from the piece.

@@ -226,7 +226,7 @@ again. The core can do either; it does what this server does now.
 
 ## On the client
 
-- The freestanding pieces of steps 1 to 4 (`move_track`, `act_track`, `move_place`,
+- The freestanding pieces of steps 1 to 4 (`move_track`, `act_track`, `drawn`,
   `grid_path`) become users of the core's records or move into it. Reading a record off the
   wire stays the client's, bounded as now.
 - **The own character is a body in a client-side world**, with the bodies its intent needs (the
