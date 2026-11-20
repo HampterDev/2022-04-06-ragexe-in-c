@@ -15686,17 +15686,23 @@ cells was taken at once too.
   the share of a 256th a step moves, are carried, as an accumulator carries real time in a
   fixed-step game loop, so the same real time reaches as far however it is cut into frames; a
   walked gap of more than four cells is at once. A push is the place and an offset that shrinks
-  over 200 ms, the original's knockback (its hurt state slides the actor onto the hit's cell over
-  200 ms from the hit, read in the original at 0x74ef2d), or at a dash's ms a cell, up to 32
-  cells, beyond at once; a placing and an actor's first record are at once. A clock that jumps
+  over the time its record carries (the original's knockback slides the actor onto the hit's
+  cell over 200 ms from the hit, read in the original at 0x74ef2d), up to 32 cells, beyond at
+  once; a placing and an actor's first record are at once. A clock that jumps
   moves the place, and the point walks after it as after any other gap.
 - **The actor** keeps `struct Drawn place` in place of the five fields, writes its position from
   the piece each frame and never reads it back, and asks the piece whether it is on its place.
   The walk animation follows the piece's motion, so the glide mark went.
+- **A push carries its time.** A pushed record without steps has in `land_ms` how long the push
+  takes to show; the client slides over it and knows nothing of which skill pushed, and one
+  without a time is set at once. The server names it as the original drew each push: a knockback
+  or a slide 200 ms whatever its length; ZC_FASTMOVE's dash, a body relocation, 15 ms a straight
+  cell (0x75b926); ZC_STOPMOVE's walk 55 ms a cell after Asura Strike (0x75494b) and 2 otherwise
+  (0x75495e); a diagonal cell `(int)(ms * 1.414f)` (0x664903). The body core keeps the time in a
+  pushed move (rules version 14), so the player's own character slides over it too.
 - **The flag the original sets at Asura Strike** (`+0x184`, written at 0x7684b3 in the skill
-  motion case of skill 0x10f) was named `body_relocation`; it is `asura_dash`. The original walks
-  the stop after it at 55 ms a straight cell (0x75494b), so a push the actor takes while it is
-  set slides at that speed, and the strike's end motion plays when the slide is over.
+  motion case of skill 0x10f) was named `body_relocation`. It is `end_motion_after_slide`: the
+  strike's end motion is owed until the slide that follows it is over.
 - **Consumed without effect**: `ZC_NOTIFY_MOVE`, `ZC_NOTIFY_PLAYERMOVE`, `ZC_STOPMOVE`,
   `ZC_STOPMOVE_FORCE`, `ZC_HIGHJUMP`, `ZC_FASTMOVE`, `ZC_NOTIFY_ACT_POSITION` and
   `ZC_NOTIFY_SKILL_POSITION`, which the server does not send: their readers, the actor messages
@@ -15712,3 +15718,7 @@ cells was taken at once too.
   `drawn_place` to `drawn.wasm` beside the playground's client, the runner loads it and holds it
   to the core's step times before a run, and the driver reports each actor's drawn point in
   256ths from the piece.
+- **The playground's check 3** judges the own character against the place of the record it
+  follows, its predicted world's, as every other actor against the server's; the predicted body
+  off the server's body is reported apart, with how far and how long. A hit the server rolls is
+  an outcome the predicted body learns only with the server's next word, and is that column's.

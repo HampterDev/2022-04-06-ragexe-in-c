@@ -78,8 +78,9 @@ drawn point stays where it is, and the record's cause decides how it joins the n
   that, whatever the place does; a gap of more than four cells is taken at once. A record with
   steps is joined at its own speed;
 - **slid** (a push): the point is the place and the offset it had at the push, which shrinks to
-  nothing over the push's time, whatever its length up to 32 cells, the most whose products stay
-  in 32 bits; a longer one is taken at once;
+  nothing over the time the record carries (its `land_ms`), whatever its length up to 32 cells,
+  the most whose products stay in 32 bits; a longer one is taken at once, and one without a time
+  is over at its first frame;
 - **at once**: a placing, and an actor's first record.
 
 `drawn_frame`, once a frame with the actor's tick and the real time: a walked point's reach is
@@ -110,15 +111,18 @@ record would still name the cell from before the push, and the drawn point would
 it. A unit other than a player that the server sets on another cell of its map gets such a record
 with a cause that says it was placed; a player who is set elsewhere loads the map anew.
 
-A push slides over the original's knockback time, 200 ms. After Asura Strike, whose motion the
-original follows by a dash at 55 ms a straight cell, a push slides at that speed along its
-length, and the strike's end motion plays when the slide is over.
+The record says how long the push takes to show, and the client knows nothing of which skill
+pushed. The server names the time as the original client drew each push: a knockback or a slide
+200 ms whatever its length; a body relocation's dash 15 ms a straight cell, Asura Strike's move
+55, an Ankle Snare's pull 2, a diagonal cell `(int)(ms * 1.414)` of that. After Asura Strike its
+end motion plays when the slide is over.
 
 ### 5. The player's own character
 
 The same piece. Its records are the predicted world's and its clock is the own clock
 (`game/own_body.c`). A correction of the predicted world is a new record like any other: an
-offset that is walked off.
+offset that is walked off. A push of her body keeps its time in the body's move (the body core's
+rules version 14), so her record carries it as everyone else's does.
 
 ### 6. Nothing else writes the place
 
@@ -161,10 +165,13 @@ path of its own for any actor.
    order and more than once end with the point on the newest's place; and a fuzz run of
    records, ticks and frame times gives the point of a slow reference written in doubles.
 3. **On screen.** The playground's runner judges every actor by the place the client's own piece
-   gives, built to wasm beside the playground's client: the drawn point less the place of the
-   server's record at the tick the actor is drawn on is the offset. It is nothing for an actor
-   that has rested for the catch-up time, monsters and the own character; and no finding shows
-   that did not show before.
+   gives, built to wasm beside the playground's client, of the record the actor follows: for
+   every other actor the server's record, at the tick it is drawn on; for the own character the
+   predicted world's record, at the predicted body's tick. The drawn point less that place is the
+   offset, and it is nothing for an actor whose place has rested for the catch-up time; no finding
+   shows that did not show before. Apart from that, the runner holds the own character's
+   predicted body against the server's body and reports how often they differ, by how many cells
+   at most and for how long at the longest: that is the prediction's, not the drawn place's.
 4. **A push is a record.** Session tests of the server: a knockback, by a skill's blow and by a
    count of cells, sends a move record without steps on the cell the unit was moved to, dated at
    the tick it was moved, pushed, and the original's placing packets are not sent for it; a
@@ -179,19 +186,20 @@ Client branch `claude/netcode-fight-clock-315b2d` and the server's branch `fight
 
 | Part | Built | Not built or not covered |
 |---|---|---|
-| The piece | `world/drawn.c` and `world/drawn.h`: `drawn_place`, `drawn_take`, `drawn_frame`, `drawn_record`, `drawn_on_place`. `tests/test_drawn.c`, built without `/std:c11` (`tests/build_drawn.bat`), holds checks 1 and 2. Nineteen of the piece's rules broken on purpose were each caught | |
-| The actor | `struct Drawn place` in the actor; `game_actor_set_place` feeds it, `game_actor_play_place` reads it once a frame and writes the actor's position from it, and the animation follows its motion. The actor's flag for Asura Strike's dash names what sets it | |
+| The piece | `world/drawn.c` and `world/drawn.h`: `drawn_place`, `drawn_take`, `drawn_frame`, `drawn_record`, `drawn_on_place`, `drawn_motion`, `drawn_point`. `tests/test_drawn.c`, built without `/std:c11` (`tests/build_drawn.bat`), holds checks 1 and 2. Eighteen of the piece's rules broken on purpose were each caught | |
+| The actor | `struct Drawn place` in the actor; `game_actor_set_place` feeds it, `game_actor_play_place` reads it once a frame through what it hands out and writes the actor's position from it, and the animation follows its motion. After Asura Strike the actor owes the strike's end motion until the slide is over (`end_motion_after_slide`). The predicted world takes a push's time with the body's move (`tests/test_predicted.c`) | |
 | The original's placing packets | The eight that this server does not send are consumed without effect (part 6); their readers, the actor messages only they sent and the client's path search for an actor are gone | |
-| The server | A slide, a knockback by a blow or by a count of cells, and a move a skill makes are pushed records, and a monster set on another cell of its map a placed one (`spatial/module.js`, `eos-world/aoi-render.js`); the player's own body is placed as pushed and she is told it at once. The tracks session tests hold each, and that the own client has her body on the new cell, pushed, within 60 ms | A body relocation slides over the knockback's time, not at the original's dash of 15 ms a cell: the record does not say which push it is |
-| The measure | `tools/build_drawn_wasm.bat` builds the piece's `drawn_place` to `drawn.wasm`, and the playground's build puts it beside its client. The runner loads it, holds it to the core's step times before each run, and judges every actor by it (`places.js`). The driver reports each actor's drawn point in 256ths from the piece | Not played |
+| The server | A slide, a knockback by a blow or by a count of cells, and a move a skill makes are pushed records with how long they take to show, which whoever asks for the push names once (`pushShowMs`) and the body core keeps in the body's move (rules version 14); a monster set on another cell of its map is a placed record; a new speed in the middle of a walk is a record of what is left of it at that speed. The tracks session tests hold each: the viewer's record and the pushed player's own body carry the same time, and each later cell of a walk whose speed changed is entered on the tick the record gives it | Which skill names which time is held by `pushShowMs`'s test, not by a session of each skill |
+| The measure | `tools/build_drawn_wasm.bat` builds the piece's `drawn_place` to `drawn.wasm`, and the playground's build puts it beside its client. The runner loads it, holds it to the core's step times before each run, and judges every actor by it against the record it follows (`places.js`, `fight.js`): the server's, or for the own character its predicted world's. It reports apart how often the own predicted body is off the server's, how far and how long. The driver reports each actor's drawn point in 256ths from the piece | Not played |
 
 Check 3, eight sets of four 40 s runs with Zombies at hold-back 0 (no lag, ping 80 and 150, ping 80
 with 30 of 100 datagrams lost, the three with the mood `strike`, and `magnum`, which knocks
-monsters back): no finding on screen, and no actor off its place at rest but once, in the set with
-loss. There the own character was 0.53 cells off for 96 ms: it is drawn on the predicted body's
-place, which the server's body left when a Zombie's swing landed 14 ms before the tick of a walk
-the client had predicted, the server rolled a hit, and the hit held the body's walk for 150 ms.
-The predicted body has a hit only with the server's next word.
+monsters back): no finding on screen, and no actor, the own character included, off the place of
+the record it follows at rest. The own predicted body was off the server's body in every set, for
+a frame at no lag and longer with lag and loss: at most 0.84 to 1.76 cells, the longest 16 to 469
+ms. Among them, in the set with loss, is a hit the server rolled 14 ms before the tick of a walk
+the client had predicted, which held the body's walk for 150 ms: the predicted body has a hit
+only with the server's next word.
 
 ## What this does not do
 
