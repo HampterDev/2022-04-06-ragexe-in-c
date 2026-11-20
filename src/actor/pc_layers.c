@@ -372,15 +372,17 @@ void pc_render_body_alone(struct Pc *pc, int layer,
         image = sprite_resource_image(spr, clip->clipType, clip->sprIndex);
         if (!image) continue;
         if (game_actor_get_transform_job((struct GameActor *)pc) == 0x6ac) {
-            render_object_clip_to_quad((struct RenderObject *)pc, i, i, screen_scale, clip, x, y, pos, screen_shift, &depth_a, &depth_b, image,
-                                        &quad, rect, &colour, 0, 0, 0);
+            if (!render_object_clip_to_quad((struct RenderObject *)pc, i, i, screen_scale, clip, x, y, pos, screen_shift, &depth_a,
+                                            &depth_b, image, &quad, rect, &colour, 0, 0, 0))
+                continue;
             if (pc->state == 0 && i == 1) {
                 quad.depth_a = depth_a + 8.0e-6f;
                 quad.depth_b = depth_b + 8.0e-5f;
             }
         } else {
-            render_object_clip_to_quad((struct RenderObject *)pc, layer, layer, screen_scale, clip, x, y, pos, screen_shift, &depth_a,
-                                        &depth_b, image, &quad, rect, &colour, 0, 0, 0);
+            if (!render_object_clip_to_quad((struct RenderObject *)pc, layer, layer, screen_scale, clip, x, y, pos, screen_shift,
+                                            &depth_a, &depth_b, image, &quad, rect, &colour, 0, 0, 0))
+                continue;
             if (320.0f >= g_viewDistance) {
                 quad.depth_a = depth_a - 2.5e-6f;
                 quad.depth_b = depth_b - 2.5e-6f;
@@ -494,8 +496,9 @@ void pc_render_robe(struct Pc *pc, int on_top_pass,
         clip->color[3] = (unsigned char)session_get_transparent_item_alpha(&g_session1, pc->robe);
         image = sprite_resource_image(spr, clip->clipType, clip->sprIndex);
         if (!image) continue;
-        render_object_clip_to_quad((struct RenderObject *)pc, *layers_drawn, *layers_drawn, screen_scale, clip, x, y, pos, screen_shift, &depth_a,
-                                    &depth_b, image, &quad, rect, &colour, 0, 0, mode ^ 1);
+        if (!render_object_clip_to_quad((struct RenderObject *)pc, *layers_drawn, *layers_drawn, screen_scale, clip, x, y, pos,
+                                        screen_shift, &depth_a, &depth_b, image, &quad, rect, &colour, 0, 0, mode ^ 1))
+            continue;
         if (!mode && game_camera_pitch() >= -40.0f) {
             quad.depth_a = depth_a - 6.5e-6f;
             quad.depth_b = depth_b - 6.5e-6f;

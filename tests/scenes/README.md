@@ -70,6 +70,34 @@ rounding the C allows for.
 The game directory's `SaveData` (resolution, options, chat windows) and data files are read as
 usual; settings and account settings start empty and are never written.
 
+## Same frames in every run
+
+Two runs of a scene with the same executable and game data must give the same frames: the same
+captures to the pixel and the same [counts](#counters) in every frame. Where they do not, something
+depends on where memory lies or on what memory nothing wrote holds: an order kept by addresses, or a
+read of a variable, a field or a stack slot never set. Such a difference shows only now and then,
+since the heap's layout and the leftovers on the stack change little from run to run.
+
+`RAGEXE_SCENE_LAYOUT=<n>` (n above 0) makes the harness lay memory out otherwise, the same way in
+every run with that n: before the client starts it takes 1,024 heap blocks of sizes drawn from n,
+fills them with a byte made from n and gives every other one back, so that the client's blocks lie
+elsewhere and the memory it is given again holds that byte; and at every message pump it fills the
+64 KB of stack below the driver with the byte. `layouts.py` runs each scene with n = 1 and with
+n = 2 and fails where any capture, a capture's counts or a measured frame's counts differ (the times
+left out):
+
+```sh
+python3 tests/scenes/layouts.py --exe build/ragexe_scenes --game ~/ro --out /tmp/layouts      # arrive_prontera, town_prontera
+python3 tests/scenes/layouts.py ... woe_emperium                                              # other load scenes
+python3 tests/scenes/layouts.py ... --scripts tests/scenes/scripts prontera_crowd              # regular scenes
+```
+
+By default it runs the load scenes `arrive_prontera` and `town_prontera` at `RAGEXE_MSAA=1`, half a
+minute in all, which draw hundreds of players in every frame. What a stray read finds can be left
+over from the client's own work rather than the harness's byte, so such a bug need not show in every
+pair of runs: one pass is no proof, while a failure always is one. With
+`-DRAGE_SCENE_GAME_DIR=<game dir>` the default run is the `scene_layouts` ctest.
+
 ## Comparing platforms
 
 Capture on one platform with `--golden <dir> --update`, copy the directory, and run the other
