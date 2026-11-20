@@ -1,6 +1,6 @@
 #include "std/vec.h"
 #include "std/string.h"
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "render/rp_pool.h"
 #include "render/texture_globals.h"
 #include "render/texture_cache.h"

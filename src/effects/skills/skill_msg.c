@@ -1,6 +1,6 @@
 #include "game/cells.h"
 #include "effects/rag/rag_effect.h"
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "ui/window_access.h"
 #include "ui/chat/balloon.h"
 #include "ui/window.h"
@@ -20,10 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "render/render_api.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "session/session_names.h"
 #include "session/session_party.h"
-#include "actor/actor_msg.h"
+#include "actors/actor_msg.h"
 #include "platform/clock.h"
 
 #define MSG_BALLOON 0x07

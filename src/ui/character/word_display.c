@@ -3,7 +3,7 @@
 #include "core/object_type_tables.h"
 #include "ui/character/character.h"
 #include "game/context.h"
-#include "actor/appearance.h"
+#include "actors/appearance.h"
 #include "diag/perf.h"
 
 struct UIWindow;

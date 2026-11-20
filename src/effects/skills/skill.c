@@ -1,8 +1,8 @@
-#include "actor/actor_ops.h"
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
+#include "actors/actor_ops.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
 #include "ui/window_access.h"
-#include "actor/appearance.h"
+#include "actors/appearance.h"
 #include "game/world_objects.h"
 #include "world/model_types.h"
 #include "resources/model_res.h"
@@ -22,8 +22,8 @@
 #include "effects/skills/skill.h"
 #include <stdlib.h>
 #include "render/render_api.h"
-#include "actor/actor_common.h"
-#include "actor/game_actor.h"
+#include "actors/actor_common.h"
+#include "actors/game_actor.h"
 #include "world/world.h"
 #include "world/world_gpu.h"
 

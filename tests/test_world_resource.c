@@ -1,7 +1,7 @@
 #include "resources/world_res.h"
 #include "resources/world_format.h"
 #include "fileio/file.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -61,7 +61,7 @@ static void *observed_realloc(void *memory, size_t size)
 #undef free
 #undef realloc
 #undef calloc
-#include "../src/actor/weather_hooks.c"
+#include "../src/actors/weather_hooks.c"
 
 struct Weather g_weather;
 struct GameFileMgr g_fileMgr;

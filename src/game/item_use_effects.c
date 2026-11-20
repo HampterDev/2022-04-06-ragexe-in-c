@@ -1,6 +1,6 @@
 #include "session/state.h"
 #include "game/skill_use.h"
-#include "actor/job.h"
+#include "actors/job.h"
 #include "core/msg_str.h"
 #include "session/session_items.h"
 

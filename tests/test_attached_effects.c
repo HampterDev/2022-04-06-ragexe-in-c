@@ -1,19 +1,19 @@
-/* An actor's attached message effects as they leave its list (actor/attached.h): each effect keeps
+/* An actor's attached message effects as they leave its list (actors/attached.h): each effect keeps
    its node on the list (effects/skills/msg_effect.c, msg_effect_attach) and gives it with message
    0x30 from its destructor (msg_effect_leave_owner); the actor takes the node off only where it
    holds the sender (game_actor_detach). The test's actor answers 0x30 as the client's does.
 
    Seeded runs: effects attached (some as the actor's marks), given up in random order, damage
-   totals (style 0x16) shown again and again (actor/show_number.c, which takes the previous total's
+   totals (style 0x16) shown again and again (actors/show_number.c, which takes the previous total's
    digits off itself), the owner gone with effects still attached (0x31); after each step the list
    must hold exactly the live attached effects in the order they came, each effect's node must be
    its own on that list, and the marks must name live effects. Then the guards: a 0x30 whose node
    holds another object, or no node, changes nothing. */
-#include "actor/attached.h"
-#include "actor/game_actor.h"
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
-#include "actor/render_object.h"
+#include "actors/attached.h"
+#include "actors/game_actor.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
+#include "actors/render_object.h"
 #include "effects/skills/msg_effect.h"
 #include "game/context.h"
 #include "render/math3d.h"

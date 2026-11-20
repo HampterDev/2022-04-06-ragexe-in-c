@@ -3,7 +3,7 @@
 #include "world/actor_lookup.h"
 #include "effects/effect_mgr.h"
 #include "effects/skills/skill_view.h"
-#include "actor/actor.h"
+#include "actors/actor.h"
 #include "std/tree.h"
 
 #define EFFECT_SHOW_EFFECT 0x947
@@ -46,7 +46,7 @@ static const struct EffectOps show_effect_ops = {
     .fade_out = effect_fade_out,
 };
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 
 static void actor_send(void *actor, void *sender, int show_id, int effect_type)
 {

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 
 #define EFFECT_DIR "이팩트\\"
 #define ITEM_DIR "유저인터페이스\\item\\"

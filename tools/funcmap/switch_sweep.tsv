@@ -16,9 +16,9 @@ arm_gap	table_gap	asm_label	asm_where	asm_tables	asm_arms	c_switches	c_case_grou
 5	1	sub_93dfc0	text/contents_0003.inc:384-438	1	6	0	0	map	client_lua_call@contents/lua_calls.c:138
 4	1	sub_958860	text/effects_0004.inc:28593-28999	1	5	0	0	2 strings	severe_rain_storm_spawn_cross_rain@effects/skills/severe_rain_storm.c:205 severe_rain_storm_spawn_diamond_storm@effects/skills/severe_rain_storm.c:193
 4	1	sub_982ad0	text/effects_0005.inc:7377-7877	1	5	0	0	map	ez2_str_particle_process@effects/ez2str_playback.c:28
-3	2	sub_96aca0	text/effects_0004.inc:53303-53658	2	4	0	0	1 strings	effect_mgr_spawn@effects/effect_mgr.c:159 game_actor_launch_effect@actor/effect_launch.c:13
+3	2	sub_96aca0	text/effects_0004.inc:53303-53658	2	4	0	0	1 strings	effect_mgr_spawn@effects/effect_mgr.c:159 game_actor_launch_effect@actors/effect_launch.c:13
 3	1	CGameMode__Zc_Ack_Whisper	text/gamemode_0000.inc:74273-74577	1	4	0	0	map+4 strings	show_sent_whisper@game/mode_whisper.c:32
-3	1	CNpc__OnProcess	text/actor_0001.inc:2639-3088	1	4	0	0	5 strings	npc_on_process@actor/npc.c:118 npc_run_ai@actor/npc.c:89
+3	1	CNpc__OnProcess	text/actor_0001.inc:2639-3088	1	4	0	0	5 strings	npc_on_process@actors/npc.c:118 npc_run_ai@actors/npc.c:89
 3	1	SelectClientInfo2	text/platform_0000.inc:3424-3778	1	4	0	0	map+9 strings	emblem_mgr_on_uploaded@web/emblem.c:170 load_one_font@platform/embedded_fonts.c:58 property_box@ui/character/monster_info.c:161 read_admins@platform/clientinfo.c:326 read_connection@platform/clientinfo.c:343 select_client_info2@platform/clientinfo.c:406
 3	1	_luaV_gettable	text/asyncwork_0001.inc:3299-3530	1	4	0	0	map+9 strings	account_user_data_read_hotkey_tab@web/hotkey_json.c:11 account_user_data_read_hotkeys@web/account_settings.c:43 account_user_data_write_hotkeys@web/service_saves.c:35
 2	1	InitClientInfo_	text/platform_0000.inc:1915-2083	1	3	0	0	map+5 strings	init_client_info_@platform/clientinfo.c:145 property_box@ui/character/monster_info.c:161 read_connection@platform/clientinfo.c:343
@@ -26,17 +26,17 @@ arm_gap	table_gap	asm_label	asm_where	asm_tables	asm_arms	c_switches	c_case_grou
 2	1	sub_94c560	text/effects_0004.inc:13931-14091	1	3	0	0	1 strings	nyanggrass_effect_plant_field@effects/skills/nyanggrass_effect.c:84
 2	1	sub_97fc00	text/effects_0005.inc:3539-3598	2	4	1	1	map	effect_type_is_listed@effects/effect_mgr.c:124
 2	1	sub_9955e0	text/effects_0005.inc:29160-29343	2	9	1	6	map+4 strings	ez2str_head_x_offset@effects/skills/ez2str_effect.c:277
-2	0	sub_83a0b0	text/actor_0001.inc:22456-22604	4	18	4	15	map	pc_set_state@actor/pc_process.c:420
+2	0	sub_83a0b0	text/actor_0001.inc:22456-22604	4	18	4	15	map	pc_set_state@actors/pc_process.c:420
 1	1	sub_7728a0	text/gamemode_0000.inc:11894-12465	1	2	0	0	1 strings	card_set_name@game/name_balloon.c:57 player_menu@game/actor_popup_menu.c:190
-1	1	sub_831bf0	text/actor_0001.inc:11575-11656	1	2	0	0	2 strings	character_draw_init_layers@ui/character/char_draw.c:126 character_render_set_robe@ui/render/character_render.c:110 layer_is_ignored_riding_state@actor/pc_layers.c:348 pc_set_robe@actor/pc_setters.c:229
+1	1	sub_831bf0	text/actor_0001.inc:11575-11656	1	2	0	0	2 strings	character_draw_init_layers@ui/character/char_draw.c:126 character_render_set_robe@ui/render/character_render.c:110 layer_is_ignored_riding_state@actors/pc_layers.c:348 pc_set_robe@actors/pc_setters.c:229
 1	1	sub_92d720	text/iteminfo_0000.inc:3015-3890	1	2	0	0	1 strings	item_name_append_refine@iteminfo/item_name.c:57
-1	0	CGameActor__SetAttrState	text/actor_0000.inc:31621-33084	2	15	2	13	3 strings	game_actor_set_attr_state@actor/attr_state.c:94
+1	0	CGameActor__SetAttrState	text/actor_0000.inc:31621-33084	2	15	2	13	3 strings	game_actor_set_attr_state@actors/attr_state.c:94
 1	0	sub_6d0a90	text/effects_0001.inc:3515-4333	2	9	2	7	map	prim_pulse_fan_render@effects/rag/prim_kinds_156_165.c:467
 -3	1	CLoginMode__SendMsg	text/loginmode_0000.inc:14851-16092	3	37	2	39	map+1 strings	login_mode_send_msg@login/login_send_msg.c:274 select_server@login/login_send_msg.c:64
 -7	3	CRagEffect__Init	text/effects_0001.inc:27060-29068	5	224	2	230	207 strings	ez2_str_effect_open_for_type@effects/skills/ez2str_effect_files.c:1090 gravity_control_effect_init@effects/skills/gravity_control_effect.c:90 rag_effect_init@effects/rag/rag_str_anim.c:27
--31	2	sub_801150	text/gamemode_0002.inc:42339-45037	5	29	3	59	map+4 strings	game_actor_am_groundskill@actor/ground_skill.c:47 rag_jupitel@effects/rag/rag_skills_080_119.c:272 skill_hit_target_effects@game/skill_hit_fx.c:288
+-31	2	sub_801150	text/gamemode_0002.inc:42339-45037	5	29	3	59	map+4 strings	game_actor_am_groundskill@actors/ground_skill.c:47 rag_jupitel@effects/rag/rag_skills_080_119.c:272 skill_hit_target_effects@game/skill_hit_fx.c:288
 -146	1	UIWindowMgr__BS_Selling	text/effects_0005.inc:29853-29926	2	18	1	163	map+1 strings	ez2_str_effect_after_init@effects/skills/ez2str_effect.c:634
--161	6	UIWindowMgr__HP_Resting	text/actor_0001.inc:25888-29859	8	136	2	296	2 strings	actor_effect_state@actor/actor_efst.c:397 ef_blind@actor/actor_efst.c:293 player_refresh_status_effects@actor/player_states.c:162 ps_blind@actor/player_states.c:95
+-161	6	UIWindowMgr__HP_Resting	text/actor_0001.inc:25888-29859	8	136	2	296	2 strings	actor_effect_state@actors/actor_efst.c:397 ef_blind@actors/actor_efst.c:293 player_refresh_status_effects@actors/player_states.c:162 ps_blind@actors/player_states.c:95
 -316	6	sub_821326	text/loginmode_0000.inc:11998-13504	8	71	2	386	2 strings	game_mode_dispatch_packet@game/packet_dispatch.c:112 login_mode_process_packets@login/login_dispatch.c:543 on_map_states@login/login_dispatch.c:363
 
 # unpaired original functions with jump tables (arms, label, where)

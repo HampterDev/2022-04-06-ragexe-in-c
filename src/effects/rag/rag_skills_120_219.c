@@ -1,6 +1,6 @@
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "core/object_type.h"
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "game/own_states.h"
 #include "session/state.h"
 #include "game/context.h"

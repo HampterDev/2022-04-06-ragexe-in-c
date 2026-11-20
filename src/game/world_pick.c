@@ -1,5 +1,5 @@
 #include "game/cells.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "world/actor_lookup.h"
 #include "world/ground_api.h"
 #include "world/view_types.h"
@@ -12,7 +12,7 @@
 #include <string.h>
 #include "platform/win_types.h"
 #include "game/world_pick.h"
-#include "actor/job.h"
+#include "actors/job.h"
 #include "game/name_balloon.h"
 #include "session/session_jobs.h"
 #include "session/session_skills.h"

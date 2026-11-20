@@ -4,8 +4,8 @@
 /* How fast an attack's animation is played for its hit to be shown at a given moment.
  *
  * An actor's animation shows frame n of an action once n times the action's frame delay have
- * passed, in units of 24 ms (actor/motion_update.c), and an attack shows its hit on the frame
- * its sprite marks for it (attack_motion_count of actor/types.h). So the hit shows hit_frame *
+ * passed, in units of 24 ms (actors/motion_update.c), and an attack shows its hit on the frame
+ * its sprite marks for it (attack_motion_count of actors/types.h). So the hit shows hit_frame *
  * frame_delay * 24 ms after the attack began, whatever the server's time for the swing is. The
  * server says when a swing lands (plans/core-loop.md); the frame delay that shows the hit frame
  * then is that time divided by the frame's number.

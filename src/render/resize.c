@@ -5,7 +5,7 @@
 #include "core/object_type.h"
 #include "render/render_api.h"
 #include "ui/window_types.h"
-#include "actor/status_icons.h"
+#include "actors/status_icons.h"
 #include <string.h>
 #include "core/window_state.h"
 #include "render/display_options.h"

@@ -1,7 +1,7 @@
 #include "game/actor_names.h"
 #include "ui/chat/balloon.h"
 #include "ui/window.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "ui/window_access.h"
 #include "render/rp_pool.h"
 #include "contents/guild_emblem_api.h"
@@ -13,7 +13,7 @@
 #include <string.h>
 #include "game/name_balloon.h"
 #include "platform/language.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "core/text_util.h"
 #include "platform/clientinfo.h"
 #include "session/session_jobs.h"

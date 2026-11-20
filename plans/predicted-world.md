@@ -125,7 +125,7 @@ went in the step that took its job over (steps 4 and 5; the last row goes with s
 
 | What it was | Its job |
 |---|---|
-| `player_predict_walk`, `redirect`, `predicted*`, `walk_plain` in `actor/player.c` | The own walk and its turn |
+| `player_predict_walk`, `redirect`, `predicted*`, `walk_plain` in `actors/player.c` | The own walk and its turn |
 | `actor/walk_answer.c`: the turn that waits, the move's answer, the kept walk, the hold, the order's book | Timing, refusal, restoring |
 | `world/own_walk.c` | Where a walk starts |
 | `world/own_attack.c`, `order_plan`, `order_follow`, `order_stand` in `game/packets_act.c` | The attack order and keeping it right |

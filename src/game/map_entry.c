@@ -1,5 +1,5 @@
 #include "game/gamemode.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "game/map_entry.h"
 #include "game/camera.h"
 #include "game/mode_msg.h"

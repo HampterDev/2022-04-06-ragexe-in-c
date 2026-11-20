@@ -3,7 +3,7 @@
 #include "effects/particle.h"
 #include "effects/effect_math.h"
 #include "render/render_api.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "session/session_state.h"
 #include "effects/rag/rag_str_anim.h"
 

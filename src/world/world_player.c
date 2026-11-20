@@ -1,6 +1,6 @@
 #include "session/state.h"
 #include "world/world.h"
-#include "actor/player.h"
+#include "actors/player.h"
 #include "std/list.h"
 
 int world_create_player(struct World *self)

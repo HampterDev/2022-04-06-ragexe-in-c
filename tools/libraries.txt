@@ -40,7 +40,7 @@ note    Containers and strings (std/), JSON (json/), memory, UTF-8 and text form
         (delivery/). Uses nothing else of the client.
 uses
 paths   body/ core/ delivery/
-        initializers/ json/ std/ actor/actor_ops.h actor/actor_states.h base.h fileio/file_api.h platform/vk.h
+        initializers/ json/ std/ actors/actor_ops.h actors/actor_states.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 
 library display-options
@@ -228,7 +228,7 @@ note    The UI widgets (ui/controls), the UIWindow base, the window-manager core
         The widgets and the window-manager core call each other, so they are one library.
 uses    resources named-res
 paths   ui/
-        actor/render_object.h actor/types.h contents/client_lua_calls.h contents/connection_api.h
+        actors/render_object.h actors/types.h contents/client_lua_calls.h contents/connection_api.h
         contents/mcstore_requests.h core/object_type_tables.h core/skin_path.* game/drag_info.h
         game/rodex_mail.h iteminfo/item_api.h iteminfo/item_types.h login/char_info.h
         login/merc_ai_types.h session/hotkey_bindings.h session/number_codec.h
@@ -246,11 +246,11 @@ note    The rest of the library layer below game-state: game-side modules the li
 uses    widgets lua-memo id-index
 paths   contents/
         effects/stl/ iteminfo/ login/ session/ skills/ ui/character/ ui/chat/ ui/items/ ui/mail/
-        web/ world/ actor/action.c actor/actor.h actor/actor_defaults.c
-        actor/actor_values.c actor/getjob.c actor/granny_actor.h
-        actor/granny_model_storage.* actor/head_extent.c actor/job.h
-        actor/layer_order.* actor/map_type_table.* actor/motion.c actor/motion_update.c
-        actor/render_ops.h core/actor_slots.c core/drive_state.* core/startup_settings.c
+        web/ world/ actors/action.c actors/actor.h actors/actor_defaults.c
+        actors/actor_values.c actors/getjob.c actors/granny_actor.h
+        actors/granny_model_storage.* actors/head_extent.c actors/job.h
+        actors/layer_order.* actors/map_type_table.* actors/motion.c actors/motion_update.c
+        actors/render_ops.h core/actor_slots.c core/drive_state.* core/startup_settings.c
         diag/crash_report_posix.c effects/durations.* effects/effect_data.* effects/effect_math.*
         effects/effect_sound.c effects/ez2str_effect_mgr.* effects/navi_strings.c
         effects/rag/effect_prim_draw.c effects/rag/prim_flat_quads.c effects/str_animation.*
@@ -282,17 +282,17 @@ note    Below the actor core: what the actor and effect object model uses, and n
         such as position, motion and values, effect helpers, the mercenary AI commands). Split from
         the knot library (docs/custom-review.md, "Splitting the knot library"). Headers here whose
         .c is in a higher library, because files here need their types or globals:
-        actor/appearance.h, actor/attr_state.h, actor/tetra_ball.h, actor/weather.h,
+        actors/appearance.h, actors/attr_state.h, actors/tetra_ball.h, actors/weather.h,
         effects/particle.h, effects/rag/effect_prim.h, effects/rag/rag_effect.h,
         game/actor_marks.h, game/actor_names.h, game/input.h, game/mode_misc.h, game/mode_util.h,
         game/world_objects.h, navi/navi_manager.h, session/job_sounds.h, session/session_party.h,
         world/tooltip.h.
 uses    gamedata
-paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/actor_spawns.h
-        actor/appearance.h actor/attr_state.h actor/game_actor.c actor/game_actor.h
-        actor/liveness.h actor/object_ops.c actor/object_ops.h actor/player_blind.c
-        actor/position.c actor/render_object_res.c actor/sprite_draw.h actor/sprite_render.h
-        actor/tetra_ball.h actor/weather.h actor/weather_instance.c contents/client_lua.c
+paths   actors/actor_common.h actors/actor_corpse.c actors/actor_spawns.c actors/actor_spawns.h
+        actors/appearance.h actors/attr_state.h actors/game_actor.c actors/game_actor.h
+        actors/liveness.h actors/object_ops.c actors/object_ops.h actors/player_blind.c
+        actors/position.c actors/render_object_res.c actors/sprite_draw.h actors/sprite_render.h
+        actors/tetra_ball.h actors/weather.h actors/weather_instance.c contents/client_lua.c
         contents/client_lua.h contents/guild_emblem_download.c contents/guild_emblem_file.c
         contents/guild_info.c contents/guild_info.h contents/guild_mgr.c contents/guild_mgr.h
         effects/effect.c effects/effect.h effects/effect_controls.h effects/effect_mgr.c
@@ -322,12 +322,12 @@ paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/act
         world/world.h world/world_imports.h world/world_near.c world/aid_lists.c
 
 library actors
-note    The actor and effect object model: the method tables of actor/game_object.c, the actor
+note    The actor and effect object model: the method tables of actors/game_object.c, the actor
         message, process and state code, the effect base (effects/rag/rag_effect.c, rag_str_anim.c)
         and the game mode helpers it calls (game/mode_util.c).
 uses    game-state
-paths   actor/able_send_msg.c actor/actor_msg.c actor/actor_msg.h actor/actor_process.c
-        actor/actor_state.c actor/effect_launch.c actor/game_object.c effects/rag/rag_effect.c
+paths   actors/able_send_msg.c actors/actor_msg.c actors/actor_msg.h actors/actor_process.c
+        actors/actor_state.c actors/effect_launch.c actors/game_object.c effects/rag/rag_effect.c
         effects/rag/rag_str_anim.c effects/rag/rag_str_anim.h game/mode_util.c
 
 library game-parts
@@ -335,11 +335,11 @@ note    Beside the actor core: the parts of the knot library that use only game-
         actors (guild, party, agency and account data and windows, effect classes that do not touch
         actors, navigation data, smaller pieces). Its pieces do not use each other. Headers here
         whose .c is in a higher library, because files here need their types or globals:
-        actor/pc.h, contents/body_layer.h, game/drag.h, ui/chat/chat_room_wnd.h.
+        actors/pc.h, contents/body_layer.h, game/drag.h, ui/chat/chat_room_wnd.h.
 uses    game-state
-paths   actor/appearance.c actor/clone_owner.c actor/clone_owner.h actor/granny_model.c
-        actor/merc_render.c actor/overlay.c actor/pc.h actor/sprite_overlays.c actor/sprite_quad.c
-        actor/sprite_quad.h contents/account_settings.c contents/account_settings.h
+paths   actors/appearance.c actors/clone_owner.c actors/clone_owner.h actors/granny_model.c
+        actors/merc_render.c actors/overlay.c actors/pc.h actors/sprite_overlays.c actors/sprite_quad.c
+        actors/sprite_quad.h contents/account_settings.c contents/account_settings.h
         contents/account_settings_internal.h contents/account_settings_json.c
         contents/adventurer_agency.c contents/adventurer_agency.h contents/agency_internal.h
         contents/body_layer.h contents/character_settings.c contents/character_settings.h
@@ -376,7 +376,7 @@ note    Above the actor core: the rest of the knot library, which uses it (the a
         and the game mode's run loop and operations (game/mode_run.c, game/lifecycle.c). It is one
         connected piece.
 uses    actors game-parts
-paths   actor/ effects/ navi/ ui/render/ ui/worldmap/ contents/body_layer.*
+paths   actors/ effects/ navi/ ui/render/ ui/worldmap/ contents/body_layer.*
         contents/champion_monster.* contents/champion_monster_effects.h core/character_npc.*
         effects/skills/arrow_effect.* effects/skills/curse_of_cube_effect.c
         effects/skills/dummy_effect_launcher.* effects/skills/mandra_attack_effect.*
@@ -411,7 +411,7 @@ note    Above game-world: the game packet handlers and the windows they drive, o
         map.
 uses    game-world
 paths   ui/hotkeys/
-        ui/shops/ actor/player.* actor/player_status_icons.c contents/renew_quest_info.c
+        ui/shops/ actors/player.* actors/player_status_icons.c contents/renew_quest_info.c
         core/map_sky.* core/touch.* core/user_input.* core/window_events.* effects/effect_tool.c
         effects/skills/cane_of_evil_eye_effect.c effects/skills/cloud.*
         effects/skills/effect_maker.c effects/skills/graffi_skill.c effects/skills/skill.*
@@ -510,7 +510,7 @@ library feat-other
 note    Above game-world: the remaining clusters (chat, map, world map, mail, crash report, ...).
 uses    game-world
 paths   ui/map/
-        actor/weather_hooks.c contents/guild_emblem_hooks.* diag/crash_report.*
+        actors/weather_hooks.c contents/guild_emblem_hooks.* diag/crash_report.*
         effects/effect_render_hooks.* effects/skills/show_effect.c navi/navi_ui_hooks.*
         session/session_granny_hooks.* skills/skill_action_base.c skills/skill_actions.*
         ui/chat/chat_room_setup.c ui/mail/rodex_ui_hooks.c ui/wndmgr/plate_hooks.*
@@ -525,7 +525,7 @@ note    The composition points, the only library that may use the feature librar
         loginmode_vtables.c), the main loop (world/mode_loop.c) and the session's construction
         (session/session_lifetime.c).
 uses    *
-paths   actor/actor_object_types.c
+paths   actors/actor_object_types.c
         core/app.* core/app_sdl.c core/client_init.* core/client_managers.* core/manager_table.*
         core/object_type_registry.* core/startup.c core/winmain.c effects/effect_registry.*
         effects/skills/skill_object_types.c game/mode_msg.* game/packet_dispatch.*
@@ -547,7 +547,7 @@ why     game/mode_msg.c is the game mode's message switch: game_mode_send_msg ca
         game/mode_msg.h.
 remove  Make the switch rows that the handlers' libraries own and app installs, as the packet and
         effect-type tables did (step 3); the lookup then belongs next to the game mode in the knot.
-include actor/actor_process.c game/mode_msg.h
+include actors/actor_process.c game/mode_msg.h
 include game/actor_popup_menu.c game/mode_msg.h
 include game/input.c game/mode_msg.h
 include game/map_entry.c game/mode_msg.h
@@ -622,13 +622,13 @@ why     Files below the knot include knot headers for their structure types and 
         (navi/navi_manager.h, session/session_state.h, world/world.h, ui/items/item_tags.h, ...);
         none of them calls the knot, which the link check would show.
 remove  Move the types and constants they need into headers of their own in the lower library.
-include actor/action.c actor/game_actor.h
-include actor/actor.h actor/actor_common.h
-include actor/granny_actor.h actor/object_ops.h
-include actor/motion.c actor/game_actor.h
-include actor/motion_update.c actor/game_actor.h
-include actor/render_object.h actor/object_ops.h
-include actor/render_ops.h actor/object_ops.h
+include actors/action.c actors/game_actor.h
+include actors/actor.h actors/actor_common.h
+include actors/granny_actor.h actors/object_ops.h
+include actors/motion.c actors/game_actor.h
+include actors/motion_update.c actors/game_actor.h
+include actors/render_object.h actors/object_ops.h
+include actors/render_ops.h actors/object_ops.h
 include contents/agency_transport.c contents/agency_internal.h
 include contents/character_settings_json.c contents/character_settings_internal.h
 include contents/client_lua_globals.c contents/client_lua.h
@@ -638,7 +638,7 @@ include contents/guild_lists.c contents/guild_info.h
 include contents/lua_calls.c contents/client_lua.h
 include contents/ui_window_mgr.h world/tooltip.h
 include contents/user_hotkey_apply.c contents/client_lua.h contents/user_hotkeys.h
-include core/actor_slots.c actor/appearance.h
+include core/actor_slots.c actors/appearance.h
 include effects/effect_math.h effects/effect.h
 include effects/effect_sound.c effects/effect.h
 include effects/rag/effect_prim_draw.c effects/rag/rag_effect.h
@@ -658,7 +658,7 @@ include navi/navi_records.c navi/navi_manager.h navi/navi_search.h
 include render/cframe.c session/session_names.h
 include render/rp_screen.c world/world_imports.h
 include resources/attr.c world/mode.h
-include resources/flare.c actor/weather.h
+include resources/flare.c actors/weather.h
 include session/lua_tables.c session/session_lua.h
 include session/pc_names.c session/session_items.h
 include session/pet.c contents/client_lua.h
@@ -700,9 +700,9 @@ include ui/wndmgr/wndmgr.h navi/navi_manager.h
 include ui/wndmgr/wndmgr_frame.c ui/social/party_windows.h
 include ui/worldmap/kafra_lua.c contents/client_lua.h
 include world/camera.h world/world.h
-include world/ground.h actor/weather.h world/world.h
+include world/ground.h actors/weather.h world/world.h
 include world/mode_draw.c world/mode.h
-include world/model.h actor/weather.h
+include world/model.h actors/weather.h
 include world/scene_graph.c world/world.h
 include world/scene_graph.h world/world_imports.h
 include world/scene_lifecycle.c world/world.h
@@ -969,11 +969,11 @@ link    game/mode_run.c game_mode_send_keep_alive ui_window_mgr_render_windows
 
 exception stray-includes
 why     Single includes of a higher library's header: std/std.h includes render/math3d.h,
-        actor/actor_ops.h actor/render_ops.h, json/json_loader.c game/client.h, core/client.h
+        actors/actor_ops.h actors/render_ops.h, json/json_loader.c game/client.h, core/client.h
         game/context.h, core/text_util.c game/client.h, diag/perf.c ui/window_types.h,
         fileio/res_maps.c fileio/res_mgr.h and resources/flare.c world/model_types.h.
 remove  Include the header that declares what is used, or drop the include.
-include actor/actor_ops.h actor/render_ops.h
+include actors/actor_ops.h actors/render_ops.h
 include core/client.h game/context.h
 include core/text_util.c game/client.h
 include diag/perf.c ui/window_types.h

@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/actor_ops.h"
-#include "actor/game_actor.h"
+#include "actors/actor_ops.h"
+#include "actors/game_actor.h"
 
 #define CLIP_MIRRORED 1
 #define SPRITE_CLIP_COLORS 0x200

@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "resources/animation.h"
 #include "effects/skills/msg_effect.h"
 #include "game/mode_callbacks.h"

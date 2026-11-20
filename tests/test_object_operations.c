@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "core/abstract_method.h"
 #include "core/fatal.h"
 #include "core/memory.h"

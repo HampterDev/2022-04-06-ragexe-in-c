@@ -1,6 +1,6 @@
 #include "render/screen_bounds.h"
 #include "render/rp_pool.h"
-#include "actor/layer_order.h"
+#include "actors/layer_order.h"
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include "contents/client_lua_calls.h"

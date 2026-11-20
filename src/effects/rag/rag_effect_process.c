@@ -1,5 +1,5 @@
-#include "actor/render_ops.h"
-#include "actor/object_ops.h"
+#include "actors/render_ops.h"
+#include "actors/object_ops.h"
 #include "contents/sound.h"
 #include "effects/durations.h"
 #include "effects/effect_data.h"
@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "game/mode_callbacks.h"
 
 #define GAME_MSG_QUAKE 0x7a

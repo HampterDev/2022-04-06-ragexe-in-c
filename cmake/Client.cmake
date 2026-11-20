@@ -139,7 +139,7 @@ if(BUILD_TESTING AND NOT ANDROID)
         src/render/texel_convert.c src/render/draw_modes.c src/render/shadow_fit.c src/render/shadow_fit_gpu.c
         src/render/static_world.c src/render/world_layout.c src/render/skin_layout.c src/platform/clock_posix.c
         src/platform/thread_posix.c
-        src/actor/sprite_quad.c src/effects/particle.c src/effects/sprite_particle.c
+        src/actors/sprite_quad.c src/effects/particle.c src/effects/sprite_particle.c
         src/effects/rag/effect_prim_draw.c src/world/ground_draw.c src/render/rp_project.c src/render/rp_screen.c
         src/render/math3d.c)
     target_include_directories(test_quad_instances PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests)

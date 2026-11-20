@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "actor/game_actor.h"
-#include "actor/job.h"
+#include "actors/game_actor.h"
+#include "actors/job.h"
 #include "game/context.h"
 #include "session/session_jobs.h"
 #include "session/state.h"

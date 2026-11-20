@@ -1,6 +1,6 @@
 #include "effects/rag/rag_effect.h"
-#include "actor/weather.h"
-#include "actor/actor_common.h"
+#include "actors/weather.h"
+#include "actors/actor_common.h"
 #include "game/context.h"
 #include "session/state.h"
 #include "world_state_memory.h"

@@ -16,7 +16,7 @@
 #include "game/client.h"
 #include "game/camera.h"
 #include "game/tips.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "game/mode_msg.h"
 #include "game/name_balloon.h"
 #include "game/world_pick.h"

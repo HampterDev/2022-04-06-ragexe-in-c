@@ -1,5 +1,5 @@
-#include "actor/render_ops.h"
-#include "actor/object_ops.h"
+#include "actors/render_ops.h"
+#include "actors/object_ops.h"
 #include "render/texture_cache.h"
 #ifndef EFFECTS_RAG_RAG_EFFECT_H
 #define EFFECTS_RAG_RAG_EFFECT_H

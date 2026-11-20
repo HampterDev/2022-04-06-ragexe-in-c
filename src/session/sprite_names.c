@@ -5,7 +5,7 @@
 #include "session/session_names.h"
 
 #include <string.h>
-#include "actor/types.h"
+#include "actors/types.h"
 #include "platform/clock.h"
 
 struct String *session_get_accessory_name(struct Session *self,

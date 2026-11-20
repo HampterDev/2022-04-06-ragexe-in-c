@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "world/world.h"
 #include "std/list.h"
 

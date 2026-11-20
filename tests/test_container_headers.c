@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "game/gamemode.h"
 #include "std/std.h"
 #include "game/packets.h"

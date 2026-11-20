@@ -1,5 +1,5 @@
-#include "actor/actor_ops.h"
-#include "actor/granny_actor.h"
+#include "actors/actor_ops.h"
+#include "actors/granny_actor.h"
 #include "resources/animation.h"
 #include <assert.h>
 #include <math.h>

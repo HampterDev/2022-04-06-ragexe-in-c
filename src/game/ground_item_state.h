@@ -1,6 +1,6 @@
 #ifndef GAMEMODE_GROUND_ITEM_STATE_H
 #define GAMEMODE_GROUND_ITEM_STATE_H
-#include "actor/types.h"
+#include "actors/types.h"
 
 struct Item {
     struct AbleToMakeEffect base;

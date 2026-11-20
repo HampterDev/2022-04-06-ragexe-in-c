@@ -4,8 +4,8 @@
 #include "base.h"
 #include "std/std.h"
 #include "resources/sprite_pair.h"
-#include "actor/pc.h"
-#include "actor/sprite_render.h"
+#include "actors/pc.h"
+#include "actors/sprite_render.h"
 #include "resources/animation.h"
 #include "resources/sprite.h"
 

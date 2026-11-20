@@ -27,7 +27,7 @@ float g_viewPitch = -45.0f;
 
 #define FIXED_VIEW_HEADING  45.0f
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #define MOUSE_POINTER_MSG_SHOW_MARKER 1
 
 static short preset_value(const struct Vec *preset, int i)

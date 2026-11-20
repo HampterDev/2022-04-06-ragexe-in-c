@@ -6,7 +6,7 @@
 #include "core/object_type_tables.h"
 #include "ui/character/dress_room.h"
 #include "game/context.h"
-#include "actor/appearance.h"
+#include "actors/appearance.h"
 #include "ui/character/character_std.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"

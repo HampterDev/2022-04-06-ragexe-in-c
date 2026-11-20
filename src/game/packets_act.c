@@ -10,14 +10,14 @@
 #include "world/actor_lookup.h"
 #include "world/object_lookup.h"
 #include "world/act_track.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "world/presence.h"
 #include "game/net_clock.h"
 #include "game/own_body.h"
 #include "game/cells.h"
-#include "actor/actor_states.h"
-#include "actor/render_object.h"
-#include "actor/cast_stop.h"
+#include "actors/actor_states.h"
+#include "actors/render_object.h"
+#include "actors/cast_stop.h"
 #include "game/skill_cast.h"
 
 #define ACTOR_MSG_ATTACK        0xb

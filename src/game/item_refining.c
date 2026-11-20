@@ -1,12 +1,12 @@
 #include "game/packet_handlers.h"
-#include "actor/render_object.h"
+#include "actors/render_object.h"
 #include "ui/window_access.h"
 #include <stdlib.h>
 #include <string.h>
 #include "game/objects.h"
 #include "game/item_info.h"
 #include "game/context.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "session/session_items.h"

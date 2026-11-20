@@ -31,11 +31,11 @@
 #include "game/actor_names.h"
 #include "game/mode_misc.h"
 #include "skills/skill_action.h"
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 #include "contents/achievement.h"
 #include "render/math3d.h"
 
-#include "actor/render_object.h"
+#include "actors/render_object.h"
 #include "iteminfo/item_table.h"
 #include "navi/navi_manager.h"
 #include "contents/item_info_mgr.h"

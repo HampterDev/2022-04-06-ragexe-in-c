@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "core/app.h"
 #include "effects/skills/skill_view.h"
 #include "ui/wndmgr/wndmgr.h"

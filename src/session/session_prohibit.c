@@ -5,7 +5,7 @@
 #include "game/context.h"
 
 #include <string.h>
-#include "actor/types.h"
+#include "actors/types.h"
 #include "platform/clock.h"
 
 void session_append_prohibit(struct Session *self, int aid, unsigned minutes)

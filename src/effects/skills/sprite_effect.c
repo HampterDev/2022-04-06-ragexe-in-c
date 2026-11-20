@@ -3,7 +3,7 @@
 #include <string.h>
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 struct SpriteEffect {
     struct Effect base;

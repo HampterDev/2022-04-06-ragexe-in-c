@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "render/texture_cache.h"
 #include "world/ground_api.h"
 #include "session/state.h"
@@ -8,7 +8,7 @@
 #include "world/world_gpu.h"
 
 #include <string.h>
-#include "actor/types.h"
+#include "actors/types.h"
 
 struct World *world_construct(struct World *self)
 {

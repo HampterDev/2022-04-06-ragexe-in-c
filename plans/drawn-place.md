@@ -129,7 +129,7 @@ rules version 14), so her record carries it as everyone else's does.
 No animation state steps an actor and there is no rule for an actor at rest. The actor's float
 position is written from the piece's drawn point each frame and never read back into it; whoever
 asks where an actor is (`game_actor_on_place`, the swing's wait for a walk, the predicted world's
-other bodies, the playground's driver) asks the piece. `game_actor_set_place` (`actor/actor_state.c`)
+other bodies, the playground's driver) asks the piece. `game_actor_set_place` (`actors/actor_state.c`)
 is the one way a record becomes the place.
 
 The original's packets that place an actor without a record and that this server does not send

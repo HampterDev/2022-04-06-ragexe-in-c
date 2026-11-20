@@ -18,11 +18,11 @@ void model_test_free(void *memory) { checked_free(memory); }
 #define calloc model_test_calloc
 #define free checked_free
 #include "../src/resources/granny_playback.c"
-#include "../src/actor/granny_model_storage.c"
+#include "../src/actors/granny_model_storage.c"
 #undef malloc
 #undef calloc
 #undef free
-#include "../src/actor/granny_model.c"
+#include "../src/actors/granny_model.c"
 #include "granny_sdk_test_support.h"
 
 struct ModelFixture {

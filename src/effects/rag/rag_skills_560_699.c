@@ -4,7 +4,7 @@
 #include <string.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "core/object_type.h"
 
 #define EFFECT_DIR "이팩트\\"

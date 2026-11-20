@@ -1,5 +1,5 @@
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include <assert.h>

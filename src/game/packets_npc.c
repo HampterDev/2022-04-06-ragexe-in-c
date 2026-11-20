@@ -1,7 +1,7 @@
 #include "world/mode_actions.h"
 #include "game/packet_handlers.h"
 #include "game/connection.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "ui/quests/say_dialog.h"
 #include "platform/code_page.h"
 #include "std/string.h"

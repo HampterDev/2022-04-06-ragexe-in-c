@@ -1,5 +1,5 @@
 #include "effects/effect_mgr.h"
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 struct EffectMgr *g_effectMgr;
 struct MapPropertyMgr *g_mapFlags;
 

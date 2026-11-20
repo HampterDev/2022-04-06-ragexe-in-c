@@ -3,7 +3,7 @@
 #include "render/projection.h"
 #include "render/rp_pool.h"
 #include "render/texture_cache.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include <math.h>
 #include <string.h>
 #include "render/render_api.h"

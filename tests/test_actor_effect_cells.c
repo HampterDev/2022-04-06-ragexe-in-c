@@ -1,9 +1,9 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
-#include "../src/actor/tetra_ball.c"
+#include "../src/actors/tetra_ball.c"
 
 struct EffectMgr *g_effectMgr;
 static int effect, present, ball_count, find_calls, spawn_calls;

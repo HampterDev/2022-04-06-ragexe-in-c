@@ -113,7 +113,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 4e4770	sub_4e4770	text/render_0000.inc:28828-28845		rp_quad_construct_with			cited	high	render/rp_pool.c
 4e48f0	sub_4e48f0	text/render_0000.inc:28901-28941		rp_two_tex_quad_construct	rp_two_tex_quad_construct	render/rp_pool.c:52	cited	high	render/rp_pool.c
 4e4be0	sub_4e4be0	text/render_0000.inc:29027-29072		RPQuadBatch__RPQuadBatch			cited	high	render/rp_pool.c
-4e5c70	sub_4e5c70	text/render_0000.inc:30438-30453			granny_model_state_destroy	actor/granny_model_storage.c:70	callee	low	
+4e5c70	sub_4e5c70	text/render_0000.inc:30438-30453			granny_model_state_destroy	actors/granny_model_storage.c:70	callee	low	
 4e5cf0	sub_4e5cf0	text/render_0000.inc:30500-30515		RPQuadBatch__CopyVerts			cited	high	render/rp_pool.c
 4e5fd0	sub_4e5fd0	text/render_0000.inc:30839-30919		CRenderer__AddMultiTexBatch			cited	high	render/rp_pool.c
 4e60c0	sub_4e60c0	text/render_0000.inc:30921-31248		CRenderer_AddPrim	renderer_add_prim	render/rp_pool.c:364	cited	high	render/rp_pool.c
@@ -2443,7 +2443,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6a63c7	CEffectPrim__Render2DCircle	text/effects_0000.inc:30526-30696			renderer_new_quad	render/rp_pool.c:272	callee_inside	low	
 6a63d0	sub_6a63d0	text/effects_0000.inc:30698-30780		prim_screen_fan			cited	high	effects/rag/prim_unreferenced_b.c
 6a63d0	sub_6a63d0	text/effects_0000.inc:30698-30780		prim_screen_fan_m			cited_multi	low	effects/rag/prim_unreferenced_b.c
-6a63d0	sub_6a63d0	text/effects_0000.inc:30698-30780			weather_sun_position	actor/weather.c:69	jacc	low	
+6a63d0	sub_6a63d0	text/effects_0000.inc:30698-30780			weather_sun_position	actors/weather.c:69	jacc	low	
 6a65a0	sub_6a65a0	text/effects_0000.inc:30782-30973		prim_screen_spike_render	prim_screen_spike_render	effects/rag/prim_screen_sprites.c:221	cited	high	effects/rag/prim_screen_sprites.c
 6a7600	sub_6a7600	text/effects_0000.inc:31802-33585		prim_aura_particles_render	prim_aura_particles_render	effects/rag/prim_light_groups.c:203	cited	high	effects/rag/prim_light_groups.c
 6a8e30	sub_6a8e30	text/effects_0000.inc:33587-33827		prim_ring_wall_render	prim_ring_wall_render	effects/rag/prim_light_groups.c:485	cited	high	effects/rag/prim_light_groups.c
@@ -2551,7 +2551,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6d3d60	sub_6d3d60	text/effects_0001.inc:6831-7502		prim_ribbon_render	prim_ribbon_render	effects/rag/prim_kinds_166_173.c:86	cited	high	effects/rag/prim_kinds_166_173.c
 6d47c0	sub_6d47c0	text/effects_0001.inc:7504-8106		prim_twin_wisps_render	prim_twin_wisps_render	effects/rag/prim_kinds_148_155.c:805	cited	high	effects/rag/prim_kinds_148_155.c
 6d5050	sub_6d5050	text/effects_0001.inc:8108-8411		prim_orbit_launcher_render	prim_orbit_launcher_render	effects/rag/prim_kinds_148_155.c:346	cited	high	effects/rag/prim_kinds_148_155.c
-6d5930	CGndRiser__OnProcess	text/effects_0001.inc:8699-9288		CGndRiser_OnProcess			label_inside	low	actor/small_actors.c
+6d5930	CGndRiser__OnProcess	text/effects_0001.inc:8699-9288		CGndRiser_OnProcess			label_inside	low	actors/small_actors.c
 6d70c0	sub_6d70c0	text/effects_0001.inc:10251-10835		prim_rising_motes_render	prim_rising_motes_render	effects/rag/prim_kinds_148_155.c:276	cited	high	effects/rag/prim_kinds_148_155.c
 6d7a30	sub_6d7a30	text/effects_0001.inc:10883-10998		float_vector_emplace_grow			cited_multi	low	effects/rag/rag_effect_containers.c
 6d7b70	sub_6d7b70	text/effects_0001.inc:11012-11148		CRagEffect__CRagEffect			cited	high	effects/rag/rag_effect.c
@@ -2688,7 +2688,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 725f77	CRagEffect__CartRevolution	text/effects_0002.inc:21293-21493			rag_magnum_break2	effects/rag/rag_skills_320_339.c:127	ustr_inside	low	
 726250	sub_726250	text/effects_0002.inc:21495-21611		rag_master_copies	rag_master_copies	effects/rag/rag_skills_560_699.c:230	cited	high	effects/rag/rag_skills_560_699.c
 726a50	sub_726a50	text/effects_0002.inc:21984-22157		rag_aura_disc	rag_aura_disc	effects/rag/rag_skills_560_699.c:432	cited	high	effects/rag/rag_skills_560_699.c
-727226	CNumEffect__OnInit	text/effects_0002.inc:22463-22642		CNumEffect_OnInit			label_inside	low	actor/small_actors.c
+727226	CNumEffect__OnInit	text/effects_0002.inc:22463-22642		CNumEffect_OnInit			label_inside	low	actors/small_actors.c
 7279a5	CRagEffect__POISON	text/effects_0002.inc:22945-23051			rag_poison	effects/rag/rag_skills_320_339.c:296	ustr_inside	low	
 727b10	sub_727b10	text/effects_0002.inc:23053-23236		rag_billboard	rag_billboard	effects/rag/rag_skills_340_373.c:502	cited	high	effects/rag/rag_skills_340_373.c
 72811f	CRagEffect__ParticlePath	text/effects_0002.inc:23238-23450			rag_pok_burst_at_offset	effects/rag/rag_skills_491_559.c:706	ustr_inside	low	
@@ -2717,12 +2717,12 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 73dad0	sub_73dad0	text/effects_0002.inc:43706-44032		rag_time_bubbles	rag_time_bubbles	effects/rag/rag_skills_320_339.c:397	cited	high	effects/rag/rag_skills_320_339.c
 7410c0	sub_7410c0	text/effects_0002.inc:46894-47127			rag_snowfall	effects/rag/rag_skills_700_799.c:740	jacc	low	
 7449c0	sub_7449c0	text/effects_0002.inc:50574-50770			rag_water_ring	effects/rag/rag_skills_800_839.c:786	ustr	high	
-7454c0	sub_7454c0	text/actor_0000.inc:707-879			weather_launch	actor/weather.c:111	callee	low	
-7458d0	CWeather__Process	text/actor_0000.inc:1072-1204		CWeather_Process	weather_process	actor/weather.c:156	dump_symbol	high	actor/weather.c
-745cda	CWeather__ScriptProcess	text/actor_0000.inc:1210-1442		CWeather_ScriptProcess	weather_script_process	actor/weather.c:193	label_inside	low	actor/weather.c
-745d10	sub_745d10	text/actor_0000.inc:1447-1459		CWeather_StopEffect	weather_stop_effect	actor/weather.c:216	cited_multi	low	actor/weather.c
-745d40	sub_745d40	text/actor_0000.inc:1465-1477		CWeather_StopEffect	weather_stop_effect	actor/weather.c:216	cited_multi	low	actor/weather.c
-7471a0	CMousePointer__OnInit	text/actor_0000.inc:3689-3700		CMousePointer_OnInit			label	high	actor/game_object.c
+7454c0	sub_7454c0	text/actor_0000.inc:707-879			weather_launch	actors/weather.c:111	callee	low	
+7458d0	CWeather__Process	text/actor_0000.inc:1072-1204		CWeather_Process	weather_process	actors/weather.c:156	dump_symbol	high	actors/weather.c
+745cda	CWeather__ScriptProcess	text/actor_0000.inc:1210-1442		CWeather_ScriptProcess	weather_script_process	actors/weather.c:193	label_inside	low	actors/weather.c
+745d10	sub_745d10	text/actor_0000.inc:1447-1459		CWeather_StopEffect	weather_stop_effect	actors/weather.c:216	cited_multi	low	actors/weather.c
+745d40	sub_745d40	text/actor_0000.inc:1465-1477		CWeather_StopEffect	weather_stop_effect	actors/weather.c:216	cited_multi	low	actors/weather.c
+7471a0	CMousePointer__OnInit	text/actor_0000.inc:3689-3700		CMousePointer_OnInit			label	high	actors/game_object.c
 747640	sub_747640	text/actor_0000.inc:3897-3918		actor_ptr_list_free_head			cited_multi	low	actor/actor_std.c
 747680	sub_747680	text/actor_0000.inc:3920-3941		actor_ptr_list_free_head			cited_multi	low	actor/actor_std.c
 7476c0	sub_7476c0	text/actor_0000.inc:3943-3964		actor_ptr_list_free_head			cited_multi	low	actor/actor_std.c
@@ -2733,32 +2733,32 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 747c70	sub_747c70	text/actor_0000.inc:4459-4509		actor_ptr_list_destroy			cited_multi	low	actor/actor_std.c
 747cf0	sub_747cf0	text/actor_0000.inc:4511-4561		actor_ptr_list_destroy			cited_multi	low	actor/actor_std.c
 748960	sub_748960				render_object_turn_toward		oracle	high	tests/oracle/skill_oracle.h, stood in
-748a10	CRenderObject__CalcDist	text/actor_0000.inc:5635-5661		CRenderObject__CalcDist			label	high	actor/position.c
-749a00	sub_749a00	text/actor_0000.inc:6887-7122			game_actor_set_hat_effect	actor/pc.c:9	ustr	high	
-74a90d	CRenderObject__GetSprName	text/actor_0000.inc:8266-8275		CRenderObject_GetSprName			label_inside	low	actor/game_object.c
-74acc5	CGameActor__GetAttackMotion	text/actor_0000.inc:8491-8578		CGameActor_GetAttackMotion	game_actor_get_attack_motion	actor/game_actor.c:187	label_inside	low	actor/game_actor.c
+748a10	CRenderObject__CalcDist	text/actor_0000.inc:5635-5661		CRenderObject__CalcDist			label	high	actors/position.c
+749a00	sub_749a00	text/actor_0000.inc:6887-7122			game_actor_set_hat_effect	actors/pc.c:9	ustr	high	
+74a90d	CRenderObject__GetSprName	text/actor_0000.inc:8266-8275		CRenderObject_GetSprName			label_inside	low	actors/game_object.c
+74acc5	CGameActor__GetAttackMotion	text/actor_0000.inc:8491-8578		CGameActor_GetAttackMotion	game_actor_get_attack_motion	actors/game_actor.c:187	label_inside	low	actors/game_actor.c
 74aea0	sub_74aea0				game_actor_get_job		oracle	high	tests/oracle/skill_oracle.h, stood in
-74bd90	sub_74bd90	text/actor_0000.inc:9588-9613		sub_74bd90			name	high	actor/game_actor.c
-74be40	sub_74be40	text/actor_0000.inc:9647-9654		sub_74be40			name	high	actor/game_actor.c
+74bd90	sub_74bd90	text/actor_0000.inc:9588-9613		sub_74bd90			name	high	actors/game_actor.c
+74be40	sub_74be40	text/actor_0000.inc:9647-9654		sub_74be40			name	high	actors/game_actor.c
 74be60	sub_74be60				able_to_make_effect_is_effect_exist		oracle	high	tests/oracle/skill_oracle.h, stood in
-74be88	CAbleToMakeEffect__IsEffectExist	text/actor_0000.inc:9656-9690		CAbleToMakeEffect__IsEffectExist			label_inside	low	actor/game_object.c
-74bee0	sub_74bee0	text/actor_0000.inc:9723-9727		sub_74bee0			name	high	actor/game_actor.c
+74be88	CAbleToMakeEffect__IsEffectExist	text/actor_0000.inc:9656-9690		CAbleToMakeEffect__IsEffectExist			label_inside	low	actors/game_object.c
+74bee0	sub_74bee0	text/actor_0000.inc:9723-9727		sub_74bee0			name	high	actors/game_actor.c
 74bf80	sub_74bf80				game_actor_launch_effect		oracle	high	tests/oracle/skill_oracle.h, stood in
-74cf60	CGameActor__OnInit	text/actor_0000.inc:10987-11115		CGameActor_OnInit	game_actor_on_init	actor/game_object.c:352	label	high	actor/game_object.c
-74d5a2	CRenderObject__OnInit	text/actor_0000.inc:11170-11297		CRenderObject_OnInit	render_object_on_init	actor/game_object.c:148	label_inside	low	actor/game_object.c
-74d930	CGameActor__ProcessBodyState	text/actor_0000.inc:11547-11556		CGameActor__ProcessBodyState			dump_symbol	high	actor/actor_process.c
-74d950	CGameActor__ProcessChatBalloon_	text/actor_0000.inc:11558-11797		CGameActor__ProcessChatBalloon_			dump_symbol	high	actor/actor_process.c
-74dc70	CGameActor__ProcessEffectState	text/actor_0000.inc:11799-11934		CGameActor__ProcessEffectState			dump_symbol	high	actor/actor_process.c
+74cf60	CGameActor__OnInit	text/actor_0000.inc:10987-11115		CGameActor_OnInit	game_actor_on_init	actors/game_object.c:352	label	high	actors/game_object.c
+74d5a2	CRenderObject__OnInit	text/actor_0000.inc:11170-11297		CRenderObject_OnInit	render_object_on_init	actors/game_object.c:148	label_inside	low	actors/game_object.c
+74d930	CGameActor__ProcessBodyState	text/actor_0000.inc:11547-11556		CGameActor__ProcessBodyState			dump_symbol	high	actors/actor_process.c
+74d950	CGameActor__ProcessChatBalloon_	text/actor_0000.inc:11558-11797		CGameActor__ProcessChatBalloon_			dump_symbol	high	actors/actor_process.c
+74dc70	CGameActor__ProcessEffectState	text/actor_0000.inc:11799-11934		CGameActor__ProcessEffectState			dump_symbol	high	actors/actor_process.c
 74dc70	CGameActor__ProcessEffectState	text/actor_0000.inc:11799-11934			mode_set_cursor_action	world/mode_draw.c:153	dump_symbol	high	
-74e490	CRenderObject__ProcessSound	text/actor_0000.inc:12476-12866		CRenderObject__ProcessSound			dump_symbol	high	actor/motion.c
-74e490	CRenderObject__ProcessSound	text/actor_0000.inc:12476-12866			motion_sound	actor/motion.c:15	dump_symbol	high	
-74f1e0	CGameActor__ProcessWillBeAttacked	text/actor_0000.inc:13586-14152		CGameActor__ProcessWillBeAttacked			dump_symbol	high	actor/actor_process.c
-74f910	sub_74f910	text/actor_0000.inc:14191-14192	CGameObject	sub_74f910			name	high	actor/object_ops.c
-750220	CRenderObject__RenderMercenary	text/actor_0000.inc:14729-15061		CRenderObject__RenderMercenary			label_inside	low	actor/merc_render.c
+74e490	CRenderObject__ProcessSound	text/actor_0000.inc:12476-12866		CRenderObject__ProcessSound			dump_symbol	high	actors/motion.c
+74e490	CRenderObject__ProcessSound	text/actor_0000.inc:12476-12866			motion_sound	actors/motion.c:15	dump_symbol	high	
+74f1e0	CGameActor__ProcessWillBeAttacked	text/actor_0000.inc:13586-14152		CGameActor__ProcessWillBeAttacked			dump_symbol	high	actors/actor_process.c
+74f910	sub_74f910	text/actor_0000.inc:14191-14192	CGameObject	sub_74f910			name	high	actors/object_ops.c
+750220	CRenderObject__RenderMercenary	text/actor_0000.inc:14729-15061		CRenderObject__RenderMercenary			label_inside	low	actors/merc_render.c
 751153	CSession__ReLoadAlwaysNeededRes	text/actor_0000.inc:15718-15979		CSession_ReloadAlwaysNeededRes			label_inside	low	session/a/session_startup.c
 75b80e	sub_75b80e	text/actor_0000.inc:30386-30493		CFallenAngelEffect__SetPosition			cited_multi_inside	low	effects/skills/fallen_angel_effect.c
-75cf31	CRenderObject__SetArgb	text/actor_0000.inc:31587-31619		CRenderObject__SetArgb			label_inside	low	actor/game_object.c
-75eea0	CPc__SetSprShoe	text/actor_0000.inc:34604-34610		CRenderObject__SetForceAnimEndTick			label	high	actor/motion.c
+75cf31	CRenderObject__SetArgb	text/actor_0000.inc:31587-31619		CRenderObject__SetArgb			label_inside	low	actors/game_object.c
+75eea0	CPc__SetSprShoe	text/actor_0000.inc:34604-34610		CRenderObject__SetForceAnimEndTick			label	high	actors/motion.c
 75ef00	sub_75ef00				render_object_set_script_step_frames		oracle	high	tests/oracle/skill_oracle.h, stood in
 75f0c0	sub_75f0c0				render_object_play_motion_range		oracle	high	tests/oracle/skill_oracle.h, stood in
 75f6e0	sub_75f6e0				render_object_set_motion_delay		oracle	high	tests/oracle/skill_oracle.h, stood in
@@ -2768,15 +2768,15 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 761af0	sub_761af0				skill_action_mgr_instance		oracle	high	tests/oracle, run real
 761be0	sub_761be0	text/actor_0000.inc:38324-38356		actor_ptr_list_push_back			cited_multi_inside	low	actor/actor_std.c
 761c30	sub_761c30	text/actor_0000.inc:38358-38390		actor_ptr_list_push_back			cited_multi_inside	low	actor/actor_std.c
-762ba4	C3dGrannyGameActor__OnProcess	text/actor_0000.inc:39714-39834	C3dGrannyGameActor	C3dGrannyGameActor__OnProcess			label_inside	low	actor/granny.c
-765470	sub_765470	text/actor_0000.inc:42509-42523		sub_765470			name	high	actor/granny.c
+762ba4	C3dGrannyGameActor__OnProcess	text/actor_0000.inc:39714-39834	C3dGrannyGameActor	C3dGrannyGameActor__OnProcess			label_inside	low	actors/granny.c
+765470	sub_765470	text/actor_0000.inc:42509-42523		sub_765470			name	high	actors/granny.c
 765b90	sub_765b90				game_actor_am_groundskill		oracle	high	tests/oracle/test_ground_skill.c
-765c6c	CGameActor__Am_Groundskill	text/actor_0000.inc:43151-43299		CGameActor__Am_Groundskill			label_inside	low	actor/ground_skill.c
-767590	sub_767590	text/actor_0000.inc:45319-45373		CGameActor_SkillOnTarget	game_actor_skill_on_target	actor/skill_checks.c:153	cited_multi_inside	low	actor/skill_checks.c
-767660	sub_767660	text/actor_0000.inc:45375-45837		CGameActor_SkillOnTarget	game_actor_skill_on_target	actor/skill_checks.c:153	cited_multi_inside	low	actor/skill_checks.c
-767660	sub_767660	text/actor_0000.inc:45375-45837			game_actor_skill_on_target	actor/skill_checks.c:153	ustr_inside	low	
-767b9e	sub_767b9e	text/actor_0000.inc:45839-45841		CGameActor_SkillOnTarget	game_actor_skill_on_target	actor/skill_checks.c:153	cited_multi_inside	low	actor/skill_checks.c
-768ad2	sub_768ad2	text/actor_0000.inc:47153-47258		CGameActor_SkillOnTarget	game_actor_skill_on_target	actor/skill_checks.c:153	cited_multi_inside	low	actor/skill_checks.c
+765c6c	CGameActor__Am_Groundskill	text/actor_0000.inc:43151-43299		CGameActor__Am_Groundskill			label_inside	low	actors/ground_skill.c
+767590	sub_767590	text/actor_0000.inc:45319-45373		CGameActor_SkillOnTarget	game_actor_skill_on_target	actors/skill_checks.c:153	cited_multi_inside	low	actors/skill_checks.c
+767660	sub_767660	text/actor_0000.inc:45375-45837		CGameActor_SkillOnTarget	game_actor_skill_on_target	actors/skill_checks.c:153	cited_multi_inside	low	actors/skill_checks.c
+767660	sub_767660	text/actor_0000.inc:45375-45837			game_actor_skill_on_target	actors/skill_checks.c:153	ustr_inside	low	
+767b9e	sub_767b9e	text/actor_0000.inc:45839-45841		CGameActor_SkillOnTarget	game_actor_skill_on_target	actors/skill_checks.c:153	cited_multi_inside	low	actors/skill_checks.c
+768ad2	sub_768ad2	text/actor_0000.inc:47153-47258		CGameActor_SkillOnTarget	game_actor_skill_on_target	actors/skill_checks.c:153	cited_multi_inside	low	actors/skill_checks.c
 769cd0	sub_769cd0	text/gamemode_0000.inc:2-172		Map24_RotateLeft			cited_multi	low	gamemode/map_instances.c
 76b870	sub_76b870	text/gamemode_0000.inc:2467-2515			tree_next	std/tree.c:33	callee	low	
 76ea10	sub_76ea10	text/gamemode_0000.inc:7083-7109		CGameMode_GetActorName	game_mode_get_actor_name	game/actor_names.c:155	oracle	high	gamemode/actor_names.c
@@ -2887,7 +2887,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 79cd40	sub_79cd40	text/gamemode_0000.inc:70397-70435		LoopSoundBackout_Destroy			cited	high	gamemode/vector_instances.c
 79cda0	sub_79cda0	text/gamemode_0000.inc:70437-70443		StoreSearchBackout_Destroy			cited	high	gamemode/vector_instances.c
 79ce60	CGameActor__CGameActor	text/gamemode_0000.inc:70527-70566		Map20_Destroy			cited_multi	low	gamemode/map_instances.c
-79ce60	CGameActor__CGameActor	text/gamemode_0000.inc:70527-70566		CGameActor__CGameActor			label	high	actor/game_object.c
+79ce60	CGameActor__CGameActor	text/gamemode_0000.inc:70527-70566		CGameActor__CGameActor			label	high	actors/game_object.c
 79cf50	sub_79cf50	text/gamemode_0000.inc:70568-70620		Vec8_Destroy			cited	high	gamemode/vector_instances.c
 79cfe0	sub_79cfe0	text/gamemode_0000.inc:70622-70687		SkillListEntries_Destroy			cited	high	gamemode/vector_instances.c
 79d130	sub_79d130	text/gamemode_0000.inc:70741-70763		GuildLogEntry_Destroy			cited	high	gamemode/guild_log_vector.c
@@ -2985,15 +2985,15 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 825980	sub_825980	text/loginmode_0000.inc:17655-17657		conn_construct			cited_multi	low	loginmode/login_std.c
 825990	sub_825990	text/loginmode_0000.inc:17659-17716		login_session_tree_clear			cited	high	loginmode/login_std.c
 826210	sub_826210	text/loginmode_0000.inc:18518-18664			register_functions	login/merc_ai.c:36	ustr	high	
-829ee0	sub_829ee0	text/actor_0001.inc:2174-2182		sub_829ee0			name	high	actor/small_actors.c
-829f40	sub_829f40	text/actor_0001.inc:2198-2206		sub_829f40			name	high	actor/small_actors.c
-829f60	sub_829f60	text/actor_0001.inc:2208-2216		sub_829f60			name	high	actor/small_actors.c
-829f80	sub_829f80	text/actor_0001.inc:2218-2226		sub_829f80			name	high	actor/small_actors.c
-829fa0	sub_829fa0	text/actor_0001.inc:2228-2236		sub_829fa0			name	high	actor/small_actors.c
-82a980	lookup_table_82a9ac	text/actor_0001.inc:3086-3087		CNpc__OnProcess			label_inside	low	actor/npc.c
-82aad1	CNumEffect__OnProcess	text/actor_0001.inc:3089-3152	CNumEffect	CNumEffect__OnProcess			label_inside	low	actor/small_actors.c
-82b2cd	CHalluNPC__Render	text/actor_0001.inc:3733-3869	CHalluNPC	CHalluNPC__Render			label_inside	low	actor/small_draws.c
-82c8fc	CNpc__SetSprJob_	text/actor_0001.inc:5779-5870			npc_set_spr_job_	actor/npc.c:503	ustr_inside	low	
+829ee0	sub_829ee0	text/actor_0001.inc:2174-2182		sub_829ee0			name	high	actors/small_actors.c
+829f40	sub_829f40	text/actor_0001.inc:2198-2206		sub_829f40			name	high	actors/small_actors.c
+829f60	sub_829f60	text/actor_0001.inc:2208-2216		sub_829f60			name	high	actors/small_actors.c
+829f80	sub_829f80	text/actor_0001.inc:2218-2226		sub_829f80			name	high	actors/small_actors.c
+829fa0	sub_829fa0	text/actor_0001.inc:2228-2236		sub_829fa0			name	high	actors/small_actors.c
+82a980	lookup_table_82a9ac	text/actor_0001.inc:3086-3087		CNpc__OnProcess			label_inside	low	actors/npc.c
+82aad1	CNumEffect__OnProcess	text/actor_0001.inc:3089-3152	CNumEffect	CNumEffect__OnProcess			label_inside	low	actors/small_actors.c
+82b2cd	CHalluNPC__Render	text/actor_0001.inc:3733-3869	CHalluNPC	CHalluNPC__Render			label_inside	low	actors/small_draws.c
+82c8fc	CNpc__SetSprJob_	text/actor_0001.inc:5779-5870			npc_set_spr_job_	actors/npc.c:503	ustr_inside	low	
 82e350	sub_82e350	text/actor_0001.inc:8330-8464		CGrannyPc_Construct			cited	high	actor/granny_pc.c
 82e830	sub_82e830	text/actor_0001.inc:8567-8630		actor_layer_map_destroy			cited_multi	low	actor/actor_std.c
 82e8e0	sub_82e8e0	text/actor_0001.inc:8632-8695		actor_pc_map_destroy			cited_multi	low	actor/actor_std.c
@@ -3002,55 +3002,55 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 82ea10	sub_82ea10	text/actor_0001.inc:8743-8764		actor_layer_map_destroy			cited_multi	low	actor/actor_std.c
 82ea60	sub_82ea60	text/actor_0001.inc:8766-8787		actor_pc_map_destroy			cited_multi	low	actor/actor_std.c
 82eab0	sub_82eab0	text/actor_0001.inc:8789-8845		CGrannyPc_Destruct			cited	high	actor/granny_pc.c
-82eb70	sub_82eb70	text/actor_0001.inc:8847-8928		CPc_Destruct	pc_destruct	actor/pc_lifetime.c:136	cited	high	actor/pc_lifetime.c
+82eb70	sub_82eb70	text/actor_0001.inc:8847-8928		CPc_Destruct	pc_destruct	actors/pc_lifetime.c:136	cited	high	actors/pc_lifetime.c
 82ed30	sub_82ed30	text/actor_0001.inc:8988-9054	CGrannyPc	CGrannyPc_DeletingDestruct	granny_pc_deleting_destruct	actor/granny_pc.c:90	cited	high	actor/granny_pc.c
-82ee00	sub_82ee00	text/actor_0001.inc:9057-9152	CPc	CPc_DeletingDestruct	pc_deleting_destruct	actor/pc_lifetime.c:141	cited	high	actor/pc_lifetime.c
-82ef50	sub_82ef50	text/actor_0001.inc:9175-9296		pc_place_head	pc_place_head	actor/pc_layers.c:410	cited	high	actor/pc_layers.c
-82fb60	sub_82fb60	text/actor_0001.inc:10166-10258		pc_draw_on_top	pc_draw_on_top	actor/pc_layers.c:390	cited	high	actor/pc_layers.c
-830f14	CGrannyPc__FreeRes	text/actor_0001.inc:11626-11720		CGrannyPc_FreeRes	granny_pc_free_res	actor/granny_model.c:51	label_inside	low	actor/granny_model.c
-830ff0	sub_830ff0	text/actor_0001.inc:11722-11738		pc_layer_spr_name	pc_layer_spr_name	actor/pc_layers.c:293	cited_multi	low	actor/pc_layers.c
-831020	sub_831020	text/actor_0001.inc:11740-11819		layer_names	layer_names	actor/pc_layers.c:317	cited_multi	low	actor/pc_layers.c
-8310f0	sub_8310f0	text/actor_0001.inc:11821-11839		pc_layer_act	pc_layer_act	actor/pc_layers.c:286	cited	high	actor/pc_layers.c
-831710	sub_831710	text/actor_0001.inc:12247-12355		Layer_BodyAttachDy	layer_body_attach_dy	actor/pc_layers.c:362	cited	high	actor/pc_layers.c
+82ee00	sub_82ee00	text/actor_0001.inc:9057-9152	CPc	CPc_DeletingDestruct	pc_deleting_destruct	actors/pc_lifetime.c:141	cited	high	actors/pc_lifetime.c
+82ef50	sub_82ef50	text/actor_0001.inc:9175-9296		pc_place_head	pc_place_head	actors/pc_layers.c:410	cited	high	actors/pc_layers.c
+82fb60	sub_82fb60	text/actor_0001.inc:10166-10258		pc_draw_on_top	pc_draw_on_top	actors/pc_layers.c:390	cited	high	actors/pc_layers.c
+830f14	CGrannyPc__FreeRes	text/actor_0001.inc:11626-11720		CGrannyPc_FreeRes	granny_pc_free_res	actors/granny_model.c:51	label_inside	low	actors/granny_model.c
+830ff0	sub_830ff0	text/actor_0001.inc:11722-11738		pc_layer_spr_name	pc_layer_spr_name	actors/pc_layers.c:293	cited_multi	low	actors/pc_layers.c
+831020	sub_831020	text/actor_0001.inc:11740-11819		layer_names	layer_names	actors/pc_layers.c:317	cited_multi	low	actors/pc_layers.c
+8310f0	sub_8310f0	text/actor_0001.inc:11821-11839		pc_layer_act	pc_layer_act	actors/pc_layers.c:286	cited	high	actors/pc_layers.c
+831710	sub_831710	text/actor_0001.inc:12247-12355		Layer_BodyAttachDy	layer_body_attach_dy	actors/pc_layers.c:362	cited	high	actors/pc_layers.c
 831820	sub_831820	text/actor_0001.inc:12357-12471		sub_831820			name	high	actor/actor_misc.c
-831a30	sub_831a30	text/actor_0001.inc:12481-12497		pc_layer_spr_name	pc_layer_spr_name	actor/pc_layers.c:293	cited_multi	low	actor/pc_layers.c
-831a60	sub_831a60	text/actor_0001.inc:12499-12578		layer_names	layer_names	actor/pc_layers.c:317	cited_multi	low	actor/pc_layers.c
-831b30	sub_831b30	text/actor_0001.inc:12580-12587		pc_layer_spr	pc_layer_spr	actor/pc_layers.c:281	cited	high	actor/pc_layers.c
+831a30	sub_831a30	text/actor_0001.inc:12481-12497		pc_layer_spr_name	pc_layer_spr_name	actors/pc_layers.c:293	cited_multi	low	actors/pc_layers.c
+831a60	sub_831a60	text/actor_0001.inc:12499-12578		layer_names	layer_names	actors/pc_layers.c:317	cited_multi	low	actors/pc_layers.c
+831b30	sub_831b30	text/actor_0001.inc:12580-12587		pc_layer_spr	pc_layer_spr	actors/pc_layers.c:281	cited	high	actors/pc_layers.c
 831b50	sub_831b50	text/actor_0001.inc:12590-12593	CGrannyPc	CGrannyPc_GetWeapon	granny_pc_get_weapon	actor/granny_pc.c:98	cited	high	actor/granny_pc.c
-831b60	sub_831b60	text/actor_0001.inc:12595-12633		pc_is_top_layer			cited	high	actor/pc_layers.c
+831b60	sub_831b60	text/actor_0001.inc:12595-12633		pc_is_top_layer			cited	high	actors/pc_layers.c
 831b60	sub_831b60	text/actor_0001.inc:12595-12633			session_is_top_layer_robe	session/lua_tables.c:18	jacc	low	
-831bf0	lookup_table_831cf0	text/actor_0001.inc:12715-12716		Layer_IsIgnoredRidingState	layer_is_ignored_riding_state	actor/pc_layers.c:348	cited	high	actor/pc_layers.c
-831fe0	sub_831fe0	text/actor_0001.inc:13011-13025		CPc_CloseWindow			cited	high	actor/pc_lifetime.c
+831bf0	lookup_table_831cf0	text/actor_0001.inc:12715-12716		Layer_IsIgnoredRidingState	layer_is_ignored_riding_state	actors/pc_layers.c:348	cited	high	actors/pc_layers.c
+831fe0	sub_831fe0	text/actor_0001.inc:13011-13025		CPc_CloseWindow			cited	high	actors/pc_lifetime.c
 832010	sub_832010	text/actor_0001.inc:13027-13053		CGrannyPc_Reinit			cited	high	actor/granny_pc.c
 832244	CGrannyPc__OnProcess	text/actor_0001.inc:13087-13282	CGrannyPc	CGrannyPc_OnProcess	granny_pc_on_process	actor/granny_pc_state.c:29	label_inside	low	actor/granny_pc_state.c
-83249a	CPc__OnProcess	text/actor_0001.inc:13285-13509	CPc	CPc_OnProcess	pc_on_process	actor/pc_process.c:29	label_inside	low	actor/pc_process.c
-832a90	lookup_table_832c3c	text/actor_0001.inc:14018-14019		CPc_ProcessState	pc_process_state	actor/pc_process.c:289	cited	high	actor/pc_process.c
+83249a	CPc__OnProcess	text/actor_0001.inc:13285-13509	CPc	CPc_OnProcess	pc_on_process	actors/pc_process.c:29	label_inside	low	actors/pc_process.c
+832a90	lookup_table_832c3c	text/actor_0001.inc:14018-14019		CPc_ProcessState	pc_process_state	actors/pc_process.c:289	cited	high	actors/pc_process.c
 832dd9	CGrannyPc__Render	text/actor_0001.inc:14021-14158	CGrannyPc	CGrannyPc_Render	granny_pc_render	actor/granny_pc_draw.c:13	label_inside	low	actor/granny_pc_draw.c
-832df0	sub_832df0	text/actor_0001.inc:14161-14368		CPc_Render	pc_render	actor/pc_process.c:340	cited	high	actor/pc_process.c
+832df0	sub_832df0	text/actor_0001.inc:14161-14368		CPc_Render	pc_render	actors/pc_process.c:340	cited	high	actors/pc_process.c
 833820	sub_833820	text/actor_0001.inc:14896-15244			granny_pc_model_matrix	actor/granny_pc_draw.c:58	jacc	low	
 836190	sub_836190	text/actor_0001.inc:18228-18229		sub_836190			name	high	actor/actor_misc.c
 836540	sub_836540	text/actor_0001.inc:18552-18553		sub_836540			name	high	actor/actor_misc.c
 836a40	sub_836a40	text/actor_0001.inc:19037-19038		sub_836a40			name	high	actor/actor_misc.c
 836a50	sub_836a50	text/actor_0001.inc:19040-19041		sub_836a50			name	high	actor/actor_misc.c
-836a90	sub_836a90	text/actor_0001.inc:19065-19223			pc_layer_res	actor/pc_setters.c:339	jacc	low	
-837301	CGrannyPc__SetSprAct_	text/actor_0001.inc:19792-20341			granny_pc_replace_models	actor/granny_model.c:99	ustr_inside	low	
+836a90	sub_836a90	text/actor_0001.inc:19065-19223			pc_layer_res	actors/pc_setters.c:339	jacc	low	
+837301	CGrannyPc__SetSprAct_	text/actor_0001.inc:19792-20341			granny_pc_replace_models	actors/granny_model.c:99	ustr_inside	low	
 838620	sub_838620	text/actor_0001.inc:21409-21597			character_render_set_robe	ui/render/character_render.c:110	jacc	low	
 838880	sub_838880	text/actor_0001.inc:21600-21602	CGrannyPc	sub_838880			name	high	actor/granny_pc.c
 838a50	sub_838a50	text/actor_0001.inc:21759-22771			madogear_names	ui/resource/resource_paths.c:70	ustr	high	
-83a0b0	sub_83a0b0	text/actor_0001.inc:23578-23725		CPc_SetState	pc_set_state	actor/pc_process.c:420	cited	high	actor/pc_process.c
+83a0b0	sub_83a0b0	text/actor_0001.inc:23578-23725		CPc_SetState	pc_set_state	actors/pc_process.c:420	cited	high	actors/pc_process.c
 83b000	sub_83b000	text/actor_0001.inc:24696-24732		actor_pc_map_new_head			cited	high	actor/actor_std.c
 83b080	sub_83b080	text/actor_0001.inc:24743-24773		actor_layer_map_erase			cited	high	actor/actor_std.c
 83b0c0	sub_83b0c0	text/actor_0001.inc:24775-24805		actor_pc_map_erase			cited	high	actor/actor_std.c
 83b100	sub_83b100	text/actor_0001.inc:24807-24809		sub_83b100			name	high	actor/actor_std.c
 83b110	sub_83b110	text/actor_0001.inc:24811-24813		sub_83b110			name	high	actor/actor_std.c
 83b270	sub_83b270	text/actor_0001.inc:24961-25093		std_string_rfind_cstr			cited	high	actor/actor_std.c
-83b3b0	sub_83b3b0	text/actor_0001.inc:25126-25148		CPlayer_Destruct			cited	high	actor/player.c
-83b400	sub_83b400	text/actor_0001.inc:25151-25186	CPlayer	CPlayer_DeletingDestruct	player_deleting_destruct	actor/player.c:908	cited	high	actor/player.c
-83b470	sub_83b470	text/actor_0001.inc:25188-25189		sub_83b470			name	high	actor/player.c
-83b480	sub_83b480	text/actor_0001.inc:25191-25404		player_init	player_init	actor/player.c:823	cited	high	actor/player.c
-83b800	CPlayer__OnProcess	text/actor_0001.inc:25407-25569	CPlayer	CPlayer__OnProcess			dump_symbol	high	actor/player.c
-83ba60	CPlayer__ProcessProceed	text/actor_0001.inc:25617-26772		CPlayer__ProcessProceed			dump_symbol	high	actor/player.c
-840c1f	CPlayer__SetState	text/actor_0001.inc:31959-32049	CPlayer	CPlayer__SetState			label_inside	low	actor/player.c
+83b3b0	sub_83b3b0	text/actor_0001.inc:25126-25148		CPlayer_Destruct			cited	high	actors/player.c
+83b400	sub_83b400	text/actor_0001.inc:25151-25186	CPlayer	CPlayer_DeletingDestruct	player_deleting_destruct	actors/player.c:908	cited	high	actors/player.c
+83b470	sub_83b470	text/actor_0001.inc:25188-25189		sub_83b470			name	high	actors/player.c
+83b480	sub_83b480	text/actor_0001.inc:25191-25404		player_init	player_init	actors/player.c:823	cited	high	actors/player.c
+83b800	CPlayer__OnProcess	text/actor_0001.inc:25407-25569	CPlayer	CPlayer__OnProcess			dump_symbol	high	actors/player.c
+83ba60	CPlayer__ProcessProceed	text/actor_0001.inc:25617-26772		CPlayer__ProcessProceed			dump_symbol	high	actors/player.c
+840c1f	CPlayer__SetState	text/actor_0001.inc:31959-32049	CPlayer	CPlayer__SetState			label_inside	low	actors/player.c
 843750	sub_843750	text/session_0000.inc:5018-5140		session_map_int_emplace			cited_multi	low	session/a/session_std.c
 843860	sub_843860	text/session_0000.inc:5147-5269		session_map_int_emplace			cited_multi	low	session/a/session_std.c
 843860	sub_843860	text/session_0000.inc:5147-5269			tree_add	std/tree.c:316	callee	low	
@@ -3098,7 +3098,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 86760b	CSession__InvalidateMerInfoWnd	text/session_0000.inc:54341-54357		CSession_InvalidateMerInfoWnd	session_invalidate_mer_info_wnd	session/session_redraws.c:47	label_inside	low	session/a/session_redraws.c
 867630	_NPDect	text/session_0000.inc:54363-54393		NPDect	np_dect	session/session_name_checks.c:126	label_inside	low	session/a/session_name_checks.c
 867d40	CSession__IsExistIndexInMyChangeList	text/session_0000.inc:55203-55230		CSession_IsExistIndexInMyChangeList	session_is_exist_index_in_my_change_list	session/session_exchange.c:75	label_inside	low	session/a/session_exchange.c
-8680f0	sub_8680f0	text/session_0000.inc:55610-55612		CNpc_SetJobAndSex	npc_set_job_and_sex	actor/npc.c:488	cited	high	actor/npc.c
+8680f0	sub_8680f0	text/session_0000.inc:55610-55612		CNpc_SetJobAndSex	npc_set_job_and_sex	actors/npc.c:488	cited	high	actors/npc.c
 868522	CSession__GetPetAccActName	text/session_0000.inc:56072-56095		CSession__GetPetAccActName			label_inside	low	session/a/session_job_rules.c
 8699b0	sub_8699b0				session_is_pc_job		oracle	high	tests/oracle/skill_oracle.h, stood in
 869afb	CSession__IsVisibleNPC	text/session_0000.inc:57658-57678		CSession_IsVisibleNPC	session_is_visible_npc	session/session_item_lists.c:461	label_inside	low	session/a/session_item_lists.c
@@ -3142,7 +3142,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 875a70	sub_875a70	text/session_0000.inc:74831-74874			session_get_default_option_int	session/session_lookups.c:107	jacc	low	
 876400	sub_876400				session_get_monster_skill_info		oracle	high	tests/oracle/skill_oracle.h, stood in
 8769f0	sub_8769f0	text/session_0001.inc:524-537		sub_8769f0			name	high	session/b/sprite_names.c
-8769f0	sub_8769f0	text/session_0001.inc:524-537		CGameActor_GetTransformJob	game_actor_get_transform_job	actor/game_actor.c:230	cited	high	actor/game_actor.c
+8769f0	sub_8769f0	text/session_0001.inc:524-537		CGameActor_GetTransformJob	game_actor_get_transform_job	actors/game_actor.c:230	cited	high	actors/game_actor.c
 876a20	sub_876a20	text/session_0001.inc:539-607		sub_876a20			name	high	session/b/sprite_names.c
 876d60	sub_876d60	text/session_0001.inc:848-908			session_get_option_float	session/options.c:15	jacc	low	
 876e30	sub_876e30	text/session_0001.inc:910-953			session_get_option_int	session/options.c:7	callee	low	
@@ -3257,7 +3257,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 89c110	sub_89c110	text/effects_0003.inc:1758-1783		CMsgEffect__Reset			cited	high	effects/skills/msg_effect.c
 89c200	sub_89c200	text/effects_0003.inc:1785-1807		CSkill__Reset			cited	high	effects/skills/skill.c
 89c280	sub_89c280	text/effects_0003.inc:1810-2017	CArrowEffect	CArrowEffect__OnProcess			cited	high	effects/skills/arrow_effect.c
-89c280	sub_89c280	text/effects_0003.inc:1810-2017			world_sound_construct	actor/pc_clones.c:272	jacc	low	
+89c280	sub_89c280	text/effects_0003.inc:1810-2017			world_sound_construct	actors/pc_clones.c:272	jacc	low	
 89c5e0	sub_89c5e0	text/effects_0003.inc:2020-2036	CDummyEffectLauncher	CDummyEffectLauncher__OnProcess			cited	high	effects/skills/dummy_effect_launcher.c
 89c630	sub_89c630	text/effects_0003.inc:2039-2104	CEffectMaker	CEffectMaker__OnProcess			cited	high	effects/skills/effect_maker.c
 89c700	sub_89c700	text/effects_0003.inc:2107-2109	CGraffiSkill	CGraffiSkill__OnProcess			cited	high	effects/skills/graffi_skill.c
@@ -5044,7 +5044,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 9dc020	sub_9dc020	text/effects_0006.inc:41655-41662	CWindEffect	CWindEffect__Restart			cited	high	effects/skills/wind_effect.c
 9dc040	sub_9dc040	text/effects_0006.inc:41669-41688	CWindEffect	CWindEffect__Process			cited	high	effects/skills/wind_effect.c
 9dc070	sub_9dc070	text/effects_0006.inc:41690-41916		CWindEffect__UpdateSegment			cited	high	effects/skills/wind_effect.c
-9dc070	sub_9dc070	text/effects_0006.inc:41690-41916			model_matrix	actor/granny.c:278	jacc	low	
+9dc070	sub_9dc070	text/effects_0006.inc:41690-41916			model_matrix	actors/granny.c:278	jacc	low	
 9dc430	sub_9dc430	text/effects_0006.inc:41919-41975	CWindEffect	CWindEffect__Render			cited	high	effects/skills/wind_effect.c
 9dc4e0	sub_9dc4e0	text/effects_0006.inc:41977-42015		CWindEffect__RenderSegment			cited	high	effects/skills/wind_effect.c
 9dc560	sub_9dc560	text/effects_0006.inc:42017-42061		CWindEffect__Pulse			cited	high	effects/skills/wind_effect.c

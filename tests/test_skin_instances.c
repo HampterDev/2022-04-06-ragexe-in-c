@@ -1,7 +1,7 @@
 /* Granny's actors skinned by the device (render/shaders/skin.hlsl and skin.hlsli; render/gfx.h,
    gfx_create_skin and gfx_draw_skin) on this machine's GPU, against the CPU code they replaced
    (tests/fixtures/granny_reference.c: the shim's deformer, a mesh's vertices for the frame and the
-   three loops of actor/granny.c, as they were), within a tolerance: plans/gpu-renderer.md lets the
+   three loops of actors/granny.c, as they were), within a tolerance: plans/gpu-renderer.md lets the
    GPU's floats part from the CPU's here.
 
    - Every corner of every triangle of every model the folder's converted files hold, in its bind
@@ -399,7 +399,7 @@ struct Actor {
     int poisoned;
 };
 
-/* an actor of the model in the pose somewhere the view sees, as actor/granny.c places each kind:
+/* an actor of the model in the pose somewhere the view sees, as actors/granny.c places each kind:
    the lit model 2 units off its cell, the others on it, a model whose name holds "90" stood up */
 static void make_actor(struct Actor *a, struct Model *m, const float *pose, const struct View *s, int onScreen)
 {
@@ -433,7 +433,7 @@ static void make_actor(struct Actor *a, struct Model *m, const float *pose, cons
     a->alpha = (unsigned char)(chance(60) ? 0xff : irange(0, 255));
 }
 
-/* The actor's pose through the view packed as actor/granny.c packs each kind's (actor_pose) and the
+/* The actor's pose through the view packed as actors/granny.c packs each kind's (actor_pose) and the
    renderer projects it (renderer_skin_pose), with the light the loops lit by (light_out of
    granny_reference_corners); answers its rows' count. */
 static size_t actor_rows(const struct Actor *a, const struct View *s, const float *light, float (*rows)[4])

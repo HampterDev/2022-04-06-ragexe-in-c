@@ -9,7 +9,7 @@
 
 #include "world/actor_lookup.h"
 #include "game/context.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include "core/markup_tags.h"
 #include "ui/social/social.h"
 #include "ui/character/job_icon_button.h"

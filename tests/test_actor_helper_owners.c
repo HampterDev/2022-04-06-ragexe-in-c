@@ -1,4 +1,4 @@
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 #include "skills/skill_action_registry.h"
 #ifndef ACTOR_HELPER_REFERENCE
 #include "skills/skill_action.h"

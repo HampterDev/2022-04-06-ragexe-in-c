@@ -5,7 +5,7 @@
 #ifndef CONTENTS_GAME_SESSION_H
 #define CONTENTS_GAME_SESSION_H
 
-#include "actor/render_object.h"
+#include "actors/render_object.h"
 #include "render/vec3.h"
 #include "session/state.h"
 #include "world/mode_dispatch.h"

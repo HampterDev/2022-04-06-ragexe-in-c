@@ -6,7 +6,7 @@
 #include "platform/win_types.h"
 #include "game/world_pick.h"
 #include "game/cells.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "session/session_jobs.h"
 #include "ui/wndmgr/wndmgr.h"
 

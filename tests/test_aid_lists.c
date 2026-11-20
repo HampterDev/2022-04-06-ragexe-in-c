@@ -11,8 +11,8 @@
    Then the cases by name: a unit that leaves view while its hits play and comes back with the same
    aid, before its hits end and after it went; a unit replaced by one of the same aid while it plays
    hits; units sharing an aid; and removals from a destructor. */
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
 #include "diag/perf.h"
 #include "effects/skills/skill_state.h"
 #include "world/world.h"

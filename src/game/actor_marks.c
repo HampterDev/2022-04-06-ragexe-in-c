@@ -1,5 +1,5 @@
 #include "game/actor_marks.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "ui/window_access.h"
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
@@ -12,7 +12,7 @@
 #include "ui/social/social.h"
 #include "ui/ui_std.h"
 #include "world/world.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 
 static int actor_hidden(struct GameActor *actor)
 {

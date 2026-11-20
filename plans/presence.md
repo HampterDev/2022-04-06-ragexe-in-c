@@ -15,8 +15,8 @@ paths against each other (`plans/delivery.md`, "Not solved"), and the client kee
 could.
 
 - **The floors die with the actor.** What a client has played of a unit, as revisions, is a
-  member of the actor (`record_floors`, `actor/types.h`) and is zeroed for a new one
-  (`actor/game_object.c`). A record made before a unit went, arriving after it came back, is
+  member of the actor (`record_floors`, `actors/types.h`) and is zeroed for a new one
+  (`actors/game_object.c`). A record made before a unit went, arriving after it came back, is
   newer than nothing and is played: the unit is shown where it was.
 - **A record that overtakes the going is lost.** A record made after a unit came back that
   arrives before the vanish of its earlier stay is filed on the actor that is about to go, and

@@ -12,7 +12,7 @@
 #include "navi/grid_uv.h"
 #include "navi/navi_manager.h"
 #include "world/hover_cell.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "platform/client_options.h"
 #include "contents/guild_info.h"
 #include "resources/model_node_names.h"

@@ -16,7 +16,7 @@ start = pet.index('struct PetAccessoryLookup {')
 parts = [pet[start:pet.index('\n};', start) + 3],
          function('src/session/pet.c', 'static int lookup_pet_accessory('),
          function('src/session/pet.c', 'const char *session_get_pet_accessory_act('),
-         function('src/actor/game_actor.c', 'void game_actor_set_pet_accessory('),
+         function('src/actors/game_actor.c', 'void game_actor_set_pet_accessory('),
          function('src/game/packets_entry.c', 'static void entry_note_pet('),
          function('src/game/packets_entry.c', 'static void entry_note_pet_existing(')]
 hp = function('src/game/packets_entry_hp.c', 'static void entry_hp_tail(')

@@ -5,7 +5,7 @@
 
 #include "game/skill_fx.h"
 #include "game/client.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 
 struct SkillCast {
     struct GameMode *mode;

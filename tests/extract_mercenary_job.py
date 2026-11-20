@@ -21,7 +21,7 @@ predicates = (root / 'src/session/predicates.c').read_text(encoding='utf-8')
 matches = list(re.finditer(r'^int (session_is_mercenary\w*_job)\(struct Session \*self, int id\)\n\{', predicates, re.M))
 assert len(matches) == 1
 name = matches[0].group(1)
-position = (root / 'src/actor/position.c').read_text(encoding='utf-8')
+position = (root / 'src/actors/position.c').read_text(encoding='utf-8')
 covers = 1 if 'homun_s' in name else 0
 parts = [f'#define MERCENARY_JOB {name}', f'#define MERCENARY_JOB_COVERS_HOMUN_S {covers}',
          function_at(predicates, matches[0].start()),

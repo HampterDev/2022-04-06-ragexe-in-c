@@ -1,6 +1,6 @@
 #include "core/compiler.h"
 #include "game/gamemode.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "world/pathfinder_state.h"
 #include "world/actor_lookup.h"
 #include <stdlib.h>

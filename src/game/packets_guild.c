@@ -1,5 +1,5 @@
 #include "game/packet_handlers.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "contents/player_names.h"
 #include "std/string.h"
 #include "session/character_name.h"
@@ -11,7 +11,7 @@
 #include "ui/window_access.h"
 #include <string.h>
 #include "game/packets_guild.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "core/msg_str.h"
 #include "session/session_options.h"
 #include "session/session_state.h"

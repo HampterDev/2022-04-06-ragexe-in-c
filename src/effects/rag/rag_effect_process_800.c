@@ -1,4 +1,4 @@
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "effects/durations.h"
 #include "session/state.h"
 #include <limits.h>
@@ -6,7 +6,7 @@
 #include "effects/rag/rag_process_moves.h"
 #include "effects/effect_mgr.h"
 #include "render/render_api.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 unsigned char rag_process_800(struct RagEffect *self)
 {

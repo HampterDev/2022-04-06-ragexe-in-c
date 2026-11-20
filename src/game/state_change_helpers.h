@@ -2,8 +2,8 @@
 #define GAMEMODE_STATE_CHANGE_HELPERS_H
 
 #include "game/mode_util.h"
-#include "actor/actor_ops.h"
-#include "actor/render_ops.h"
+#include "actors/actor_ops.h"
+#include "actors/render_ops.h"
 #include "skills/skill_action_registry.h"
 #include "session/state.h"
 #include <string.h>
@@ -13,7 +13,7 @@
 #include "game/ui_bridge.h"
 #include "game/session_bridge.h"
 #include "game/own_states.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "core/msg_str.h"
 
 enum {

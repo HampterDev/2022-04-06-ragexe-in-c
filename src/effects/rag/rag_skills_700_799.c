@@ -5,8 +5,8 @@
 #include "core/object_type.h"
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/actor_common.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_common.h"
+#include "actors/actor_ops.h"
 #include "session/session_jobs.h"
 
 #define EFFECT_DIR "이팩트\\"

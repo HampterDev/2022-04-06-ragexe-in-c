@@ -340,7 +340,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour);
 /* custom: the camera's world view, which the water is drawn through */
 void gfx_set_world_camera(const struct GfxWorldView *view);
 
-/* custom: Granny's actors (actor/granny.c), skinned, lit and projected by the device's vertex shader
+/* custom: Granny's actors (actors/granny.c), skinned, lit and projected by the device's vertex shader
    (src/render/shaders/skin.hlsl) as the CPU did each vertex before (render/skin_layout.h). A model
    (gfx_create_skin) holds its meshes' vertices and indices, one mesh behind the other; they go up
    in the frame's upload when a draw first takes the model and stay on the device, and a copy stays

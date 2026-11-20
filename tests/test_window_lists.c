@@ -48,7 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "window_lists_trace.h"
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 #include "contents/client_lua_calls.h"
 #include "core/fatal.h"
 #include "core/memory.h"
@@ -69,7 +69,7 @@
 #include "ui/wndmgr/window_registry.h"
 #include "ui/wndmgr/plate_hooks.h"
 #include "ui/wndmgr/wndmgr_handlers.h"
-#include "actor/liveness.h"
+#include "actors/liveness.h"
 
 #define LAST_ID 0x23f
 #define BLOCK 0x10000

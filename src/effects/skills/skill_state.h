@@ -1,6 +1,6 @@
 #ifndef EFFECTS_SKILLS_SKILL_STATE_H
 #define EFFECTS_SKILLS_SKILL_STATE_H
-#include "actor/types.h"
+#include "actors/types.h"
 #include "effects/skills/skill_entry.h"
 
 /* custom: unit_node is the unit's node on its world's skill units (struct World, skills, of struct

@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "effects/rag/rag_effect.h"
 
 void effect_prim_render(struct GameObject *object, const float *view)

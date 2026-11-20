@@ -43,7 +43,7 @@ client's float math on its own; GCC and Clang fuse `a * b + c` into one multiply
 has one (arm64: Android phones, Apple Silicon, arm64 Linux), which rounds once and gives other
 floats than the Windows client in the projection, the sprites' depth and the effects. With the flag
 the NDK's clang emits no fused multiply-add for arm64 in `render/math3d.c`, `render/rp_project.c`
-and `actor/sprite_quad.c` (191, 217 and 18 without it); x86-64 builds have none either way.
+and `actors/sprite_quad.c` (191, 217 and 18 without it); x86-64 builds have none either way.
 Test assertions stay enabled even in Release configurations: the tests' directory drops `NDEBUG`
 for the tests and for the client files they link.
 
@@ -296,7 +296,7 @@ source), and the music at the music volume. What the player hears differently fr
 distance (in the default 3D mode its falloff and balance, in mode 1 the client's own), and the mix
 at the output device's rate instead of 22,050 Hz, so the music keeps the frequencies above 11 kHz
 that the old mix cut. The one test of distance left is a map's sound sources' own:
-`sound_maker_on_process` (`actor/small_actors.c`) starts a source's sound only while the player is
+`sound_maker_on_process` (`actors/small_actors.c`) starts a source's sound only while the player is
 within 130 of the source's range plus the diagonal of its area, measured from its position, and
 within 75 of its range from the edge of its area towards the player; within that it now plays at its
 full volume. Every one of the game's 2,976 WAV files (2,974 in `data.grf`, 2 loose under `data\wav`)
@@ -874,7 +874,7 @@ and the matrices are within the rounding Vulkan allows a division or a square ro
 `test_shadow_fit_gpu` and the scene harness (`RAGEXE_SCENE_SHADOW_FIT`) hold them to that.
 
 Granny's actors (the emperium, castle guardians, treasure boxes and guild flags of
-`actor/granny.c`; `render/gfx.h`'s `gfx_create_skin`, `gfx_skin_pose` and `gfx_draw_skin`;
+`actors/granny.c`; `render/gfx.h`'s `gfx_create_skin`, `gfx_skin_pose` and `gfx_draw_skin`;
 `render/skin_layout.c`, the library `skin-layout`, which packs what the skinning shader reads) are
 skinned, lit and projected by the device. A model's meshes go up once, when a draw first takes the
 model, as one vertex buffer (each vertex its position, normal, texture coordinates and up to four

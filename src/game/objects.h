@@ -31,7 +31,7 @@ struct ModeMgr;
 
 struct GameActor;
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 
 struct Renderer;
 

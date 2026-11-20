@@ -1,5 +1,5 @@
 #include "session/party_queries.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "session/skill_queries.h"
 #include "skills/skill_info.h"
 #include "ui/window_messages.h"
@@ -33,7 +33,7 @@ lua_Number luaL_checknumber(lua_State *L, int narg);
 const char *luaL_checklstring(lua_State *L, int narg, size_t *len);
 
 #include "login/merc_ai_types.h"
-#include "actor/types.h"
+#include "actors/types.h"
 
 extern struct String g_traceAiLast;
 extern struct Once g_traceAiLastGuard;

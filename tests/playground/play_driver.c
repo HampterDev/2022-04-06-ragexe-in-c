@@ -19,9 +19,9 @@
    tests/playground/README.md has the messages. */
 #include "core/app.h"
 #include "core/drive_state.h"
-#include "actor/actor_ops.h"
-#include "actor/types.h"
-#include "actor/render_ops.h"
+#include "actors/actor_ops.h"
+#include "actors/types.h"
+#include "actors/render_ops.h"
 #include "contents/account_settings_internal.h"
 #include "contents/connection_api.h"
 #include "contents/sound.h"

@@ -1,7 +1,7 @@
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
 #include "core/memory.h"
-#include "actor/actor.h"
+#include "actors/actor.h"
 #include "game/context.h"
 #include "std/list.h"
 #include <assert.h>

@@ -104,10 +104,10 @@ should clear most of the 1,145 in one change. Return values need the same check.
 
 What is left needs hand fixes:
 
-- `int` fields and slots holding pointers: `*slot = (int)e` in `actor/able_send_msg.c`,
-  `self->clan_emblem = (int)par4` in `actor/actor_efst.c`, `self->emotion_mute` in
-  `actor/actor_sendmsg.c`, `self->falcon`.
-- Strange cases that need reading, such as `long long p = (int)&v` in `actor/actor_efst.c`.
+- `int` fields and slots holding pointers: `*slot = (int)e` in `actors/able_send_msg.c`,
+  `self->clan_emblem = (int)par4` in `actors/actor_efst.c`, `self->emotion_mute` in
+  `actors/actor_sendmsg.c`, `self->falcon`.
+- Strange cases that need reading, such as `long long p = (int)&v` in `actors/actor_efst.c`.
 - 146 `-Wshorten-64-to-32` sites, mostly `size_t` going into `int` lengths. Mostly harmless, but each
   needs a look.
 
@@ -222,7 +222,7 @@ Only 21 `.gr2` files exist, all in `data.grf`: 15 in `model/3dmob_bone` and 6 in
 version 6 files, with 105 of their 126 sections compressed as Oodle0. `core/winmain.c` loads
 `guildflag90_1.gr2` at start-up, so a stub has to handle that.
 
-The client code is about 2,500 lines (`actor/granny*`, `resources/granny*`), and `resources/granny_sdk.h`
+The client code is about 2,500 lines (`actors/granny*`, `resources/granny*`), and `resources/granny_sdk.h`
 reads Granny's own structs at 32-bit offsets. Replacing it means loading meshes, skeletons and animations,
 sampling the animations, and deforming the vertices.
 

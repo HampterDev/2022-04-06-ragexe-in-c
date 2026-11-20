@@ -1,7 +1,7 @@
 #include "game/packet_handlers.h"
 #include "session/state.h"
 #include "game/skill_fx.h"
-#include "actor/job.h"
+#include "actors/job.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_talk.h"

@@ -4,7 +4,7 @@
 #include "core/object_type_tables.h"
 #include "world/actor_lookup.h"
 #include "game/context.h"
-#include "actor/appearance.h"
+#include "actors/appearance.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/controls/controls.h"

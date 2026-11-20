@@ -4,8 +4,8 @@
 #include "contents/lua_data.h"
 #include "std/std.h"
 #include "std/tree.h"
-#include "actor/render_ops.h"
-#include "actor/actor_common.h"
+#include "actors/render_ops.h"
+#include "actors/actor_common.h"
 #include "session/session_skills.h"
 
 static void destroy_champion(void *value);

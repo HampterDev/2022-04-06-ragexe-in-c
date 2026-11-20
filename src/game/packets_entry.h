@@ -4,7 +4,7 @@
 #include "game/packet_handlers.h"
 #include "game/world_objects.h"
 #include "game/entry_packet_handlers.h"
-#include "actor/render_object.h"
+#include "actors/render_object.h"
 #include "session/state.h"
 
 #include "game/packets.h"

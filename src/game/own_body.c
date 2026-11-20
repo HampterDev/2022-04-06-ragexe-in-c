@@ -1,7 +1,7 @@
 #include "game/own_body.h"
 #include <string.h>
-#include "actor/actor_states.h"
-#include "actor/types.h"
+#include "actors/actor_states.h"
+#include "actors/types.h"
 #include "game/cells.h"
 #include "session/session_state.h"
 #include "world/actor_lookup.h"
@@ -48,7 +48,7 @@ static int own_ground(struct BodyGround *ground)
 
 /* The drawn character follows the own body: when the body's move is another than the one the
    character was given, it is filed in the character's move track, which is played on the own
-   clock as any actor's is on the render clock (actor/actor_state.c). A body that only took
+   clock as any actor's is on the render clock (actors/actor_state.c). A body that only took
    the steps of its walk says nothing new. A move that was made before the one drawn is the
    past put right (the server's word was not what had been predicted): however the body came
    onto that cell then, the character walks there now. Nothing else takes the character off

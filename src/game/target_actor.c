@@ -1,5 +1,5 @@
 #include "game/actor_actions.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "contents/mouse.h"

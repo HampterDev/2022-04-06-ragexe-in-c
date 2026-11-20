@@ -7,7 +7,7 @@
    sets for the GPU's floats:
 
    - Records of every kind, made as the client makes them (sprites by render_object_submit_spr_quad
-     itself, actor/sprite_quad.c; particles by particle_render and sprite_particle_render,
+     itself, actors/sprite_quad.c; particles by particle_render and sprite_particle_render,
      effects/particle.c and sprite_particle.c; the effect primitives' triangles by prim_draw_quad,
      effects/rag/effect_prim_draw.c, in each of its modes; the ground's cell tiles by
      world/ground_draw.c; the rest by render/quads.c), realistic, edge and fuzzed, read on the
@@ -47,10 +47,10 @@
 
    usage: test_quad_instances msaa [seed] [records per kind] [scenes]
    Exits 77 where no GPU device can be made. */
-#include "actor/types.h"
-#include "actor/sprite_render.h"
-#include "actor/render_ops.h"
-#include "actor/game_actor.h"
+#include "actors/types.h"
+#include "actors/sprite_render.h"
+#include "actors/render_ops.h"
+#include "actors/game_actor.h"
 #include "render/renderer.h"
 #include "render/render_api.h"
 #include "render/projection.h"
@@ -74,8 +74,8 @@
 #include "fixtures/quad_reference.h"
 #include "picture_budget.h"
 #include "effects/rag/rag_effect.h"
-#include "actor/attr_state.h"
-#include "actor/weather.h"
+#include "actors/attr_state.h"
+#include "actors/weather.h"
 #include "resources/attr.h"
 #include "world/ground.h"
 #include "world/ground_api.h"

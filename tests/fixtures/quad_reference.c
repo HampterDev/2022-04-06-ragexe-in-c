@@ -1,10 +1,10 @@
-/* The CPU code the quads' instances replaced, as the client had it at a005c851 (actor/sprite_quad.c,
+/* The CPU code the quads' instances replaced, as the client had it at a005c851 (actors/sprite_quad.c,
    effects/particle.c, effects/sprite_particle.c, render/gfx_gpu.c), for tests/test_quad_instances.c
    to compare the GPU with: the vertices they made instead of queueing them. Compiled as the client
    is: each float operation rounded once, in the order written (MSVC's /fp:precise contracts
    nothing on x64; GCC and Clang need -ffp-contract=off for that, which the CMake builds pass). */
 #include "quad_reference.h"
-#include "actor/sprite_render.h"
+#include "actors/sprite_render.h"
 #include "render/sprite_atlas.h"
 #include "render/projection.h"
 #include "render/math3d.h"

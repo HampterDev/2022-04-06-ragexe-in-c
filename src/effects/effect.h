@@ -11,7 +11,7 @@
 #include "render/renderer.h"
 
 #include "render/vec3.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include <stdint.h>
 
 enum SoundCueKind {

@@ -1,7 +1,7 @@
 #include "world/mode_actions.h"
-#include "actor/actor_states.h"
+#include "actors/actor_states.h"
 #include "session/party_queries.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "skills/skill_info.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
@@ -12,7 +12,7 @@
 #include "game/input.h"
 #include "game/mode_msg.h"
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "platform/window.h"
 
 static __inline unsigned char key_down(int vk)

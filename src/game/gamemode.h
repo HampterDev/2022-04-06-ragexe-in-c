@@ -19,7 +19,7 @@
 
 #include "resources/attr.h"
 
-#include "actor/types.h"
+#include "actors/types.h"
 
 #include "world/state.h"
 

@@ -1,4 +1,4 @@
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "game/context.h"
@@ -9,7 +9,7 @@
 
 #include <math.h>
 #include <string.h>
-#include "actor/types.h"
+#include "actors/types.h"
 #include "session/session_names.h"
 #include "std/list.h"
 

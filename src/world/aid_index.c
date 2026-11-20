@@ -1,5 +1,5 @@
 #include "world/aid_index.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include "core/memory.h"
 #include "diag/perf.h"
 #include "std/list.h"

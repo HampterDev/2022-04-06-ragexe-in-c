@@ -1,7 +1,7 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "world/world.h"
 #include "world/world_imports.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "std/list.h"
 

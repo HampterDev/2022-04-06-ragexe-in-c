@@ -1,6 +1,6 @@
-#include "actor/object_ops.h"
-#include "actor/actor.h"
-#include "actor/status_icons.h"
+#include "actors/object_ops.h"
+#include "actors/actor.h"
+#include "actors/status_icons.h"
 #include "game/context.h"
 #include <assert.h>
 #include <stdio.h>

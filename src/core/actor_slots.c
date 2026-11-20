@@ -1,12 +1,12 @@
-#include "actor/actor_ops.h"
-#include "actor/render_ops.h"
-#include "actor/appearance.h"
+#include "actors/actor_ops.h"
+#include "actors/render_ops.h"
+#include "actors/appearance.h"
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
 #include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
-#include "actor/job.h"
+#include "actors/job.h"
 
 int game_actor_get_effect_state(struct RenderObject *self) { return ((struct GameActor *)self)->effect_state; }
 int game_actor_get_guild_id(struct GameActor * self)

@@ -21,7 +21,7 @@ struct TexDrawVertex {
 
 /* An instance: a quad, its corners 0 top left, 1 top right, 2 bottom left and 3 bottom right drawn
    as the triangles (0, 1, 2) and (2, 1, 3).
-   - GFX_QUAD_SPRITE: render_object_submit_spr_quad's (actor/sprite_quad.c). The corners are
+   - GFX_QUAD_SPRITE: render_object_submit_spr_quad's (actors/sprite_quad.c). The corners are
      (x0, top), (x1, top), (x0, bottom) and (x1, bottom), each moved by half a pixel; a turned one
      turns them by cosine and sine about the quad's centre moved by offsetX and offsetY. Every
      corner has rhwTop as its rhw, the top row zTop as its z and the bottom row zBottom, which the

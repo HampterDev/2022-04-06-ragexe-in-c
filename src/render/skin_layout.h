@@ -1,7 +1,7 @@
 #ifndef RENDER_SKIN_LAYOUT_H
 #define RENDER_SKIN_LAYOUT_H
 
-/* custom: Granny's actors (actor/granny.c) as the skinning shader reads them
+/* custom: Granny's actors (actors/granny.c) as the skinning shader reads them
    (src/render/shaders/skin.hlsli), as pure packing: a model's vertices and indices, which go up to
    the device once (render/gfx.h, gfx_create_skin); an actor's pose for a frame, lit as its kind
    is, rows of four words among the frame's quads (gfx_skin_pose); which draws of its meshes one
@@ -73,10 +73,10 @@ struct SkinPose {
     int rigidStill;
 };
 
-/* The kinds of Granny actor (actor/granny.c), each lit its own way */
+/* The kinds of Granny actor (actors/granny.c), each lit its own way */
 enum { SKIN_ACTOR_LIT, SKIN_ACTOR_CORPSE, SKIN_ACTOR_GUILD_FLAG };
 
-/* The pose's scale, offset, add and rigidStill as actor/granny.c's loop of each kind lit its
+/* The pose's scale, offset, add and rigidStill as actors/granny.c's loop of each kind lit its
    vertices: the lit model b = n . l times its light's `intensity` plus 255 - intensity, each of
    blue, green and red that byte of its light's colour (red, green, blue) plus 0x38 plus b, modulo
    256; the corpse and the guild flag b = n . l times 100 plus 155, adding nothing, the guild

@@ -1,4 +1,4 @@
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 #include "contents/client_lua_calls.h"
 #include "game/own_states.h"
 #include "ui/misc/snap_mgr.h"

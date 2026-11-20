@@ -2,7 +2,7 @@
 #define GAMEMODE_SKILL_FX_H
 
 #include "game/packet_handlers.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "effects/rag/rag_effect.h"
 #include "game/world_objects.h"
 #include "world/object_lookup.h"

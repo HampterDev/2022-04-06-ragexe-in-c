@@ -2,7 +2,7 @@
 #include "effects/effect_mgr.h"
 #include "effects/skills/cloud.h"
 #include "contents/client_lua.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include <stdlib.h>
 #include "render/renderer.h"
 #include <string.h>

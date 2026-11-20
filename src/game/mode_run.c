@@ -21,7 +21,7 @@
 #include "fileio/resource_api.h"
 #include "contents/sound.h"
 #include "world/pick_node.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"

@@ -109,7 +109,7 @@ was started or refused.
 - A click on a monster, a skill on an actor or the ground and a click on an item send one
   `CZ_INTENT`, and so do a skill aimed at a skill unit and an attack on one. Releasing the
   mouse button sends the release. The client's own walk into reach (the proceed logic of
-  `actor/player.c`) is removed.
+  `actors/player.c`) is removed.
 - The end of the newest intent (`ZC_OWN_INTENT`, ended) clears the attack cursor state.
 - Walking is unchanged: a walk request, which the server takes as the end of the intent.
 

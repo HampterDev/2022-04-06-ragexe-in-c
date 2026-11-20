@@ -1,7 +1,7 @@
 #include "session/state.h"
 #include <stdio.h>
 #include "effects/rag/rag_skills_classic.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 #define PARTICLE2_SPR SPR_DIR "particle2.spr"
 #define PARTICLE2_ACT SPR_DIR "particle2.act"

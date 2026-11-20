@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 #include "game/mode_callbacks.h"

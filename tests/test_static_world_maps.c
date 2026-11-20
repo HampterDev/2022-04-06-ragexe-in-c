@@ -72,7 +72,7 @@
 #include "render/static_world.h"
 #include "render/world_layout.h"
 
-#include "actor/sprite_quad.h"
+#include "actors/sprite_quad.h"
 #include "diag/perf.h"
 #include "fileio/file.h"
 #include "fileio/res_mgr.h"

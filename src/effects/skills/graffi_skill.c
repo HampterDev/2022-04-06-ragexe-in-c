@@ -1,7 +1,7 @@
-#include "actor/actor_ops.h"
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
-#include "actor/appearance.h"
+#include "actors/actor_ops.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
+#include "actors/appearance.h"
 #include "render/texture_cache.h"
 #include "render/texture.h"
 #include "resources/sprite.h"
@@ -11,7 +11,7 @@
 #include "effects/skills/skill.h"
 #include "effects/skills/skill_view.h"
 #include <string.h>
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "world/world.h"
 
 #define MSG_SET_UNIT_AID 0x16

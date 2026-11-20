@@ -1,0 +1,13 @@
+#include "actors/object_ops.h"
+#include "actors/actor.h"
+#include "actors/sprite_render.h"
+
+void render_object_draw(struct GameObject *object, const float *matrix)
+{
+    struct RenderObject *self = (struct RenderObject *)object;
+
+    if (self->visible) {
+        render_object_render_shadow((struct RenderObject *)self, matrix, self->zoom);
+        render_object_render_sprite((struct RenderObject *)self, matrix, 0, 0.0f);
+    }
+}

@@ -1,11 +1,11 @@
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "game/context.h"
 #include "session/csession.h"
 #include "session/session_achievements.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_party.h"
-#include "actor/job.h"
+#include "actors/job.h"
 
 struct GameActor;
 

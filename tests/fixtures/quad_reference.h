@@ -23,7 +23,7 @@ struct ReferenceVertex {
     float u0, v0, u1, v1;
 };
 
-/* render_object_submit_spr_quad's four vertices (actor/sprite_quad.c): from the quad, the
+/* render_object_submit_spr_quad's four vertices (actors/sprite_quad.c): from the quad, the
    texture's region (with its 0xd77b palette's narrower right edge where `palette` is that) and the
    flipped screen's x and y */
 void reference_sprite_vertices(const struct SqQuad *quad, const struct SpriteRegion *region, int palette, float x,

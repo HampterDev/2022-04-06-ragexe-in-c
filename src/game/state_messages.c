@@ -1,5 +1,5 @@
 #include "game/packet_handlers.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "game/actor_packets.h"
 #include "contents/sound.h"
 #include "session/state.h"

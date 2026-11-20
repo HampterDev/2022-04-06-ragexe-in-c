@@ -1,7 +1,7 @@
 #ifndef WORLD_MODEL_H
 #define WORLD_MODEL_H
 
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "render/keyframes.h"
 #include "world/mode_manager.h"
 

@@ -1,7 +1,7 @@
 #include "game/actor_names.h"
 #include "game/camera.h"
 #include "game/mode_util.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "platform/code_page.h"
 #include "platform/language_api.h"
 #include "skills/skill_bundle.h"

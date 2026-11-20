@@ -17,7 +17,7 @@
 #include "ui/character/character_std.h"
 #include <stdlib.h>
 #include "std/std.h"
-#include "actor/sprite_render.h"
+#include "actors/sprite_render.h"
 #include "session/session_jobs.h"
 #include "session/session_lua.h"
 #include "session/session_names.h"

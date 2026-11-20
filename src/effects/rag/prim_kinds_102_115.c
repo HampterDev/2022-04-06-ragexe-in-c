@@ -1,5 +1,5 @@
 #include "game/cells.h"
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "render/texture_cache.h"
 #include "world/ground_api.h"
 #include "session/state.h"

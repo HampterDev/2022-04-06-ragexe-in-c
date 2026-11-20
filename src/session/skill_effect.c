@@ -8,7 +8,7 @@
 
 #include <string.h>
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 
 BYTE session_play_ground_skill_effect(struct Session *self, int skill, struct Vec3 pos)
 {

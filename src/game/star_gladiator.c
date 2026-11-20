@@ -4,7 +4,7 @@
 #include "ui/chat/balloon.h"
 #include "iteminfo/item_api.h"
 #include "session/character_name.h"
-#include "actor/render_object.h"
+#include "actors/render_object.h"
 #include "contents/sound.h"
 #include "game/gamemode.h"
 #include "game/packets_inventory.h"

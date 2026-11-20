@@ -159,7 +159,7 @@ endif()
 
 # The client files that a test held to /W1 or /W4 (the highest level any test compiled them
 # at); before the first test, since a file takes its options when a test first names it.
-rage_client_warnings(1 actor/map_type_table.c core/byte_array.c core/thread_text.c
+rage_client_warnings(1 actors/map_type_table.c core/byte_array.c core/thread_text.c
     effects/ez2str_effect_mgr.c game/msg_broadcast.c game/packet_dispatch.c game/packet_dispatch2.c
     game/skill_cast_chat.c game/whisper_commands.c json/json_bson.c json/json_loader.c render/rp_pool.c
     session/character_name.c session/job_sounds.c ui/character/character_std.c ui/chat/edit_history.c
@@ -474,7 +474,7 @@ rage_test(xml CLIENT core/memory.c core/xml.c std/string.c)
 rage_test(lua_port W1 NO_WX LIBS rage_lua ARGS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/lua51_win32.lub)
 rage_test(jpeg_codec CLIENT resources/jpeg_codec.c resources/jpeg_storage.c LIBS rage_stb
     ARGS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/jpeg_quadrants.jpg)
-rage_test_generate(chat_room_title OUTPUTS chat_room_title.inc DEPENDS actor/actor_sendmsg.c)
+rage_test_generate(chat_room_title OUTPUTS chat_room_title.inc DEPENDS actors/actor_sendmsg.c)
 rage_test(chat_room_title WE4013 GENERATED chat_room_title)
 rage_test_generate(latest_achievements OUTPUTS latest_achievements.inc DEPENDS session/session_achievements.c)
 rage_test(latest_achievements WE4013 CLIENT std/tree.c GENERATED latest_achievements LIBS rage_lua)
@@ -570,7 +570,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test_generate(manager_alloc_failure OUTPUTS manager_alloc_failure.inc DEPENDS core/client_managers.c
         core/map_sky.c effects/ez2str_effect_mgr.c)
     rage_test_generate(map_enter_packet OUTPUTS map_enter_packet.inc DEPENDS login/login_states.c)
-    rage_test_generate(mercenary_job OUTPUTS mercenary_job.inc DEPENDS actor/position.c session/predicates.c)
+    rage_test_generate(mercenary_job OUTPUTS mercenary_job.inc DEPENDS actors/position.c session/predicates.c)
     rage_test_generate(meteor_storm_waves OUTPUTS meteor_storm_waves.inc DEPENDS
         effects/rag/rag_unreferenced.c)
     rage_test_generate(monster_skill_info OUTPUTS monster_skill_info.inc DEPENDS session/talk_tables.c)
@@ -585,7 +585,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         ui/items/pet_info.c ui/items/styling_shop.c)
     rage_test_generate(perf_overlay OUTPUTS perf_overlay.inc screenshot_case.inc screenshot_keys.inc DEPENDS
         diag/perf.c ui/wndmgr/wndmgr_keys.c)
-    rage_test_generate(pet_accessory OUTPUTS pet_accessory.inc DEPENDS actor/game_actor.c game/packets_entry.c
+    rage_test_generate(pet_accessory OUTPUTS pet_accessory.inc DEPENDS actors/game_actor.c game/packets_entry.c
         game/packets_entry_hp.c game/packets_pet.c session/pet.c)
     rage_test_generate(pet_actions OUTPUTS pet_actions.inc DEPENDS game/msg_misc.c game/packets_pet.c
         session/pet.c session/session_init.c)
@@ -619,7 +619,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test_objects(test_mouse_mouse src/contents/mouse.c FORCE_INCLUDE tests/mouse_fixture.h)
     rage_test_objects(test_mouse_window_sdl src/platform/window_sdl.c FORCE_INCLUDE tests/mouse_fixture.h
         LIBS SDL3::SDL3)
-    rage_test_objects(test_object_type_actor_object_types W4 src/actor/actor_object_types.c DEFINES
+    rage_test_objects(test_object_type_actor_object_types W4 src/actors/actor_object_types.c DEFINES
         TYPE_QUERY_FIXTURE FORCE_INCLUDE tests/type_query_fixture.h)
     rage_test_objects(test_object_type_character_object_types W4 src/ui/character/character_object_types.c
         DEFINES TYPE_QUERY_FIXTURE FORCE_INCLUDE tests/type_query_fixture.h)
@@ -673,12 +673,12 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         src/platform/code_page_win32.c FORCE_INCLUDE tests/lua_data_manager_boundaries.h INCLUDES src/contents
         LIBS rage_lua)
     rage_test(act_track W4 WE4013 CLIENT world/act_track.c world/view_floors.c)
-    rage_test(actor_actions WE4013 CLIENT actor/action.c actor/head_extent.c)
-    rage_test(actor_appearance CLIENT actor/appearance.c session/session_effect_state.c)
+    rage_test(actor_actions WE4013 CLIENT actors/action.c actors/head_extent.c)
+    rage_test(actor_appearance CLIENT actors/appearance.c session/session_effect_state.c)
     rage_test(actor_effect_cells)
-    rage_test(actor_helper_owners W1 WE4013 CLIENT actor/map_type_table.c skills/skill_action_registry.c
+    rage_test(actor_helper_owners W1 WE4013 CLIENT actors/map_type_table.c skills/skill_action_registry.c
         std/tree.c std/vec.c)
-    rage_test(actor_liveness CLIENT actor/clone_owner.c)
+    rage_test(actor_liveness CLIENT actors/clone_owner.c)
     rage_test(agency_packets W4)
     rage_test(agency_results W1)
     rage_test(ai_context CLIENT core/numeric.c core/utf8.c login/merc_ai.c login/merc_ai_cmds.c
@@ -692,7 +692,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(animation_owner CLIENT core/utf8.c fileio/file.c fileio/resource_path.c
         platform/code_page_win32.c platform/filesystem_win32.c)
     rage_test(attack_records WE4013 tests/attack_records_session.c tests/attack_records_skill_fx.c CLIENT
-        actor/actor_msg.c body/grid_path.c game/packets_act.c game/skill_notify.c platform/clock_win32.c
+        actors/actor_msg.c body/grid_path.c game/packets_act.c game/skill_notify.c platform/clock_win32.c
         std/clock_sync.c std/render_delay.c std/swing_pace.c std/way_up.c world/act_track.c world/drawn.c
         world/move_track.c world/own_swing.c world/pathinfo.c world/presence.c world/record_wait.c
         world/view_floors.c)
@@ -783,9 +783,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(effect_durations W4 CLIENT effects/durations.c)
     rage_test(effect_factories W1 CLIENT std/container_memory.c std/list.c std/tree.c std/vec.c GENERATED
         effect_types)
-    rage_test(attached_effects WE4013 CLIENT actor/attached.c actor/show_number.c effects/skills/msg_effect.c
+    rage_test(attached_effects WE4013 CLIENT actors/attached.c actors/show_number.c effects/skills/msg_effect.c
         std/container_memory.c std/list.c std/vec.c world/object_list.c)
-    rage_test(effect_launch CLIENT actor/effect_launch.c)
+    rage_test(effect_launch CLIENT actors/effect_launch.c)
     rage_test(effect_launch_duration WE4013 ${RAGE_EFFECT_DATA_C} CLIENT core/utf8.c effects/durations.c
         effects/effect_data.c fileio/resource_path.c platform/code_page_win32.c GENERATED
         effect_launch_duration LIBS rage_json)
@@ -809,7 +809,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         src/effects/rag/rag_prim_launch.c src/effects/rag/effect_prim.c src/effects/rag/effect_prim_shared.c
         src/effects/rag/rag_effect.c src/effects/rag/rag_str_anim.c src/effects/rag/rag_str_playback.c
         src/effects/str_path.c src/effects/str_animation.c src/effects/durations.c
-        src/effects/effect_objects.c src/effects/effect_sound.c src/actor/effect_launch.c src/actor/position.c
+        src/effects/effect_objects.c src/effects/effect_sound.c src/actors/effect_launch.c src/actors/position.c
         src/effects/skills/ez2str_effect_files.c src/effects/effect_data.c src/effects/rag/rag_str_bindings.c
         src/fileio/resource_path.c src/platform/code_page_win32.c src/core/utf8.c ${RAGE_EFFECT_DATA_C}
         src/render/math3d.c src/render/rp_project.c src/render/shadow_fit.c src/render/static_world.c
@@ -883,7 +883,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # for the pictures, the seed, records per kind of case, scenes drawn both ways.
     rage_test(quad_instances tests/fixtures/quad_reference.c tests/picture_budget.c src/render/gfx_gpu.c
         src/render/texel_convert.c
-        CLIENT actor/sprite_quad.c effects/particle.c effects/rag/effect_prim_draw.c effects/sprite_particle.c
+        CLIENT actors/sprite_quad.c effects/particle.c effects/rag/effect_prim_draw.c effects/sprite_particle.c
         platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
         render/frame_ring.c render/math3d.c render/quads.c render/render_thread.c render/rp_project.c
         render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
@@ -941,7 +941,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         LIBS rage_lua)
     rage_test(heal_colours WE4013 tests/effect_base_stubs.c CLIENT std/vec.c)
     rage_test(hex W4 CLIENT core/hex.c)
-    rage_test(imf_owner CLIENT actor/layer_order.c core/utf8.c fileio/file.c fileio/resource_path.c
+    rage_test(imf_owner CLIENT actors/layer_order.c core/utf8.c fileio/file.c fileio/resource_path.c
         platform/code_page_win32.c platform/filesystem_win32.c)
     rage_test(incoming_whisper CLIENT initializers/markup_tags.c platform/clock_win32.c std/container_memory.c
         std/string.c std/vec.c)
@@ -1016,7 +1016,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(map_enter_packet WE4013 GENERATED map_enter_packet)
     rage_test(map_entry CLIENT game/map_entry.c)
     rage_test(map_info_owner LIBS rage_lua)
-    rage_test(map_nodes tests/map_nodes_support.c CLIENT actor/actor_values.c contents/guild_lists.c
+    rage_test(map_nodes tests/map_nodes_support.c CLIENT actors/actor_values.c contents/guild_lists.c
         core/once_win32.c platform/code_page_win32.c skills/player_skill_bundle.c skills/skill_info.c
         std/container_memory.c std/list.c std/string.c std/tree.c std/vec.c ui/hotkeys/session_option_map.c
         ui/social/guild_containers.c ui/std/ui_std_list.c world/world_std.c)
@@ -1075,7 +1075,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         navi/navi_guide.c navi/navi_instance.c navi/navi_manager.c navi/navi_object_queries.c
         navi/navi_records.c render/texture_image.c std/container_memory.c std/string.c std/vec.c
         world/pathinfo.c OBJECTS rage_test_weather_state_support)
-    rage_test(object_operations WE4013 CLIENT actor/object_ops.c core/abstract_method.c
+    rage_test(object_operations WE4013 CLIENT actors/object_ops.c core/abstract_method.c
         effects/skills/dummy_effect_launcher.c platform/clock_win32.c std/container_memory.c std/list.c
         std/string.c std/tree.c std/vec.c world/aid_index.c world/aid_lists.c world/id_index.c world/objects.c
         world/object_list.c)
@@ -1134,7 +1134,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(readable_links CLIENT core/text_markup.c core/utf8.c iteminfo/item_info.c iteminfo/item_link.c
         std/container_memory.c std/list.c std/string.c std/vec.c ui/chat/chat_link_items.c
         ui/chat/item_link_text.c ui/chat/navi_text.c)
-    rage_test(render_operations WE4013 src/actor/sprite_overlays.c src/actor/motion_update.c FORCE_INCLUDE
+    rage_test(render_operations WE4013 src/actors/sprite_overlays.c src/actors/motion_update.c FORCE_INCLUDE
         tests/render_operations_boundaries.h)
     rage_test(record_wait W4 WE4013 CLIENT world/record_wait.c)
     rage_test(render_delay W4 WE4013 CLIENT std/render_delay.c)
@@ -1222,7 +1222,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         world/scene_graph.c world/scene_lifecycle.c world/scene_objects.c world/view_camera.c world/world_gpu.c
         LIBS rage_png rage_stb rage_zlib SDL3::SDL3 ARGS ${RAGE_MAPS_GAME_DIR} LABELS client-files
         ENVIRONMENT SDL_VIDEO_DRIVER=windows)
-    rage_test(status_icons CLIENT actor/player_status_icons.c)
+    rage_test(status_icons CLIENT actors/player_status_icons.c)
     rage_test(status_wnd_info WE4013 CLIENT ui/wndmgr/wnd_infos.c GENERATED status_wnd_info)
     rage_test(str_animation CLIENT effects/ez2str_playback.c effects/rag/rag_str_playback.c
         effects/str_animation.c)
@@ -1284,7 +1284,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(wave_palette CLIENT core/utf8.c fileio/file.c fileio/resource_path.c platform/code_page_win32.c
         platform/filesystem_win32.c render/device_palette.c)
     rage_test(way_up W4 WE4013 CLIENT std/way_up.c)
-    rage_test(weather_state CLIENT actor/weather.c actor/weather_instance.c std/container_memory.c
+    rage_test(weather_state CLIENT actors/weather.c actors/weather_instance.c std/container_memory.c
         std/string.c std/vec.c OBJECTS rage_test_weather_state_support)
     rage_test(whisper_block W1 tests/whisper_command_support.c tests/json_test_support.c CLIENT
         game/whisper_commands.c json/json_tree.c json/service_json.c std/container_memory.c std/string.c

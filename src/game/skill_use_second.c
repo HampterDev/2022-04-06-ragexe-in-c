@@ -1,5 +1,5 @@
 #include "game/skill_use.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 struct SongLook {
     unsigned short skill_id;

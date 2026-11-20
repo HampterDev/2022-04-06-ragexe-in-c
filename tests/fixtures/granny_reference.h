@@ -4,7 +4,7 @@
 /* The vertices Granny's actors had on the CPU before the device skinned them
    (tests/test_skin_instances.c compares the skinning shader with them): the shim's deformer
    (resources/granny_gltf.c, _GrannyDeformVertices), a mesh's vertices and matrix for the frame
-   (resources/granny_mesh.c, render_mesh) and the three loops of actor/granny.c that projected,
+   (resources/granny_mesh.c, render_mesh) and the three loops of actors/granny.c that projected,
    placed in the world (world_corner) and lit every corner of a mesh's triangles, as they were. */
 #include "render/quads.h"
 #include "render/skin_layout.h"

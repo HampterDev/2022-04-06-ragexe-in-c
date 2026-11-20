@@ -15,7 +15,7 @@
 #include "navi/navi_manager.h"
 #include "contents/sound.h"
 #include "contents/schedule.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "game/client_state.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"

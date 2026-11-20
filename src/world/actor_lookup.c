@@ -1,5 +1,5 @@
-#include "actor/actor_ops.h"
-#include "actor/game_actor.h"
+#include "actors/actor_ops.h"
+#include "actors/game_actor.h"
 #include "world/actor_lookup.h"
 #include "world/world.h"
 #include "std/list.h"

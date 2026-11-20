@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 #define RECORD_COUNT 4
 

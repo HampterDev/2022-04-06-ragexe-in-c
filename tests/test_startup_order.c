@@ -25,7 +25,7 @@
 #include <string.h>
 #include "core/app.h"
 #include "std/string.h"
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 #include "contents/account_settings.h"
 #include "contents/adventurer_agency.h"
 #include "contents/champion_monster.h"

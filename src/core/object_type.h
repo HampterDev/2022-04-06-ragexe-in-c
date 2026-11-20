@@ -36,7 +36,7 @@ const char *object_type_name(const void *table);
    queries the class answers and its name.
 
    Who owns the rows: the directory that defines the classes, in its *_object_types.c (for
-   example ui/controls/controls_object_types.c and actor/actor_object_types.c; the NPC actor
+   example ui/controls/controls_object_types.c and actors/actor_object_types.c; the NPC actor
    class of core/character_npc.c is with the actor rows).
 
    Composition: g_objectTypes (core/object_type_registry.c) lists those tables;

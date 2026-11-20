@@ -4,7 +4,7 @@
    rag_effect.c, rag_effect_init and the STR player (rag_str_anim.c, rag_str_playback.c,
    rag_str_bindings.c, str_path.c, str_animation.c), the effect data loader with the
    embedded data/effects/effects.json (effect_data.c) and the launch entry
-   game_actor_launch_effect (actor/effect_launch.c), compiled with the client's flags
+   game_actor_launch_effect (actors/effect_launch.c), compiled with the client's flags
    against the stubs below.
 
    rand() in those files is renamed to effect_trace_rand by tests/effect_trace_rand.h
@@ -33,10 +33,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "actor/types.h"
-#include "actor/actor_ops.h"
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
+#include "actors/types.h"
+#include "actors/actor_ops.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
 #include "core/object_type.h"
 #include "effects/durations.h"
 #include "effects/effect_data.h"
@@ -68,7 +68,7 @@
    the offsets and counts of the changed words are left out. Every object has kept its nodes on the
    world's lists since then (struct GameObject, world_node and actor_node): built with the objects'
    layout without them, this test gives 070472d1e6f92c2d. The actor has had the netcode's fields
-   since then (actor/types.h: its move track, drawn place and swing pacing in place of the path it
+   since then (actors/types.h: its move track, drawn place and swing pacing in place of the path it
    searched and its slide): the trace before (3445124eaf068fdb) is this one line for line but for
    the actor's size, 1,824 bytes where it was 1,512, in its state's line and in the lines of the
    effects that construct a copy of it. */

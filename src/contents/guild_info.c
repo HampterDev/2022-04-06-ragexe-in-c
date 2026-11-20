@@ -1,5 +1,5 @@
 #include "ui/window_types.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "world/actor_lookup.h"
 #include "ui/guild_windows.h"
 #include "session/state.h"

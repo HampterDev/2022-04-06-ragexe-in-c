@@ -1,5 +1,5 @@
 #include "effects/effect_allocator.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "render/math3d.h"
 #include <string.h>
 #include "effects/skills/ez2str_effect_ex.h"

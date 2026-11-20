@@ -11,7 +11,7 @@
 #include "session/session_party.h"
 
 #include <string.h>
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "ui/ui_std.h"
 #include "world/world.h"
 
@@ -126,7 +126,7 @@ void session_clear_friends(struct Session *self)
     list_clear(&self->friendList, destroy_member);
 }
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #define ACTOR_MSG_STOP_EFFECT 0x6d
 
 void session_clear_party_members(struct Session *self)

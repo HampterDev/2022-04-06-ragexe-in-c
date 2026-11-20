@@ -1,4 +1,4 @@
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "render/renderer.h"
 #include "resources/palette.h"
 #include "contents/client_lua_calls.h"

@@ -16,7 +16,7 @@ struct GrannyResTexture {
 };
 
 /* custom: a mesh and what it draws with: the texture of its first triangle group's material
-   (NULL: none, and it is not drawn, but for the guild flag's mesh 1, which actor/granny.c draws
+   (NULL: none, and it is not drawn, but for the guild flag's mesh 1, which actors/granny.c draws
    with the guild's emblem whatever its own texture), its triangles in the model's indices on the device
    (C3dGrannyModelRes.skin: firstIndex to firstIndex + indexCount, none where it has no triangle),
    and the bone that moves it where it is rigid, -1 where it is skinned. */

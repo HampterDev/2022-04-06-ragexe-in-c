@@ -13,7 +13,7 @@
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include "actor/appearance.h"
+#include "actors/appearance.h"
 #include "game/context.h"
 #include <string.h>
 #include "ui/window_mgr.h"

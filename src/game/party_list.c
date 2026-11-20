@@ -4,7 +4,7 @@
 #include "ui/window_manager_state.h"
 #include <string.h>
 #include "game/party_list.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "core/msg_str.h"
 #include "game/chat.h"
 #include "session/session_party.h"

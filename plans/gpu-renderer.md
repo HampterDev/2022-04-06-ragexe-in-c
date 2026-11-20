@@ -106,8 +106,8 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   casts and receives these shadows: Granny's actors, like the sprites and effects, neither cast nor
   receive them.
 - **Built on the CPU every frame:** the quads of actor sprites (projected on the CPU,
-  `actor/sprite_quad.c`, their vertices made on the GPU), Granny actors' poses (their bones posed by
-  the playback and their light, `actor/granny.c`; one vertex of one monster's mesh is still skinned
+  `actors/sprite_quad.c`, their vertices made on the GPU), Granny actors' poses (their bones posed by
+  the playback and their light, `actors/granny.c`; one vertex of one monster's mesh is still skinned
   on the CPU, where its effect starts), the water's key among the sprites (one per cell in view), the
   particles', effect primitives' and ground cell tiles' points (projected on the GPU, the CPU
   computing their rhw for the lists' order, and the particles' and tiles' depth, as the sprites'

@@ -13,7 +13,7 @@
 #include "platform/win_types.h"
 #include "game/minimap.h"
 #include "game/cells.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/ui_std.h"

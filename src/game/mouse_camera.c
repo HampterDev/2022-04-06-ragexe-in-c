@@ -11,7 +11,7 @@
 #include "skills/skill_info.h"
 #include "game/client.h"
 #include "game/camera.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "session/session_jobs.h"
 #include "session/session_options.h"
 #include "session/session_state.h"

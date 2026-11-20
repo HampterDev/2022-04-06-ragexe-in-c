@@ -2,7 +2,7 @@
 #define GAMEMODE_PACKETS_GUILD_H
 
 #include "game/packet_handlers.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "contents/player_names.h"
 #include "ui/guild_windows.h"
 #include "contents/guild_info.h"

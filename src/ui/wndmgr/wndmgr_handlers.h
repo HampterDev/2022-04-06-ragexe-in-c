@@ -43,7 +43,7 @@ struct WindowMgrHandlers {
        (ui/wndmgr/plate_hooks.c). NULL: the plate stays. */
     void (*drop_dragged_plate)(struct UIWindowMgr *self);
     /* The last step of ui_window_mgr_forget_window: the actors drop their references to
-       the destroyed window. actors_forget_window (actor/actor_process.c). NULL: the
+       the destroyed window. actors_forget_window (actors/actor_process.c). NULL: the
        actors keep them. */
     void (*forget_window)(const struct UIWindow *wnd);
 };

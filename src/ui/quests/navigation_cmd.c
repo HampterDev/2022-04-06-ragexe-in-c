@@ -2,7 +2,7 @@
 #include "ui/window_access.h"
 #include "ui/window_manager_state.h"
 #include "core/markup_tags.h"
-#include "actor/appearance.h"
+#include "actors/appearance.h"
 #include "game/context.h"
 #include "navi/navi.h"
 #include "ui/quests/navigation.h"

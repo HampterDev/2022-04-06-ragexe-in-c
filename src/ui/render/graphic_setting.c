@@ -4,7 +4,7 @@
 #include "render/rp_pool.h"
 #include "render/texture_cache.h"
 #include "contents/sound.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"

@@ -1,4 +1,4 @@
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "session/state.h"
 #include "world/actor_lookup.h"
 #include <stdlib.h>

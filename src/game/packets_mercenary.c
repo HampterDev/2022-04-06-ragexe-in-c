@@ -3,7 +3,7 @@
 #include "std/list.h"
 #include "session/state.h"
 #include "game/packets.h"
-#include "actor/job.h"
+#include "actors/job.h"
 #include "session/session_windows.h"
 
 static void merc_redraw(void)

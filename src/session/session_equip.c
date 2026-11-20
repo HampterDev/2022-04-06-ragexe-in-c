@@ -8,7 +8,7 @@
 
 #include <string.h>
 #include "game/gamemode.h"
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "ui/wndmgr/wndmgr.h"
 
 #define LOCATION_ARROW      0x8000

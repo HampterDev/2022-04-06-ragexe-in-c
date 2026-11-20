@@ -1,6 +1,6 @@
 #include "effects/rag/rag_effect.h"
-#include "actor/render_object.h"
-#include "actor/granny_actor.h"
+#include "actors/render_object.h"
+#include "actors/granny_actor.h"
 #include "game/world_objects.h"
 #include "core/memory.h"
 #include <string.h>

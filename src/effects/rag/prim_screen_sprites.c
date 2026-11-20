@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
-#include "actor/attr_state.h"
+#include "actors/attr_state.h"
 #include "platform/clock.h"
 
 #define STATE_END_NEVER 999999

@@ -3,7 +3,7 @@
 #include "game/context.h"
 #include "game/skill_use.h"
 #include "platform/language.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "core/msg_str.h"
 #include "session/session_jobs.h"
 

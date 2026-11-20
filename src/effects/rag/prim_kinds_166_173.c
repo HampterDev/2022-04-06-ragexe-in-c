@@ -8,7 +8,7 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 #include "world/world_imports.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 #define COS(deg) g_cosTable[deg]
 #define SIN(deg) g_sinTable[deg]

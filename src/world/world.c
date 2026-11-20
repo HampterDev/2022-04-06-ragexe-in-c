@@ -1,5 +1,5 @@
-#include "actor/actor_ops.h"
-#include "actor/object_ops.h"
+#include "actors/actor_ops.h"
+#include "actors/object_ops.h"
 #include "world/actor_lookup.h"
 #include "effects/skills/skill_state.h"
 #include "game/ground_item_state.h"
@@ -11,8 +11,8 @@
 
 #include <math.h>
 #include <string.h>
-#include "actor/types.h"
-#include "actor/game_actor.h"
+#include "actors/types.h"
+#include "actors/game_actor.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "std/list.h"
 #include <stdint.h>

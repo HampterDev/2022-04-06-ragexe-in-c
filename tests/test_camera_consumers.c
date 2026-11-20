@@ -1,6 +1,6 @@
 #include "game/context.h"
 #include "world/view_types.h"
-#include "actor/actor.h"
+#include "actors/actor.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@ static struct View *current;
 struct GameMode *game_current_mode(void) { return (struct GameMode *)current; }
 struct View *game_current_view(void) { return current; }
 
-#include "../src/actor/position.c"
+#include "../src/actors/position.c"
 
 struct Session g_session1;
 struct Renderer *g_renderer;

@@ -1,4 +1,4 @@
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #ifndef CORE_OBJECT_TYPE_TABLES_H
 #define CORE_OBJECT_TYPE_TABLES_H
 

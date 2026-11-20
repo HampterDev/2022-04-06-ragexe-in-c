@@ -8,7 +8,7 @@
 #include "world/actor_lookup.h"
 #include "game/gamemode.h"
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "core/msg_str.h"
 
 static __inline void actor_send(struct GameActor *actor, int msg, RenderMsgArg par1, RenderMsgArg par2)

@@ -13,7 +13,7 @@
 #include "game/store_assistant.h"
 #include "game/store_entries.h"
 #include "game/actor_entry.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 #include "core/msg_str.h"
 #include "game/packets_entry.h"
 #include "session/session_items.h"

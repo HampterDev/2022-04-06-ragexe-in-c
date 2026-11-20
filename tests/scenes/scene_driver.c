@@ -13,7 +13,7 @@
 #include "core/drive_state.h"
 #include "core/user_input.h"
 #include "core/window_state.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include "contents/account_settings_internal.h"
 #include "diag/perf.h"
 #include "effects/rag/rag_effect_types.h"

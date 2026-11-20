@@ -43,7 +43,7 @@
 struct List g_keepAliveTimes;
 DWORD g_firstKeepAliveTime;
 
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "platform/clock.h"
 #include "game/net_clock.h"
 #include "game/own_body.h"

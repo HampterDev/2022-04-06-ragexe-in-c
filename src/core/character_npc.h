@@ -1,12 +1,12 @@
-#include "actor/actor_ops.h"
-#include "actor/object_ops.h"
+#include "actors/actor_ops.h"
+#include "actors/object_ops.h"
 #ifndef CORE_CHARACTER_NPC_H
 #define CORE_CHARACTER_NPC_H
 
 #include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include "ui/render/character_render.h"
 
 struct CharacterNpc {

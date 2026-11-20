@@ -1,5 +1,5 @@
-#include "actor/game_actor.h"
-#include "actor/render_ops.h"
+#include "actors/game_actor.h"
+#include "actors/render_ops.h"
 #include "effects/skills/skill_state.h"
 #include "std/list.h"
 #include "world/world.h"

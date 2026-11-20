@@ -10,7 +10,7 @@
 #include "effects/render_object.h"
 #include "std/tree.h"
 #include "game/context.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 
 struct EffectMgr *g_effectMgr;
 

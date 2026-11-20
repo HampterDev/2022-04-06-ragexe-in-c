@@ -1,7 +1,7 @@
-#include "actor/appearance.h"
-#include "actor/actor_ops.h"
-#include "actor/actor.h"
-#include "actor/pc.h"
+#include "actors/appearance.h"
+#include "actors/actor_ops.h"
+#include "actors/actor.h"
+#include "actors/pc.h"
 #include "session/state.h"
 #include "game/actor_entry.h"
 #include <assert.h>

@@ -1,4 +1,4 @@
-#include "actor/map_type_table.h"
+#include "actors/map_type_table.h"
 #include "contents/account_settings.h"
 #include "contents/adventurer_agency.h"
 #include "contents/champion_monster.h"

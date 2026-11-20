@@ -1,5 +1,5 @@
-#include "actor/object_ops.h"
-#include "actor/render_ops.h"
+#include "actors/object_ops.h"
+#include "actors/render_ops.h"
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include <stdlib.h>
@@ -7,7 +7,7 @@
 #include "resources/world_records.h"
 #include "effects/render_object.h"
 #include "effects/skills/skill_view.h"
-#include "actor/game_actor.h"
+#include "actors/game_actor.h"
 #include "effects/rag/rag_effect.h"
 
 #define MSG_SETUP 0xe

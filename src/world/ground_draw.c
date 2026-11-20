@@ -2,7 +2,7 @@
 #include "render/quads.h"
 #include "render/rp_pool.h"
 #include "render/texture_cache.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "world/ground.h"
 #include "world/camera.h"
 
@@ -12,7 +12,7 @@
 #include <string.h>
 #include "render/render_api.h"
 #include "render/render_options.h"
-#include "actor/attr_state.h"
+#include "actors/attr_state.h"
 
 /* custom: the ground's water as the static world's (render/gfx.h, gfx_world_water): the original
    drew a quad over each cell of the frame whose ground the wave stood below, its corners raised by

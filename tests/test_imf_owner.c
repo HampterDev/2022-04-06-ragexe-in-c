@@ -7,7 +7,7 @@
 #include <windows.h>
 #include "fileio/file.h"
 #include "fileio/file_api.h"
-#include "actor/layer_order.h"
+#include "actors/layer_order.h"
 #include "owned_storage_test_allocator.h"
 
 static void *checked_calloc(size_t count, size_t size)

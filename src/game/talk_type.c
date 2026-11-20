@@ -1,4 +1,4 @@
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"

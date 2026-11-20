@@ -2,7 +2,7 @@
 #include "ui/window_access.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/context.h"
-#include "actor/status_icons.h"
+#include "actors/status_icons.h"
 #include "ui/hideui.h"
 
 #define WND_ID_FRAME_E 0xe

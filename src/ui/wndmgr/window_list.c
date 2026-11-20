@@ -6,7 +6,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/draw.h"
 #include "render/device.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include "login/merc_ai_types.h"
 #include "game/drag_info.h"
 #include "ui/wndmgr/wndmgr_handlers.h"

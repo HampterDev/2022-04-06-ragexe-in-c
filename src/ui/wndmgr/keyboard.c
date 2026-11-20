@@ -1,7 +1,7 @@
 #include "ui/controls/edit.h"
 #include "ui/window_keyboard.h"
 #include "contents/client_lua_calls.h"
-#include "actor/render_object.h"
+#include "actors/render_object.h"
 #include "session/state.h"
 #include "world/mode_manager.h"
 #include "ui/wndmgr/wndmgr.h"

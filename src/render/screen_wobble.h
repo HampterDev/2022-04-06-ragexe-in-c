@@ -1,7 +1,7 @@
 #ifndef RENDER_SCREEN_WOBBLE_H
 #define RENDER_SCREEN_WOBBLE_H
 
-/* custom: the screen wobble (the player's status 0x108, actor/actor_efst.c) as pure logic. For each
+/* custom: the screen wobble (the player's status 0x108, actors/actor_efst.c) as pure logic. For each
    frame it runs, the original locked the finished frame and went over its rows from the bottom up:
    a row whose number is a multiple of the period (an anchor) stays as it is and is kept, and every
    other row is overwritten with the last row kept, moved right in mode 1 by a random number of

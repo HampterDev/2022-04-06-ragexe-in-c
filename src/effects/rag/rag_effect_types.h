@@ -2,7 +2,7 @@
 #define EFFECTS_RAG_RAG_EFFECT_TYPES_H
 
 #include "base.h"
-#include "actor/types.h"
+#include "actors/types.h"
 #include "render/vec3.h"
 #include "render/primitive_types.h"
 #include "resources/str_data.h"

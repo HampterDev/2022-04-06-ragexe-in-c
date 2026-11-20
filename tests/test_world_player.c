@@ -1,7 +1,7 @@
 #include "session/state.h"
 #include "game/gamemode.h"
 #include "world/world.h"
-#include "actor/player.h"
+#include "actors/player.h"
 #include "std/list.h"
 #include <assert.h>
 #include <stdio.h>

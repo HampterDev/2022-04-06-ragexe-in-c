@@ -4,8 +4,8 @@
 #include "effects/rag/rag_effect.h"
 #include "effects/effect_mgr.h"
 #include "render/render_api.h"
-#include "actor/actor_common.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_common.h"
+#include "actors/actor_ops.h"
 #include "core/object_type.h"
 #include <stdint.h>
 

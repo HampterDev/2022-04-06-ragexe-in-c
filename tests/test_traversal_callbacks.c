@@ -2,7 +2,7 @@
 #include "session/state.h"
 #include "game/gamemode.h"
 #include "world/model.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "core/fatal.h"
 #include "diag/perf.h"
 #include "world/world.h"

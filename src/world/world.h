@@ -39,7 +39,7 @@ BYTE world_any_matching_actor_near(struct World *self, const float *x, const flo
 struct C3dActor;
 struct C3dActorV1;
 struct C3dActorV2;
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 
 void *world_get_actor_or_player(struct World *self, int aid);
 BYTE world_actor_matches_global(struct World *self, int aid);

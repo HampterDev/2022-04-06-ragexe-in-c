@@ -1,4 +1,4 @@
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include "contents/sound.h"
 #include "game/context.h"
 #include <limits.h>
@@ -6,7 +6,7 @@
 #include "effects/rag/rag_process_moves.h"
 #include "effects/effect_mgr.h"
 #include "render/render_api.h"
-#include "actor/actor_common.h"
+#include "actors/actor_common.h"
 
 void rag_quake(void)
 {

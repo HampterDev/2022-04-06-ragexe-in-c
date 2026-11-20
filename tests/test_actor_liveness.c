@@ -1,4 +1,4 @@
-#include "actor/liveness.h"
+#include "actors/liveness.h"
 #include "game/context.h"
 #include "std/list.h"
 #include <assert.h>

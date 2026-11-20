@@ -8,7 +8,7 @@
 #include "navi/navi_manager.h"
 #include "ui/misc/snap_mgr.h"
 #include "world/pick_node.h"
-#include "actor/weather.h"
+#include "actors/weather.h"
 #include "game/client_state.h"
 #include "platform/client_options.h"
 #include "contents/guild_info.h"
@@ -36,7 +36,7 @@
 #include "ui/window_mgr.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/mode_initialize.h"
-#include "actor/attr_state.h"
+#include "actors/attr_state.h"
 #include "game/mode_msg.h"
 #include "platform/clock.h"
 

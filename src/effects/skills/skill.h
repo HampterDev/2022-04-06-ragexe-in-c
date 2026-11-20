@@ -1,4 +1,4 @@
-#include "actor/object_ops.h"
+#include "actors/object_ops.h"
 #include "effects/skills/skill_entry.h"
 #ifndef EFFECTS_SKILLS_SKILL_H
 #define EFFECTS_SKILLS_SKILL_H

@@ -1,4 +1,4 @@
-#include "actor/render_ops.h"
+#include "actors/render_ops.h"
 #include "world/model_types.h"
 #include "world/ground_api.h"
 #include "world/hover_cell.h"
@@ -9,16 +9,16 @@
 
 #include <math.h>
 #include <stdlib.h>
-#include "actor/types.h"
+#include "actors/types.h"
 #include "game/talk_type.h"
-#include "actor/sprite_quad.h"
+#include "actors/sprite_quad.h"
 #include "game/camera.h"
 #include "game/mode_callbacks.h"
 #include "platform/clock.h"
 #include "diag/perf.h"
 #include "world/world_gpu.h"
-#include "actor/attr_state.h"
-#include "actor/weather.h"
+#include "actors/attr_state.h"
+#include "actors/weather.h"
 
 int g_drawnCellMaxX = 0;
 

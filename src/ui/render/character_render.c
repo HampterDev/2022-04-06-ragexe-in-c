@@ -9,13 +9,13 @@
 #include "ui/render/character_render.h"
 #include "game/context.h"
 #include "world/world_imports.h"
-#include "actor/sprite_render.h"
+#include "actors/sprite_render.h"
 #include "game/chat_room.h"
 #include "session/session_jobs.h"
 #include "session/session_lua.h"
 #include "session/session_names.h"
 #include "session/session_state.h"
-#include "actor/sprite_quad.h"
+#include "actors/sprite_quad.h"
 #include "game/camera.h"
 
 int g_chrHeadDx;

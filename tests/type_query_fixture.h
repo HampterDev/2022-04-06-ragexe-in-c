@@ -1,7 +1,7 @@
 #ifndef TEST_TYPE_QUERY_FIXTURE_H
 #define TEST_TYPE_QUERY_FIXTURE_H
 #include "core/object_type.h"
-#include "actor/actor_ops.h"
+#include "actors/actor_ops.h"
 #include <stdint.h>
 
 #define REFERENCE_VTABLE_COUNT 611
