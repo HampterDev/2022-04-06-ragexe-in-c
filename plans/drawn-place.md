@@ -1,8 +1,9 @@
 # The drawn place
 
 How the place an actor is drawn at follows from its move records and its clock alone, so that
-nothing can leave it where the records do not put it. Status, 2026-11-20: design only, nothing
-built.
+nothing can leave it where the records do not put it. Status, 2026-11-20: built, steps 1 to 5
+(`world/move_place.c`; the server's record for a slide in `eos-world/aoi-render.js`; the measure in
+the playground's `places.js`).
 
 `plans/core-loop.md` has the records and rule 6 (a late walk is steered, never set),
 `plans/netcode.md` the clocks, `plans/predicted-world.md` the own character's records.

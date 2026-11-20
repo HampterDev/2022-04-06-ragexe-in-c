@@ -15631,3 +15631,40 @@ in `plans/netcode.md` and of "Told again when nothing told it" in `plans/predict
   reads the count through its driver.
 - **The playground.** The driver reports per actor whether the client has its unit in view, for
   the runner's presence check, and on exit how late the own body was through the piece.
+
+## An actor is drawn where its record puts it (2026-11-20)
+
+`plans/drawn-place.md`, steps 1 to 5. Before it, the place an actor was drawn at was kept by
+its animation states: the walking state stepped it toward the next cell of its path, the other
+states did not move it, and a record was put into effect by asking what the actor was doing
+then (`move_record_stand`). A walk that a swing or a flinch cut between two cells left the
+actor there, and a stop that named the cell it was on asked nothing of it: the playground found
+monsters 0.38 to 0.47 cells off their cell at rest for up to 1.6 s, and the player's own
+character 0.35 cells off.
+
+- **The place** (`world/move_place.c`, freestanding, integer, `tests/test_move_place.c`): a
+  record and a tick give the place in 256ths of a cell: a record without steps its cell's
+  middle; a walk its start cell's middle before its first step, the line between a step's two
+  middles by the share of the step's time gone, and its last cell's middle after. The steps'
+  times are the record's own (`move_record_cells`); held against the body core playing the same
+  record, the core enters each cell on the tick the place is on its middle.
+- **Following** (`move_follow`, same piece): once a frame, in every state, the drawn point takes
+  one step toward the place of the record played last on the actor's clock: at most the real time
+  since the last frame at 13/10 of the walk speed, a gap of more than four cells at once. The
+  record's cause says how it is joined: walked off, pushed over 200 ms, placed at once. This is
+  the only way an actor's drawn point moves (`game_actor_play_place` in `actor/actor_state.c`).
+- **The states** choose the animation: an actor that stands and moves walks; one that walks and
+  has reached a place that rests stands. A swing, a flinch and a cast hold nothing.
+- **Every place a record**: the original's packets that placed an actor without one (an
+  entry's cell, a moving entry's walk, the move and the stop messages, the jump packet, a hit
+  onto a cell, the player's walk to a cell) become records where they are read; a walk given
+  without its steps is searched once for them (`game_actor_walk_record`). The server sends a
+  slide and a knockback as a move record without steps, pushed, in place of ZC_STOPMOVE and
+  ZC_HIGHJUMP.
+- **What went**: `move_record_stand` and its answers, the walking state's stepping and
+  steering (`std/walk_steer.c`), `track_waiting`, `track_go`, `steered`, `path_cell`, the late
+  walk searched again at 13/10, `path_finder_record_path` and the path queries it fed, state 4's
+  slide with `slide_x` and `slide_z`, `process_server_time`; in `game/own_body.c` the check for a
+  character taken off its walk (`own_astray`) and `path_move`.
+- **`aimed_when`** (`game/packets_act.c`) reads the place's walk and whether the drawn point is
+  on the place, where it read the walking state's path and marks.
