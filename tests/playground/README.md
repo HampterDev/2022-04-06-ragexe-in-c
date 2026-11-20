@@ -70,6 +70,7 @@ u32 commands, each: u8 kind; u8 0; u16 size; payload
   3 attack  u32 gid; i32 mode   what a click on an actor does (0 once, 1 held, 7 repeated)
   4 cancel
   5 quit    i32 exit code
+  6 skill   u32 gid; i32 skill, level   the intent of a skill on a body, as the skill bar sends it
 ```
 
 `enter` takes the client from the login screen straight into a map, as `scene.enter_map` does:

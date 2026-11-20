@@ -57,7 +57,7 @@
 #define ZC_OWN_BODY 0x0f25
 
 enum { MSG_FRAME = 1, MSG_STEP = 2 };
-enum { DO_ENTER = 1, DO_WALK = 2, DO_ATTACK = 3, DO_CANCEL = 4, DO_QUIT = 5 };
+enum { DO_ENTER = 1, DO_WALK = 2, DO_ATTACK = 3, DO_CANCEL = 4, DO_QUIT = 5, DO_SKILL = 6 };
 enum { PLAYER_MSG_ATTACK = 0xa, PLAYER_MSG_CANCEL = 0xd, PLAYER_MSG_WALK = 0x5b };
 
 #define OUT_MAX 0x80000
@@ -482,6 +482,11 @@ static void act(int kind, const unsigned char *p, size_t size)
         break;
     case DO_QUIT:
         leave(size >= 4 ? (int)get32(p) : 0, NULL);
+        break;
+    case DO_SKILL:
+        /* the intent a skill on a body leaves as: what the skill bar ends in */
+        if (player && mode && size >= 12)
+            game_mode_send_intent(mode, INTENT_SKILL_ACTOR, 0, (unsigned)get32(p), 0, 0, (int)get32(p + 4), (int)get32(p + 8));
         break;
     default:
         leave(2, "the runner asked for something the driver does not know");
