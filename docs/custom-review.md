@@ -15722,3 +15722,14 @@ cells was taken at once too.
   follows, its predicted world's, as every other actor against the server's; the predicted body
   off the server's body is reported apart, with how far and how long. A hit the server rolls is
   an outcome the predicted body learns only with the server's next word, and is that column's.
+
+## A hit holds a player as the fork's unit_set_walkdelay does (2026-11-20)
+
+The copy of the server's body core here is at rules version 15. Its hold input says the hold's
+kind, the fork's two types of `unit_set_walkdelay`: a hit's flinch holds a body only when it has
+not been held for the flinch's own length before now ("immune to being stopped for double the
+flinch time"), and a skill's or an attack's hold only puts the end later. Before, every hold
+only extended, so a player several monsters hit was held again by hits the fork lets pass; each
+such hold is one more time the predicted body runs ahead of the server's until its next word. A hold of 0 ms is none, as in the fork. The client puts no
+hold into its own world: the holds come with the server's word of the body, so only the copy
+changed.
