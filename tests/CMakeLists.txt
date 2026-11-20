@@ -36,11 +36,12 @@ if(MSVC)
             "${CMAKE_EXE_LINKER_FLAGS_${config}}")
     endforeach()
 endif()
-# The client's headers name the pieces' (game/rules, game/delivery) from their roots, after src.
+# The client's headers name the pieces' (game/rules, game/delivery, game/protocol/codec) from their
+# roots, after src.
 include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/vendor/lua-5.1.4/src
     ${PROJECT_SOURCE_DIR}/vendor/zlib-1.2.11 ${PROJECT_SOURCE_DIR}/vendor/libpng-1.6.36
     ${PROJECT_SOURCE_DIR}/vendor/yyjson-0.13.0 ${PROJECT_SOURCE_DIR}/game/rules
-    ${PROJECT_SOURCE_DIR}/game/delivery)
+    ${PROJECT_SOURCE_DIR}/game/delivery ${PROJECT_SOURCE_DIR}/game/protocol/codec)
 if(WIN32)
     # What the Windows tests link beyond CMake's default Windows libraries; an import library adds
     # nothing to a program that does not call into it.
@@ -51,8 +52,8 @@ endif()
 # Client files the tests link are compiled once, into one static library per library of
 # tools/libraries.txt (rage_client_base, rage_client_platform, ...). A test names them with CLIENT
 # and links the libraries that hold them, highest first; the linker takes from each library only
-# the objects the test uses. Each of them links the pieces the client is built against, rules and
-# delivery, as the program does. A test that compiles a client file with its own defines or a fixture
+# the objects the test uses. Each of them links the pieces the client is built against, rules,
+# delivery and protocol's delivery routes, as the program does. A test that compiles a client file with its own defines or a fixture
 # compiles its own copy (OBJECTS, or its own sources). Each file keeps the warning level the tests
 # have held it to: /W3 unless rage_client_warnings says otherwise.
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/depmap/libtable.py"
@@ -96,7 +97,7 @@ function(rage_link_client target)
             if(MSVC)
                 target_compile_options(${lib} PRIVATE /WX /we4013)
             endif()
-            target_link_libraries(${lib} PUBLIC rules delivery)
+            target_link_libraries(${lib} PUBLIC rules delivery protocol_delivery_route)
             if(WIN32)
                 target_link_libraries(${lib} PUBLIC ${RAGE_TEST_SYSTEM_LIBRARIES})
             else()
@@ -179,7 +180,7 @@ rage_client_warnings(4 contents/byte_queue.c contents/connection.c
     game/broadcast_text.c game/scream_text.c login/password_encode.c navi/navi_text_lines.c
     platform/code_page_win32.c platform/net_enet.c render/shadow_fit.c render/shadow_fit_gpu.c
     render/text_runs.c std/clock_sync.c std/list.c std/render_delay.c std/swing_pace.c std/tree.c std/vec.c
-    route/delivery_route.c std/way_up.c ui/chat/speaker_name.c ui/controls/item_id_tag.c world/drawn.c
+    std/way_up.c ui/chat/speaker_name.c ui/controls/item_id_tag.c world/drawn.c
     world/own_swing.c)
 
 # ---- Test programs ----
@@ -430,11 +431,10 @@ foreach(module clock filesystem thread code_page sha256)
     rage_test(platform_${module} W1 NO_WX CLIENT ${platform_files})
 endforeach()
 # The sockets (platform/net_enet.c) with the delivery piece under them (game/delivery,
-# plans/delivery.md), over loopback; the connection's ENet channels; the route table alone.
+# plans/delivery.md), over loopback; the connection's ENet channels.
 rage_test(platform_net W4 WE4013 CLIENT ${platform_files} platform/net_enet.c)
 rage_test(connection W4 WE4013 CLIENT contents/byte_queue.c contents/connection.c
     platform/net_enet.c std/tree.c ${platform_files})
-rage_test(delivery_route W4 WE4013 CLIENT route/delivery_route.c)
 rage_test(code_page_iconv W1 NO_WX src/platform/code_page_iconv.c src/platform/code_page_tables.c
     DEFINES RAGE_OWN_ICONV)
 rage_test(numeric W4 CLIENT core/numeric.c)
@@ -1083,7 +1083,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(packet_dispatch W1 WE4013 tests/packet_dispatch_sinks.c CLIENT game/packet_dispatch.c
         game/packet_dispatch2.c)
     rage_test(packets CLIENT contents/byte_queue.c contents/rag_connection.c core/once_win32.c
-        route/delivery_route.c platform/clock_win32.c)
+        platform/clock_win32.c)
     rage_test(particle_draw CLIENT effects/ez2str_draw.c render/math3d.c)
     rage_test(particle_pools W1 CLIENT platform/clock_win32.c render/math3d.c render/rp_pool.c
         render/skin_layout.c std/container_memory.c std/string.c std/vec.c)

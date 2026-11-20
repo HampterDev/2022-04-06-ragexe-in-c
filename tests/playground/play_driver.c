@@ -9,10 +9,10 @@
    What travels through the delivery piece in the real thing travels through it here, with a
    wire between its two ends that can lose and repeat datagrams by a seed
    (tools/lossy_link/wire.h): what the client sends on the delivery channel, its requests, on
-   its way to the runner, and what of the server's the route table names
-   (route/delivery_route.h: the units' records and hits) on its way to the client. The wire
-   holds nothing back: how long the line is stays the runner's to say. On a wire that loses
-   nothing everything arrives in the frame it was sent, in the order it was sent.
+   its way to the runner, and what of the server's the catalog's routes name (delivery_route.h
+   of game/protocol: the units' records and hits) on its way to the client. The wire holds
+   nothing back: how long the line is stays the runner's to say. On a wire that loses nothing
+   everything arrives in the frame it was sent, in the order it was sent.
 
    Environment: RAGEXE_PLAY=<the runner's port>, and for the wire RAGEXE_PLAY_LOSS and
    RAGEXE_PLAY_REPEAT (datagrams of a hundred, each way) and RAGEXE_PLAY_SEED.
@@ -27,7 +27,7 @@
 #include "contents/sound.h"
 #include "core/packet_table.h"
 #include "delivery/delivery.h"
-#include "route/delivery_route.h"
+#include "delivery_route.h"
 #include "game/cells.h"
 #include "game/gamemode.h"
 #include "game/net_clock.h"
@@ -497,7 +497,7 @@ static void deliver(const unsigned char *bytes, size_t size)
 {
     while (size) {
         struct PacketLengthInfo info;
-        struct DeliveryRoute route;
+        struct protocol_delivery_route route;
         size_t length = size;
 
         if (size >= 2) {
@@ -509,7 +509,7 @@ static void deliver(const unsigned char *bytes, size_t size)
             if (length < 2 || length > size)
                 length = size;
         }
-        if (delivery_route(bytes, length, &route) && route.kind != DELIVERY_ORDERED
+        if (protocol_delivery_route(bytes, length, &route) && route.kind != DELIVERY_ORDERED
             && delivery_send(L.server, route.kind, route.key, route.from, route.priority, bytes, length)) {
             body_sent(bytes, length, platform_ticks_ms());
             line_run();

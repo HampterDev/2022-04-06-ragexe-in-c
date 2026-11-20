@@ -98,7 +98,7 @@ inside `play_driver.c`, with a wire between the piece's two ends:
 - what the client sends on the delivery channel (a move, an act, a skill, an intent, each with
   its stamp) goes through the client's end, the wire and the end the gateway holds, and the
   runner is told a request when that second end hands it on;
-- what the server sends that the route table names (`route/delivery_route.h`: the units'
+- what the server sends that the catalog's routes name (`game/protocol`: the units'
   records, the own body and hits) goes through the gateway's end, the wire and the client's end, and is given
   to the client when its end hands it on. The rest of what the server sends is given to the
   client as it comes, a packet at a time and in the order sent.

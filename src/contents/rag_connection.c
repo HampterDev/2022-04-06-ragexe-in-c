@@ -7,7 +7,7 @@
 
 #include "core/packet_table.h"
 #include "delivery/delivery.h"
-#include "route/delivery_route.h"
+#include "delivery_route.h"
 #include "diag/diag.h"
 #include "platform/clock.h"
 
@@ -106,18 +106,18 @@ static const unsigned short g_listsChannelIds[] = {
 int rag_connection_packet_channel(unsigned short id)
 {
     unsigned char head[2];
-    struct DeliveryRoute route;
+    struct protocol_delivery_route route;
     size_t i;
 
     /* a timed exchange that had to be resent would time the resend */
     if (id == CZ_REQUEST_TIME2)
         return PLATFORM_CHANNEL_NEWEST;
     /* what the player asks of the server, each with the stamp that goes out before it: the
-       table the gateway reads too (route/delivery_route.h), which needs no more than the
-       id of a request */
+       catalog's routes, which the gateway reads too (delivery_route.h of game/protocol), which
+       need no more than the id of a request */
     head[0] = (unsigned char)id;
     head[1] = (unsigned char)(id >> 8);
-    if (delivery_route(head, sizeof head, &route) && route.kind == DELIVERY_ORDERED)
+    if (protocol_delivery_route(head, sizeof head, &route) && route.kind == DELIVERY_ORDERED)
         return PLATFORM_CHANNEL_DELIVERY;
     for (i = 0; i < sizeof g_listsChannelIds / sizeof g_listsChannelIds[0]; i++)
         if (g_listsChannelIds[i] == id)

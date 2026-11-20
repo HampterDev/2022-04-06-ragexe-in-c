@@ -50,13 +50,18 @@ add_subdirectory(vendor)
 
 # The pieces of the game's C that the client shares with the server, from the set `game` (a
 # submodule): `rules` (the actor core, the path search, the records a viewer keeps and the predicted
-# actor) and `delivery`. `rules` links the C reading of `script-vm`, whose own tests need Node and
-# are left out; with BUILD_TESTING the other two register their own tests here, so they run on
-# every compiler the client is built with.
+# actor), `delivery`, and of `protocol` the table of which packets travel through the delivery piece
+# and how (`protocol_delivery_route`, made from its catalog). `rules` links the C reading of
+# `script-vm`. The tests of `script-vm` and `protocol` need Node and run in `game`; with
+# BUILD_TESTING `rules` and `delivery` register their own tests here, so they run on every compiler
+# the client is built with.
 add_subdirectory(game/script-vm)
 set(GAME_TESTS ${BUILD_TESTING})
 add_subdirectory(game/rules)
 add_subdirectory(game/delivery)
+set(GAME_TESTS OFF)
+# Only what links protocol_delivery_route builds anything of `protocol`.
+add_subdirectory(game/protocol EXCLUDE_FROM_ALL)
 
 function(rage_enable_assertions target)
     if(MSVC)

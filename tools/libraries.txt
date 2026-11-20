@@ -35,11 +35,10 @@
 
 library base
 note    Containers and strings (std/), JSON (json/), memory, UTF-8 and text formatting, XML, the
-        type queries (core/object_type.c), fatal errors, base.h and the Windows type names, and
-        the route table of what travels through the delivery piece (route/). Uses nothing else
-        of the client.
+        type queries (core/object_type.c), fatal errors, base.h and the Windows type names. Uses nothing
+        else of the client.
 uses
-paths   core/ route/
+paths   core/
         initializers/ json/ std/ actors/actor_ops.h actors/actor_states.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 

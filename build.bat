@@ -50,14 +50,15 @@ set VSCMD_SKIP_SENDTELEMETRY=1
 echo [1/3] Dependencies...
 call "%ROOT%vendor\build_vendor.bat"
 if errorlevel 1 ( echo *** VENDOR BUILD FAILED *** & exit /b 1 )
-REM The pieces of the set game the client shares with the server, rules (which links script-vm)
-REM and delivery, as their own CMakeLists.txt builds them, through the client's CMake tree.
+REM The pieces of the set game the client shares with the server, rules (which links script-vm),
+REM delivery and protocol's delivery routes, as their own CMakeLists.txt builds them, through the
+REM client's CMake tree.
 set "PIECES=%BUILD%\pieces"
 if not exist "%PIECES%\build.ninja" (
   cmake -S "%ROOT%." -B "%PIECES%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded >nul
   if errorlevel 1 ( echo *** PIECES CONFIGURE FAILED: is the submodule game checked out? *** & exit /b 1 )
 )
-cmake --build "%PIECES%" --target rules delivery script_vm
+cmake --build "%PIECES%" --target rules delivery script_vm protocol_delivery_route
 if errorlevel 1 ( echo *** PIECES BUILD FAILED *** & exit /b 1 )
 
 echo [2/3] Compiling...
@@ -77,7 +78,7 @@ for /r "%ROOT%src" %%f in (*.c) do (
 )
 >> "%BUILD%\sources.rsp" echo "%GEN%\effect_data_embedded.c"
 >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\effect_data_embedded.obj"
-set "INC=/I"%ROOT%src" /I"%ROOT%game\rules" /I"%ROOT%game\delivery" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\stb" /I"%ROOT%vendor\cgltf" /I"%ROOT%vendor\dr_libs" /I"%ROOT%vendor\enet-1.3.18\include" /I"%VDIR%\sdl3-src\include" /I"%VDIR%\freetype-src\include" /DDR_MP3_NO_STDIO"
+set "INC=/I"%ROOT%src" /I"%ROOT%game\rules" /I"%ROOT%game\delivery" /I"%ROOT%game\protocol\codec" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\stb" /I"%ROOT%vendor\cgltf" /I"%ROOT%vendor\dr_libs" /I"%ROOT%vendor\enet-1.3.18\include" /I"%VDIR%\sdl3-src\include" /I"%VDIR%\freetype-src\include" /DDR_MP3_NO_STDIO"
 cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MT /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources.rsp" /Fo:"%OBJ%\\"
 if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )
 if defined LIBS (
@@ -98,6 +99,7 @@ if defined LIBS (
 >> "%BUILD%\%OUT%.objs.rsp" echo "%PIECES%\game\rules\rules.lib"
 >> "%BUILD%\%OUT%.objs.rsp" echo "%PIECES%\game\delivery\delivery.lib"
 >> "%BUILD%\%OUT%.objs.rsp" echo "%PIECES%\game\script-vm\script_vm.lib"
+>> "%BUILD%\%OUT%.objs.rsp" echo "%PIECES%\game\protocol\protocol_delivery_route.lib"
 
 echo [3/3] Linking...
 set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib ws2_32.lib winmm.lib imm32.lib ole32.lib uuid.lib"
