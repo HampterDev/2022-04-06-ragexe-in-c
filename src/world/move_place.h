@@ -23,4 +23,15 @@ struct MovePlace {
 
 void move_place(const struct MoveRecord *record, uint32_t tick, struct MovePlace *place);
 
+/* The drawn point follows the place (plans/drawn-place.md, part 2): one step a frame toward
+ * (to_x, to_y), of at most `real_ms`, the real time since the last frame, at 13/10 of
+ * `ms_per_cell`; `ms_per_cell` 0 takes it at once, and so is a gap of more than
+ * MOVE_FOLLOW_JUMP_CELLS. (x, y) and the place are in 256ths of a cell. Returns whether the
+ * point moved. */
+#define MOVE_FOLLOW_RATE_NUM 13
+#define MOVE_FOLLOW_RATE_DEN 10
+#define MOVE_FOLLOW_JUMP_CELLS 4
+
+int move_follow(int32_t *x, int32_t *y, int32_t to_x, int32_t to_y, uint32_t real_ms, uint32_t ms_per_cell);
+
 #endif

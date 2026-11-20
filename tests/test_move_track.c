@@ -363,50 +363,6 @@ static void revisions_may_wrap(void)
     assert(!move_track_file(&track, &floors, &a));
 }
 
-/* A record without steps: what it asks of an actor drawn on (drawn_x, drawn_y). */
-static int stand(int cause, int drawn_x, int drawn_y, int walking, int held)
-{
-    struct MoveRecord record = at(1000);
-    struct MoveStandAsk ask;
-
-    record.x = 150;
-    record.y = 160;
-    record.cause = (unsigned char)cause;
-    ask.drawn_x = drawn_x;
-    ask.drawn_y = drawn_y;
-    ask.walking = walking;
-    ask.held = held;
-    ask.jump_cells = 4;
-    return move_record_stand(&record, &ask);
-}
-
-static void a_standing_record_is_walked_to_or_set(void)
-{
-    int held;
-
-    for (held = 0; held < 2; held++) {
-        /* pushed or placed: set, wherever the actor is and whatever it does */
-        assert(stand(MOVE_CAUSE_PUSHED, 150, 160, 0, held) == MOVE_STAND_SET);
-        assert(stand(MOVE_CAUSE_PLACED, 151, 160, 1, held) == MOVE_STAND_SET);
-        /* standing on the cell: left as it is */
-        assert(stand(MOVE_CAUSE_WALKED, 150, 160, 0, held) == MOVE_STAND_LEAVE);
-        /* on another cell, standing or walking, towards it or not: it walks there */
-        assert(stand(MOVE_CAUSE_WALKED, 149, 161, 0, held) == MOVE_STAND_WALK);
-        assert(stand(MOVE_CAUSE_WALKED, 149, 161, 1, held) == MOVE_STAND_WALK);
-        /* up to the cells a steered walk closes, either way and on either axis; further it is set */
-        assert(stand(MOVE_CAUSE_WALKED, 154, 156, 1, held) == MOVE_STAND_WALK);
-        assert(stand(MOVE_CAUSE_WALKED, 146, 164, 0, held) == MOVE_STAND_WALK);
-        assert(stand(MOVE_CAUSE_WALKED, 155, 160, 1, held) == MOVE_STAND_SET);
-        assert(stand(MOVE_CAUSE_WALKED, 145, 160, 0, held) == MOVE_STAND_SET);
-        assert(stand(MOVE_CAUSE_WALKED, 150, 165, 0, held) == MOVE_STAND_SET);
-        assert(stand(MOVE_CAUSE_WALKED, 150, 155, 1, held) == MOVE_STAND_SET);
-    }
-    /* walking and on the cell: the walk ends on the cell's middle */
-    assert(stand(MOVE_CAUSE_WALKED, 150, 160, 1, 0) == MOVE_STAND_FINISH);
-    /* held there, it stops where it is drawn: not moved to the middle, which would be a jump */
-    assert(stand(MOVE_CAUSE_WALKED, 150, 160, 1, 1) == MOVE_STAND_HALT);
-}
-
 /* A record that waits for its tick will move an actor that stands, unless it only says the
    actor stands where it is drawn. */
 static void a_record_that_waits_will_move_the_actor_or_not(void)
@@ -463,7 +419,6 @@ int main(void)
     a_record_twice_or_overtaken_is_dropped();
     what_was_played_is_a_floor();
     revisions_may_wrap();
-    a_standing_record_is_walked_to_or_set();
     puts("move_track: ok");
     return 0;
 }

@@ -149,12 +149,125 @@ static void any_order_and_no_faster_than_the_walk(void)
     }
 }
 
+static int32_t abs32(int32_t v)
+{
+    return v < 0 ? -v : v;
+}
+
+/* The longest a frame's step may be: `real_ms` at 13/10 of `ms_per_cell`, in 256ths, and a 256th
+   for the rounding. */
+static int32_t bound(uint32_t real_ms, uint32_t ms_per_cell)
+{
+    return (int32_t)(real_ms * 256u * 13u / (ms_per_cell * 10u)) + 1;
+}
+
+/* plans/drawn-place.md, check 2: from any drawn point and any sequence of records, no frame's step
+   is longer than the bound unless the gap is over four cells, which is taken at once; and once
+   there is no news, the drawn point is on the place by the time the gap at 13/10 of the speed
+   takes, and a frame more. Records come at random frames: walks and stops, each a newer place
+   than the last, as a track hands them over in any order of their filing. */
+static void the_drawn_point_arrives(void)
+{
+    int n;
+
+    for (n = 0; n < 3000; n++) {
+        struct MoveRecord record;
+        struct MovePlace place;
+        uint32_t speed = 80 + next() % 420, tick = 0x7fff0000u + next() % 1000, quiet_from = 0;
+        int32_t x = (int32_t)(next() % (16 * 256)) + 92 * 256, y = (int32_t)(next() % (16 * 256)) + 92 * 256;
+        int frame, news = (int)(next() % 6), arrived = 0;
+
+        walk(&record, tick, (int)(next() % 6), 1 + next() % speed, speed);
+        for (frame = 0; frame < 4000 && !arrived; frame++) {
+            uint32_t real = 1 + next() % 60;
+            int32_t was_x = x, was_y = y, gap_x, gap_y;
+
+            tick += real;
+            if (news > 0 && next() % 40 == 0) {
+                news--;
+                walk(&record, tick - next() % 300, (int)(next() % 6), 1 + next() % speed, speed);
+                record.x = 95 + (int)(next() % 10);
+                record.y = 95 + (int)(next() % 10);
+                quiet_from = 0;
+            }
+            move_place(&record, tick, &place);
+            gap_x = place.x - x;
+            gap_y = place.y - y;
+            move_follow(&x, &y, place.x, place.y, real, speed);
+            /* more than four cells, straight-line: taken at once */
+            if ((double)gap_x * gap_x + (double)gap_y * gap_y > 4.0 * 256 * 4.0 * 256)
+                assert(x == place.x && y == place.y);
+            else
+                assert(abs32(x - was_x) <= bound(real, speed) && abs32(y - was_y) <= bound(real, speed));
+            /* no news and the walk over: the place rests */
+            if (news == 0 && !place.moving) {
+                if (!quiet_from) {
+                    int32_t gap = abs32(gap_x) > abs32(gap_y) ? abs32(gap_x) : abs32(gap_y);
+
+                    /* the time the gap takes, by its longer axis at worst 1.42 times that */
+                    quiet_from = tick + (uint32_t)gap * speed * 10u * 142u / (256u * 13u * 100u) + 61u;
+                }
+                if (x == place.x && y == place.y)
+                    arrived = 1;
+                else
+                    assert((int32_t)(tick - quiet_from) < 0);
+            } else {
+                quiet_from = 0;
+            }
+        }
+        assert(arrived);
+    }
+}
+
+/* The cases the playground found before the place: a monster whose walk a hit and its swing cut
+   between two cells, left 0.47 cells off the cell of the stop that came then; the own character
+   0.35 cells off its cell on both axes after its swing cut its walk. Whatever the actor does, the
+   drawn point follows the stop's place and is on its cell's middle in the time the gap takes. */
+static void a_walk_cut_between_two_cells_ends_on_the_stops_middle(void)
+{
+    static const int32_t starts[2][2] = { { 151 * 256, 187 * 256 + 120 }, { 156 * 256 + 90, 177 * 256 + 90 } };
+    static const int cells[2][2] = { { 151, 187 }, { 156, 177 } };
+    int n;
+
+    for (n = 0; n < 2; n++) {
+        struct MoveRecord stop;
+        struct MovePlace place;
+        int32_t x = starts[n][0], y = starts[n][1];
+        uint32_t t;
+
+        memset(&stop, 0, sizeof stop);
+        stop.at_tick = 5000;
+        stop.x = cells[n][0];
+        stop.y = cells[n][1];
+        for (t = 5000; t < 5000 + 120; t += 16) {
+            move_place(&stop, t, &place);
+            move_follow(&x, &y, place.x, place.y, 16, 150);
+        }
+        assert(x == stop.x * 256 && y == stop.y * 256);
+    }
+}
+
+/* A placing is taken at once, and a point on its place stays put. */
+static void a_placing_is_taken_at_once(void)
+{
+    int32_t x = 10 * 256, y = 10 * 256;
+
+    assert(move_follow(&x, &y, 12 * 256 + 3, 9 * 256, 1, 0) && x == 12 * 256 + 3 && y == 9 * 256);
+    assert(!move_follow(&x, &y, x, y, 50, 150));
+    /* a frame too short to move a 256th leaves it */
+    x = 10 * 256;
+    assert(!move_follow(&x, &y, 11 * 256, 9 * 256, 0, 150) && x == 10 * 256);
+}
+
 int main(void)
 {
     a_record_without_steps_is_its_cells_middle();
     a_walk_is_on_its_lines_by_its_steps_times();
     the_core_enters_each_cell_when_the_place_is_on_its_middle();
     any_order_and_no_faster_than_the_walk();
+    the_drawn_point_arrives();
+    a_placing_is_taken_at_once();
+    a_walk_cut_between_two_cells_ends_on_the_stops_middle();
     puts("move_place: ok");
     return 0;
 }

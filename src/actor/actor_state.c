@@ -12,8 +12,10 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "world/world.h"
-#include "std/walk_steer.h"
 #include "world/move_track.h"
+#include "world/move_place.h"
+#include "actor/actor_states.h"
+#include <string.h>
 #include "world/pathfinder_state.h"
 #include <stdint.h>
 #include "platform/clock.h"
@@ -77,133 +79,109 @@ static void pet_idle_emotion(struct GameActor *self, struct GameMode *mode)
     self->pet_emotion_tick = 0;
 }
 
-/* A steered walk is joined at no more than 13/10 of the walk speed, the rate a walk that arrives
-   late is replayed at (game_actor_find_path). A gap of more than four cells is not walked off. */
-#define STEER_RATE_NUM      13
-#define STEER_RATE_DEN      10
-#define STEER_JUMP_CELLS    4
+/* A push is joined over the original's slide time (plans/drawn-place.md, part 4). */
+#define FOLLOW_PUSH_MS      200
 
-/* A walk the server timed is steered, never set: a walk from a record (plans/core-loop.md),
-   the player's own from the predicted world among them (plans/predicted-world.md). The walking state moves an
-   actor from where it stands to the next cell of its path so that it is there at the cell's
-   time. When such a walk replaces the one under way and the two differ, or arrives late, that
-   cell can be a cell or two away and due in a moment, which showed as a dash. Here the frame's
-   step, already taken into `self->pos`, is cut to what the walk speed allows; the actor then
-   runs behind its path and closes the gap over the next cells. `overdue`: the path's last cell
-   is due, so that cell is where the actor belongs. Returns whether the step was cut. */
-static int steer_walk(struct GameActor *self, const struct World *world, const Vec3 *from, float to_x,
-                      float to_z, int done, int overdue)
+/* The world point of a place in 256ths of a cell, a cell's middle at a whole multiple of 256,
+   and back. */
+static void place_to_world(struct GameMode *mode, int32_t px, int32_t py, float *x, float *z)
 {
-    float zoom = (float)world->attr->zoom;
+    float zoom = (float)mode->world->attr->zoom, ox, oz;
+
+    game_mode_cell_to_world(mode, 0, 0, &ox, &oz);
+    *x = ox + zoom * (float)px / (float)MOVE_PLACE_CELL;
+    *z = oz + zoom * (float)py / (float)MOVE_PLACE_CELL;
+}
+
+static void world_to_place(struct GameMode *mode, float x, float z, int32_t *px, int32_t *py)
+{
+    float zoom = (float)mode->world->attr->zoom, ox, oz, fx, fz;
+
+    game_mode_cell_to_world(mode, 0, 0, &ox, &oz);
+    fx = (x - ox) * (float)MOVE_PLACE_CELL / zoom;
+    fz = (z - oz) * (float)MOVE_PLACE_CELL / zoom;
+    *px = (int32_t)(fx < 0.0f ? fx - 0.5f : fx + 0.5f);
+    *py = (int32_t)(fz < 0.0f ? fz - 0.5f : fz + 0.5f);
+}
+
+/* The actor's walk speed, ms a cell. */
+static int walk_ms(const struct GameActor *self, const struct World *world)
+{
     int own = self == (struct GameActor *)world->player ? g_session1.walkSpeed : self->walk_speed;
-    int speed = own > 0 ? own : 150;
-    float reach = zoom * (float)done * STEER_RATE_NUM / (float)(speed * STEER_RATE_DEN);
 
-    return walk_steer(from->x, from->z, overdue ? to_x : self->pos.x, overdue ? to_z : self->pos.z, reach,
-                      zoom * STEER_JUMP_CELLS, &self->pos.x, &self->pos.z);
+    return own > 0 ? own : 150;
 }
 
-#define ACTOR_MSG_MOVE  0
-#define ACTOR_MSG_STOP  0x13
-
-/* Puts a record of the move track into effect (plans/core-loop.md). With steps it is the walk
-   the server timed, drawn on its cells: one whose first step has not started (a hit delayed it)
-   leaves the actor standing where it is until then. Without steps the actor is on the record's
-   cell, and move_record_stand says what that asks of it: nothing of one that stands there, in
-   the middle of a swing or a flinch too; a walk that ends on the cell it is on, which is a
-   path of that one cell (the search has none from a cell to itself), or for an actor that is
-   held a stop where it is drawn; a walk there from
-   another cell, started without the place a hit left for the actor to be set to (the `snap`
-   of actor_set_state), so that it is steered; or being set there as the stop packet sets it.
-   The player's own character has its records from the predicted world (game/own_body.c),
-   everyone else from the server; the same holds for both. */
-static void apply_move_record(struct GameActor *self, struct GameMode *mode, const struct MoveRecord *record,
-                              unsigned now)
+void game_actor_set_place(struct GameActor *self, const struct MoveRecord *record)
 {
-    self->track_waiting = 0;
-    if (!record->steps) {
-        struct MoveStandAsk ask;
-        struct ActorMove move;
+    struct GameMode *mode = game_current_mode();
+    struct MoveCell cells[MOVE_TRACK_STEPS + 1];
+    int count = move_record_cells(record, cells);
+    struct MovePlace now;
+    int32_t px, py, dx, dy, gap;
 
-        game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &move.src_x, &move.src_y, &move.sub_x,
-                                    &move.sub_y);
-        ask.drawn_x = move.src_x;
-        ask.drawn_y = move.src_y;
-        ask.walking = self->state == 1;
-        ask.held = self->motion_held || self->glide || self->body_relocation;
-        ask.jump_cells = STEER_JUMP_CELLS;
-        switch (move_record_stand(record, &ask)) {
-        case MOVE_STAND_SET:
-            render_object_send(self, NULL, ACTOR_MSG_STOP, record->x, record->y, 0, record->dir);
-            break;
-        case MOVE_STAND_FINISH:
-            if (path_finder_record_path(&g_pathFinder, record, &self->path)) {
-                self->path_start = self->path.cells[0].time;
-                self->cell_x = record->x;
-                self->cell_y = record->y;
-                self->path_cell = 0;
-                self->steered = 1;
-            }
-            break;
-        case MOVE_STAND_HALT:
-            actor_set_state(self, 0, 1);
-            break;
-        case MOVE_STAND_WALK:
-            move.start_tick = now;
-            move.dst_x = record->x;
-            move.dst_y = record->y;
-            render_object_send(self, NULL, ACTOR_MSG_MOVE, (intptr_t)&move, 0, 0, 0);
-            self->steered = self->state == 1;
-            break;
-        default:
-            break;
-        }
-        return;
-    }
-    if (!path_finder_record_path(&g_pathFinder, record, &self->path))
-        return;
-    if (record->speed_ms)
+    self->place = *record;
+    self->has_place = 1;
+    self->cell_x = cells[count - 1].x;
+    self->cell_y = cells[count - 1].y;
+    if (record->steps && record->speed_ms && record->cause == MOVE_CAUSE_WALKED)
         self->walk_speed = (int)record->speed_ms;
-    self->path_start = self->path.cells[0].time;
-    self->cell_x = self->path.cells[self->path.count - 1].x;
-    self->cell_y = self->path.cells[self->path.count - 1].y;
-    if ((int)(self->path.cells[0].time - now) > 0) {
-        self->track_go = self->path.cells[0].time;
-        self->track_waiting = 1;
-        if (self->state == 1)
-            actor_set_state(self, 0, 0);
-        return;
+    /* how the drawn point joins it: a walk, a stop and a correction are walked off; a push slides
+       over its own short time; a placing is taken at once */
+    self->place_ms = walk_ms(self, mode->world);
+    if (record->cause == MOVE_CAUSE_PLACED) {
+        self->place_ms = 0;
+    } else if (record->cause == MOVE_CAUSE_PUSHED) {
+        move_place(record, game_actor_walk_time(self), &now);
+        world_to_place(mode, self->pos.x, self->pos.z, &px, &py);
+        dx = now.x - px;
+        dy = now.y - py;
+        dx = dx < 0 ? -dx : dx;
+        dy = dy < 0 ? -dy : dy;
+        gap = dx > dy ? dx : dy;
+        /* ms a cell such that 13/10 of it covers the gap in the slide's time */
+        self->place_ms = gap > MOVE_PLACE_CELL / 16
+                             ? FOLLOW_PUSH_MS * MOVE_PLACE_CELL * MOVE_FOLLOW_RATE_NUM / (gap * MOVE_FOLLOW_RATE_DEN)
+                             : FOLLOW_PUSH_MS;
+        if (self->place_ms < 1)
+            self->place_ms = 1;
     }
-    actor_set_state(self, 1, 0);
-    self->path_cell = 0;
-    self->steered = 1;
 }
 
-/* Plays the actor's move track at the render clock: the record whose tick has come, and the
-   start of a walk that waited for its first step. The wait ends without a walk when something
-   else has given the actor another path since (a slide or a knockback, which are not records
-   yet). */
-static void play_move_track(struct GameActor *self, struct GameMode *mode, unsigned now)
+int game_actor_walk_record(struct GameActor *self, int src_x, int src_y, int sub_x, int sub_y, int dst_x, int dst_y,
+                           int speed_ms, int cause, unsigned start)
 {
+    /* the server's direction codes: 0 north (y + 1), then counter-clockwise */
+    static const signed char dir_x[8] = { 0, -1, -1, -1, 0, 1, 1, 1 };
+    static const signed char dir_y[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
     struct MoveRecord record;
-    struct ViewUnit *unit = view_floors_unit(&mode->view_floors, (uint32_t)self->aid);
+    size_t i;
+    int dir;
 
-    if (unit && move_track_take(&self->move_track, &unit->floors, now, &record))
-        apply_move_record(self, mode, &record, now);
-    if (self->track_waiting && (int)(now - self->track_go) >= 0) {
-        self->track_waiting = 0;
-        if (self->path_start != self->track_go || !self->path.count)
-            return;
-        actor_set_state(self, 1, 0);
-        self->path_cell = 0;
-        self->steered = 1;
+    self->path_start = start;
+    if (!game_actor_find_path(self, src_x, src_y, sub_x, sub_y, dst_x, dst_y, speed_ms) || !self->path.count)
+        return 0;
+    memset(&record, 0, sizeof record);
+    record.at_tick = self->path.cells[0].time;
+    record.x = self->path.cells[0].x;
+    record.y = self->path.cells[0].y;
+    record.speed_ms = (unsigned)speed_ms;
+    record.cause = (unsigned char)cause;
+    for (i = 1; i < self->path.count && record.steps < MOVE_TRACK_STEPS; i++) {
+        for (dir = 0; dir < 8; dir++)
+            if (self->path.cells[i].x - self->path.cells[i - 1].x == dir_x[dir]
+                && self->path.cells[i].y - self->path.cells[i - 1].y == dir_y[dir])
+                break;
+        if (dir == 8)
+            break;
+        record.path[record.steps++] = (unsigned char)dir;
     }
-}
-
-void game_actor_play_move_track(struct GameActor *self)
-{
-    if (self->move_track.count || self->track_waiting)
-        play_move_track(self, game_current_mode(), game_actor_walk_time(self));
+    if (record.steps) {
+        record.land_ms = self->path.cells[1].time - self->path.cells[0].time;
+        record.dir = record.path[0];
+    }
+    game_actor_set_place(self, &record);
+    return 1;
 }
 
 unsigned game_actor_walk_time(struct GameActor *self)
@@ -217,12 +195,93 @@ unsigned game_actor_walk_time(struct GameActor *self)
     return session_get_server_time(&g_session1);
 }
 
+int game_actor_on_place(struct GameActor *self)
+{
+    struct GameMode *mode = game_current_mode();
+    struct MovePlace place;
+    int32_t px, py;
+
+    if (!self->has_place)
+        return 1;
+    move_place(&self->place, game_actor_walk_time(self), &place);
+    world_to_place(mode, self->pos.x, self->pos.z, &px, &py);
+    return px == place.x && py == place.y;
+}
+
+int game_actor_play_place(struct GameActor *self)
+{
+    struct GameMode *mode = game_current_mode();
+    struct World *world = mode->world;
+    struct MovePlace place;
+    Vec3 from = self->pos;
+    unsigned real = platform_ticks_ms();
+    int since = (int)(real - self->place_real), moved, cell_was_x, cell_was_y, cell_x, cell_y;
+    int32_t px, py;
+    float dx, dz;
+
+    self->place_real = real;
+    if (self->move_track.count) {
+        struct ViewUnit *unit = view_floors_unit(&mode->view_floors, (uint32_t)self->aid);
+        struct MoveRecord record;
+
+        if (unit && move_track_take(&self->move_track, &unit->floors, game_actor_walk_time(self), &record))
+            game_actor_set_place(self, &record);
+    }
+    if (!self->has_place)
+        return 0;
+    move_place(&self->place, game_actor_walk_time(self), &place);
+    world_to_place(mode, self->pos.x, self->pos.z, &px, &py);
+    cell_was_x = (px + MOVE_PLACE_CELL / 2) >> 8;
+    cell_was_y = (py + MOVE_PLACE_CELL / 2) >> 8;
+    moved = move_follow(&px, &py, place.x, place.y, since < 0 ? 0u : (uint32_t)since, (uint32_t)self->place_ms);
+    if (moved) {
+        place_to_world(mode, px, py, &self->pos.x, &self->pos.z);
+        self->pos.y = c3d_attr_get_height(world->attr, self->pos.x, self->pos.z);
+        dx = self->pos.x - from.x;
+        dz = self->pos.z - from.z;
+        self->walked = self->walked + float_sqrt(dx * dx + dz * dz);
+        cell_x = (px + MOVE_PLACE_CELL / 2) >> 8;
+        cell_y = (py + MOVE_PLACE_CELL / 2) >> 8;
+        if (cell_x != cell_was_x || cell_y != cell_was_y)
+            game_actor_report_guild_member_place(self, &self->pos.x, &self->pos.z);
+    } else {
+        dx = dz = 0.0f;
+    }
+    /* the state chooses the animation from the place and the drawn point (part 3) */
+    if (self->state == ACTOR_STATE_STAND && moved && !self->glide) {
+        actor_set_state(self, ACTOR_STATE_WALKING, 0);
+    } else if (self->state == ACTOR_STATE_WALKING && !place.moving && px == place.x && py == place.y) {
+        actor_set_state(self, ACTOR_STATE_STAND, 1);
+        self->glide = 0;
+        self->motion_held = 0;
+        if (self->body_relocation) {
+            self->body_relocation = 0;
+            render_object_play_motion_range((struct RenderObject *)self, 0x60, 2, 2, 0x60, 2, 1, 0xbb8, 0);
+        }
+        follow_set_times(0, 0);
+    }
+    if (self->state == ACTOR_STATE_WALKING && !self->glide) {
+        if (moved) {
+            double fx = (double)dx, fz = (double)-dz;
+            float roty = (float)atan2(fx, fz) / 3.141592f * 180.0f;
+
+            if (roty >= 360.0f)
+                roty -= 360.0f;
+            if (0.0f > roty)
+                roty += 360.0f;
+            self->roty = roty;
+        }
+        self->action = game_actor_dir_of((struct GameObject *)self, self->roty) + self->base_action;
+        actor_walk_motion(self);
+    }
+    return moved;
+}
+
 unsigned char game_actor_process_state(struct GameActor * self)
 {
     struct GameMode *mode;
     struct World *world;
-    unsigned server_now;
-    int moved = 0;
+    int moved;
 
     if (self->motion_hold_until && platform_ticks_ms() > self->motion_hold_until) {
         self->motion_held = 0;
@@ -232,8 +291,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
         return 0;
     mode = game_current_mode();
     world = mode->world;
-    game_actor_play_move_track(self);
-    server_now = game_actor_walk_time(self);
+    moved = game_actor_play_place(self);
 
     switch (self->state) {
     case 0x00:
@@ -244,92 +302,9 @@ unsigned char game_actor_process_state(struct GameActor * self)
         render_object_update_motion((struct RenderObject *)self);
         break;
 
-    case 0x01: {
-        Vec3 from;
-        int prev_cell, span, done, cut = 0;
-        uint32_t deadline;
-        float cell_x, cell_y, to_x, to_z, roty;
-
-        if (!self->path.count)
-            break;
-        from = self->pos;
-        prev_cell = self->path_cell;
-        self->path_cell = path_info_next_cell(&self->path, server_now, &deadline, &cell_x, &cell_y);
-        game_mode_cell_to_world(mode, (int)cell_x, (int)cell_y, &to_x, &to_z);
-        span = (int)(deadline - self->process_server_time);
-        done = (int)(server_now - self->process_server_time);
-        if (span < 0)
-            span = 0;
-        if (done < 0)
-            done = 0;
-        if (span > 0 && done > 0) {
-            float t = (float)done / (float)span;
-
-            moved = 1;
-            self->pos.x = (to_x - from.x) * t + from.x;
-            self->pos.z = (to_z - from.z) * t + from.z;
-        }
-        if (self->steered && !self->glide && !self->motion_held && !self->body_relocation) {
-            /* a clock that stepped forward (the own clock when its lead grows) is steered at the
-               time that passed */
-            cut = steer_walk(self, world, &from, to_x, to_z,
-                             walk_steer_ms(done, (int)(platform_ticks_ms() - self->process_tick)),
-                             self->path_cell == -1 && server_now >= deadline);
-            if (from.x != self->pos.x || from.z != self->pos.z)
-                moved = 1;
-        }
-        if (!self->glide) {
-            if (from.x == self->pos.x && from.z == self->pos.z) {
-                roty = self->roty;
-            } else {
-                double dx = (double)(self->pos.x - from.x);
-                double dz = (double)-(self->pos.z - from.z);
-
-                roty = (float)atan2(dx, dz) / 3.141592f * 180.0f;
-                if (roty >= 360.0f)
-                    roty -= 360.0f;
-                if (0.0f > roty)
-                    roty += 360.0f;
-                self->roty = roty;
-            }
-            self->action = game_actor_dir_of((struct GameObject *)self, roty)
-                           + self->base_action;
-        }
-        {
-            float dx = self->pos.x - from.x, dz = self->pos.z - from.z;
-
-            self->walked = self->walked + float_sqrt(dx * dx + dz * dz);
-        }
-        if (!self->glide)
-            actor_walk_motion(self);
-        /* a steered character that is not at the last cell yet walks on to it */
-        if (self->path_cell == -1 && server_now >= deadline && !cut) {
-            self->pos.x = to_x;
-            self->pos.z = to_z;
-            moved = 1;
-            game_actor_report_guild_member_place(self, &self->pos.x, &self->pos.z);
-            actor_set_state(self, 0, 1);
-            self->glide = 0;
-            self->motion_held = 0;
-            if (self->body_relocation) {
-                self->body_relocation = 0;
-                render_object_play_motion_range((struct RenderObject *)self, 0x60, 2, 2, 0x60, 2, 1, 0xbb8, 0);
-            }
-            follow_set_times(0, 0);
-            break;
-        }
-        if (prev_cell != self->path_cell) {
-            int cx = 0, cy = 0;
-
-            if (path_info_get_cell(&self->path, prev_cell, &cx, &cy)) {
-                float wx = 0.0f, wz = 0.0f;
-
-                game_mode_cell_to_world(mode, cx, cy, &wx, &wz);
-                game_actor_report_guild_member_place(self, &wx, &wz);
-            }
-        }
+    case 0x01:
+        /* the walk is drawn by the place it follows (game_actor_play_place) */
         break;
-    }
 
     case 0x05: case 0x07: case 0x2d:
         self->casting = 0;
@@ -361,35 +336,13 @@ unsigned char game_actor_process_state(struct GameActor * self)
         }
         break;
 
-    case 0x04: {
-        Vec3 from;
-        float dx, dz;
-        unsigned left;
-        int since;
-
+    case 0x04:
+        /* a flinch holds nothing: the place moves the actor under it, a push included */
         self->casting = 0;
         render_object_update_motion((struct RenderObject *)self);
-        from = self->pos;
-        dx = self->slide_x - self->pos.x;
-        dz = self->slide_z - self->pos.z;
-        left = self->start_tick - platform_ticks_ms() + 200;
-        since = (int)(platform_ticks_ms() - self->process_tick);
-        if (left) {
-            float s = (float)(since < 0 ? 0 : since);
-            float total = (float)left;
-
-            moved = 1;
-            self->pos.x = dx * s / total + from.x;
-            self->pos.z = dz * s / total + from.z;
-        }
-        if (self->motion_finished) {
-            self->pos.x = self->slide_x;
-            self->pos.z = self->slide_z;
-            moved = 1;
+        if (self->motion_finished)
             actor_set_state(self, 0, 1);
-        }
         break;
-    }
 
     case 0x08: {
         int frames;
@@ -447,7 +400,6 @@ unsigned char game_actor_process_state(struct GameActor * self)
     }
 
     self->process_tick = platform_ticks_ms();
-    self->process_server_time = server_now;
     if (moved)
         self->pos.y = c3d_attr_get_height(world->attr, self->pos.x, self->pos.z);
     return 1;
@@ -512,13 +464,6 @@ void game_actor_set_state(struct GameActor * self, int state, unsigned char snap
     if (self->state == 3 || self->state_locked || state == -1)
         return;
     mode = game_current_mode();
-    if (state != 1)
-        self->steered = 0;
-    if (self->state == 4 && snap == 1) {
-        self->pos.x = self->slide_x;
-        self->pos.z = self->slide_z;
-        self->pos.y = c3d_attr_get_height(mode->world->attr, self->slide_x, self->slide_z);
-    }
     aid = self->aid;
     member = g_session1.ownAid != aid && game_actor_get_guild_id(self) >= 1
              && session_is_player_job(&g_session1, game_actor_get_job(self));

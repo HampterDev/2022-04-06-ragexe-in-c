@@ -27,6 +27,8 @@
 #include "ui/shops/shops.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "platform/clock.h"
+#include "world/move_track.h"
+#include <string.h>
 
 
 static struct RagEffect *sm_launch(struct GameActor *self, int effect)
@@ -68,6 +70,20 @@ static int sm_is_monster_job(int job)
     return job >= 0x2d && job < 0x3e8;
 }
 
+/* A record without steps on (x, y) from the actor's clock now, by `cause`: a place a packet of
+   the original's gave without a record (plans/drawn-place.md, part 4). */
+static void sm_stand_record(struct GameActor *self, int x, int y, int cause)
+{
+    struct MoveRecord record;
+
+    memset(&record, 0, sizeof record);
+    record.at_tick = game_actor_walk_time(self);
+    record.x = x;
+    record.y = y;
+    record.cause = (unsigned char)cause;
+    game_actor_set_place(self, &record);
+}
+
 static void sm_hit_tail(struct GameActor *self)
 {
     if (self->dies_after_hits && self->hit_queue.size <= 1)
@@ -88,12 +104,9 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
     long long weapon = -1;
     unsigned char heal = 0;
 
-    if (info->cell_x != -1 && info->cell_y != -1) {
-        game_mode_cell_to_world(mode, info->cell_x, info->cell_y, &self->slide_x, &self->slide_z);
-    } else {
-        self->slide_x = self->pos.x;
-        self->slide_z = self->pos.z;
-    }
+    /* a hit onto a cell pushes the actor there */
+    if (info->cell_x != -1 && info->cell_y != -1)
+        sm_stand_record(self, info->cell_x, info->cell_y, MOVE_CAUSE_PUSHED);
     job = game_actor_get_job(self);
     if (g_session1.ownAid == src)
         attacker = (struct GameActor *)world->player;
@@ -366,21 +379,15 @@ static int sm_kind_has_owner(const struct GameActor *self)
 
 static int sm_walk(struct GameActor *self, const struct ActorMoveEntryInfo *info)
 {
-    if (!game_actor_find_path(self, info->src_x, info->src_y, info->sub_x, info->sub_y, info->dst_x, info->dst_y,
-                             info->speed))
-        return 0;
-    self->cell_x = info->dst_x;
-    self->cell_y = info->dst_y;
-    actor_set_state(self, 1, 1);
-    self->path_cell = 0;
-    return 1;
+    return game_actor_walk_record(self, info->src_x, info->src_y, info->sub_x, info->sub_y, info->dst_x, info->dst_y,
+                                  info->speed, MOVE_CAUSE_WALKED, info->move_start_time);
 }
 
+/* An entry's cell is the actor's place, taken at once. */
 static void sm_place(struct GameActor *self, struct GameMode *mode, const struct ActorEntryInfo *info)
 {
-    game_mode_cell_to_world(mode, info->x, info->y, &self->pos.x, &self->pos.z);
-    self->pos.y = c3d_attr_get_height(mode->world->attr, self->pos.x,
-                                     self->pos.z);
+    (void)mode;
+    sm_stand_record(self, info->x, info->y, MOVE_CAUSE_PLACED);
 }
 
 static void sm_appear_fields(struct GameActor *self, const struct ActorEntryInfo *info)
@@ -442,24 +449,14 @@ static void sm_moving_fields(struct GameActor *self, struct ActorMoveEntryInfo *
 
 static void sm_moving_new(struct GameActor *self, struct ActorMoveEntryInfo *info)
 {
-    struct GameMode *mode;
-    struct C3dAttr *attr;
-
     if (sm_kind_has_owner(self))
         self->owner_aid = info->char_id;
     self->aid = info->aid;
     sm_moving_fields(self, info);
     self->walk_speed = info->speed;
-    self->path_start = info->move_start_time;
-    mode = game_current_mode();
-    game_mode_cell_to_world(mode, info->src_x, info->src_y, &self->pos.x, &self->pos.z);
-    attr = mode->world->attr;
-    self->pos.x = (float)attr->zoom * 0.0625f * (float)(info->sub_x - 8) + self->pos.x;
-    attr = mode->world->attr;
-    self->pos.z = (float)attr->zoom * 0.0625f * (float)(info->sub_y - 8) + self->pos.z;
-    self->pos.y = c3d_attr_get_height(mode->world->attr, self->pos.x, self->pos.z);
-    if (!sm_walk(self, info))
-        actor_set_state(self, 0, 1);
+    /* it appears where its walk is: the walk's record is taken at once */
+    sm_stand_record(self, info->src_x, info->src_y, MOVE_CAUSE_PLACED);
+    sm_walk(self, info);
 }
 
 static void sm_moving(struct GameActor *self, struct ActorMoveEntryInfo *info)
@@ -467,7 +464,6 @@ static void sm_moving(struct GameActor *self, struct ActorMoveEntryInfo *info)
     if (sm_kind_has_owner(self))
         self->owner_aid = info->char_id;
     self->walk_speed = info->speed;
-    self->path_start = info->move_start_time;
     sm_moving_fields(self, info);
     sm_walk(self, info);
 }
@@ -493,16 +489,8 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
     case 0x00: {
         const struct ActorMove *move = info;
 
-        self->path_start = move->start_tick;
-        if (game_actor_find_path(self, move->src_x, move->src_y, move->sub_x, move->sub_y, move->dst_x, move->dst_y,
-                                self->walk_speed)) {
-            self->cell_x = move->dst_x;
-            self->cell_y = move->dst_y;
-            actor_set_state(self, 1, 1);
-            self->path_cell = 0;
-        } else {
-            actor_set_state(self, 0, 1);
-        }
+        game_actor_walk_record(self, move->src_x, move->src_y, move->sub_x, move->sub_y, move->dst_x, move->dst_y,
+                               self->walk_speed, MOVE_CAUSE_WALKED, move->start_tick);
         break;
     }
     case 0x03:
@@ -535,36 +523,25 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         break;
     case 0x13: {
         int sx, sy, ux, uy, speed = (int)par3;
-        unsigned char ok, snap;
+        unsigned char ok, snap = par4 == 0;
 
-        self->path_start = session_get_server_time(&g_session1);
+        /* the stop of the original, a placing, is taken at once; the dash of a relocation is
+           walked at its own speed without the walk's animation */
         game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &sx, &sy, &ux, &uy);
-        if (speed == 0)
-            speed = self->body_relocation ? 0x37 : 2;
-        ok = game_actor_find_path(self, sx, sy, ux, uy, (int)par1, (int)par2, speed);
-        snap = par4 == 0;
-        self->cell_x = (int)par1;
-        self->cell_y = (int)par2;
-        if (ok) {
-            struct GameMode *m = game_current_mode();
-
-            game_mode_cell_to_world(m, (int)par1, (int)par2, &self->pos.x, &self->pos.z);
-            self->pos.y = c3d_attr_get_height(m->world->attr, self->pos.x,
-                                             self->pos.z);
-            actor_clear_unit_cell(self);
-            if (snap == 1) {
-                self->slide_x = self->pos.x;
-                self->slide_z = self->pos.z;
-            }
-            actor_set_state(self, 1, snap);
-            self->path_cell = 0;
-            if ((int)par3 == 0) {
+        if (speed == 0) {
+            sm_stand_record(self, (int)par1, (int)par2, MOVE_CAUSE_PLACED);
+            ok = 1;
+        } else {
+            ok = (unsigned char)game_actor_walk_record(self, sx, sy, ux, uy, (int)par1, (int)par2, speed,
+                                                       MOVE_CAUSE_PUSHED, game_actor_walk_time(self));
+            if (ok) {
+                actor_clear_unit_cell(self);
+                actor_set_state(self, 1, snap);
                 self->glide = 1;
-            } else {
-                self->glide = 0;
                 self->motion_held = 1;
             }
-        } else {
+        }
+        if (!ok) {
             if (g_session1.homun_command[3]) {
                 g_session1.homun_command[1] = 0;
                 g_session1.homun_command[2] = 0;
@@ -750,9 +727,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         break;
     case 0x3b: case 0x6b: sm_drop(&self->frozen_mark); break;
     case 0x3d:
-        self->cell_x = (int)par1;
-        self->cell_y = (int)par2;
-        game_mode_cell_to_world(mode, (int)par1, (int)par2, &self->pos.x, &self->pos.z);
+        sm_stand_record(self, (int)par1, (int)par2, MOVE_CAUSE_PLACED);
         break;
     case 0x3e: sm_msg_effect(self, mode, 4, shown); break;
     case 0x3f: sm_msg_effect(self, mode, 5, 1); break;

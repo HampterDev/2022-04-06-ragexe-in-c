@@ -747,8 +747,6 @@ call "%~dp0build_swing_pace.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_predicted.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%~dp0build_walk_steer.bat"
-if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_render_delay.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_move_track.bat"

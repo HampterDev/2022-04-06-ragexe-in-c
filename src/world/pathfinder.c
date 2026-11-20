@@ -1,6 +1,5 @@
 #include "world/pathfinder_state.h"
 #include "body/grid_path.h"
-#include "world/move_track.h"
 #include "body/body.h"
 #include "resources/attr.h"
 #include "core/numeric.h"
@@ -424,29 +423,6 @@ BYTE path_finder_body_ground(struct PathFinder *self, struct BodyGround *ground,
     ground->scratch = own_scratch;
     *width = map.width;
     *height = map.height;
-    return 1;
-}
-
-BYTE path_finder_record_path(struct PathFinder *self, const struct MoveRecord *record, struct PathInfo *info)
-{
-    struct MoveCell cells[MOVE_TRACK_STEPS + 1];
-    int count = move_record_cells(record, cells), i;
-
-    if (!self->attr)
-        return 0;
-    for (i = 0; i < count; i++)
-        if (cells[i].x < 0 || cells[i].y < 0 || cells[i].x >= self->attr->width || cells[i].y >= self->attr->height)
-            return 0;
-    if (!path_info_resize(info, (size_t)count))
-        return 0;
-    info->startX = start_offset(record->x, 8);
-    info->startY = start_offset(record->y, 8);
-    for (i = 0; i < count; i++) {
-        info->cells[i].x = cells[i].x;
-        info->cells[i].y = cells[i].y;
-        info->cells[i].dir = cells[i].dir;
-        info->cells[i].time = cells[i].tick;
-    }
     return 1;
 }
 

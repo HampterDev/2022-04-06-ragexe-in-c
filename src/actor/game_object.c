@@ -370,7 +370,6 @@ void game_actor_on_init(struct GameActor *self)
     self->facing_vector.z = 0;
     self->walked = 0;
     self->aid = -1;
-    self->process_server_time = session_get_server_time(&g_session1);
     self->process_tick = platform_ticks_ms();
     self->screen_x = 0;
     self->screen_y = 0;
@@ -383,13 +382,14 @@ void game_actor_on_init(struct GameActor *self)
     self->motion_finished = 0;
     self->attack_target_aid = 0;
     self->attack_motion_count = -1.0f;
-    self->path_cell = -1;
     memset(&self->move_track, 0, sizeof self->move_track);
+    memset(&self->place, 0, sizeof self->place);
+    self->place_ms = 0;
+    self->place_real = platform_ticks_ms();
+    self->has_place = 0;
     self->swing_lands_ms = 0;
     self->swing_own_delay = 0.0f;
     self->swing_paces = 0;
-    self->track_waiting = 0;
-    self->steered = 0;
     self->pickable = 1;
     self->start_tick = platform_ticks_ms();
     self->pet_emotion_tick = 0;

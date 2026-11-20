@@ -327,10 +327,6 @@ static void npc_set_state_general(struct Npc *self, int state)
         actor_set_unit_cell(self);
         return;
     }
-    if (self->state == 4) {
-        self->pos.x = self->slide_x;
-        self->pos.z = self->slide_z;
-    }
     switch (state) {
     case 0:
         self->slant_depth = 0;

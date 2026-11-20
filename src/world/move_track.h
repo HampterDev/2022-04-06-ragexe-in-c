@@ -76,30 +76,6 @@ int move_record_read(const unsigned char *packet, size_t size, uint32_t *gid, st
  * the one cell at at_tick. `out` holds MOVE_TRACK_STEPS + 1 cells. Returns the count. */
 int move_record_cells(const struct MoveRecord *record, struct MoveCell *out);
 
-/* What a record without steps asks of the actor it is for. The stop comes with the tick it
- * happened at and not with a place to be set to, so an actor that can walk there does. */
-enum {
-    MOVE_STAND_LEAVE = 0,  /* it stands on the record's cell already: nothing */
-    MOVE_STAND_FINISH = 1, /* it walks and is on the record's cell: its walk ends on that cell's middle */
-    MOVE_STAND_WALK = 2,   /* it is on another cell: it walks to the record's */
-    MOVE_STAND_SET = 3,    /* it is set onto the record's cell */
-    MOVE_STAND_HALT = 4    /* it walks, is on the record's cell and is held: its walk ends where it is drawn */
-};
-
-struct MoveStandAsk {
-    int drawn_x, drawn_y; /* the cell the actor is drawn on */
-    int walking;          /* it is walking */
-    int held;             /* it is not to be moved now: a hit's motion holds it, or it slides */
-    int jump_cells;       /* more cells than these are not walked off */
-};
-
-/* An actor that was pushed or placed is set. One that walked is on the record's cell at its
- * tick; one that still walks on that cell walks on to its middle, and stops where it is when
- * it is held, since moving it there would be a jump. One that is drawn on another cell (it
- * runs behind its walk, or the walk it was drawn on was another) walks there from wherever it
- * is, unless that is further than `jump_cells`. */
-int move_record_stand(const struct MoveRecord *record, const struct MoveStandAsk *ask);
-
 /* Files a record that arrived, in whatever order and however often records arrive
  * (plans/delivery.md, part 1). It is dropped when it is not newer than the move floor of
  * `floors` (it is the past), when a record of its revision is held (it came twice), or when a newer held
@@ -120,9 +96,9 @@ void move_track_drop_after(struct MoveTrack *track, uint32_t now);
 int move_track_take(struct MoveTrack *track, struct RecordFloors *floors, uint32_t now, struct MoveRecord *record);
 
 /* Whether a record that waits, with a tick not after `until`, will move an actor that is drawn
- * standing on the cell (x, y): a walk, or a record without steps that asks anything of such an
- * actor (move_record_stand). The record without steps that only says the actor stands where it
- * is drawn, as the server sends one when an actor stops to swing, will not. */
+ * standing on the cell (x, y): a walk, a push or a placing, or a stop on another cell. The stop
+ * that only says the actor stands where it is drawn, as the server sends one when an actor stops
+ * to swing, will not. */
 int move_track_will_move(const struct MoveTrack *track, int x, int y, uint32_t until);
 
 #endif

@@ -359,16 +359,19 @@ static size_t report_body(struct GameMode *mode, struct GameActor *own, unsigned
         clock = game_mode_own_time(mode);
         known = 1;
         game_mode_world_to_sub_cell(mode, own->pos.x, own->pos.z, &x, &y, &sub_x, &sub_y);
-        if (own->state == 1 && own->path.count > 0) {
-            /* the last cell of its walk whose time has come, and the one it is on the way to */
-            x = own->path.cells[0].x;
-            y = own->path.cells[0].y;
-            for (i = 0; i < own->path.count && (int)(own->path.cells[i].time - clock) <= 0; i++) {
-                x = own->path.cells[i].x;
-                y = own->path.cells[i].y;
+        if (own->has_place) {
+            /* the last cell of its record whose time has come, and the one it is on the way to */
+            struct MoveCell cells[MOVE_TRACK_STEPS + 1];
+            size_t count = (size_t)move_record_cells(&own->place, cells);
+
+            x = cells[0].x;
+            y = cells[0].y;
+            for (i = 1; i < count && (int)(cells[i].tick - clock) <= 0; i++) {
+                x = cells[i].x;
+                y = cells[i].y;
             }
-            if (i < own->path.count)
-                lands = own->path.cells[i].time;
+            if (i < count)
+                lands = cells[i].tick;
         }
     }
     predicted = game_mode_own_body(&tick, state);

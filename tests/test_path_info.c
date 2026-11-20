@@ -64,18 +64,12 @@ static void test_storage(void)
 {
     struct PathInfo path, saved;
     struct PathCell cell;
-    int calls, x = 17, y = 19;
-    uint32_t deadline = 29;
-    float px = 31, py = 37;
+    int calls;
     size_t i;
     memset(&path, 0xa5, sizeof path);
     path_info_init(&path);
     assert(!path.cells && !path.count && !path.capacity);
     assert(!path.startX && !path.startY);
-    assert(path_info_end_time(&path) == 0);
-    assert(!path_info_get_cell(&path, 0, &x, &y) && x == 17 && y == 19);
-    assert(path_info_next_cell(&path, 100, &deadline, &px, &py) == -1);
-    assert(deadline == 29 && px == 31 && py == 37);
     fail_path_allocation = 1;
     assert(!path_info_resize(&path, 1) && !path.cells && !path.count);
     fail_path_allocation = 0;
@@ -102,10 +96,7 @@ static void test_storage(void)
     assert(allocation_calls == calls && !memcmp(&saved, &path, sizeof path));
     assert(path_info_resize(&path, 1) && path.capacity == saved.capacity);
     assert(path_info_resize(&path, 3) && path.cells[1].x == 0 && path.cells[2].x == 0);
-    assert(path_info_get_cell(&path, 0, &x, &y) && x == 10 && y == 40);
-    assert(!path_info_get_cell(&path, -1, &x, &y));
-    assert(!path_info_get_cell(&path, 3, &x, &y));
-    assert(x == 10 && y == 40);
+    assert(path.cells[0].x == 10 && path.cells[0].y == 40);
     path_info_clear(&path);
     assert(path.cells == saved.cells && path.capacity == saved.capacity && !path.count);
     assert(path_info_resize(&path, 3) && allocation_calls == calls);
@@ -114,34 +105,6 @@ static void test_storage(void)
     check_path_guard();
     path_info_destroy(&path); path_info_destroy(&path);
     assert(!path.cells && !path.count && !path.capacity && !path_allocation);
-}
-
-static void test_queries(void)
-{
-    static const struct PathCell cells[] = {{1,2,2,100}, {3,4,6,200}, {4,4,6,300}, {4,5,0,400}};
-    struct PathInfo path;
-    float x, y;
-    uint32_t deadline, time;
-    path_info_init(&path);
-    assert(path_info_resize(&path, 1));
-    path.cells[0] = cells[0];
-    for (time = 0; time <= 200; time += 100) {
-        assert(path_info_next_cell(&path, time, &deadline, &x, &y) == -1);
-        assert(deadline == 100 && x == 1 && y == 2);
-    }
-    assert(path_info_resize(&path, 4));
-    memcpy(path.cells, cells, sizeof cells);
-    assert(path_info_next_cell(&path, 99, &deadline, &x, &y) == 0);
-    assert(deadline == 200 && x == 3 && y == 4);
-    assert(path_info_next_cell(&path, 250, &deadline, &x, &y) == 1);
-    assert(deadline == 300 && x == 4 && y == 4);
-    assert(path_info_next_cell(&path, 400, &deadline, &x, &y) == -1);
-    assert(deadline == 400 && x == 4 && y == 5);
-    assert(path_info_end_time(&path) == 400);
-    path.cells[0].time = 0;
-    assert(path_info_next_cell(&path, 250, &deadline, &x, &y) == -1);
-    assert(deadline == 400 && x == 4 && y == 5);
-    path_info_destroy(&path);
 }
 
 static void test_finder(void)
@@ -201,7 +164,7 @@ static void test_finder(void)
 
 int main(void)
 {
-    test_storage(); test_queries(); test_finder();
-    puts("Path info: owned storage, failure rollback, short paths, next-cell timing and real grid searches passed");
+    test_storage(); test_finder();
+    puts("Path info: owned storage, failure rollback, short paths and real grid searches passed");
     return 0;
 }

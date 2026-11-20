@@ -28,6 +28,8 @@
 #include "ui/wndmgr/wndmgr.h"
 #include <stdint.h>
 #include "platform/clock.h"
+#include "world/move_track.h"
+#include <string.h>
 
 unsigned char pc_on_process(struct GameObject *object)
 {
@@ -85,10 +87,23 @@ static int pc_packet_state(int v)
     return v == 1 ? 3 : v == 2 ? 6 : 0;
 }
 
+/* An entry's cell is the actor's place, taken at once (plans/drawn-place.md, part 4). */
+static void pc_place_record(struct Pc *self, int x, int y)
+{
+    struct MoveRecord record;
+
+    memset(&record, 0, sizeof record);
+    record.at_tick = game_actor_walk_time((struct GameActor *)self);
+    record.x = x;
+    record.y = y;
+    record.cause = MOVE_CAUSE_PLACED;
+    game_actor_set_place((struct GameActor *)self, &record);
+}
+
 static void pc_stand_place(struct Pc *self, struct GameMode *mode, const struct ActorEntryInfo *entry)
 {
-    game_mode_cell_to_world(mode, entry->x, entry->y, &self->pos.x, &self->pos.z);
-    self->pos.y = c3d_attr_get_height(mode->world->attr, self->pos.x, self->pos.z);
+    (void)mode;
+    pc_place_record(self, entry->x, entry->y);
     self->roty = (float)((entry->dir + 4) * 45);
 }
 
@@ -120,7 +135,6 @@ static void pc_walk_look(struct Pc *self, struct ActorMoveEntryInfo *entry, int 
     struct ActorLook look;
     self->aid = entry->aid;
     self->walk_speed = entry->speed;
-    self->path_start = entry->move_start_time;
     self->head_dir = 0;
     entry->job = game_actor_state_job(entry->job, entry->effect_state);
     look = actor_look_from_move_entry(entry);
@@ -138,23 +152,14 @@ static void pc_walk_look(struct Pc *self, struct ActorMoveEntryInfo *entry, int 
 
 static void pc_walk_place(struct Pc *self, struct GameMode *mode, const struct ActorMoveEntryInfo *entry)
 {
-    game_mode_cell_to_world(mode, entry->src_x, entry->src_y, &self->pos.x, &self->pos.z);
-    self->pos.x = (float)mode->world->attr->zoom * 0.0625f * (float)(entry->sub_x - 8) + self->pos.x;
-    self->pos.z = (float)mode->world->attr->zoom * 0.0625f * (float)(entry->sub_y - 8) + self->pos.z;
-    self->pos.y = c3d_attr_get_height(mode->world->attr, self->pos.x, self->pos.z);
+    (void)mode;
+    pc_place_record(self, entry->src_x, entry->src_y);
 }
 
-static void pc_walk(struct Pc *self, const struct ActorMoveEntryInfo *entry, int stand_else)
+static void pc_walk(struct Pc *self, const struct ActorMoveEntryInfo *entry)
 {
-    if (game_actor_find_path((struct GameActor *)self, entry->src_x, entry->src_y, entry->sub_x, entry->sub_y,
-                            entry->dst_x, entry->dst_y, entry->speed)) {
-        self->cell_x = entry->dst_x;
-        self->cell_y = entry->dst_y;
-        actor_set_state(self, 1, 1);
-        self->path_cell = 0;
-    } else if (stand_else) {
-        actor_set_state(self, 0, 1);
-    }
+    game_actor_walk_record((struct GameActor *)self, entry->src_x, entry->src_y, entry->sub_x, entry->sub_y,
+                           entry->dst_x, entry->dst_y, entry->speed, MOVE_CAUSE_WALKED, entry->move_start_time);
 }
 
 static void pc_appear_effect(struct Pc *self, long long par2)
@@ -216,28 +221,28 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
     case 6:
         pc_walk_look(self, walk, 0);
         pc_walk_place(self, mode, walk);
-        pc_walk(self, walk, 1);
+        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         return;
     case 0x7a:
         self->body_style = walk->body;
         pc_walk_look(self, walk, 1);
         pc_walk_place(self, mode, walk);
-        pc_walk(self, walk, 1);
+        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         self->char_id = walk->char_id;
         return;
     case 5:
         self->body_style = walk->body;
         pc_walk_look(self, walk, 0);
-        pc_walk(self, walk, 0);
+        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         self->char_id = walk->char_id;
         return;
     case 0x7b:
         self->body_style = walk->body;
         pc_walk_look(self, walk, 1);
-        pc_walk(self, walk, 0);
+        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         self->char_id = walk->char_id;
         self->body_style = walk->body;
@@ -303,16 +308,10 @@ unsigned char pc_process_state(struct GameActor * base_actor)
         return 0;
     switch (self->state) {
     case 2: case 3: case 6: case 7: case 8: case 45: case 51:
-        /* These states are drawn here and never reach game_actor_process_state, which keeps the
-           time of the actor's last frame. A walk measures its first step from that time, so one
-           that started out of a swing was drawn as far into its first cell as the swing had
-           lasted: the character leapt ahead when it walked off in the middle of an attack. */
-        self->process_server_time = game_actor_walk_time(actor);
-        /* Nor would they reach the play of the move track there: a record whose tick has come
-           is played in these states too. The server has the character walk, so it walks, out of
-           an attack's animation as out of standing; left to wait for the animation's end, the
-           character stood for most of a second while its body walked on. */
-        game_actor_play_move_track(actor);
+        /* These states are drawn here and never reach game_actor_process_state: the place is
+           played and followed in them too, so a character in an attack's animation is moved by
+           its records as one that stands (plans/drawn-place.md). */
+        game_actor_play_place(actor);
         break;
     }
     switch (self->state) {
@@ -432,10 +431,6 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
 
     if (old == 3 || self->state_locked || state == -1)
         return;
-    if (old == 4 && snap == 1) {
-        self->pos.x = self->slide_x;
-        self->pos.z = self->slide_z;
-    }
     if (game_actor_get_transform_job(actor) > 0) {
         action = game_actor_transform_action_of(state);
     } else {

@@ -111,7 +111,6 @@ void player_set_state(struct GameActor * base_actor, int state, unsigned char sn
     if (state != 1) {
         self->requested_cell_x = -1;
         self->requested_cell_y = -1;
-        self->steered = 0;
     }
     player_send_owed_5b(self);
     if (state == 3) {
@@ -184,22 +183,11 @@ static void player_msg_walk(struct Player *self, struct GameMode *mode, const st
     int x, y, sub_x, sub_y;
 
     self->move_request_pending = 0;
-    self->path_start = move->start_tick;
-    self->steered = (unsigned char)game_mode_knows_clock(mode);
-    if (game_actor_find_path((struct GameActor *)self, move->src_x, move->src_y, move->sub_x, move->sub_y,
-                             move->dst_x, move->dst_y, g_session1.walkSpeed)) {
-        self->cell_x = move->dst_x;
-        self->cell_y = move->dst_y;
-        actor_set_state(self, 1, 1);
-        self->path_cell = 0;
-    } else {
+    if (!game_actor_walk_record((struct GameActor *)self, move->src_x, move->src_y, move->sub_x, move->sub_y,
+                                move->dst_x, move->dst_y, g_session1.walkSpeed, MOVE_CAUSE_WALKED, move->start_tick)) {
         game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &x, &y, &sub_x, &sub_y);
-        if (game_actor_find_path((struct GameActor *)self, x, y, sub_x, sub_y, move->dst_x, move->dst_y,
-                                 g_session1.walkSpeed)) {
-            self->cell_x = move->dst_x;
-            self->cell_y = move->dst_y;
-            actor_set_state(self, 1, 1);
-        }
+        game_actor_walk_record((struct GameActor *)self, x, y, sub_x, sub_y, move->dst_x, move->dst_y,
+                               g_session1.walkSpeed, MOVE_CAUSE_WALKED, move->start_tick);
     }
     navi_manager_check_arrival(&g_navi, self->cell_x, self->cell_y);
 }
@@ -484,7 +472,6 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->roty = (float)((g_session1.playerDir + 4) * 45);
     self->aid = g_session1.ownAid;
     self->guild_id = g_guildInfo.guild_id;
-    self->path_cell = -1;
     self->move_request_tick = 0;
     self->move_request_pending = 0;
     self->target_aid = 0;
@@ -499,7 +486,6 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->asked_walk = 0;
     self->asked_walk_x = -1;
     self->asked_walk_y = -1;
-    self->steered = 0;
     self->intent_skill = 0;
     self->intent_hold = 0;
     actor_set_state(self, 0, 1);

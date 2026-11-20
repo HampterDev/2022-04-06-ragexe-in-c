@@ -659,22 +659,22 @@ void game_mode_zc_combo_delay(struct GameMode *self, const struct PACKET_ZC_COMB
 void game_mode_zc_high_jump(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_HIGHJUMP *packet = (const struct PACKET_ZC_HIGHJUMP *)pkt;
-    float x = 0, y = 0, z = 0;
     unsigned aid = packet->aid;
     struct GameActor *actor;
+    struct MoveRecord record;
 
-    game_mode_cell_to_world(game_current_mode(), packet->x,
-                         packet->y, &x, &z);
-    y = c3d_attr_get_height(self->world->attr, x, z);
     if (aid == ((unsigned)g_session1.ownAid))
         actor = (struct GameActor *)self->world->player;
     else if ((actor = world_get_game_actor_by_aid(self->world, aid)) == 0)
         return;
-    actor->slide_x = x;
-    actor->slide_z = z;
-    actor->pos.x = x;
-    actor->pos.y = y;
-    actor->pos.z = z;
+    /* the original's jump onto a cell: a placing, as a record from the actor's clock now
+       (plans/drawn-place.md, part 4) */
+    memset(&record, 0, sizeof record);
+    record.at_tick = game_actor_walk_time(actor);
+    record.x = packet->x;
+    record.y = packet->y;
+    record.cause = MOVE_CAUSE_PLACED;
+    game_actor_set_place(actor, &record);
 }
 
 void game_mode_zc_emotion(struct GameMode *self, const unsigned char *pkt)

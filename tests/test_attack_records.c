@@ -188,6 +188,10 @@ static int monster_gone;
 /* More monsters, in sight while crowd_here is set. */
 #define CROWD_AID 300
 static struct GameActor crowd[TIMED_AIMED_ACTORS];
+/* Where each actor's drawn point is (monster, then the crowd), for game_actor_on_place, which
+   actor_state.c gives the client: 0 on its place, 1 on its way along its place's walk, 2 standing
+   on that walk's start, which is its place until the walk's first step starts. */
+static unsigned char drawn_walking[1 + TIMED_AIMED_ACTORS];
 static int crowd_here;
 
 struct GameActor *world_get_game_actor_by_aid(struct World *w, unsigned aid)
@@ -255,6 +259,7 @@ static void setup(void)
     timed_queue_clear(&mode.tracks);
     mode.aimed_waiting_count = 0;
     mode.record_wait.count = 0;
+    memset(drawn_walking, 0, sizeof drawn_walking);
     /* every unit came into view before its records, as the server stamps its entry */
     view_floors_clear(&mode.view_floors);
     view_floors_pin(&mode.view_floors, OWN_AID);
@@ -926,17 +931,48 @@ static void threats(void)
 }
 
 /* `actor` is drawn on a walk that ends at `ends`. */
-static struct PathCell walk_end[1 + TIMED_AIMED_ACTORS];
 
+static int actor_index(const struct GameActor *actor)
+{
+    return actor == &monster ? 0 : 1 + (int)(actor - crowd);
+}
+
+int game_actor_on_place(struct GameActor *actor)
+{
+    int drawn = drawn_walking[actor_index(actor)];
+
+    if (drawn == 2)
+        return (int)(render_clock - actor->place.at_tick) < 0;
+    return !drawn;
+}
+
+/* Its drawn point stands on the start of its place's walk, whose first step is still to come. */
+static void waits_to_walk(struct GameActor *actor)
+{
+    actor->state = 0;
+    drawn_walking[actor_index(actor)] = 2;
+}
+
+/* Its walk is over and its drawn point on its place: it stands. */
+static void arrives(struct GameActor *actor)
+{
+    actor->has_place = 0;
+    actor->state = 0;
+    drawn_walking[actor_index(actor)] = 0;
+}
+
+/* The actor walks one step that lands at `ends`, its drawn point on the way. */
 static void walks(struct GameActor *actor, DWORD ends)
 {
-    struct PathCell *cell = &walk_end[actor == &monster ? 0 : 1 + (actor - crowd)];
-
-    memset(cell, 0, sizeof *cell);
-    cell->time = ends;
+    memset(&actor->place, 0, sizeof actor->place);
+    actor->place.at_tick = ends - 100;
+    actor->place.land_ms = 100;
+    actor->place.speed_ms = 150;
+    actor->place.steps = 1;
+    actor->place.path[0] = 6;
+    actor->has_place = 1;
     actor->state = 1;
-    actor->path.cells = cell;
-    actor->path.count = 1;
+    drawn_walking[actor_index(actor)] = 1;
 }
 
 /* The walk of another actor is drawn on the render clock, behind the clock its swing at the
@@ -957,11 +993,10 @@ static void threats_wait_for_the_walk(void)
     assert(sent_count == 0 && mode.tracks.count == 0 && mode.aimed_waiting_count == 1 && mode.open_swing_count == 0);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0);
-    monster.state = 0;
-    monster.track_waiting = 1;
+    waits_to_walk(&monster);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0);
-    monster.track_waiting = 0;
+    monster.has_place = 0;
     monster.move_track.count = 1;
     monster.move_track.held[0].at_tick = own - 400;
     monster.move_track.held[0].steps = 1;
@@ -990,8 +1025,7 @@ static void threats_wait_for_the_walk(void)
             walks(&monster, own - 200);
         } else if (i == 1) {
             walks(&monster, own - 200);
-            monster.state = 0;
-            monster.track_waiting = 1;
+            waits_to_walk(&monster);
         } else {
             monster.move_track.count = 1;
             monster.move_track.held[0].at_tick = own - 200;
@@ -1019,8 +1053,7 @@ static void threats_wait_for_the_walk(void)
     setup();
     own = know_clock();
     walks(&monster, own - 100);
-    monster.state = 0;
-    monster.track_waiting = 1;
+    waits_to_walk(&monster);
     monster.move_track.count = 1;
     monster.move_track.held[0].at_tick = own - 100;
     monster.move_track.held[0].steps = 1;
@@ -1064,8 +1097,7 @@ static void threats_wait_for_the_walk(void)
             walks(&monster, own - 150);
         } else if (i == 1) {
             walks(&monster, own - 150);
-            monster.state = 0;
-            monster.track_waiting = 1;
+            waits_to_walk(&monster);
         } else {
             monster.move_track.count = 1;
             monster.move_track.held[0].at_tick = own - 150;
@@ -1100,8 +1132,7 @@ static void threats_wait_for_the_walk(void)
     setup();
     own = know_clock();
     walks(&monster, own - 900);
-    monster.state = 0;
-    monster.track_waiting = 1;
+    waits_to_walk(&monster);
     send_act(MONSTER_AID, own - 700, 1, OWN_AID, 600);
     send_hit(MONSTER_AID, OWN_AID, own - 100, 7, 300);
     play_at(own - FAR_BEHIND);
@@ -1118,7 +1149,7 @@ static void threats_wait_for_the_walk(void)
     send_act(MONSTER_AID, own - 50, 0, 0, 0);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0 && mode.aimed_waiting_count == 0 && mode.tracks.count == 0);
-    monster.state = 0;
+    arrives(&monster);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0 && mode.open_swing_count == 0);
 
@@ -1139,7 +1170,7 @@ static void threats_wait_for_the_walk(void)
     send_cast(MONSTER_AID, own - 200, own + 1300, OWN_AID);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0 && mode.aimed_waiting_count == 1);
-    monster.state = 0;
+    arrives(&monster);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 1 && sent[0].what == SENT_CAST && sent[0].value[3] <= 1300 && sent[0].value[3] >= 1200);
 
@@ -1153,7 +1184,7 @@ static void threats_wait_for_the_walk(void)
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0 && mode.aimed_waiting_count == 0);
     monster_gone = 0;
-    monster.state = 0;
+    arrives(&monster);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0);
 
@@ -1202,7 +1233,7 @@ static void threats_wait_for_the_walk(void)
     assert(sent_count == 3 && sent[0].what == SENT_SWING_BEGIN && sent[0].to == &monster);
     assert(mode.aimed_waiting_count == TIMED_AIMED_ACTORS);
     /* the first of them is there: it begins, the others wait on */
-    crowd[0].state = 0;
+    arrives(&crowd[0]);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 6 && sent[3].what == SENT_SWING_BEGIN && sent[3].to == &crowd[0]);
     assert(mode.aimed_waiting_count == TIMED_AIMED_ACTORS - 1 && mode.aimed_waiting[0].gid == CROWD_AID + 1);

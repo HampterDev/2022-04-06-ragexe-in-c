@@ -1,5 +1,6 @@
 #include "game/own_body.h"
 #include <string.h>
+#include "actor/actor_states.h"
 #include "actor/types.h"
 #include "game/cells.h"
 #include "session/session_state.h"
@@ -45,31 +46,13 @@ static int own_ground(struct BodyGround *ground)
     return 1;
 }
 
-/* Whether the character is off what the body does without a record on its way to put it
-   there: the body walks and the character does not (a hit's animation or a swing that ended
-   took it off its walk), or the body stands on a cell and the character stands on another. */
-static int own_astray(struct GameMode *self, const struct GameActor *actor, const struct BodyMove *move)
-{
-    struct BodyMove at;
-    int x, y;
-
-    if (actor->state == 1 || actor->move_track.count || actor->track_waiting)
-        return 0;
-    body_move_at(move, predicted_now(&g_own), &at);
-    if (at.steps > 0)
-        return 1;
-    game_mode_world_to_cell(self, actor->pos.x, actor->pos.z, &x, &y);
-    return x != at.x || y != at.y;
-}
-
 /* The drawn character follows the own body: when the body's move is another than the one the
    character was given, it is filed in the character's move track, which is played on the own
    clock as any actor's is on the render clock (actor/actor_state.c). A body that only took
    the steps of its walk says nothing new. A move that was made before the one drawn is the
    past put right (the server's word was not what had been predicted): however the body came
-   onto that cell then, the character walks there now. A character that something else took
-   off what the body does is given the body's move again, as one that walked: the world is
-   where the character is, whatever else is shown of it. */
+   onto that cell then, the character walks there now. Nothing else takes the character off
+   what its record says (plans/drawn-place.md). */
 static void own_draw(struct GameMode *self)
 {
     struct Player *player = self->world ? self->world->player : NULL;
@@ -81,11 +64,8 @@ static void own_draw(struct GameMode *self)
     if (!player || !predicted_move(&g_own, &move))
         return;
     news = g_drawn_known ? predicted_walk_news(&g_drawn, &move) : PREDICTED_WALK_NEW;
-    if (news == PREDICTED_WALK_ON) {
-        if (!own_astray(self, (const struct GameActor *)player, &move))
-            return;
-        news = PREDICTED_WALK_BACK;
-    }
+    if (news == PREDICTED_WALK_ON)
+        return;
     g_drawn = move;
     g_drawn_known = 1;
     memset(&record, 0, sizeof record);
@@ -118,41 +98,10 @@ static void record_move(const struct MoveRecord *record, struct BodyMove *move)
     memcpy(move->path, record->path, move->steps);
 }
 
-/* A walk that is drawn, cell by cell with its ticks, as a record from its first cell on.
-   Returns 0 for one that is no walk of single steps. */
-static int path_move(const struct PathInfo *path, int speed_ms, struct BodyMove *move)
-{
-    /* the server's direction codes: 0 north (y + 1), then counter-clockwise */
-    static const signed char dir_x[8] = {0, -1, -1, -1, 0, 1, 1, 1};
-    static const signed char dir_y[8] = {1, 1, 0, -1, -1, -1, 0, 1};
-    uint32_t lands;
-    size_t i;
-    int dir;
-
-    memset(move, 0, sizeof *move);
-    move->at_tick = predicted_wide(&g_own, path->cells[0].time);
-    move->x = (int16_t)path->cells[0].x;
-    move->y = (int16_t)path->cells[0].y;
-    move->speed_ms = (uint16_t)(speed_ms < 0 ? 0 : speed_ms > 0xFFFF ? 0xFFFF : speed_ms);
-    for (i = 1; i < path->count && move->steps < BODY_PATH_STEPS; i++) {
-        for (dir = 0; dir < 8; dir++)
-            if (path->cells[i].x - path->cells[i - 1].x == dir_x[dir] && path->cells[i].y - path->cells[i - 1].y == dir_y[dir])
-                break;
-        if (dir == 8)
-            return 0;
-        move->path[move->steps++] = (uint8_t)dir;
-    }
-    if (move->steps) {
-        lands = path->cells[1].time - path->cells[0].time;
-        move->land_ms = (uint16_t)(lands > 0xFFFFu ? 0xFFFFu : lands);
-    }
-    return 1;
-}
-
 /* Where the server has another actor, as the client knows it, as a record for the world. The
    newest record of its walk that came and waits for the render clock says it as the server
-   did. One that is played is the walk the actor is drawn on. An actor that does not walk by
-   a record is on the cell it is drawn on. */
+   did. One that is played is the actor's place (plans/drawn-place.md). An actor without a
+   record yet is on the cell it is drawn on. */
 static void other_move(struct GameMode *self, struct GameActor *actor, struct BodyMove *move)
 {
     int x, y;
@@ -161,9 +110,10 @@ static void other_move(struct GameMode *self, struct GameActor *actor, struct Bo
         record_move(&actor->move_track.held[actor->move_track.count - 1], move);
         return;
     }
-    if (actor->state == 1 && actor->steered && actor->path.count > 1 && actor->path.cells[0].time != 0
-        && path_move(&actor->path, actor->walk_speed, move))
+    if (actor->has_place) {
+        record_move(&actor->place, move);
         return;
+    }
     game_mode_world_to_cell(self, actor->pos.x, actor->pos.z, &x, &y);
     memset(move, 0, sizeof *move);
     move->at_tick = predicted_now(&g_own);
@@ -305,9 +255,11 @@ void game_mode_own_body_walk(struct GameMode *self, unsigned number, int x, int 
 
     /* The server refuses the walk of a character that sits, is dead or in a state between
        before its core sees the request, and the client knows those states: the walk is
-       predicted for one that stands, walks or swings. What else holds a character (a status)
-       is the server's word. */
-    if (!player || (player->state != 0 && player->state != 1 && player->state != 2))
+       predicted for one that stands, walks, swings or flinches. A hit's delay on the walk is
+       the core's own rule, and the flinch is only its animation (plans/drawn-place.md). What
+       else holds a character (a status) is the server's word. */
+    if (!player || (player->state != ACTOR_STATE_STAND && player->state != ACTOR_STATE_WALKING
+                    && player->state != ACTOR_STATE_ATTACK && player->state != ACTOR_STATE_HURT))
         return;
     request.kind = BODY_REQUEST_WALK;
     request.x = (int16_t)x;

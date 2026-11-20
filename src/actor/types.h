@@ -138,29 +138,32 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int wave_extra_flag;                       \
     unsigned short level;                      \
     Vec3 facing_vector;                        \
+    /* A walk the client searched itself, from a packet that gave no steps, before it becomes a \
+       record (game_actor_walk_record). */                                                     \
     struct PathInfo path;                      \
     /* Where the server says the actor is (ZC_TRACK_MOVE, plans/core-loop.md): the records    \
-       waiting for their tick; a walk that waits for its first step, and when that starts;    \
-       and whether the walk under way is joined at a capped speed and never set onto. */       \
+       waiting for their tick. */                                                              \
     struct MoveTrack move_track;               \
+    /* Where it is (plans/drawn-place.md): the record played last, which gives its place at    \
+       any tick (world/move_place.h), and how the drawn point joins that place: the most ms a  \
+       cell its step may take, 0 for at once; the real time of its last step. */               \
+    struct MoveRecord place;                   \
+    int place_ms;                              \
+    unsigned place_real;                       \
+    unsigned char has_place;                   \
     /* While the attack of a swing the server announced is set up (game_actor_swing_begin):    \
        the time until its hit is to show, and the frame delay the attack has on its own        \
        (game_actor_pace_attack). */                                                            \
     int swing_lands_ms;                        \
     float swing_own_delay;                     \
     unsigned char swing_paces;                 \
-    unsigned track_go;                         \
-    unsigned char track_waiting;               \
-    unsigned char steered;                     \
     unsigned char glide;                       \
-    int path_cell;                             \
     float walked;                              \
     unsigned process_tick;                     \
     unsigned balloon_tick;                     \
     int attack_target_aid;                     \
     int attack_target_extra;                   \
     unsigned path_start;                       \
-    unsigned process_server_time;              \
     int job;                                   \
     int sex;                                   \
     struct UIWindow *balloon_wnd;              \
@@ -188,8 +191,6 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int health_state;                          \
     int pk_mode;                               \
     unsigned char mounted;                     \
-    float slide_x;                             \
-    float slide_z;                             \
     int efst_effect_frames;                    \
     unsigned fade_until;                       \
     int model_kind;                            \

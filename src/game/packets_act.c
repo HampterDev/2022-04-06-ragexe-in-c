@@ -10,6 +10,7 @@
 #include "world/actor_lookup.h"
 #include "world/object_lookup.h"
 #include "world/act_track.h"
+#include "actor/actor_ops.h"
 #include "world/presence.h"
 #include "game/net_clock.h"
 #include "game/own_body.h"
@@ -266,24 +267,30 @@ enum {
     AIMED_PAST   /* it is drawn on what it did after the act began */
 };
 
-/* An actor has yet to arrive when the walk it is drawn on, or one that waits for its first
-   step, ends by `tick`, so the server had ended it before the act; or when a move record that
-   waits, of a tick not after it, will move the actor. The record that says the actor stands
-   where it is drawn, which the server sends when an actor stops to swing, is not waited for.
-   Once the render clock, which the walk is drawn on, has reached `tick`, nothing is waited
-   for. A walk that ends later is what the actor did next (a monster walks on while its swing
-   is under way): drawn on that walk, the actor is past the act's beginning, and an attack
-   begun now would stop the walk. */
-static int aimed_when(struct GameMode *self, const struct GameActor *actor, DWORD tick)
+/* An actor has yet to arrive when the walk of its place (plans/drawn-place.md) ends by `tick`,
+   so the server had ended it before the act, and the drawn point is not on that walk's end yet;
+   or when a move record that waits, of a tick not after it, will move the actor. The record
+   that says the actor stands where it is drawn, which the server sends when an actor stops to
+   swing, is not waited for. Once the render clock, which the place is played on, has reached
+   `tick`, nothing is waited for. A walk that ends later is what the actor did next (a monster
+   walks on while its swing is under way): with the drawn point on its way along it, the actor
+   is past the act's beginning, and an attack begun now would stop the walk. One whose first
+   step is still to come leaves the actor where it swings from. */
+static int aimed_when(struct GameMode *self, struct GameActor *actor, DWORD tick)
 {
-    int waited = (int)(session_get_server_time(&g_session1) - tick) >= 0;
-    int x, y;
+    DWORD now = session_get_server_time(&g_session1);
+    int waited = (int)(now - tick) >= 0;
+    struct MoveCell cells[MOVE_TRACK_STEPS + 1];
+    int x, y, count;
 
-    if ((actor->state == ACTOR_STATE_WALKING || actor->track_waiting) && actor->path.count) {
-        if ((int)(path_info_end_time(&actor->path) - tick) <= 0)
-            return waited ? AIMED_NOW : AIMED_WAITS;
-        if (actor->state == ACTOR_STATE_WALKING)
+    if (actor->has_place && actor->place.steps) {
+        count = move_record_cells(&actor->place, cells);
+        if ((int)(cells[count - 1].tick - tick) <= 0) {
+            if ((int)(now - cells[count - 1].tick) < 0 || !game_actor_on_place(actor))
+                return waited ? AIMED_NOW : AIMED_WAITS;
+        } else if ((int)(now - cells[0].tick) >= 0 || !game_actor_on_place(actor)) {
             return AIMED_PAST;
+        }
     }
     if (waited)
         return AIMED_NOW;

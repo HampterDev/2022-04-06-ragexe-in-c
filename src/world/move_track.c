@@ -72,19 +72,6 @@ int move_record_cells(const struct MoveRecord *record, struct MoveCell *out)
     return record->steps + 1;
 }
 
-int move_record_stand(const struct MoveRecord *record, const struct MoveStandAsk *ask)
-{
-    int dx = record->x - ask->drawn_x, dy = record->y - ask->drawn_y;
-
-    if (record->cause != MOVE_CAUSE_WALKED)
-        return MOVE_STAND_SET;
-    if (!dx && !dy)
-        return !ask->walking ? MOVE_STAND_LEAVE : ask->held ? MOVE_STAND_HALT : MOVE_STAND_FINISH;
-    if (dx > ask->jump_cells || dx < -ask->jump_cells || dy > ask->jump_cells || dy < -ask->jump_cells)
-        return MOVE_STAND_SET;
-    return MOVE_STAND_WALK;
-}
-
 int move_track_file(struct MoveTrack *track, const struct RecordFloors *floors, const struct MoveRecord *record)
 {
     int i, kept = 0, at;
@@ -142,16 +129,13 @@ int move_track_take(struct MoveTrack *track, struct RecordFloors *floors, uint32
 
 int move_track_will_move(const struct MoveTrack *track, int x, int y, uint32_t until)
 {
-    struct MoveStandAsk standing;
     int i;
 
-    standing.drawn_x = x;
-    standing.drawn_y = y;
-    standing.walking = 0;
-    standing.held = 0;
-    standing.jump_cells = 0;
-    for (i = 0; i < track->count && (int32_t)(track->held[i].at_tick - until) <= 0; i++)
-        if (track->held[i].steps || move_record_stand(&track->held[i], &standing) != MOVE_STAND_LEAVE)
+    for (i = 0; i < track->count && (int32_t)(track->held[i].at_tick - until) <= 0; i++) {
+        const struct MoveRecord *held = &track->held[i];
+
+        if (held->steps || held->cause != MOVE_CAUSE_WALKED || held->x != x || held->y != y)
             return 1;
+    }
     return 0;
 }

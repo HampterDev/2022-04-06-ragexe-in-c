@@ -302,12 +302,26 @@ int *game_actor_get_request(struct GameActor *actor, int value0);
 int *game_actor_get_request2(struct GameActor *actor, int value0);
 void game_actor_make_corpse(struct GameActor *actor);
 unsigned char game_actor_process_state(struct GameActor *actor);
-/* The clock `actor`'s walk is drawn on, now: the time game_actor_process_state keeps as that of
-   the actor's last frame. */
+/* The clock `actor`'s place is played on, now (its move records, plans/core-loop.md). */
 unsigned game_actor_walk_time(struct GameActor *actor);
-/* Plays the record of the actor's move track whose tick has come, and starts a walk that waited for its
-   first step: once a frame, in whatever state the actor is drawn. */
-void game_actor_play_move_track(struct GameActor *actor);
+struct MoveRecord;
+/* The record that says where `actor` is from now on (plans/drawn-place.md): its place at any
+   tick, and how the drawn point joins it, by the record's cause. */
+void game_actor_set_place(struct GameActor *actor, const struct MoveRecord *record);
+/* A walk that came without its steps (a packet of the original's that gives a cell to walk to,
+   or a knockback onto a cell): the path is searched from (src_x, src_y) with its sub-cell to
+   (dst_x, dst_y) at `speed_ms` a cell from `start`, and becomes the actor's record with
+   `cause` (MOVE_CAUSE_*). Returns 0 when there is no way. */
+int game_actor_walk_record(struct GameActor *actor, int src_x, int src_y, int sub_x, int sub_y, int dst_x, int dst_y,
+                           int speed_ms, int cause, unsigned start);
+/* Once a frame, in whatever state the actor is drawn: the record of its move track whose tick
+   has come becomes its place, and the drawn point takes one step toward the place, of at most
+   the real time since the last frame at 13/10 of its walk speed; a gap of more than four cells
+   is taken at once. The walking state is chosen from it: a standing actor that moves walks,
+   a walking one whose place rests and that has reached it stands. Returns whether it moved. */
+int game_actor_play_place(struct GameActor *actor);
+/* Whether the drawn point of `actor` is on its place now: no offset is left to walk off. */
+int game_actor_on_place(struct GameActor *actor);
 void game_actor_set_attack_speed(struct GameActor *actor, int value0);
 void game_actor_set_guild(struct GameActor *actor, int value0, int value1);
 void game_actor_set_guild_id(struct GameActor *actor, int value0);

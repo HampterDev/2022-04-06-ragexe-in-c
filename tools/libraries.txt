@@ -480,7 +480,6 @@ why     Files below the knot include knot headers for their structure types and 
 remove  Move the types and constants they need into headers of their own in the lower library.
 include actor/action.c actor/game_actor.h
 include actor/actor.h actor/actor_common.h
-include actor/actor_path.c session/session_state.h
 include actor/granny_actor.h actor/object_ops.h
 include actor/motion.c actor/game_actor.h
 include actor/motion_update.c actor/game_actor.h

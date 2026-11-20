@@ -23,11 +23,6 @@ void path_finder_destruct(struct PathFinder *self);
 unsigned char path_finder_find_path(struct PathFinder *self, DWORD startTime,
     int sx, int sy, int subX, int subY, int tx, int ty, int speed,
     struct PathInfo *info, int kind);
-/* The walk of a ZC_TRACK_MOVE record with steps, as the server timed it; nothing is searched.
-   Returns 0 and leaves `info` alone when a cell of it is off the map. */
-struct MoveRecord;
-unsigned char path_finder_record_path(struct PathFinder *self, const struct MoveRecord *record,
-    struct PathInfo *info);
 /* This map as the body core reads it (body/body.h): its cells and the working memory of a path
    search, with its sides. Returns 0 without a map. */
 struct BodyGround;
