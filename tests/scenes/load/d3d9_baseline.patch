@@ -232,7 +232,7 @@ index 082a2394..94e17243 100644
      view_frustum_clear(&self->frustum);
      g_perf.viewRenderNs += platform_stopwatch_ns() - start;
 diff --git a/tests/scenes/scene_driver.c b/tests/scenes/scene_driver.c
-index 16a195d1..5268e731 100644
+index 16a195d1..6d8e1e6b 100644
 --- a/tests/scenes/scene_driver.c
 +++ b/tests/scenes/scene_driver.c
 @@ -66,6 +66,15 @@ static struct {
@@ -265,7 +265,24 @@ index 16a195d1..5268e731 100644
      fflush(stdout);
      fflush(stderr);
      exit(failed || S.failures ? 1 : 0);
-@@ -327,6 +343,9 @@ static int l_spawn(lua_State *L)
+@@ -247,6 +263,8 @@ static const char *opt_str(lua_State *L, int table, const char *key, const char
+     return value;
+ }
+ 
++static void cell_set(unsigned aid, int x, int y);
++
+ /* scene.enter_map(map, x, y, {dir, job, sex, hair, hair_color, name, level, weapon, shield, head_top,
+    head_mid, head_bottom, robe, body_palette}) — from the login screen straight into a map. */
+ static int l_enter_map(lua_State *L)
+@@ -297,6 +315,7 @@ static int l_enter_map(lua_State *L)
+     S.enter_x = x;
+     S.enter_y = y;
+     S.enter_dir = opt_int(L, opts, "dir", 0);
++    cell_set(SCENE_AID, x, y);
+     login_mode_enter_zone(login, SCENE_GID, string_from_cstr(gat), platform_net_parse_ipv4("127.0.0.1"),
+                           SCENE_MAP_PORT, string_from_cstr(""));
+     return 0;
+@@ -327,6 +346,9 @@ static int l_spawn(lua_State *L)
      e->aid = (unsigned)opt_int(L, 1, "aid", 110000000);
      e->char_id = type == 0 ? e->aid : 0;
      e->speed = (short)opt_int(L, 1, "speed", 150);
@@ -275,7 +292,121 @@ index 16a195d1..5268e731 100644
      e->job = (short)opt_int(L, 1, "job", 1002);
      e->head = (short)opt_int(L, 1, "hair", 0);
      e->weapon = opt_int(L, 1, "weapon", 0);
-@@ -447,6 +466,31 @@ static int l_mouse(lua_State *L)
+@@ -350,6 +372,7 @@ static int l_spawn(lua_State *L)
+     ((struct PacketStandEntry11 *)packet)->body = (short)opt_int(L, 1, "body", 0);
+     name = opt_str(L, 1, "name", "");
+     strncpy((char *)packet + sizeof(struct PacketStandEntry11), name, 23);
++    cell_set(e->aid, opt_int(L, 1, "x", 0), opt_int(L, 1, "y", 0));
+     deliver(packet, sizeof packet);
+     return 0;
+ }
+@@ -399,6 +422,105 @@ static int l_send(lua_State *L)
+     return 0;
+ }
+ 
++/* load-scenes baseline patch: scene.walk, scene.attack and scene.cast, which the GPU line stages
++   as the project's records, as the classic packets this client reads: a walk from the cell the
++   actor was last sent to (ZC_NOTIFY_MOVE, the player's ZC_NOTIFY_PLAYERMOVE), a hit
++   (ZC_NOTIFY_ACT3) and a casting bar (ZC_USESKILL_ACK2). */
++static struct { unsigned aid; int x, y; } g_cells[4096];
++static int g_cell_count;
++
++static int *cell_of(unsigned aid)
++{
++    int i;
++    for (i = 0; i < g_cell_count; i++)
++        if (g_cells[i].aid == aid)
++            return &g_cells[i].x;
++    if (g_cell_count == (int)(sizeof g_cells / sizeof g_cells[0]))
++        return NULL;
++    g_cells[g_cell_count].aid = aid;
++    return &g_cells[g_cell_count++].x;
++}
++
++static void cell_set(unsigned aid, int x, int y)
++{
++    int *cell = cell_of(aid);
++    if (cell) {
++        cell[0] = x;
++        cell[1] = y;
++    }
++}
++
++static int l_walk(lua_State *L)
++{
++    unsigned aid = (unsigned)luaL_checkinteger(L, 1);
++    int x = (int)luaL_checkinteger(L, 2), y = (int)luaL_checkinteger(L, 3), *from = cell_of(aid);
++    unsigned char packet[16], *d;
++    int size;
++    if (!from) {
++        lua_pushboolean(L, 0);
++        return 1;
++    }
++    if (aid == SCENE_AID) {
++        put16(packet, 0x87);
++        put32(packet + 2, platform_ticks_ms());
++        d = packet + 6;
++        size = 12;
++    } else {
++        put16(packet, 0x86);
++        put32(packet + 2, aid);
++        put32(packet + 12, platform_ticks_ms());
++        d = packet + 6;
++        size = 16;
++    }
++    d[0] = (unsigned char)(from[0] >> 2);
++    d[1] = (unsigned char)((from[0] & 3) << 6 | (from[1] >> 4 & 0x3f));
++    d[2] = (unsigned char)((from[1] & 0xf) << 4 | (x >> 6 & 0xf));
++    d[3] = (unsigned char)((x & 0x3f) << 2 | (y >> 8 & 3));
++    d[4] = (unsigned char)y;
++    d[5] = 0x88;
++    deliver(packet, size);
++    from[0] = x;
++    from[1] = y;
++    lua_pushboolean(L, 1);
++    return 1;
++}
++
++static int l_attack(lua_State *L)
++{
++    unsigned char packet[34];
++    luaL_checktype(L, 1, LUA_TTABLE);
++    put16(packet, 0x8c8);
++    put32(packet + 2, (unsigned long)opt_int(L, 1, "src", 0));
++    put32(packet + 6, (unsigned long)opt_int(L, 1, "target", 0));
++    put32(packet + 10, platform_ticks_ms());
++    put32(packet + 14, (unsigned long)opt_int(L, 1, "motion", 300));
++    put32(packet + 18, (unsigned long)opt_int(L, 1, "flinch", 230));
++    put32(packet + 22, (unsigned long)opt_int(L, 1, "damage", 0));
++    packet[26] = (unsigned char)opt_int(L, 1, "sp", 0);
++    put16(packet + 27, (unsigned)opt_int(L, 1, "count", 1));
++    packet[29] = (unsigned char)opt_int(L, 1, "kind", 0);
++    put32(packet + 30, (unsigned long)opt_int(L, 1, "left_damage", 0));
++    deliver(packet, sizeof packet);
++    return 0;
++}
++
++static int l_cast(lua_State *L)
++{
++    unsigned char packet[25];
++    luaL_checktype(L, 1, LUA_TTABLE);
++    put16(packet, 0x7fb);
++    put32(packet + 2, (unsigned long)opt_int(L, 1, "src", 0));
++    put32(packet + 6, (unsigned long)opt_int(L, 1, "target", 0));
++    put16(packet + 10, (unsigned)opt_int(L, 1, "x", 0));
++    put16(packet + 12, (unsigned)opt_int(L, 1, "y", 0));
++    put16(packet + 14, (unsigned)opt_int(L, 1, "skill", 0));
++    put32(packet + 16, (unsigned long)opt_int(L, 1, "element", 0));
++    put32(packet + 20, (unsigned long)opt_int(L, 1, "ms", 0));
++    packet[24] = (unsigned char)opt_int(L, 1, "disposable", 0);
++    deliver(packet, sizeof packet);
++    return 0;
++}
++
+ /* scene.key_event(vk, scan, down): one key transition, as a keyboard gives it to core/user_input.c;
+    while the scene holds an Alt key (VK_MENU) down, the keys it presses come with Alt. */
+ static int l_key_event(lua_State *L)
+@@ -447,6 +569,31 @@ static int l_mouse(lua_State *L)
      return 0;
  }
  
@@ -307,7 +438,7 @@ index 16a195d1..5268e731 100644
  /* scene.button(x, y, down[, "right"]) */
  static int l_button(lua_State *L)
  {
-@@ -467,10 +511,36 @@ static void write_file(void *context, void *data, int size)
+@@ -467,10 +614,36 @@ static void write_file(void *context, void *data, int size)
      fwrite(data, 1, (size_t)size, context);
  }
  
@@ -345,7 +476,7 @@ index 16a195d1..5268e731 100644
      char path[1200];
      FILE *file;
      int ok;
-@@ -478,18 +548,52 @@ static int write_counters(const char *name)
+@@ -478,18 +651,52 @@ static int write_counters(const char *name)
      file = fopen(path, "w");
      if (!file)
          return 0;
@@ -405,7 +536,7 @@ index 16a195d1..5268e731 100644
  /* scene.capture(name[, {w, h, x, y, jpeg}]): the whole frame, or a w x h part of it whose top
     left corner is x, y (default: centred on the frame), as <out>/<name>.png, or with jpeg = quality
     (1 to 100) as <out>/<name>.jpg, and the frame's counters beside it. */
-@@ -503,6 +607,8 @@ static int l_capture(lua_State *L)
+@@ -503,6 +710,8 @@ static int l_capture(lua_State *L)
      FILE *file;
      DWORD x, y, x0 = 0, y0 = 0, w, h;
      int ok;
@@ -414,16 +545,16 @@ index 16a195d1..5268e731 100644
      if (!g_3dDevice.target || gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lk) < 0)
          return luaL_error(L, "capture: cannot read the frame");
      w = lk.width;
-@@ -622,6 +728,8 @@ static const luaL_Reg scene_api[] = {
+@@ -622,6 +831,8 @@ static const luaL_Reg scene_api[] = {
      {"chat", l_chat}, {"send", l_send}, {"key_event", l_key_event}, {"text", l_text}, {"mouse", l_mouse},
      {"button", l_button}, {"open", l_open}, {"capture", l_capture}, {"effects", l_effects}, {"frame", l_frame},
      {"mode", l_mode}, {"wait", l_wait}, {"wait_ready", l_wait_ready}, {"fail", l_fail},
 +    {"wheel", l_wheel}, {"ticks", l_ticks}, {"measure", l_measure}, {"measuring", l_measuring},
-+    {"resize", l_resize},
++    {"resize", l_resize}, {"walk", l_walk}, {"attack", l_attack}, {"cast", l_cast},
      {NULL, NULL},
  };
  
-@@ -684,6 +792,14 @@ static void start(void)
+@@ -684,6 +895,14 @@ static void start(void)
      S.L = luaL_newstate();
      luaL_openlibs(S.L);
      luaL_register(S.L, "scene", scene_api);
@@ -438,7 +569,7 @@ index 16a195d1..5268e731 100644
      lua_pop(S.L, 1);
      if (luaL_dostring(S.L, prelude) || luaL_loadfile(S.L, script)) {
          fprintf(stderr, "scene: %s\n", lua_tostring(S.L, -1));
-@@ -699,22 +815,33 @@ static void start(void)
+@@ -699,22 +918,33 @@ static void start(void)
  
  /* One frame of virtual time per shown frame: loops that wait on the clock (fades, timeouts)
     always present while they wait. The counters start again with each frame shown, so that a
@@ -473,7 +604,7 @@ index 16a195d1..5268e731 100644
      S.frame++;
      if (getenv("RAGEXE_SCENE_TRACE") && g_modeMgr.curModeType != S.traced_mode) {
          fprintf(stderr, "scene: mode %d at frame %u (%s)\n", g_modeMgr.curModeType, S.frame, g_modeMgr.curModeName);
-@@ -746,7 +873,9 @@ void drive_state_tick(void)
+@@ -746,7 +976,9 @@ void drive_state_tick(void)
          break;
      }
      S.wait = WAIT_NONE;

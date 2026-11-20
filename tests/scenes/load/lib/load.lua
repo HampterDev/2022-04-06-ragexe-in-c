@@ -1,6 +1,7 @@
--- What the load scenes share: the map server's packets as a busy server sends them, players dressed
--- as they are on busy servers, the ground cells of skills in their real shapes, the frame's size, a
--- camera turned and zoomed as a player turns it, and the measured stretch. A scene loads it with
+-- What the load scenes share: the map server's packets as a busy server sends them (walks, swings and
+-- casts are the harness's records: scene.walk, scene.attack, scene.cast), players dressed as they
+-- are on busy servers, the ground cells of skills in their real shapes, the frame's size, a camera
+-- turned and zoomed as a player turns it, and the measured stretch. A scene loads it with
 --   local load = dofile(scene.dir .. "lib/load.lua")
 -- (see tests/scenes/README.md, "Load scenes"). Packet layouts are rAthena's for this client's packet
 -- version; skill, unit and effect IDs are the game data's.
@@ -14,26 +15,11 @@ local function u16(v) return string.char(v % 256, floor(v / 256) % 256) end
 local function u32(v) return u16(v % 65536) .. u16(floor(v / 65536) % 65536) end
 local function text(s, n) s = s:sub(1, n - 1) return s .. string.rep("\0", n - #s) end
 
--- the 6 bytes of a walk from x0, y0 to x1, y1 (rAthena's WBUFPOS2, sub-cells 8, 8)
-local function move_data(x0, y0, x1, y1)
-    return string.char(floor(x0 / 4), (x0 % 4) * 64 + floor(y0 / 16) % 64, (y0 % 16) * 16 + floor(x1 / 64) % 16,
-        (x1 % 64) * 4 + floor(y1 / 256) % 4, y1 % 256, 0x88)
-end
-
 -- ---- the map server's packets ----
 
 local P = {}
 M.packet = P
 
--- ZC_NOTIFY_MOVE: an actor walks from x0, y0 to x1, y1, starting now
-function P.move(aid, x0, y0, x1, y1)
-    return u16(0x86) .. u32(aid) .. move_data(x0, y0, x1, y1) .. u32(scene.ticks())
-end
--- ZC_NOTIFY_ACT3: a hit (action 0), a critical one (10) or several (8), with its damage number
-function P.hit(src, dst, damage, action, count)
-    return u16(0x8c8) .. u32(src) .. u32(dst) .. u32(scene.ticks()) .. u32(300) .. u32(230) .. u32(damage) .. u8(0)
-        .. u16(count or 1) .. u8(action or 0) .. u32(0)
-end
 -- ZC_NOTIFY_SKILL2: a skill hits dst (action 5 splash, 6 single, 8 several hits)
 function P.skill_hit(skill, src, dst, damage, level, count, action)
     return u16(0x1de) .. u16(skill) .. u32(src) .. u32(dst) .. u32(scene.ticks()) .. u32(300) .. u32(230)
@@ -46,11 +32,6 @@ end
 -- ZC_NOTIFY_GROUNDSKILL: a skill cast on a cell
 function P.ground_skill(skill, src, x, y, level)
     return u16(0x117) .. u16(skill) .. u32(src) .. u16(level or 10) .. u16(x) .. u16(y) .. u32(scene.ticks())
-end
--- ZC_USESKILL_ACK2: the casting bar of a skill on dst or on a cell (element `property`)
-function P.cast(src, dst, x, y, skill, ms, property)
-    return u16(0x7fb) .. u32(src) .. u32(dst or 0) .. u16(x or 0) .. u16(y or 0) .. u16(skill) .. u32(property or 0)
-        .. u32(ms) .. u8(0)
 end
 -- ZC_SKILL_ENTRY5: a skill's ground unit (one cell, or a range for units the client draws whole)
 function P.unit(id, creator, x, y, unit, range, level)
@@ -68,8 +49,6 @@ end
 function P.state(aid, body, health, option)
     return u16(0x229) .. u32(aid) .. u16(body or 0) .. u16(health or 0) .. u32(option or 0) .. u8(0)
 end
--- ZC_NOTIFY_VANISH: gone out of sight (0), dead (1), logged out (2), teleported (3)
-function P.vanish(aid, how) return u16(0x80) .. u32(aid) .. u8(how or 0) end
 -- ZC_RESURRECTION: a dead player stands up
 function P.resurrect(aid) return u16(0x148) .. u32(aid) .. u16(0) end
 -- ZC_MVP: the MVP of a boss's death
@@ -345,12 +324,13 @@ function M.fight(seed)
         return #found > 0 and found[rng.int(1, #found)] or nil
     end
 
-    -- a walk to x, y, unless the actor is dead or still walking (150 ms a cell, diagonals 1.4 times)
+    -- a walk to x, y by the server's path, unless the actor is dead or still walking (by the
+    -- fight's reckoning: 150 ms a cell, diagonals 1.4 times)
     function F.walk(a, x, y)
         if not a.alive or F.frame < a.busy or (x == a.x and y == a.y) then
             return
         end
-        scene.send(P.move(a.aid, a.x, a.y, x, y))
+        scene.walk(a.aid, x, y)
         local dx, dy = math.abs(x - a.x), math.abs(y - a.y)
         local long, short = math.max(dx, dy), math.min(dx, dy)
         a.x, a.y = x, y
@@ -381,7 +361,7 @@ function M.fight(seed)
         end
         a.alive = false
         a.deaths = (a.deaths or 0) + 1
-        scene.send(P.vanish(a.aid, 1))
+        scene.vanish(a.aid, 1)
         if stand then
             local death = a.deaths
             F.at(stand, function()
@@ -396,11 +376,12 @@ function M.fight(seed)
         return rng.int(floor(around * 0.7), floor(around * 1.3))
     end
 
-    -- a normal hit, critical now and then, its number over the target
+    -- a normal hit, critical now and then: a swing, and its number over the target as it lands
     function F.hit(a, t, around)
         if a.alive and t and t.alive then
             local crit = rng.chance(20)
-            scene.send(P.hit(a.aid, t.aid, damage(around), crit and 10 or 0))
+            scene.attack{src = a.aid, target = t.aid, damage = damage(around), kind = crit and 10 or 0, motion = 300,
+                         flinch = 230}
         end
     end
 
@@ -413,7 +394,7 @@ function M.fight(seed)
         end
         local cast = opts.cast or 0
         if cast > 0 then
-            scene.send(P.cast(a.aid, t.aid, t.x, t.y, skill, cast, opts.element or 0))
+            scene.cast{src = a.aid, target = t.aid, skill = skill, ms = cast, element = opts.element or 0}
         end
         F.at(cast / 16 + 1, function()
             if not a.alive or not t.alive then
@@ -444,7 +425,7 @@ function M.fight(seed)
         end
         local cast = opts.cast or 0
         if cast > 0 then
-            scene.send(P.cast(a.aid, 0, x, y, skill, cast, opts.element or 0))
+            scene.cast{src = a.aid, x = x, y = y, skill = skill, ms = cast, element = opts.element or 0}
         end
         F.at(cast / 16 + 1, function()
             if not a.alive then

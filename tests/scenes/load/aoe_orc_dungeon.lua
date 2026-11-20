@@ -56,7 +56,7 @@ local function cast()
     casts = casts + 1
     local sg = casts % 3 ~= 0
     local skill, ms = sg and S.STORMGUST or S.LOV, sg and 1800 or 1500
-    scene.send(P.cast(ME, 0, X, Y, skill, ms, sg and 1 or 4))
+    scene.cast{src = ME, x = X, y = Y, skill = skill, ms = ms, element = sg and 1 or 4}
     F.at(ms / 16 + 1, function()
         scene.send(P.ground_skill(skill, ME, X, Y, 10))
         local waves, every, r = sg and 10 or 4, sg and 28 or 60, sg and 3 or 5

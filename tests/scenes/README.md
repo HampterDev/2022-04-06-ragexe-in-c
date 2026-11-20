@@ -9,7 +9,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | `src/platform/net_*.c`      | `scene_net.c`        | sockets stay in the process; the driver plays the map server     |
 | `src/platform/thread_*.c`   | `scene_thread.c`     | no client threads: models load in order on the main thread       |
 | `src/platform/settings_*.c` | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
-| `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
+| `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, plays the map server (its actors in `scene_world.c`, see [Staging actors](#staging-actors)), captures |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
 | `src/core/app_sdl.c`        | `scene_app_hidden.c` | the window is never shown, so the GPU device makes no swapchain for it and a run never takes the focus or the mouse or covers the screen |
 | `src/platform/window_sdl.c` (Windows) | `scene_window_win.c` | a message box is written to stdout instead of waiting for a click |
@@ -131,8 +131,11 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | call | does |
 |------|------|
 | `enter_map(map, x, y, opts)` | from the login screen straight into a map. `opts`: `name, job, sex, hair, hair_color, body_palette, level, job_level, hp, sp, weapon, shield, head_top, head_mid, head_bottom, robe, dir`, and `distance, latitude`, the free camera's in place of the saved options' |
-| `spawn{...}` | an actor appears (`ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state, option, boss, guild, emblem` (`option` is the option bits: carts, Peco Pecos, falcons, dragons, mado gears; `boss` is the entry's boss flag, 1 for MVPs and the Emperium; guild id and emblem version: when the client asks for the emblem, the fake map server sends a generated 24×24 one in the guild's colour) |
-| `vanish(aid[, how])` | the actor leaves |
+| `spawn{...}` | an actor appears (`ZC_VIEW_STAMP`, then `ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state, option, boss, guild, emblem` (`option` is the option bits: carts, Peco Pecos, falcons, dragons, mado gears; `boss` is the entry's boss flag, 1 for MVPs and the Emperium; guild id and emblem version: when the client asks for the emblem, the fake map server sends a generated 24×24 one in the guild's colour) |
+| `vanish(aid[, how])` | the actor leaves (`ZC_NOTIFY_VANISH`, `how` 0 out of sight, 1 dead, 2 logged out, 3 teleported), its going stamped unless a player died |
+| `walk(aid, x, y)` | the actor, or the player (`2000000`), walks to (x, y) by the server's path at its speed; false when there is no way there, and then nothing is sent |
+| `attack{src, target, damage, kind, count, left_damage, sp, motion, flinch}` | a basic attack: `src`'s swing at `target` begins now and lands `motion` ms later (300) with its hit, `damage` (0: a miss) of `kind` (`ZC_NOTIFY_ACT2`'s action: 0 a hit, 8 several, 10 a critical one) in `count` numbers, the target flinching for `flinch` ms (230) |
+| `cast{src, skill, ms, target, x, y, level, element, motion, disposable}` | `src` casts `skill` on the actor `target` or the cell (x, y) for `ms` ms: its casting bar |
 | `say(aid, "Name : text")` | chat over an actor |
 | `chat(text)` | a line in the player's own chat |
 | `send(bytes)` | any packet, as the map server would send it |
@@ -145,7 +148,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame just shown, downloaded from the GPU, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)). An error while a measure runs |
 | `measure(frames, name)`, `measuring()` | the [counters](#counters) of each of the next `frames` frames drawn and shown, a line of JSON each, in `<out>/<name>.frames.jsonl`; the script goes on at once. Until the last of them is shown, a capture or another measure is an error, since reading the frame back stalls the GPU. `measuring()` answers the frames still to come. A run that ends before the last one fails |
 | `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
-| `frame()`, `mode()`, `ticks()` | the frame number; `"login"` or `"game"`; the client's clock in milliseconds, which the times in the map server's packets (a walk's start) are on |
+| `frame()`, `mode()`, `ticks()` | the frame number; `"login"` or `"game"`; the client's clock in milliseconds, which is also the fake map server's: the times in its packets are on it |
 | `dir` | the script's directory, with its separator, for the files it loads (`dofile(scene.dir .. "lib/load.lua")`) |
 | `shadow_fit()` | the shadows of the frame just shown as the GPU fitted them, or nil without shadows: `cascades` (4, or 0 when nothing in view receives one), `nearest` and `farthest` (the range of view depths the slices were cut from, kept from frame to frame), and by cascade `radius` (its square's half size), `kept` (the half size it remembers for the next frame), `far` (its far view depth) and `x`, `y` (its centre across the light) |
 | `shadow_fit_check(name)` | checks the shadow fit of the frame just shown against `src/render/shadow_fit.c`, as a capture does with `RAGEXE_SCENE_SHADOW_FIT=1`: writes `<out>/<name>.shadow_fit.json`, fails the scene where they differ, and answers the mismatches, or nil without shadows |
@@ -158,11 +161,57 @@ as `scene: message box "<caption>": <text>` and the run goes on.
 
 The fake map server answers what a scene needs: the map entry (`ZC_AID`, `ZC_ACCEPT_ENTER2`), the
 client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the client keeps the
-hotkeys off), guild emblems, and the player's own chat line, which it says back as rAthena does.
-`keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.
+hotkeys off, and the player's placement with it, see [Staging actors](#staging-actors)), the timed
+exchange of the server's clock, guild emblems, and the player's own chat line, which it says back as
+rAthena does. `keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.
 
 A script whose name starts with `_` is a helper that other scripts load (`dofile`, with the
 directory of `debug.getinfo(1, "S").source`), not a scene: `run.py` skips it.
+
+## Staging actors
+
+The client moves and animates actors only from the project's records (`plans/core-loop.md`): where
+an actor is comes as a move record (`ZC_TRACK_MOVE`, `world/move_track.h`), what it does as an act
+record (`ZC_TRACK_ACT`, `world/act_track.h`), a hit as a notice dated when it lands
+(`ZC_NOTICE_HIT`), and the player's own character as its body (`ZC_OWN_BODY`,
+`world/predicted.h`), which the client runs on with the server's own rules. The classic walk
+packets (`ZC_NOTIFY_MOVE`, `ZC_NOTIFY_PLAYERMOVE`, `ZC_STOPMOVE`) do nothing in this client, so a
+script stages actors through `scene.walk`, `scene.attack` and `scene.cast`, and the fake map server
+(`scene_world.c`) sends what the project's server sends for them (the server's `docs/tracks.md`):
+
+- **The clock.** The server's clock is the harness's virtual clock, `scene.ticks()`. Each timed
+  exchange the client starts (`CZ_REQUEST_TIME2`) is answered at once with `ZC_NOTIFY_TIME` and
+  `ZC_TIME_SYNC`, both stamps the clock at that moment; the client reads the answer in the frame it
+  asked, so it measures no round trip and knows the server's clock exactly. Its own clock, which the
+  player's character is drawn on, is then the server's clock: the hold-back is an ordinary map's, 0,
+  on every map, and a request takes no time to arrive. The render clock, which every other actor is
+  drawn on, is the server's clock less the render delay: 100 ms until the client has timed eight
+  records, then down to its least, 40 ms, at a millisecond in twenty, since the records come with
+  no delay. An actor's walk or swing therefore shows on the screen that much after the frame the
+  script stages it in, and the player's at once. Every time is on the virtual clock, so a scene
+  shows the same frames run after run.
+- **The player.** When the client says a map has loaded (`CZ_NOTIFY_ACTORINIT`), the player is
+  placed on it: `ZC_HOLD_BACK` with the hold-back and the placement's number, and `ZC_OWN_BODY`, the
+  player's body on the cell `enter_map` or the last warp (`ZC_NPCACK_MAPMOVE` sent with
+  `scene.send`) named. `scene.walk` of the player is told as the body again, walking; the client's
+  own requests (a click on the ground) are not answered.
+- **Comings and goings.** `scene.spawn` and `scene.vanish` send `ZC_VIEW_STAMP` directly before the
+  entry or the vanish, with the tick and the unit's revisions, as the server does: the client plays
+  no record of a unit it has not seen come. A player who dies (`vanish(aid, 1)` of a `"player"`)
+  lies where she fell and does not go.
+- **Walks.** The fake server runs the body core (`body/body.h`) for every unit on the map, as the
+  server's spatial does: a walk goes by the server's path (`body/grid_path.h`, at most 32 steps) at
+  the unit's speed from its spawn, and each move the core makes is sent as a move record with the
+  unit's next revision. A walk asked for in the middle of a step turns at the next cell, as the
+  server's do, and its record comes then.
+- **Swings and casts.** `scene.attack` sends the swing as an act record from now, landing `motion`
+  ms later, and its hit as a notice of that tick, at once, as the server sends a hit that was
+  decided when its swing began. An actor has one act at a time: a swing staged before the one
+  before it has landed takes its place, and the earlier hit then shows without its swing.
+  `scene.cast` sends a cast record from now until the cast ends.
+
+Hits that are no basic attack's, skills' effects and damage, sitting, standing and dying are the
+map server's packets as rAthena sends them, through `scene.send`.
 
 ## Motion
 
@@ -246,7 +295,8 @@ in that frame. The harness starts the counters again with every frame it shows, 
 The scenes in `load/` stage what players see on busy servers, to measure the client under real load
 rather than to compare pictures: dozens to two hundred players with real jobs, equipment, mounts,
 carts, guild emblems and chat, and the skills their fights are made of, sent as rAthena sends them
-for this client's packet version. Every scene moves: actors walk (`ZC_NOTIFY_MOVE`), the camera
+for this client's packet version, with the walks, basic attacks and casts staged as records
+([Staging actors](#staging-actors)). Every scene moves: actors walk (`scene.walk`), the camera
 turns (the right button dragged) and zooms (the wheel) as a player's does, and skills keep firing
 for the whole measured stretch. A run of one takes up to half a minute, and they are measured
 several runs each, so they live outside `scripts/` and neither `run.py` nor the `scenes` ctest
@@ -271,8 +321,8 @@ frame's size, the camera and `load.measured`, which runs a scene's warm-up, its 
 once its first map has loaded, whatever the game folder's options say, so that two machines measure
 the same frame. `RAGEXE_LOAD_FRAMES` sets the measured frames of every scene (by default 600, the
 arrive scenes 300) for a quick look. The scenes need this harness's calls (`scene.measure`,
-`scene.measuring`, `scene.resize`, `scene.wheel`, `scene.ticks`, `scene.dir`, spawn's `option` and
-`boss`).
+`scene.measuring`, `scene.resize`, `scene.wheel`, `scene.ticks`, `scene.dir`, `scene.walk`,
+`scene.attack`, `scene.cast`, spawn's `option` and `boss`).
 
 `load.py` runs them several times, since the times differ by about a fifth from run to run, and
 reports per scene the counts (objects, draws, instance, vertex and texture bytes) and, pooled over
@@ -296,7 +346,9 @@ python3 tests/scenes/load.py --compare /tmp/load-old /tmp/load-new              
 Phase 7 of `plans/gpu-renderer.md` compares these numbers with those of the Direct3D 9 client the
 GPU renderer replaced: commit `02fc9e5e`, built with FreeType's text, which the GPU renderer's
 client draws too. Its harness has none of the calls the load scenes need, so
-`load/d3d9_baseline.patch` adds them to it as they are here, with the counters' times, and the
+`load/d3d9_baseline.patch` adds them to it as they are here, with the counters' times; `scene.walk`,
+`scene.attack` and `scene.cast` as the classic packets that client reads, since it reads no records
+(`ZC_NOTIFY_MOVE` from the cell the actor was last sent to, `ZC_NOTIFY_ACT3`, `ZC_USESKILL_ACK2`); and the
 two crash fixes the scenes need on a 64-bit client (a broadcast's speaker narrowed to an int on its
 way to the chat window, a bottle thrown at its own cell). Its `scene.resize` cannot resize the
 Direct3D 9 device: it only checks that the frame is the size asked for, so run that client from a

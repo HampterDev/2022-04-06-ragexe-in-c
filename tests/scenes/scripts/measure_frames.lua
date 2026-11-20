@@ -2,19 +2,13 @@
 -- while the script goes on. Twelve frames of Prontera with a Poring walking past, read back: twelve
 -- lines, every counter in each, frames in order and drawn; a capture in between is an error, as it
 -- would stall the GPU inside the measured stretch.
-local function u16(v) return string.char(v % 256, math.floor(v / 256) % 256) end
-local function u32(v) return u16(v % 65536) .. u16(math.floor(v / 65536)) end
-local function move(aid, x0, y0, x1, y1)
-    local data = string.char(math.floor(x0 / 4), (x0 % 4) * 64 + math.floor(y0 / 16), (y0 % 16) * 16
-        + math.floor(x1 / 64), (x1 % 64) * 4 + math.floor(y1 / 256), y1 % 256, 0x88)
-    return u16(0x86) .. u32(aid) .. data .. u32(scene.ticks())
-end
-
 scene.enter_map("prontera", 156, 186, {name = "Watcher", job = 4008, hair = 5})
 scene.wait_ready()
 scene.spawn{aid = 110000001, kind = "monster", job = 1002, x = 150, y = 188}
 scene.wait(5)
-scene.send(move(110000001, 150, 188, 162, 188))
+if not scene.walk(110000001, 162, 188) then
+    scene.fail("the Poring has no way to 162,188")
+end
 scene.measure(12, "measure_frames")
 if scene.measuring() ~= 12 then
     scene.fail("measuring() answers " .. scene.measuring() .. " frames to come, not 12")

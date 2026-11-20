@@ -282,10 +282,18 @@ static void on_client_packet(int port, const unsigned char *packet, int length)
         scene_net_deliver(SCENE_MAP_PORT, reply, sizeof reply);
     } else if (id == 0x7d) {
         /* CZ_NOTIFY_ACTORINIT: the map is loaded. ZC_NOTIFY_ACTORINIT confirms it, as rAthena
-           does, which lets the hotkeys work. */
+           does, which lets the hotkeys work; the player is placed on the map (scene_world.c). */
         unsigned char reply[2];
         put16(reply, 0xb1b);
         scene_net_deliver(SCENE_MAP_PORT, reply, sizeof reply);
+        if (!scene_world_loaded()) {
+            fprintf(stderr, "scene: the player could not be placed on the map\n");
+            S.failures++;
+        }
+    } else if (id == 0x360 && length >= 6) {
+        /* CZ_REQUEST_TIME2: the timed exchange (scene_world.c) */
+        if (!scene_world_time((uint32_t)(packet[2] | packet[3] << 8 | packet[4] << 16 | (uint32_t)packet[5] << 24)))
+            S.failures++;
     } else if (id == 0xf3 && length > 4) {
         /* CZ_REQUEST_CHAT: the map server says the line back to the one who said it. */
         own_chat((const char *)packet + 4, strnlen((const char *)packet + 4, (size_t)length - 4));
@@ -383,6 +391,7 @@ static int l_enter_map(lua_State *L)
     S.enter_x = x;
     S.enter_y = y;
     S.enter_dir = opt_int(L, opts, "dir", 0);
+    scene_world_place(SCENE_AID, x, y, S.enter_dir, c.walk_speed);
     login_mode_enter_zone(login, SCENE_GID, string_from_cstr(gat), platform_net_parse_ipv4("127.0.0.1"),
                           SCENE_MAP_PORT, string_from_cstr(""));
     return 0;
@@ -439,17 +448,77 @@ static int l_spawn(lua_State *L)
     ((struct PacketStandEntry11 *)packet)->body = (short)opt_int(L, 1, "body", 0);
     name = opt_str(L, 1, "name", "");
     strncpy((char *)packet + sizeof(struct PacketStandEntry11), name, 23);
+    if (!scene_world_spawn(e->aid, type == 0, opt_int(L, 1, "x", 0), opt_int(L, 1, "y", 0), opt_int(L, 1, "dir", 0),
+                           e->speed))
+        S.failures++;
     deliver(packet, sizeof packet);
     return 0;
 }
 
+/* scene.vanish(aid[, how]): gone out of sight (0), dead (1), logged out (2), teleported (3) */
 static int l_vanish(lua_State *L)
 {
     unsigned char packet[7];
     put16(packet, HEADER_ZC_NOTIFY_VANISH);
     put32(packet + 2, (unsigned long)luaL_checkinteger(L, 1));
     packet[6] = (unsigned char)luaL_optinteger(L, 2, 0);
+    if (!scene_world_vanish((uint32_t)luaL_checkinteger(L, 1), packet[6]))
+        S.failures++;
     deliver(packet, sizeof packet);
+    return 0;
+}
+
+/* scene.walk(aid, x, y): the actor, or the player, walks to (x, y) by the server's path; false
+   when there is no way there (scene_world.c) */
+static int l_walk(lua_State *L)
+{
+    lua_pushboolean(L, scene_world_walk((uint32_t)luaL_checkinteger(L, 1), (int)luaL_checkinteger(L, 2),
+                                        (int)luaL_checkinteger(L, 3)));
+    return 1;
+}
+
+/* scene.attack{src, target, damage, kind, count, left_damage, sp, motion, flinch}: a basic
+   attack, its swing now and its hit `motion` ms later */
+static int l_attack(lua_State *L)
+{
+    struct SceneAttack a;
+    luaL_checktype(L, 1, LUA_TTABLE);
+    a.source = (uint32_t)opt_int(L, 1, "src", 0);
+    a.target = (uint32_t)opt_int(L, 1, "target", 0);
+    a.damage = opt_int(L, 1, "damage", 0);
+    a.left_damage = opt_int(L, 1, "left_damage", 0);
+    a.count = opt_int(L, 1, "count", 1);
+    a.kind = opt_int(L, 1, "kind", 0);
+    a.sp_damage = opt_int(L, 1, "sp", 0);
+    a.motion_ms = (unsigned)opt_int(L, 1, "motion", 300);
+    a.flinch_ms = (unsigned)opt_int(L, 1, "flinch", 230);
+    if (!a.source || !a.target)
+        return luaL_error(L, "attack: src and target are needed");
+    if (!scene_world_attack(&a))
+        S.failures++;
+    return 0;
+}
+
+/* scene.cast{src, skill, ms, target | x, y, level, element, motion, disposable}: a cast on an
+   actor or on a cell, from now for `ms` */
+static int l_cast(lua_State *L)
+{
+    struct SceneCast c;
+    luaL_checktype(L, 1, LUA_TTABLE);
+    c.source = (uint32_t)opt_int(L, 1, "src", 0);
+    c.target = (uint32_t)opt_int(L, 1, "target", 0);
+    c.x = opt_int(L, 1, "x", 0);
+    c.y = opt_int(L, 1, "y", 0);
+    c.skill_id = (unsigned)opt_int(L, 1, "skill", 0);
+    c.skill_lv = (unsigned)opt_int(L, 1, "level", 10);
+    c.cast_ms = (unsigned)opt_int(L, 1, "ms", 0);
+    c.motion_ms = (unsigned)opt_int(L, 1, "motion", 0);
+    c.element = opt_int(L, 1, "element", 0);
+    c.disposable = opt_int(L, 1, "disposable", 0);
+    if (!c.source || !c.skill_id)
+        return luaL_error(L, "cast: src and skill are needed");
+    if (!scene_world_cast(&c))
+        S.failures++;
     return 0;
 }
 
@@ -484,6 +553,10 @@ static int l_send(lua_State *L)
 {
     size_t size;
     const char *data = luaL_checklstring(L, 1, &size);
+    const unsigned char *p = (const unsigned char *)data;
+    /* ZC_NPCACK_MAPMOVE puts the player on its cell of the map it names, facing north */
+    if (size >= 22 && (p[0] | p[1] << 8) == 0x91)
+        scene_world_place(SCENE_AID, p[18] | p[19] << 8, p[20] | p[21] << 8, 0, 0);
     deliver(data, (int)size);
     return 0;
 }
@@ -982,7 +1055,8 @@ static int l_fail(lua_State *L)
 }
 
 static const luaL_Reg scene_api[] = {
-    {"enter_map", l_enter_map}, {"spawn", l_spawn}, {"vanish", l_vanish}, {"say", l_say},
+    {"enter_map", l_enter_map}, {"spawn", l_spawn}, {"vanish", l_vanish}, {"walk", l_walk},
+    {"attack", l_attack}, {"cast", l_cast}, {"say", l_say},
     {"chat", l_chat}, {"send", l_send}, {"key_event", l_key_event}, {"text", l_text}, {"mouse", l_mouse},
     {"wheel", l_wheel}, {"button", l_button}, {"open", l_open}, {"resize", l_resize}, {"capture", l_capture},
     {"measure", l_measure}, {"measuring", l_measuring}, {"effects", l_effects}, {"frame", l_frame},
@@ -1106,6 +1180,7 @@ void drive_state_tick(void)
         return;
     if (!S.started)
         start();
+    scene_world_frame();
     switch (S.wait) {
     case WAIT_FRAMES:
         if (--S.wait_frames > 0)

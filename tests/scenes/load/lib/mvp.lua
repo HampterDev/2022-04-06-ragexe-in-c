@@ -72,7 +72,7 @@ return function(load, boss)
 
     local function quake()
         local first = F.frame + math.floor(boss.quake_cast / 16) + 2
-        scene.send(P.cast(B.aid, B.aid, B.x, B.y, S.EARTHQUAKE, boss.quake_cast, 0))
+        scene.cast{src = B.aid, target = B.aid, skill = S.EARTHQUAKE, ms = boss.quake_cast}
         F.at(boss.quake_cast / 16 + 1, function()
             if not B.alive then return end
             scene.send(P.use_skill(S.EARTHQUAKE, B.aid, B.aid, 5))
@@ -97,7 +97,7 @@ return function(load, boss)
             F.skill(B, tank, s[1], {cast = s[3], dmg = s[4], then_ = function(v) maybe_kill(v, 5) end})
         elseif s[2] == "area" then
             if s[3] > 0 then
-                scene.send(P.cast(B.aid, B.aid, B.x, B.y, s[1], s[3], 0))
+                scene.cast{src = B.aid, target = B.aid, skill = s[1], ms = s[3]}
             end
             F.at(s[3] / 16 + 1, function()
                 if not B.alive then return end

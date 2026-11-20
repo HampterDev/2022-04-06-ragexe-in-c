@@ -1,23 +1,9 @@
 -- What granny_models does not show of the Granny (3D) actors: several of one model (the device
 -- draws a mesh of all of them as one instanced draw), turned to each of the eight directions, one
--- walking (ZC_NOTIFY_MOVE) and two attacking the player (ZC_NOTIFY_ACT), and others at the
--- screen's edges, partly off it (the right one behind a roof). Two captures half a second apart
--- show them in other poses.
-local function u16(v) return string.char(v % 256, math.floor(v / 256) % 256) end
-local function u32(v) return u16(v % 65536) .. u16(math.floor(v / 65536)) end
+-- walking (scene.walk) and two attacking the player (scene.attack), and others at the screen's
+-- edges, partly off it (the right one behind a roof). Two captures half a second apart show them in
+-- other poses.
 local player = 2000000
-
--- a move from (x0, y0) to (x1, y1), each cell's centre (packets/packet_data.c, packet_decode_move_data)
-local function move(aid, x0, y0, x1, y1)
-    local data = string.char(math.floor(x0 / 4), (x0 % 4) * 64 + math.floor(y0 / 16),
-        (y0 % 16) * 16 + math.floor(x1 / 64), (x1 % 64) * 4 + math.floor(y1 / 256), y1 % 256, 0x88)
-    return u16(0x86) .. u32(aid) .. data .. u32(0)
-end
-
-local function act(src, target)
-    return u16(0x8a) .. u32(src) .. u32(target) .. u32(0) .. u32(400) .. u32(200) .. u16(0) .. u16(1)
-        .. string.char(0) .. u16(0)
-end
 
 scene.enter_map("prontera", 156, 180, {name = "Watcher", job = 4008, hair = 5})
 scene.wait_ready()
@@ -35,9 +21,11 @@ scene.spawn{aid = 110005201, kind = "monster", job = 1285, x = 150, y = 176, dir
 scene.spawn{aid = 110005202, kind = "monster", job = 1287, x = 160, y = 177, dir = 6}
 scene.spawn{aid = 110005203, kind = "monster", job = 1286, x = 153, y = 181, dir = 4}
 scene.wait(30)
-scene.send(move(110005201, 150, 176, 162, 176))
-scene.send(act(110005202, player))
-scene.send(act(110005203, player))
+if not scene.walk(110005201, 162, 176) then
+    scene.fail("the walker has no way to 162,176")
+end
+scene.attack{src = 110005202, target = player, motion = 400, flinch = 200}
+scene.attack{src = 110005203, target = player, motion = 400, flinch = 200}
 scene.wait(20)
 scene.capture("granny_actions")
 scene.wait(30)

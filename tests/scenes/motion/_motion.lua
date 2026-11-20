@@ -46,22 +46,15 @@ function M.run(tag, n, step)
     end
 end
 
-local function u16(v) return string.char(v % 256, math.floor(v / 256) % 256) end
-local function u32(v) return u16(v % 65536) .. u16(math.floor(v / 65536)) end
+local PLAYER = 2000000
 
--- ZC_NOTIFY_PLAYERMOVE: the player walks from x0, y0 to x1, y1 from the given tick
-local function move(x0, y0, x1, y1, tick)
-    local d = string.char(math.floor(x0 / 4) % 256, (x0 % 4) * 64 + math.floor(y0 / 16) % 64,
-                          (y0 % 16) * 16 + math.floor(x1 / 64) % 16, (x1 % 64) * 4 + math.floor(y1 / 256) % 4,
-                          y1 % 256, 0x88)
-    scene.send(u16(0x87) .. u32(tick) .. d)
-end
-
--- the player walks the legs of a path ({x0, y0, x1, y1} each), n frames a leg
-function M.walk(tag, path, n)
-    local tick, start = 100000000, scene.frame()
-    for _, p in ipairs(path) do
-        move(p[1], p[2], p[3], p[4], tick + (scene.frame() - start) * 16)
+-- the player walks to each cell of `cells` ({x, y} each) in turn, n frames a leg; a leg that is not
+-- over by then turns onto the next at its next cell (scene.walk)
+function M.walk(tag, cells, n)
+    for _, c in ipairs(cells) do
+        if not scene.walk(PLAYER, c[1], c[2]) then
+            scene.fail(tag .. ": the player has no way to " .. c[1] .. "," .. c[2])
+        end
         M.run(tag, n)
     end
 end
