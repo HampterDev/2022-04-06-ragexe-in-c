@@ -209,7 +209,7 @@ in the first ten seconds of a map must be fewer than before.
 
 Built on both sides. `tests/test_way_up.c` has samples of both sources: a slower line is followed
 two requests after it, where the exchanges alone have not followed it yet, and a request that lost
-a datagram does not set the lead. `tests/test_predicted.c`: a word hands back its sample once, only
+a datagram does not set the lead. `rules`' `tests/predicted_tests.c`: a word hands back its sample once, only
 for the request it names and only with an arrival. The playground at a ping of 150 ms with 40 ms
 of jitter, four runs of 40 s with six Porings: requests that arrived after their tick went from
 1 (none in the first ten seconds on the map) to 0; with 10 of 100 datagrams lost too, from 3 (2
