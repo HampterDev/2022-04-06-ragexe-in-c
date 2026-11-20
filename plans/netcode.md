@@ -151,7 +151,7 @@ Only a request that took longer than the client allowed for is applied elsewhere
 and the player's body says so.
 
 What another actor aims at the own character is played on the own clock too
-(`world/act_track.h`): a swing or a cast at it, a hit on it, and the idle record that ends such
+(`view/act_track.h`): a swing or a cast at it, a hit on it, and the idle record that ends such
 a swing or cast. The server decides a swing's hit at the tick the swing lands at, and applies a
 request at the tick it names, so on the own clock the swing lands on the screen at the last
 moment a request sent now is applied before it. On the render clock it landed there later by

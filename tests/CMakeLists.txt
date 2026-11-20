@@ -36,9 +36,11 @@ if(MSVC)
             "${CMAKE_EXE_LINKER_FLAGS_${config}}")
     endforeach()
 endif()
+# The client's headers name the pieces' (game/rules, game/delivery) from their roots, after src.
 include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/vendor/lua-5.1.4/src
     ${PROJECT_SOURCE_DIR}/vendor/zlib-1.2.11 ${PROJECT_SOURCE_DIR}/vendor/libpng-1.6.36
-    ${PROJECT_SOURCE_DIR}/vendor/yyjson-0.13.0)
+    ${PROJECT_SOURCE_DIR}/vendor/yyjson-0.13.0 ${PROJECT_SOURCE_DIR}/game/rules
+    ${PROJECT_SOURCE_DIR}/game/delivery)
 if(WIN32)
     # What the Windows tests link beyond CMake's default Windows libraries; an import library adds
     # nothing to a program that does not call into it.
@@ -49,7 +51,8 @@ endif()
 # Client files the tests link are compiled once, into one static library per library of
 # tools/libraries.txt (rage_client_base, rage_client_platform, ...). A test names them with CLIENT
 # and links the libraries that hold them, highest first; the linker takes from each library only
-# the objects the test uses. A test that compiles a client file with its own defines or a fixture
+# the objects the test uses. Each of them links the pieces the client is built against, rules and
+# delivery, as the program does. A test that compiles a client file with its own defines or a fixture
 # compiles its own copy (OBJECTS, or its own sources). Each file keeps the warning level the tests
 # have held it to: /W3 unless rage_client_warnings says otherwise.
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/depmap/libtable.py"
@@ -93,6 +96,7 @@ function(rage_link_client target)
             if(MSVC)
                 target_compile_options(${lib} PRIVATE /WX /we4013)
             endif()
+            target_link_libraries(${lib} PUBLIC rules delivery)
             if(WIN32)
                 target_link_libraries(${lib} PUBLIC ${RAGE_TEST_SYSTEM_LIBRARIES})
             else()
@@ -169,14 +173,14 @@ rage_client_warnings(1 actors/map_type_table.c core/byte_array.c core/thread_tex
     ui/controls/window_shorten.c ui/items/item_tag_buttons.c ui/items/item_tag_text.c
     ui/items/item_tags_chat.c ui/wndmgr/whisper_names.c ui/wndmgr/wndmgr_std.c web/name_cards.c
     world/mode_draw.c world/mode_lifetime.c)
-rage_client_warnings(4 body/body.c body/grid_path.c contents/byte_queue.c contents/connection.c
+rage_client_warnings(4 contents/byte_queue.c contents/connection.c
     core/abstract_method.c core/cstr.c core/fatal.c core/hex.c core/numeric.c core/once_win32.c
-    core/text_markup.c core/utf8.c delivery/delivery.c delivery/delivery_route.c effects/durations.c
+    core/text_markup.c core/utf8.c effects/durations.c
     game/broadcast_text.c game/scream_text.c login/password_encode.c navi/navi_text_lines.c
     platform/code_page_win32.c platform/net_enet.c render/shadow_fit.c render/shadow_fit_gpu.c
     render/text_runs.c std/clock_sync.c std/list.c std/render_delay.c std/swing_pace.c std/tree.c std/vec.c
-    std/way_up.c ui/chat/speaker_name.c ui/controls/item_id_tag.c world/act_track.c world/drawn.c world/move_track.c
-    world/own_swing.c world/predicted.c world/presence.c world/record_wait.c world/view_floors.c)
+    route/delivery_route.c std/way_up.c ui/chat/speaker_name.c ui/controls/item_id_tag.c world/drawn.c
+    world/own_swing.c)
 
 # ---- Test programs ----
 # Paths are relative to the repository root.
@@ -400,11 +404,8 @@ rage_test_run(library_includes COMMAND Python3::Interpreter
     ${PROJECT_SOURCE_DIR}/tools/depmap/check_includes.py --strict)
 # The shaders' generated headers match their sources (tools/shaders/check.py).
 rage_test_run(shader_sources COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/shaders/check.py)
-# The body core under src/body and the delivery piece under src/delivery are the server's copies
-# (tools/check_body_copy.py, tools/check_delivery_copy.py; they pass with a note where no server
-# checkout is), and only world/predicted.c runs a world of the core (tools/check_one_world.py).
-rage_test_run(body_copy COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/check_body_copy.py)
-rage_test_run(delivery_copy COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/check_delivery_copy.py)
+# No file under src makes, changes or runs a world of the actor core: the predicted world of rules
+# is the client's one (tools/check_one_world.py).
 rage_test_run(one_world COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/check_one_world.py)
 rage_test_run(map_name_migration COMMAND Python3::Interpreter
     ${CMAKE_CURRENT_SOURCE_DIR}/test_map_name_migration.py)
@@ -428,14 +429,12 @@ endforeach()
 foreach(module clock filesystem thread code_page sha256)
     rage_test(platform_${module} W1 NO_WX CLIENT ${platform_files})
 endforeach()
-# The sockets (platform/net_enet.c) with the delivery piece under them (delivery/delivery.c,
-# plans/delivery.md), over loopback; the connection's ENet channels; the piece and its route table
-# alone.
-rage_test(platform_net W4 WE4013 CLIENT ${platform_files} platform/net_enet.c delivery/delivery.c)
-rage_test(connection W4 WE4013 CLIENT contents/byte_queue.c contents/connection.c delivery/delivery.c
+# The sockets (platform/net_enet.c) with the delivery piece under them (game/delivery,
+# plans/delivery.md), over loopback; the connection's ENet channels; the route table alone.
+rage_test(platform_net W4 WE4013 CLIENT ${platform_files} platform/net_enet.c)
+rage_test(connection W4 WE4013 CLIENT contents/byte_queue.c contents/connection.c
     platform/net_enet.c std/tree.c ${platform_files})
-rage_test(delivery W4 WE4013 CLIENT delivery/delivery.c)
-rage_test(delivery_route W4 WE4013 CLIENT delivery/delivery_route.c)
+rage_test(delivery_route W4 WE4013 CLIENT route/delivery_route.c)
 rage_test(code_page_iconv W1 NO_WX src/platform/code_page_iconv.c src/platform/code_page_tables.c
     DEFINES RAGE_OWN_ICONV)
 rage_test(numeric W4 CLIENT core/numeric.c)
@@ -672,7 +671,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         src/std/string.c src/std/container_memory.c src/std/vec.c src/std/tree.c
         src/platform/code_page_win32.c FORCE_INCLUDE tests/lua_data_manager_boundaries.h INCLUDES src/contents
         LIBS rage_lua)
-    rage_test(act_track W4 WE4013 CLIENT world/act_track.c world/view_floors.c)
     rage_test(actor_actions WE4013 CLIENT actors/action.c actors/head_extent.c)
     rage_test(actor_appearance CLIENT actors/appearance.c session/session_effect_state.c)
     rage_test(actor_effect_cells)
@@ -692,10 +690,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(animation_owner CLIENT core/utf8.c fileio/file.c fileio/resource_path.c
         platform/code_page_win32.c platform/filesystem_win32.c)
     rage_test(attack_records WE4013 tests/attack_records_session.c tests/attack_records_skill_fx.c CLIENT
-        actors/actor_msg.c body/grid_path.c game/packets_act.c game/skill_notify.c platform/clock_win32.c
-        std/clock_sync.c std/render_delay.c std/swing_pace.c std/way_up.c world/act_track.c world/drawn.c
-        world/move_track.c world/own_swing.c world/pathinfo.c world/presence.c world/record_wait.c
-        world/view_floors.c)
+        actors/actor_msg.c game/packets_act.c game/skill_notify.c platform/clock_win32.c std/clock_sync.c
+        std/render_delay.c std/swing_pace.c std/way_up.c world/drawn.c world/own_swing.c world/pathinfo.c)
     rage_test(attribute_consumers CLIENT game/cell_coordinates.c game/cells.c platform/clock_win32.c
         resources/attr_queries.c)
     rage_test(attribute_grid CLIENT core/utf8.c fileio/file.c fileio/resource_path.c
@@ -710,7 +706,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         iteminfo/item_info.c std/container_memory.c std/string.c std/vec.c)
     rage_test(basic_info_restore WE4013 GENERATED basic_info_restore)
     rage_test(bitmap_owner CLIENT core/cstr.c std/string.c LIBS rage_png)
-    rage_test(body W4 WE4013 tests/body_scenario.c CLIENT body/body.c body/grid_path.c)
     rage_test(body_layer_slots W1 WE4013 CLIENT std/string.c)
     rage_test(bitmap_png OBJECTS test_bitmap_png_bitmap_png test_bitmap_png_bitmap_storage LIBS rage_png)
     rage_test(broadcast_packets W1 WE4013 CLIENT game/msg_broadcast.c session/character_name.c)
@@ -764,10 +759,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(cooldown_storage CLIENT ui/cooldown_timer.c)
     rage_test(crash_dialog W4 OBJECTS test_crash_dialog_crash_dialog)
     rage_test(crash_report OBJECTS test_crash_report_crash_report)
-    # The drawn place compiles without /std:c11 (world/drawn.h), so the test builds its own copy as
+    # The drawn point compiles without /std:c11 (world/drawn.h), so the test builds its own copy as
     # C99, which MSVC compiles in its default mode.
-    rage_test(drawn W4 WE4013 src/world/drawn.c src/world/move_track.c src/world/view_floors.c
-        CLIENT body/body.c body/grid_path.c)
+    rage_test(drawn W4 WE4013 src/world/drawn.c LIBS rules)
     set_target_properties(test_drawn PROPERTIES C_STANDARD 99)
     rage_test(edit_history W1 CLIENT core/owned_text.c core/text_array.c core/utf8.c
         platform/code_page_win32.c std/string.c ui/chat/edit_history.c ui/controls/edit_text.c
@@ -920,8 +914,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(gravity_control tests/effect_base_stubs.c)
     rage_test(grf_archive_owner CLIENT core/cstr.c platform/system_memory_win32.c platform/thread_win32.c
         std/std_sort.c LIBS rage_zlib ARGS ${PROJECT_SOURCE_DIR}/tests/fixtures/grf_records.bin)
-    rage_test(grid_path W4 WE4013 CLIENT body/grid_path.c ARGS
-        ${PROJECT_SOURCE_DIR}/tests/data/grid_path_vectors.txt)
     rage_test(ground_item CLIENT core/once_win32.c iteminfo/item_info.c platform/clock_win32.c
         std/container_memory.c std/string.c std/vec.c)
     rage_test(ground_lifecycle CLIENT render/math3d.c resources/attr_queries.c)
@@ -1052,7 +1044,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         monster_skill_info)
     rage_test(mouse CLIENT core/utf8.c platform/code_page_win32.c render/display_options.c OBJECTS
         test_mouse_mouse test_mouse_window_sdl)
-    rage_test(move_track W4 WE4013 CLIENT body/grid_path.c world/move_track.c world/view_floors.c)
     rage_test(multiline_draw W1 WE4013 CLIENT core/byte_array.c core/owned_text.c core/text_array.c
         core/utf8.c platform/clock_win32.c platform/code_page_win32.c platform/window_sdl.c
         ui/controls/edit3_lines.c ui/controls/window_coloured_lines.c ui/items/item_tag_buttons.c)
@@ -1090,25 +1081,23 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         test_object_type_worldmap_object_types)
     rage_test(once W4 CLIENT core/once_win32.c)
     rage_test(own_states)
-    rage_test(own_swing W4 WE4013 CLIENT world/act_track.c world/own_swing.c world/view_floors.c)
+    rage_test(own_swing W4 WE4013 CLIENT world/own_swing.c)
     rage_test(owned_booking CLIENT contents/party_booking_data.c)
     rage_test(packet_dispatch W1 WE4013 tests/packet_dispatch_sinks.c CLIENT game/packet_dispatch.c
         game/packet_dispatch2.c)
     rage_test(packets CLIENT contents/byte_queue.c contents/rag_connection.c core/once_win32.c
-        delivery/delivery_route.c platform/clock_win32.c)
+        route/delivery_route.c platform/clock_win32.c)
     rage_test(particle_draw CLIENT effects/ez2str_draw.c render/math3d.c)
     rage_test(particle_pools W1 CLIENT platform/clock_win32.c render/math3d.c render/rp_pool.c
         render/skin_layout.c std/container_memory.c std/string.c std/vec.c)
     rage_test(particle_process CLIENT effects/ez2str_playback.c effects/str_animation.c)
     rage_test(particle_view CLIENT effects/particle_view.c)
     rage_test(password_encode W4 CLIENT login/password_encode.c LIBS rage_crijndael)
-    rage_test(path_info CLIENT body/body.c body/grid_path.c core/numeric.c render/math3d.c world/move_track.c
-        world/pathfinder.c world/view_floors.c)
-    rage_test(pathfinder_owner tests/fixtures/pathfinder_reference.c CLIENT body/body.c body/grid_path.c
+    rage_test(path_info CLIENT core/numeric.c render/math3d.c world/pathfinder.c)
+    rage_test(pathfinder_owner tests/fixtures/pathfinder_reference.c CLIENT
         core/numeric.c core/utf8.c fileio/file.c fileio/resource_path.c platform/code_page_win32.c
         platform/filesystem_win32.c render/math3d.c resources/attr_queries.c std/container_memory.c
-        std/string.c std/tree.c std/vec.c world/move_track.c world/view_floors.c
-        OBJECTS rage_test_weather_state_support)
+        std/string.c std/tree.c std/vec.c OBJECTS rage_test_weather_state_support)
     rage_test(perf_overlay WE4013 GENERATED perf_overlay)
     rage_test(pet_accessory CLIENT contents/lua_memo.c platform/system_win32.c GENERATED pet_accessory LIBS rage_lua)
     rage_test(pet_actions GENERATED pet_actions)
@@ -1117,7 +1106,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(plain_lines W1 WE4013 CLIENT core/hex.c core/owned_text.c core/text_array.c core/text_format.c
         core/utf8.c platform/code_page_win32.c ui/controls/window_lines.c)
     rage_test(player_names)
-    rage_test(predicted W4 WE4013 CLIENT body/body.c body/grid_path.c world/predicted.c)
     rage_test(prim_creation CLIENT effects/effect_objects.c effects/rag/rag_prim_launch.c)
     rage_test(private_airplane WE4013 CLIENT core/memory.c std/string.c GENERATED private_airplane)
     rage_test(projection tests/fixtures/projection_reference.c CLIENT render/math3d.c render/rp_project.c
@@ -1136,7 +1124,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         ui/chat/item_link_text.c ui/chat/navi_text.c)
     rage_test(render_operations WE4013 src/actors/sprite_overlays.c src/actors/motion_update.c FORCE_INCLUDE
         tests/render_operations_boundaries.h)
-    rage_test(record_wait W4 WE4013 CLIENT world/record_wait.c)
     rage_test(render_delay W4 WE4013 CLIENT std/render_delay.c)
     rage_test(renderer_storage CLIENT core/utf8.c fileio/resource_path.c platform/clock_win32.c
         platform/code_page_win32.c platform/filesystem_win32.c platform/system_memory_win32.c
@@ -1279,8 +1266,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(vending_retry CLIENT core/fatal.c core/memory.c game/msg_vending.c iteminfo/item_info.c
         iteminfo/item_list.c platform/clock_win32.c session/session_item_lists.c session/session_items.c
         std/list.c std/string.c std/vec.c)
-    rage_test(view_floors W4 WE4013 CLIENT body/grid_path.c world/act_track.c world/move_track.c
-        world/presence.c world/record_wait.c world/view_floors.c)
     rage_test(wave_palette CLIENT core/utf8.c fileio/file.c fileio/resource_path.c platform/code_page_win32.c
         platform/filesystem_win32.c render/device_palette.c)
     rage_test(way_up W4 WE4013 CLIENT std/way_up.c)
@@ -1319,7 +1304,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     add_executable(measure_requests ${sources})
     target_include_directories(measure_requests PRIVATE ${PROJECT_SOURCE_DIR}/tools)
     target_compile_options(measure_requests PRIVATE /W4 /WX /we4013)
-    rage_link_client(measure_requests delivery/delivery.c platform/clock_win32.c platform/net_enet.c
+    rage_link_client(measure_requests platform/clock_win32.c platform/net_enet.c
         platform/net_win32.c platform/thread_win32.c)
 
     # The Adventurer's Agency handler of a patched Hercules checkout (docs/server/agency-packets.md),

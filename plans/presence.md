@@ -29,7 +29,7 @@ could.
   every track (the server's `eos-world/aoi-render.js`, `ENTER_VIEW`).
 - **The predicted world dates a going by the client.** Another body leaves the predicted world
   at the client's own clock when the vanish is read, and whether a word of the server is of a
-  world with that body is told by which arrived first (`world/predicted.h`, `predicted_gone`).
+  world with that body is told by which arrived first (`prediction/predicted.h`, `predicted_gone`).
   So the own body has to arrive in order with the world channel, where one lost datagram holds
   it back with everything else, and a body that died is kept in the predicted world a round
   trip longer than the server had it: the own character may begin another swing at it.
@@ -84,7 +84,7 @@ is rendered by the renderer like any other and is stamped.
 
 ### 2. Floors belong to the unit id
 
-`world/view_floors.c`, freestanding, with its own tests: for a unit id, the floor of each track
+`view/view_floors.c`, freestanding, with its own tests: for a unit id, the floor of each track
 and the ticks of its last coming and going. It takes the place of the floors on the actor, so
 there is one home for them. It is bounded; the entries of units that are in view are never the
 ones to leave, and a map load empties it.
@@ -93,7 +93,7 @@ ones to leave, and a map load empties it.
   equal or newer is taken. A notice (a hit) dated before the stamp's tick is dropped.
 - **Goes.** With the stamp's revisions r: whatever the actor holds with a revision up to r goes
   with the actor, and so do the unit's items in the act and HP queue. What it holds that is
-  newer than r belongs to a later stay and waits by unit id (`world/record_wait.c`, as a
+  newer than r belongs to a later stay and waits by unit id (`view/record_wait.c`, as a
   record without an actor waits today). The floors become "newer than r".
 - **A record is filed** against the floors of its unit id, wherever it comes from: off the
   wire, or out of the waiting list when its actor appears. Playing a record raises the floor,
@@ -175,7 +175,7 @@ Each step ends with its check passing and leaves the game playable.
 | Step | What | Check |
 |---|---|---|
 | 1 The stamp | The server's renderer sends `ZC_VIEW_STAMP`; the client's packet table knows it and reads it bounded | 3 |
-| 2 Floors by unit id | `world/view_floors.c`; coming and going as part 2 says; the floors leave the actor; the queue loses a gone unit's items | 1, 4 |
+| 2 Floors by unit id | `view/view_floors.c`; coming and going as part 2 says; the floors leave the actor; the queue loses a gone unit's items | 1, 4 |
 | 3 Dated goings | `predicted_gone` with the tick; the rule by arrival goes | 2 |
 | 4 Entries bring acts | The act record of an open swing or cast with an entry | 3, 4 |
 | 5 The own body on the piece | The placement number, the route table's row, `plans/delivery.md` step 5 closed | 4, 5 |
@@ -196,4 +196,4 @@ are as the design says; step 5:
 
 | Step | Built | Not built or not covered |
 |---|---|---|
-| 5 The own body on the piece | The route table's row for `ZC_OWN_BODY` (replaceable, the connection's one key, first in priority), the same bytes in the server's `net/delivery` and here. The placement: counted by the server's `eos-world` (`aoi-render.js`), carried with the player to the next map's unit and through a snapshot; `ZC_OWN_BODY` and `ZC_HOLD_BACK` carry it (their layouts in `plans/core-loop.md` and `plans/netcode.md`); the predicted world keeps a body that comes before the number aside and refuses one of another placement (`predicted_placed`). The playground's check 4 is a finding of its own kind, `presence` (the server's `consumers/host/playground/presence.js`, the client's view of a unit in `tests/playground/play_driver.c`). Checks: `tests/test_predicted.c`, `tests/test_delivery_route.c`, the gateway's records test (of two bodies sent in one tick only the newer travels), the server's session and render tests; 15 deliberate faults each caught. Check 5 through the piece, the playground with Zombies, four runs of 40 s: with 10 of 100 datagrams lost a word was 12.6 ms late on average from the gateway's end being handed it to the client's end handing it on (623 words), with 30 of 100 37.1 ms (636 words); 1,904 ms at worst in both; the one such case looked at was the first word of its run, sent before the piece had measured a round trip. No presence finding in any of the playground's sets | Check 5 on the world channel: the playground's wire loses nothing there. A warp between two maps of one host was played in a session test only, not in the playground, whose player stays on one map |
+| 5 The own body on the piece | The route table's row for `ZC_OWN_BODY` (replaceable, the connection's one key, first in priority), the same source in the server's `net/route` and here (`src/route`). The placement: counted by the server's `eos-world` (`aoi-render.js`), carried with the player to the next map's unit and through a snapshot; `ZC_OWN_BODY` and `ZC_HOLD_BACK` carry it (their layouts in `plans/core-loop.md` and `plans/netcode.md`); the predicted world keeps a body that comes before the number aside and refuses one of another placement (`predicted_placed`). The playground's check 4 is a finding of its own kind, `presence` (the server's `consumers/host/playground/presence.js`, the client's view of a unit in `tests/playground/play_driver.c`). Checks: `tests/test_predicted.c`, `tests/test_delivery_route.c`, the gateway's records test (of two bodies sent in one tick only the newer travels), the server's session and render tests; 15 deliberate faults each caught. Check 5 through the piece, the playground with Zombies, four runs of 40 s: with 10 of 100 datagrams lost a word was 12.6 ms late on average from the gateway's end being handed it to the client's end handing it on (623 words), with 30 of 100 37.1 ms (636 words); 1,904 ms at worst in both; the one such case looked at was the first word of its run, sent before the piece had measured a round trip. No presence finding in any of the playground's sets | Check 5 on the world channel: the playground's wire loses nothing there. A warp between two maps of one host was played in a session test only, not in the playground, whose player stays on one map |

@@ -7,19 +7,12 @@ REM   2. link check: tools\depmap\check_links.py over the dumpbin listing of OBJ
 REM      build\obj (build.bat's release build) by default. Without OBJDIR, build.bat runs first
 REM      when an object is missing or older than a file under src.
 REM Both fail on a use the table does not allow and on an exception that matches nothing.
-REM It also runs tools\check_body_copy.py and tools\check_delivery_copy.py: the body core under
-REM src\body and the delivery piece under src\delivery are the server's; and
-REM tools\check_one_world.py: only src\world\predicted.c runs a world of the body core.
+REM It also runs tools\check_one_world.py: no file under src runs a world of the actor core.
 REM build.bat check runs it on the objects of the variant it built. The test suite runs the include
-REM check and the other three as its tests library_includes, body_copy, delivery_copy and one_world
-REM (tests\CMakeLists.txt).
+REM check and the other as its tests library_includes and one_world (tests\CMakeLists.txt).
 setlocal
 for %%i in ("%~dp0..") do set "ROOT=%%~fi"
 python "%ROOT%\tools\depmap\check_includes.py" --strict
-if errorlevel 1 exit /b 1
-python "%ROOT%\tools\check_body_copy.py"
-if errorlevel 1 exit /b 1
-python "%ROOT%\tools\check_delivery_copy.py"
 if errorlevel 1 exit /b 1
 python "%ROOT%\tools\check_one_world.py"
 if errorlevel 1 exit /b 1

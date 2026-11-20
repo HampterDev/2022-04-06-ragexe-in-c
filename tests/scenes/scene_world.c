@@ -9,7 +9,7 @@
      placement's number with an ordinary map's hold-back, 0 (ZC_HOLD_BACK), and the player's own
      body as the body core has it (ZC_OWN_BODY);
    - every unit's coming and going is stamped (ZC_VIEW_STAMP) with the tick and its revisions;
-   - a walk is the body core's (body/body.h), run here as the server's spatial runs it: the
+   - a walk is the body core's (actor/actor.h), run here as the server's spatial runs it: the
      server's path and steps at the unit's speed, sent to the client as a move record
      (ZC_TRACK_MOVE), or for the player's own character as its body (ZC_OWN_BODY);
    - a basic attack is a swing record (ZC_TRACK_ACT) and its hit a notice dated when it lands
@@ -20,7 +20,7 @@
    long as the run lasts. The map's cells are the client's own copy of the map (the server reads
    the same .gat). */
 #include "scene.h"
-#include "body/body.h"
+#include "actor/actor.h"
 #include "platform/clock.h"
 #include "world/pathfinder_state.h"
 #include <stdio.h>
@@ -61,7 +61,7 @@ static struct {
     struct Unit units[UNITS];
     int count;
     void *arena;
-    struct BodyWorld *world; /* the map the player is on, once it has loaded */
+    struct ActorWorld *world; /* the map the player is on, once it has loaded */
     const void *map;         /* the client's map the world was made for (g_pathFinder.attr) */
     int width, height;
     unsigned char used[SLOTS];
@@ -119,7 +119,7 @@ static uint16_t next_rev(struct Unit *unit, int track)
 }
 
 /* The cells of the world's map, while the client is on it. */
-static int ground(struct BodyGround *out)
+static int ground(struct ActorGround *out)
 {
     int width, height;
 
@@ -130,11 +130,11 @@ static int ground(struct BodyGround *out)
 /* ZC_TRACK_MOVE: the unit's body's move, as the server's renderer sends a walk's record. */
 static int send_move(struct Unit *unit)
 {
-    unsigned char packet[25 + (3 * BODY_PATH_STEPS + 7) / 8];
-    struct BodyMove move;
+    unsigned char packet[25 + (3 * ACTOR_PATH_STEPS + 7) / 8];
+    struct ActorMove move;
     int size, i;
 
-    if (body_move(W.world, (uint32_t)unit->slot, &move) != BODY_OK)
+    if (actor_move(W.world, (uint32_t)unit->slot, &move) != ACTOR_OK)
         return 0;
     size = 25 + (3 * move.steps + 7) / 8;
     memset(packet, 0, sizeof packet);
@@ -163,16 +163,16 @@ static int send_move(struct Unit *unit)
 /* ZC_OWN_BODY: the player's body as the core has it now. */
 static int send_own_body(const struct Unit *own)
 {
-    unsigned char packet[36 + BODY_STATE_SIZE];
-    struct BodyIntentState intent;
+    unsigned char packet[36 + ACTOR_STATE_SIZE];
+    struct ActorIntentState intent;
 
-    if (body_state(W.world, (uint32_t)own->slot, packet + 36) != BODY_OK
-        || body_intent(W.world, (uint32_t)own->slot, &intent) != BODY_OK)
+    if (actor_state(W.world, (uint32_t)own->slot, packet + 36) != ACTOR_OK
+        || actor_intent(W.world, (uint32_t)own->slot, &intent) != ACTOR_OK)
         return 0;
     put16(packet, ZC_OWN_BODY);
     put16(packet + 2, sizeof packet);
-    put32(packet + 4, BODY_RULES_VERSION);
-    put64(packet + 8, body_now(W.world));
+    put32(packet + 4, ACTOR_RULES_VERSION);
+    put64(packet + 8, actor_now(W.world));
     put16(packet + 16, intent.request);
     put16(packet + 18, REQUEST_STEPS);
     put32(packet + 20, 0);
@@ -201,11 +201,11 @@ static int send_stamp(const struct Unit *unit, int kind)
    again. Nothing that walks only by the steps of its record says anything. */
 static void drain(void)
 {
-    struct BodyEvent event;
+    struct ActorEvent event;
     struct Unit *unit;
 
-    while (body_take_event(W.world, &event))
-        if (event.kind == BODY_EVENT_MOVE && event.id != W.own && (unit = unit_of(event.id)) != NULL
+    while (actor_take_event(W.world, &event))
+        if (event.kind == ACTOR_EVENT_MOVE && event.id != W.own && (unit = unit_of(event.id)) != NULL
             && unit->slot == event.slot)
             send_move(unit);
 }
@@ -213,16 +213,16 @@ static void drain(void)
 /* Runs the world up to `now`, so that an input of that tick is taken. */
 static int run_to(uint64_t now)
 {
-    struct BodyGround g;
+    struct ActorGround g;
     uint64_t due;
     int result;
 
     if (!ground(&g))
         return 0;
-    while (body_next_due(W.world, &due) && due <= now) {
-        result = body_run(W.world, &g, due);
+    while (actor_next_due(W.world, &due) && due <= now) {
+        result = actor_run(W.world, &g, due);
         drain();
-        if (result != BODY_OK && result != BODY_EVENTS_FULL) {
+        if (result != ACTOR_OK && result != ACTOR_EVENTS_FULL) {
             fprintf(stderr, "scene: the units' world stopped at tick %llu (%d)\n", (unsigned long long)due, result);
             return 0;
         }
@@ -230,22 +230,22 @@ static int run_to(uint64_t now)
     return 1;
 }
 
-static int input(struct BodyInput *in)
+static int input(struct ActorInput *in)
 {
-    struct BodyGround g;
+    struct ActorGround g;
     int result;
 
     in->tick = platform_ticks_ms();
     if (!run_to(in->tick) || !ground(&g))
-        return BODY_BAD_WORLD;
-    result = body_input(W.world, &g, in);
+        return ACTOR_BAD_WORLD;
+    result = actor_input(W.world, &g, in);
     drain();
     return result;
 }
 
 static int body_add(struct Unit *unit, int x, int y, int dir, int speed)
 {
-    struct BodyInput in;
+    struct ActorInput in;
     int slot;
 
     if (!W.world)
@@ -257,14 +257,14 @@ static int body_add(struct Unit *unit, int x, int y, int dir, int speed)
         return 0;
     }
     memset(&in, 0, sizeof in);
-    in.kind = BODY_INPUT_ADD;
+    in.kind = ACTOR_INPUT_ADD;
     in.id = unit->aid;
     in.slot = (uint16_t)slot;
     in.x = (int16_t)x;
     in.y = (int16_t)y;
     in.dir = (uint8_t)(dir & 7);
-    in.value = (uint16_t)(speed < 1 ? 150 : speed > (int)BODY_MAX_SPEED_MS ? (int)BODY_MAX_SPEED_MS : speed);
-    if (input(&in) != BODY_OK) {
+    in.value = (uint16_t)(speed < 1 ? 150 : speed > (int)ACTOR_MAX_SPEED_MS ? (int)ACTOR_MAX_SPEED_MS : speed);
+    if (input(&in) != ACTOR_OK) {
         fprintf(stderr, "scene: the unit %u has no body on %d,%d\n", unit->aid, x, y);
         return 0;
     }
@@ -275,15 +275,15 @@ static int body_add(struct Unit *unit, int x, int y, int dir, int speed)
 
 static void body_remove(struct Unit *unit)
 {
-    struct BodyInput in;
+    struct ActorInput in;
 
     if (unit->slot < 0)
         return;
     memset(&in, 0, sizeof in);
-    in.kind = BODY_INPUT_REMOVE;
+    in.kind = ACTOR_INPUT_REMOVE;
     in.id = unit->aid;
     in.slot = (uint16_t)unit->slot;
-    if (input(&in) == BODY_OK)
+    if (input(&in) == ACTOR_OK)
         W.used[unit->slot] = 0;
     unit->slot = -1;
 }
@@ -302,23 +302,23 @@ void scene_world_place(uint32_t aid, int x, int y, int dir, int speed)
 
 int scene_world_loaded(void)
 {
-    struct BodyGround g;
+    struct ActorGround g;
     struct Unit *own;
     unsigned char hold[8];
-    size_t size = body_world_size(SLOTS, EVENTS);
+    size_t size = actor_world_size(SLOTS, EVENTS);
     int width, height, i;
 
     if (!W.arena)
         W.arena = malloc(size);
     if (!W.arena || !path_finder_body_ground(&g_pathFinder, &g, &width, &height))
         return 0;
-    W.world = body_world_init(W.arena, size, SLOTS, EVENTS, width, height, platform_ticks_ms());
+    W.world = actor_world_init(W.arena, size, SLOTS, EVENTS, width, height, platform_ticks_ms());
     if (!W.world)
         return 0;
     W.map = g_pathFinder.attr;
     W.width = width;
     W.height = height;
-    body_set_request_steps(W.world, REQUEST_STEPS);
+    actor_set_request_steps(W.world, REQUEST_STEPS);
     memset(W.used, 0, sizeof W.used);
     for (i = 0; i < W.count; i++)
         W.units[i].slot = -1;
@@ -377,19 +377,19 @@ int scene_world_vanish(uint32_t aid, int how)
 int scene_world_walk(uint32_t aid, int x, int y)
 {
     struct Unit *unit = unit_of(aid);
-    struct BodyInput in;
+    struct ActorInput in;
     int result;
 
     if (!unit || unit->slot < 0)
         return 0;
     memset(&in, 0, sizeof in);
-    in.kind = BODY_INPUT_WALK;
+    in.kind = ACTOR_INPUT_WALK;
     in.id = aid;
     in.slot = (uint16_t)unit->slot;
     in.x = (int16_t)x;
     in.y = (int16_t)y;
     result = input(&in);
-    if (result != BODY_OK) {
+    if (result != ACTOR_OK) {
         if (getenv("RAGEXE_SCENE_TRACE"))
             fprintf(stderr, "scene: no walk of %u to %d,%d (%d)\n", aid, x, y, result);
         return 0;

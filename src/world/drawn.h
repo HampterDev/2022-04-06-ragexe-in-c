@@ -2,12 +2,12 @@
 #define WORLD_DRAWN_H
 
 #include <stdint.h>
-#include "world/move_track.h"
+#include "view/move_place.h"
 
 /* Where an actor is drawn (plans/drawn-place.md). Two things, both functions of what is handed
  * in and nothing else:
  *
- *   the place   where the actor's move record has it at a tick (drawn_place);
+ *   the place   where the actor's move record has it at a tick (move_place);
  *   the point   where it is drawn, which joins the place when a record puts the place
  *               elsewhere, by the real time that passes.
  *
@@ -27,12 +27,10 @@
  *               DRAWN_SLIDE_CELLS, is taken at once;
  *   at once     a placed record, and an actor's first record.
  *
- * Places and points are in 256ths of a cell, a cell's middle at a whole multiple of DRAWN_CELL.
+ * Places and points are in 256ths of a cell, a cell's middle at a whole multiple of MOVE_PLACE_CELL.
  * Freestanding integer C: no clock, no float, no library, no allocation, no 64-bit product, and
  * it compiles without /std:c11. Ticks are the server's, 32 bits, which wrap; the caller's real
  * time is milliseconds that only go forward and may wrap. */
-
-#define DRAWN_CELL 256
 
 /* The point walks at most DRAWN_RATE_NUM / DRAWN_RATE_DEN of the walk speed. */
 #define DRAWN_RATE_NUM 13
@@ -46,19 +44,6 @@
 /* The most real time one frame counts, and the slowest walk speed. */
 #define DRAWN_JOIN_MS_MAX 60000u
 #define DRAWN_WALK_MS_MAX 10000u
-
-/* The place a record gives at `tick`:
- *   - a record without steps: the middle of its cell;
- *   - a record with steps: before its first step's time the middle of the cell it starts on;
- *     during a step on the line between the middles of the step's two cells, by the share of
- *     the step's time that has passed; after its last step the middle of its last cell.
- * The steps' times are the record's own (move_record_cells), which are the body core's. */
-struct DrawnPlace {
-    int32_t x, y;   /* 256ths of a cell */
-    int32_t moving; /* a step is under way at the tick */
-};
-
-void drawn_place(const struct MoveRecord *record, uint32_t tick, struct DrawnPlace *place);
 
 /* What the drawn point does in a frame. */
 enum { DRAWN_RESTS = 0, DRAWN_WALKS = 1, DRAWN_SLIDES = 2 };
@@ -89,7 +74,7 @@ void drawn_take(struct Drawn *drawn, const struct MoveRecord *record, uint32_t t
 
 /* What a frame shows. */
 struct DrawnFrame {
-    struct DrawnPlace place; /* the place at the frame's tick */
+    struct MovePlace place; /* the place at the frame's tick */
     int32_t x, y;            /* the drawn point */
     int32_t step_x, step_y;  /* how far it moved since the last frame: its heading */
     int motion;              /* DRAWN_RESTS, DRAWN_WALKS or DRAWN_SLIDES */

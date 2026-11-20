@@ -2,11 +2,11 @@
 #define WORLD_OWN_SWING_H
 
 #include <stdint.h>
-#include "world/act_track.h"
+#include "view/act_track.h"
 
 /* The player's own swing, shown when the predicted world's body begins it and not a round trip
  * later when the server's record of it arrives (plans/predicted-world.md). Whether the body
- * swings, when, at whom and with which attack motion is the world's to say (world/predicted.h,
+ * swings, when, at whom and with which attack motion is the world's to say (prediction/predicted.h,
  * predicted_swing). This is the book kept of the swing that is shown, so that it is shown
  * once: not again every frame the world has it, not again when the server's record of it
  * comes, and taken back when the world has it no more before it landed (a walk ended it, or

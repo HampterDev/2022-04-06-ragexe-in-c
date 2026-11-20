@@ -18,7 +18,7 @@ set VSCMD_SKIP_SENDTELEMETRY=1
 
 set "SCENES=%ROOT%\tests\scenes"
 cl /nologo /std:c11 /c /O2 /Oy- /MT /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 ^
- /I"%ROOT%\src" /I"%SCENES%" /I"%ROOT%\vendor\stb" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%VDIR%\sdl3-src\include" ^
+ /I"%ROOT%\src" /I"%ROOT%\game\rules" /I"%ROOT%\game\delivery" /I"%SCENES%" /I"%ROOT%\vendor\stb" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%VDIR%\sdl3-src\include" ^
  "%SCENES%\scene_clock.c" "%SCENES%\scene_net.c" "%SCENES%\scene_thread.c" "%SCENES%\scene_settings.c" ^
  "%SCENES%\scene_app_hidden.c" "%SCENES%\scene_window_win.c" "%SCENES%\scene_crash_win.c" "%SCENES%\scene_driver.c" ^
  "%SCENES%\scene_world.c" /Fo:"%OBJ%\\"

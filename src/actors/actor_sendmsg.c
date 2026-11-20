@@ -27,7 +27,7 @@
 #include "ui/shops/shops.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "platform/clock.h"
-#include "world/move_track.h"
+#include "view/move_track.h"
 #include <string.h>
 #include "world/world.h"
 #include "actors/attached.h"

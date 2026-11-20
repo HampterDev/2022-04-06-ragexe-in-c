@@ -10,7 +10,7 @@
    wire between its two ends that can lose and repeat datagrams by a seed
    (tools/lossy_link/wire.h): what the client sends on the delivery channel, its requests, on
    its way to the runner, and what of the server's the route table names
-   (delivery/delivery_route.h: the units' records and hits) on its way to the client. The wire
+   (route/delivery_route.h: the units' records and hits) on its way to the client. The wire
    holds nothing back: how long the line is stays the runner's to say. On a wire that loses
    nothing everything arrives in the frame it was sent, in the order it was sent.
 
@@ -27,12 +27,12 @@
 #include "contents/sound.h"
 #include "core/packet_table.h"
 #include "delivery/delivery.h"
-#include "delivery/delivery_route.h"
+#include "route/delivery_route.h"
 #include "game/cells.h"
 #include "game/gamemode.h"
 #include "game/net_clock.h"
 #include "game/own_body.h"
-#include "body/body.h"
+#include "actor/actor.h"
 #include "login/char_info.h"
 #include "login/loginmode.h"
 #include "platform/clock.h"
@@ -43,7 +43,7 @@
 #include "std/string.h"
 #include "world/mode_manager.h"
 #include "world/state.h"
-#include "world/view_floors.h"
+#include "view/view_floors.h"
 #include "lossy_link/wire.h"
 #include "scene.h"
 #include "play.h"
@@ -347,7 +347,7 @@ static void point_of(const struct GameActor *actor, long *x, long *y)
    wrote. */
 static size_t report_body(struct GameMode *mode, struct GameActor *own, unsigned char *p)
 {
-    unsigned char state[BODY_STATE_SIZE];
+    unsigned char state[ACTOR_STATE_SIZE];
     DWORD clock = 0, lands = 0, tick = 0;
     int x = 0, y = 0, sub_x, sub_y, known = 0, predicted;
     size_t i;
@@ -421,7 +421,7 @@ static size_t report(void)
 
             if (!actor || actor == own)
                 continue;
-            if ((size_t)(p - P.out) + 24 + 4 + P.sent_size + 16 + 24 + BODY_STATE_SIZE > sizeof P.out)
+            if ((size_t)(p - P.out) + 24 + 4 + P.sent_size + 16 + 24 + ACTOR_STATE_SIZE > sizeof P.out)
                 break;
             point_of(actor, &x, &y);
             put32(p, (unsigned long)actor->aid);
@@ -434,7 +434,7 @@ static size_t report(void)
             p[16] = (unsigned char)(actor->motion < 0 ? 0 : actor->motion > 254 ? 254 : actor->motion);
             p[17] = (unsigned char)(actor->attack_motion_count > 0.0f && actor->attack_motion_count < 255.0f
                                         ? (int)actor->attack_motion_count : 255);
-            /* whether the client has the actor's unit in view (world/view_floors.h): an actor that
+            /* whether the client has the actor's unit in view (view/view_floors.h): an actor that
                is shown after its going, dying, is not */
             p[18] = mode && view_floors_in_view(&mode->view_floors, (uint32_t)actor->aid) ? 1 : 0;
             p[19] = 0;

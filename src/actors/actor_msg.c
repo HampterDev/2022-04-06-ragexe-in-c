@@ -24,7 +24,7 @@ static int hit_job_mark(int job)
 }
 
 void game_actor_msg_attack(struct GameActor *self,
-                                     const struct ActorAttack *attack)
+                                     const struct GameActorAttack *attack)
 {
     struct GameMode *mode = game_current_mode();
     int type = attack->action;

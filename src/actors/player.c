@@ -52,7 +52,7 @@ unsigned char player_on_process(struct GameObject *object)
     struct Player *self = (struct Player *)object;
 
     struct GameActor *actor = (struct GameActor *)self;
-    struct ActorMove req;
+    struct GameActorMove req;
     struct UIWindow *wnd;
     unsigned char result;
     struct GameMode *mode;

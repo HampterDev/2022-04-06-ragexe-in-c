@@ -1,6 +1,6 @@
 @echo off
 REM find_wasm_clang.bat - sets CLANG to a clang that builds for wasm32, for the .wasm builds
-REM (tools\build_drawn_wasm.bat, tools\build_grid_path_wasm.bat). A CLANG already set is kept.
+REM (tools\build_move_place_wasm.bat, tools\build_grid_path_wasm.bat). A CLANG already set is kept.
 REM Otherwise the first of clang from PATH and %ProgramFiles%\LLVM\bin\clang.exe whose targets
 REM include wasm32: Visual Studio's own clang, which its environment puts first on PATH, has none.
 REM Fails when neither has it.

@@ -7,10 +7,10 @@
 #include "world/actor_lookup.h"
 #include "game/gamemode.h"
 #include "game/net_clock.h"
-#include "world/move_track.h"
+#include "view/move_track.h"
 #include "world/object_lookup.h"
 #include "world/pathfinder_state.h"
-#include "world/predicted.h"
+#include "prediction/predicted.h"
 #include "game/ground_item_state.h"
 #include "skills/attack_range.h"
 
@@ -20,7 +20,7 @@ static struct Predicted g_own;
 /* The map the prediction was begun on. */
 static const struct C3dAttr *g_own_map;
 /* The move of the own body the drawn character was given last (while g_drawn_known). */
-static struct BodyMove g_drawn;
+static struct ActorMove g_drawn;
 static int g_drawn_known;
 /* The revision of the last record filed for the character: they are made one after the other. */
 static uint16_t g_drawn_rev;
@@ -31,7 +31,7 @@ static uint32_t g_ordered;
 
 /* The map as the body core reads it. A prediction that was begun on another map is begun
    again: its requests and the server's last word were of that one. Returns 0 without a map. */
-static int own_ground(struct BodyGround *ground)
+static int own_ground(struct ActorGround *ground)
 {
     int width, height;
 
@@ -56,7 +56,7 @@ static int own_ground(struct BodyGround *ground)
 static void own_draw(struct GameMode *self)
 {
     struct Player *player = self->world ? self->world->player : NULL;
-    struct BodyMove move;
+    struct ActorMove move;
     struct ViewUnit *floors;
     struct MoveRecord record;
     int news;
@@ -85,7 +85,7 @@ static void own_draw(struct GameMode *self)
 }
 
 /* A record of the wire as the core's. */
-static void record_move(const struct MoveRecord *record, struct BodyMove *move)
+static void record_move(const struct MoveRecord *record, struct ActorMove *move)
 {
     memset(move, 0, sizeof *move);
     move->at_tick = predicted_wide(&g_own, record->at_tick);
@@ -94,7 +94,7 @@ static void record_move(const struct MoveRecord *record, struct BodyMove *move)
     move->land_ms = (uint16_t)(record->land_ms > 0xFFFFu ? 0xFFFFu : record->land_ms);
     move->speed_ms = (uint16_t)(record->speed_ms > 0xFFFFu ? 0xFFFFu : record->speed_ms);
     move->dir = record->dir;
-    move->steps = record->steps > BODY_PATH_STEPS ? BODY_PATH_STEPS : record->steps;
+    move->steps = record->steps > ACTOR_PATH_STEPS ? ACTOR_PATH_STEPS : record->steps;
     memcpy(move->path, record->path, move->steps);
 }
 
@@ -102,7 +102,7 @@ static void record_move(const struct MoveRecord *record, struct BodyMove *move)
    newest record of its walk that came and waits for the render clock says it as the server
    did. One that is played is the actor's place (plans/drawn-place.md). An actor without a
    record yet is on the cell it is drawn on. */
-static void other_move(struct GameMode *self, struct GameActor *actor, struct BodyMove *move)
+static void other_move(struct GameMode *self, struct GameActor *actor, struct ActorMove *move)
 {
     int x, y;
 
@@ -130,7 +130,7 @@ static void other_move(struct GameMode *self, struct GameActor *actor, struct Bo
 static void own_other(struct GameMode *self, uint32_t id)
 {
     struct GameActor *actor;
-    struct BodyMove move;
+    struct ActorMove move;
 
     if (!id || id == (uint32_t)g_session1.ownAid || !self->world || !view_floors_in_view(&self->view_floors, id))
         return;
@@ -145,8 +145,8 @@ static void own_other(struct GameMode *self, uint32_t id)
    at or has an intent about, and whom the newest request on a body that left is for. */
 static void own_others(struct GameMode *self)
 {
-    struct BodyAttack attack;
-    struct BodyIntentState intent;
+    struct ActorAttack attack;
+    struct ActorIntentState intent;
     uint32_t i;
     int waits = 0;
 
@@ -165,7 +165,7 @@ static void own_others(struct GameMode *self)
     if (!g_ordered)
         return;
     for (i = 0; i < g_own.pending_count; i++)
-        if ((g_own.pending[i].kind == BODY_REQUEST_ATTACK || g_own.pending[i].kind == BODY_REQUEST_SKILL)
+        if ((g_own.pending[i].kind == ACTOR_REQUEST_ATTACK || g_own.pending[i].kind == ACTOR_REQUEST_SKILL)
             && g_own.pending[i].target_id == g_ordered)
             waits = 1;
     /* the request is answered: the body names its target itself, or has let it go */
@@ -212,8 +212,8 @@ unsigned game_mode_own_body_unexplained(void)
 
 void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size_t size)
 {
-    struct PredictedBody body;
-    struct BodyGround ground;
+    struct PredictedActor body;
+    struct ActorGround ground;
 
     if (pkt && predicted_read(pkt, size, &body) && own_ground(&ground)) {
         predicted_confirm(&g_own, &ground, &body);
@@ -224,7 +224,7 @@ void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size
 
 void game_mode_own_body_placed(struct GameMode *self, unsigned placement)
 {
-    struct BodyGround ground;
+    struct ActorGround ground;
 
     if (own_ground(&ground) && predicted_placed(&g_own, &ground, (uint32_t)placement) != PREDICTED_REFUSED) {
         own_way_up(self);
@@ -261,7 +261,7 @@ void game_mode_own_body_walk(struct GameMode *self, unsigned number, int x, int 
     if (!player || (player->state != ACTOR_STATE_STAND && player->state != ACTOR_STATE_WALKING
                     && player->state != ACTOR_STATE_ATTACK && player->state != ACTOR_STATE_HURT))
         return;
-    request.kind = BODY_REQUEST_WALK;
+    request.kind = ACTOR_REQUEST_WALK;
     request.x = (int16_t)x;
     request.y = (int16_t)y;
     own_request(self, &request, number);
@@ -295,42 +295,42 @@ void game_mode_own_body_intent(struct GameMode *self, unsigned number, int kind,
 
     switch (kind) {
     case INTENT_ATTACK:
-        request.kind = BODY_REQUEST_ATTACK;
+        request.kind = ACTOR_REQUEST_ATTACK;
         request.target_id = target;
         request.mode = (uint8_t)mode;
         break;
     case INTENT_SKILL_ACTOR:
     case INTENT_SKILL_GROUND:
         range = skill_attack_range(skill_id, skill_lv);
-        request.range = (uint8_t)(range < 0 ? 0 : range > (int)BODY_MAX_RANGE ? (int)BODY_MAX_RANGE : range);
+        request.range = (uint8_t)(range < 0 ? 0 : range > (int)ACTOR_MAX_RANGE ? (int)ACTOR_MAX_RANGE : range);
         unit = kind == INTENT_SKILL_ACTOR && self->world ? (struct GameActor *)world_get_skill_by_aid(self->world, (int)target) : NULL;
         if (kind == INTENT_SKILL_GROUND) {
-            request.kind = BODY_REQUEST_SKILL_CELL;
+            request.kind = ACTOR_REQUEST_SKILL_CELL;
             request.x = (int16_t)x;
             request.y = (int16_t)y;
         } else if (unit) {
-            request.kind = BODY_REQUEST_SKILL_CELL;
+            request.kind = ACTOR_REQUEST_SKILL_CELL;
             drawn_cell(self, unit, &request.x, &request.y);
         } else {
-            request.kind = BODY_REQUEST_SKILL;
+            request.kind = ACTOR_REQUEST_SKILL;
             request.target_id = target;
         }
         break;
     case INTENT_PICKUP:
         item = self->world ? world_get_item_by_aid(self->world, (int)target) : NULL;
-        request.kind = item ? BODY_REQUEST_PICKUP : BODY_REQUEST_CANCEL;
+        request.kind = item ? ACTOR_REQUEST_PICKUP : ACTOR_REQUEST_CANCEL;
         request.range = PICKUP_DISTANCE;
         if (item)
             drawn_cell(self, (const struct GameActor *)item, &request.x, &request.y);
         break;
     case INTENT_RELEASE:
-        request.kind = BODY_REQUEST_RELEASE;
+        request.kind = ACTOR_REQUEST_RELEASE;
         break;
     default:
         return;
     }
     /* the world takes a request on a body only for a body it has */
-    if ((request.kind == BODY_REQUEST_ATTACK || request.kind == BODY_REQUEST_SKILL) && g_own.live && number) {
+    if ((request.kind == ACTOR_REQUEST_ATTACK || request.kind == ACTOR_REQUEST_SKILL) && g_own.live && number) {
         g_ordered = target;
         own_other(self, target);
     }
@@ -345,7 +345,7 @@ void game_mode_own_body_gone(unsigned id, DWORD tick)
 
 void game_mode_own_body_frame(struct GameMode *self)
 {
-    struct BodyGround ground;
+    struct ActorGround ground;
 
     if (!g_own.live || !game_mode_knows_clock(self) || !own_ground(&ground))
         return;
@@ -360,7 +360,7 @@ int game_mode_own_body_walk_waits(void)
     uint32_t i;
 
     for (i = 0; i < g_own.pending_count; i++) {
-        if (g_own.pending[i].kind == BODY_REQUEST_WALK)
+        if (g_own.pending[i].kind == ACTOR_REQUEST_WALK)
             return 1;
     }
     return 0;

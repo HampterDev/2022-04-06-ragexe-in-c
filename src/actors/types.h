@@ -6,7 +6,7 @@
 #include "std/container_types.h"
 #include "render/vec3.h"
 #include "world/path_info.h"
-#include "world/move_track.h"
+#include "view/move_track.h"
 #include "world/drawn.h"
 #include "resources/named_res.h"
 
@@ -255,7 +255,7 @@ OFFSET_ASSERT(ActorHit, attacker_aid, 0x10);
 OFFSET_ASSERT(ActorHit, motion, 0x28);
 SIZE_ASSERT(ActorHit, 0x34);
 
-struct ActorAttack {
+struct GameActorAttack {
     int damage;
     int left_damage;
     int action;
@@ -284,7 +284,7 @@ struct ActorSkillUse {
     int attacked_mt;
 };
 
-struct ActorMove {
+struct GameActorMove {
     unsigned start_tick;
     int src_x, src_y;
     int sub_x, sub_y;

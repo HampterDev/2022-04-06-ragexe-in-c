@@ -171,10 +171,10 @@ directory of `debug.getinfo(1, "S").source`), not a scene: `run.py` skips it.
 ## Staging actors
 
 The client moves and animates actors only from the project's records (`plans/core-loop.md`): where
-an actor is comes as a move record (`ZC_TRACK_MOVE`, `world/move_track.h`), what it does as an act
-record (`ZC_TRACK_ACT`, `world/act_track.h`), a hit as a notice dated when it lands
+an actor is comes as a move record (`ZC_TRACK_MOVE`, `view/move_track.h` of the piece `rules`), what it does as an act
+record (`ZC_TRACK_ACT`, `view/act_track.h`), a hit as a notice dated when it lands
 (`ZC_NOTICE_HIT`), and the player's own character as its body (`ZC_OWN_BODY`,
-`world/predicted.h`), which the client runs on with the server's own rules. The classic walk
+`prediction/predicted.h`), which the client runs on with the server's own rules. The classic walk
 packets (`ZC_NOTIFY_MOVE`, `ZC_NOTIFY_PLAYERMOVE`, `ZC_STOPMOVE`) do nothing in this client, so a
 script stages actors through `scene.walk`, `scene.attack` and `scene.cast`, and the fake map server
 (`scene_world.c`) sends what the project's server sends for them (the server's `docs/tracks.md`):
@@ -199,8 +199,8 @@ script stages actors through `scene.walk`, `scene.attack` and `scene.cast`, and 
   entry or the vanish, with the tick and the unit's revisions, as the server does: the client plays
   no record of a unit it has not seen come. A player who dies (`vanish(aid, 1)` of a `"player"`)
   lies where she fell and does not go.
-- **Walks.** The fake server runs the body core (`body/body.h`) for every unit on the map, as the
-  server's spatial does: a walk goes by the server's path (`body/grid_path.h`, at most 32 steps) at
+- **Walks.** The fake server runs the actor core (`actor/actor.h`) for every unit on the map, as the
+  server's spatial does: a walk goes by the server's path (`map/grid_path.h`, at most 32 steps) at
   the unit's speed from its spawn, and each move the core makes is sent as a move record with the
   unit's next revision. A walk asked for in the middle of a step turns at the next cell, as the
   server's do, and its record comes then.

@@ -5,7 +5,7 @@
 #include "platform/win_types.h"
 
 /* The player's own body as the server has it, and the predicted world kept from it
-   (world/predicted.h, plans/predicted-world.md): the server's word of the body (ZC_OWN_BODY)
+   (prediction/predicted.h, plans/predicted-world.md): the server's word of the body (ZC_OWN_BODY)
    is taken, the player's requests go into the world as they leave for the server, the bodies
    the own one depends on (whom it is to attack or use a skill on, attacks or swings at) are
    kept in it as the client sees them, and the world runs to the own clock once a frame. What
@@ -45,11 +45,11 @@ void game_mode_own_body_gone(unsigned id, DWORD tick);
 int game_mode_own_body_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms);
 /* Whether a walk the player asked for still waits for the server's word. */
 int game_mode_own_body_walk_waits(void);
-/* The own body as predicted: its bytes (BODY_STATE_SIZE) and the server's tick they are of, as
+/* The own body as predicted: its bytes (ACTOR_STATE_SIZE) and the server's tick they are of, as
    the wire has ticks. Returns 0 while nothing is predicted. */
 int game_mode_own_body(DWORD *tick, unsigned char *state);
 /* The words of the server that differed from what was predicted with no request or record to
-   explain them, on this map (world/predicted.h: `unexplained`). */
+   explain them, on this map (prediction/predicted.h: `unexplained`). */
 unsigned game_mode_own_body_unexplained(void);
 
 #endif

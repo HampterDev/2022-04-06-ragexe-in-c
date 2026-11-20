@@ -7,7 +7,7 @@
 
 #include "core/packet_table.h"
 #include "delivery/delivery.h"
-#include "delivery/delivery_route.h"
+#include "route/delivery_route.h"
 #include "diag/diag.h"
 #include "platform/clock.h"
 
@@ -113,7 +113,7 @@ int rag_connection_packet_channel(unsigned short id)
     if (id == CZ_REQUEST_TIME2)
         return PLATFORM_CHANNEL_NEWEST;
     /* what the player asks of the server, each with the stamp that goes out before it: the
-       table the gateway reads too (delivery/delivery_route.h), which needs no more than the
+       table the gateway reads too (route/delivery_route.h), which needs no more than the
        id of a request */
     head[0] = (unsigned char)id;
     head[1] = (unsigned char)(id >> 8);

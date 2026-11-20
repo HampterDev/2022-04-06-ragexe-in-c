@@ -9,9 +9,9 @@
 #include "session/session_talk.h"
 #include "world/actor_lookup.h"
 #include "world/object_lookup.h"
-#include "world/act_track.h"
+#include "view/act_track.h"
 #include "actors/actor_ops.h"
-#include "world/presence.h"
+#include "view/presence.h"
 #include "game/net_clock.h"
 #include "game/own_body.h"
 #include "game/cells.h"
@@ -89,7 +89,7 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
                                        int attack_mt, int attacked_mt, int damage, int count, int action,
                                        int left_damage, int is_sp_damage)
 {
-    struct ActorAttack attack;
+    struct GameActorAttack attack;
     struct GameActor *actor;
     unsigned swing_target;
 
@@ -158,7 +158,7 @@ static void swing_cancel(struct GameMode *self, unsigned source)
    a notice (ZC_NOTICE_HIT) and a monster's HP as a record (ZC_TRACK_VITALS), each with the
    server tick it belongs to and often ahead of it. They wait in the mode's queue and are played
    when the clock they are played on reaches the tick: the render clock, or the own clock for
-   what the player's own character does and for what is aimed at it (world/act_track.h). Played,
+   what the player's own character does and for what is aimed at it (view/act_track.h). Played,
    a swing begins (swing_begin) and idle ends it without a hit (swing_cancel), a cast is
    ZC_USESKILL_ACK with the time the cast still has on that clock, so its bar ends at the cast's
    tick however late the record came, idle also ends a cast as ZC_DISPEL does, a hit is the
@@ -361,7 +361,7 @@ static void play_waiting(struct GameMode *self, DWORD own_now)
 }
 
 /* An item leaves the queue and is played: an act or vitals record is the newest of its track
-   that was, for whatever of that track comes later (world/act_track.h). A swing or a cast of
+   that was, for whatever of that track comes later (view/act_track.h). A swing or a cast of
    another actor at the player's own character waits while that actor has yet to arrive
    (play_waiting); with as many waiting as there is room for, it is played as it comes. A newer
    act record of the actor takes the place of the one that waited, which then was never shown.
@@ -408,7 +408,7 @@ static struct MoveTrack *track_of(void *context, uint32_t gid)
     return actor ? &actor->move_track : NULL;
 }
 
-/* Where a unit's records go (world/presence.h): against the floors of its unit id, which
+/* Where a unit's records go (view/presence.h): against the floors of its unit id, which
    outlive its actor. */
 static struct Presence presence_of(struct GameMode *self)
 {
@@ -445,7 +445,7 @@ static void file_move(struct GameMode *self, unsigned gid, const struct MoveReco
 
 /* ZC_TRACK_MOVE (plans/core-loop.md): where another actor is from a server tick on. The record
    waits on the actor until the render clock reaches its tick (game_actor_process_state), and
-   the track takes it in whatever order records come (world/move_track.h) against its unit's floors (world/presence.h). One whose actor is
+   the track takes it in whatever order records come (view/move_track.h) against its unit's floors (view/presence.h). One whose actor is
    not there yet waits for it (game_mode_play_tracks): through the delivery piece a record can
    come before the packet that makes its actor known. How long after its tick it came, by the
    server's clock, feeds the render delay; a record the server sent later than it made it says

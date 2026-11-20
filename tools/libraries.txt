@@ -35,11 +35,11 @@
 
 library base
 note    Containers and strings (std/), JSON (json/), memory, UTF-8 and text formatting, XML, the
-        type queries (core/object_type.c), fatal errors, base.h and the Windows type names, the
-        body core the server shares (body/) and the delivery piece its gateway shares
-        (delivery/). Uses nothing else of the client.
+        type queries (core/object_type.c), fatal errors, base.h and the Windows type names, and
+        the route table of what travels through the delivery piece (route/). Uses nothing else
+        of the client.
 uses
-paths   body/ core/ delivery/
+paths   core/ route/
         initializers/ json/ std/ actors/actor_ops.h actors/actor_states.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 
@@ -235,8 +235,8 @@ paths   ui/
         session/option_pairs.h session/shop_inventory.h ui/character/character.h
         ui/character/selection_buttons.h ui/chat/readable_links.h ui/chat/sub_chat_map.h
         ui/items/styling_shop_std.h ui/render/draw_list.c ui/render/render.h world/mode_actions.h
-        world/mode_context.c world/mode_dispatch.* world/mode_types.h world/move_track.h
-        world/act_track.h world/drawn.h world/path_info.h world/view_floors.h
+        world/mode_context.c world/mode_dispatch.* world/mode_types.h world/drawn.h
+        world/path_info.h
 
 library gamedata
 note    The rest of the library layer below game-state: game-side modules the libraries above use

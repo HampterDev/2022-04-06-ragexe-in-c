@@ -99,7 +99,7 @@ foreach(target IN LISTS RAGE_CLIENT_TARGETS)
     target_compile_options(${target} PRIVATE -fno-strict-aliasing -fwrapv
         -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers -Wno-error=format-security)
     target_compile_definitions(${target} PRIVATE _DEFAULT_SOURCE _GNU_SOURCE)
-    target_link_libraries(${target} PRIVATE ${RAGE_CLIENT_LIBRARIES} rage_lua rage_png rage_zlib rage_json
+    target_link_libraries(${target} PRIVATE rules delivery ${RAGE_CLIENT_LIBRARIES} rage_lua rage_png rage_zlib rage_json
         rage_stb rage_cgltf rage_dr_mp3 rage_crijndael rage_enet m ${CMAKE_DL_LIBS})
     if(RAGE_FONT_SCAN)
         target_compile_definitions(${target} PRIVATE RAGE_FONT_SCAN)
@@ -119,6 +119,8 @@ if(APPLE)
 endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
+    # The tests below compile client files, which name the pieces' headers: each links rules, as the
+    # client does.
     # The GPU backend on this machine's GPU (tests/CMakeLists.txt declares it for Windows).
     add_executable(test_gfx_gpu tests/test_gfx_gpu.c src/render/gfx_gpu.c src/render/dirty_rects.c
         src/render/frame_ring.c src/render/render_thread.c src/render/quads.c src/render/texel_convert.c
@@ -127,7 +129,7 @@ if(BUILD_TESTING AND NOT ANDROID)
         src/platform/clock_posix.c src/platform/thread_posix.c)
     target_include_directories(test_gfx_gpu PRIVATE ${PROJECT_SOURCE_DIR}/src)
     target_compile_definitions(test_gfx_gpu PRIVATE _DEFAULT_SOURCE)
-    target_link_libraries(test_gfx_gpu PRIVATE SDL3::SDL3 Threads::Threads m)
+    target_link_libraries(test_gfx_gpu PRIVATE rules SDL3::SDL3 Threads::Threads m)
     rage_enable_assertions(test_gfx_gpu)
     add_test(NAME gfx_gpu COMMAND test_gfx_gpu 1)
     add_test(NAME gfx_gpu_msaa COMMAND test_gfx_gpu 4)
@@ -144,7 +146,7 @@ if(BUILD_TESTING AND NOT ANDROID)
         src/render/math3d.c)
     target_include_directories(test_quad_instances PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests)
     target_compile_definitions(test_quad_instances PRIVATE _DEFAULT_SOURCE)
-    target_link_libraries(test_quad_instances PRIVATE SDL3::SDL3 Threads::Threads m)
+    target_link_libraries(test_quad_instances PRIVATE rules SDL3::SDL3 Threads::Threads m)
     rage_enable_assertions(test_quad_instances)
     add_test(NAME quad_instances COMMAND test_quad_instances 1 20261112 300000 30)
     add_test(NAME quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 30)
@@ -152,7 +154,7 @@ if(BUILD_TESTING AND NOT ANDROID)
     add_executable(test_shadow_fit_gpu tests/test_shadow_fit_gpu.c tests/shadow_fit_scenes.c
         src/render/shadow_fit.c src/render/shadow_fit_gpu.c)
     target_include_directories(test_shadow_fit_gpu PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests)
-    target_link_libraries(test_shadow_fit_gpu PRIVATE SDL3::SDL3 m)
+    target_link_libraries(test_shadow_fit_gpu PRIVATE rules SDL3::SDL3 m)
     rage_enable_assertions(test_shadow_fit_gpu)
     add_test(NAME shadow_fit_gpu COMMAND test_shadow_fit_gpu)
     # The link check of the library table (tools/libraries.txt) on the client's objects, through nm.
@@ -199,7 +201,7 @@ if(BUILD_TESTING AND NOT ANDROID)
             src/platform/clock_posix.c src/platform/thread_posix.c)
         target_include_directories(test_skin_instances PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests)
         target_compile_definitions(test_skin_instances PRIVATE _DEFAULT_SOURCE)
-        target_link_libraries(test_skin_instances PRIVATE SDL3::SDL3 rage_cgltf rage_stb rage_zlib Threads::Threads m)
+        target_link_libraries(test_skin_instances PRIVATE rules SDL3::SDL3 rage_cgltf rage_stb rage_zlib Threads::Threads m)
         rage_enable_assertions(test_skin_instances)
         add_test(NAME skin_instances COMMAND test_skin_instances 1 ${RAGE_SCENE_GAME_DIR}/data/model/gltf 20261113 20 20)
         add_test(NAME skin_instances_msaa COMMAND test_skin_instances 4 ${RAGE_SCENE_GAME_DIR}/data/model/gltf

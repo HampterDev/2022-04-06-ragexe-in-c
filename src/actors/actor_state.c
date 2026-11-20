@@ -12,7 +12,7 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "world/world.h"
-#include "world/move_track.h"
+#include "view/move_track.h"
 #include "world/drawn.h"
 #include "actors/actor_states.h"
 #include <string.h>
@@ -85,8 +85,8 @@ static void place_to_world(struct GameMode *mode, int32_t px, int32_t py, float 
     float zoom = (float)mode->world->attr->zoom, ox, oz;
 
     game_mode_cell_to_world(mode, 0, 0, &ox, &oz);
-    *x = ox + zoom * (float)px / (float)DRAWN_CELL;
-    *z = oz + zoom * (float)py / (float)DRAWN_CELL;
+    *x = ox + zoom * (float)px / (float)MOVE_PLACE_CELL;
+    *z = oz + zoom * (float)py / (float)MOVE_PLACE_CELL;
 }
 
 /* The actor's walk speed, ms a cell. */
@@ -152,8 +152,8 @@ int game_actor_play_place(struct GameActor *self)
     dz = self->pos.z - from.z;
     if (moved) {
         self->walked = self->walked + float_sqrt(dx * dx + dz * dz);
-        if (((frame.x + DRAWN_CELL / 2) >> 8) != ((frame.x - frame.step_x + DRAWN_CELL / 2) >> 8)
-            || ((frame.y + DRAWN_CELL / 2) >> 8) != ((frame.y - frame.step_y + DRAWN_CELL / 2) >> 8))
+        if (((frame.x + MOVE_PLACE_CELL / 2) >> 8) != ((frame.x - frame.step_x + MOVE_PLACE_CELL / 2) >> 8)
+            || ((frame.y + MOVE_PLACE_CELL / 2) >> 8) != ((frame.y - frame.step_y + MOVE_PLACE_CELL / 2) >> 8))
             game_actor_report_guild_member_place(self, &self->pos.x, &self->pos.z);
     }
     /* the state chooses the animation from what the drawn point does (part 3): it walks, or it

@@ -3,8 +3,8 @@ REM tests\playground\build.bat -> build\ragexe_playground.exe, the Windows clien
 REM playground driver (tests\playground\README.md): the scene harness's clock, sockets, threads,
 REM settings, hidden window and message boxes, and play_driver.c in the place of the scene driver,
 REM with the lossy wire of tools\lossy_link for its line. It links the objects build.bat made, so
-REM run build.bat first. Beside it, build\drawn.wasm: the client's place of a record, which the
-REM runner judges by.
+REM run build.bat first. Beside it, build\move_place.wasm: the place a move record gives, which
+REM the client draws toward and the runner judges by.
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0..\.."
 set "BUILD=%ROOT%\build"
@@ -23,7 +23,7 @@ set VSCMD_SKIP_SENDTELEMETRY=1
 set "SCENES=%ROOT%\tests\scenes"
 set "PLAY=%ROOT%\tests\playground"
 cl /nologo /std:c11 /c /O2 /Oy- /MT /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 ^
- /I"%ROOT%\src" /I"%SCENES%" /I"%PLAY%" /I"%ROOT%\tools" /I"%ROOT%\vendor\stb" /I"%ROOT%\vendor\lua-5.1.4\src" ^
+ /I"%ROOT%\src" /I"%ROOT%\game\rules" /I"%ROOT%\game\delivery" /I"%SCENES%" /I"%PLAY%" /I"%ROOT%\tools" /I"%ROOT%\vendor\stb" /I"%ROOT%\vendor\lua-5.1.4\src" ^
  /I"%VDIR%\sdl3-src\include" ^
  "%SCENES%\scene_clock.c" "%SCENES%\scene_net.c" "%SCENES%\scene_thread.c" "%SCENES%\scene_settings.c" ^
  "%SCENES%\scene_app_hidden.c" "%SCENES%\scene_window_win.c" "%SCENES%\scene_crash_win.c" ^
@@ -46,6 +46,6 @@ link /nologo libcmt.lib @"%RSP%" ^
  "%VDIR%\freetype.lib" libvcruntime.lib libucrt.lib %SYSLIBS% ^
  /OUT:"%BUILD%\ragexe_playground.exe" /SUBSYSTEM:WINDOWS /MACHINE:X64 /OPT:NOICF
 if errorlevel 1 ( echo *** playground LINK FAILED *** & exit /b 1 )
-REM The client's place of a record for the runner, beside the client (tools\build_drawn_wasm.bat).
-call "%ROOT%\tools\build_drawn_wasm.bat" || ( echo *** drawn.wasm FAILED *** & exit /b 1 )
-echo Done -^> "%BUILD%\ragexe_playground.exe" and "%BUILD%\drawn.wasm"
+REM The place of a move record for the runner, beside the client (tools\build_move_place_wasm.bat).
+call "%ROOT%\tools\build_move_place_wasm.bat" || ( echo *** move_place.wasm FAILED *** & exit /b 1 )
+echo Done -^> "%BUILD%\ragexe_playground.exe" and "%BUILD%\move_place.wasm"

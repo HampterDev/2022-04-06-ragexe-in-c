@@ -1,11 +1,12 @@
-// Checks build/wasm/grid_path.wasm (src/body/grid_path.c built by tools/build_grid_path_wasm.bat)
+// Checks build/wasm/grid_path.wasm (the piece rules' map/grid_path.c, built by
+// tools/build_grid_path_wasm.bat)
 // against the server's walk path search and step time:
 //
 //   node tools/check_grid_path_wasm.mjs [server checkout] [wasm file]
 //
-//   1. tests/data/grid_path_vectors.txt is what the server's code gives now for the generator
-//      in tools/grid_path_vectors.mjs, so the file tests/test_grid_path.c holds the native
-//      build to is not stale.
+//   1. game/rules/tests/data/grid_path_vectors.txt is what the server's code gives now for the
+//      generator in tools/grid_path_vectors.mjs, so the file the piece's grid_path test holds
+//      the native build to is not stale.
 //   2. The wasm gives every path and step time of that file.
 //   3. The wasm and the server's code, asked directly, agree on fresh random grids (a fixed
 //      seed that is not the vector file's) and on the step time at every walk speed.
@@ -100,10 +101,10 @@ const wasm = loadWasm(wasmFile);
 // 1. The committed vectors are the server's answers.
 const committed = readFileSync(VECTORS_FILE, "utf8").replace(/\r\n/g, "\n");
 if (committed !== buildVectors(server).text) {
-  differ("tests/data/grid_path_vectors.txt is not what the server's code gives",
+  differ("game/rules/tests/data/grid_path_vectors.txt is not what the server's code gives",
     "the server's search changed, or the file was edited: run tools/grid_path_vectors.mjs and look at the difference");
 }
-console.log("vectors: tests/data/grid_path_vectors.txt is what the server's code gives");
+console.log("vectors: game/rules/tests/data/grid_path_vectors.txt is what the server's code gives");
 
 // 2. The wasm gives the vectors.
 const vectors = parseVectors(committed);

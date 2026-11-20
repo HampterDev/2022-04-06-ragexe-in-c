@@ -1,6 +1,6 @@
 #include "world/pathfinder_state.h"
-#include "body/grid_path.h"
-#include "body/body.h"
+#include "map/grid_path.h"
+#include "actor/actor.h"
 #include "resources/attr.h"
 #include "core/numeric.h"
 #include "render/math3d.h"
@@ -411,9 +411,9 @@ static int server_map(struct PathFinder *self, struct GridPathMap *map)
 }
 
 /* The body core's working memory for the questions about the player's own character. */
-static int32_t own_scratch[(BODY_SCRATCH_SIZE + sizeof(int32_t) - 1) / sizeof(int32_t)];
+static int32_t own_scratch[(ACTOR_SCRATCH_SIZE + sizeof(int32_t) - 1) / sizeof(int32_t)];
 
-BYTE path_finder_body_ground(struct PathFinder *self, struct BodyGround *ground, int *width, int *height)
+BYTE path_finder_body_ground(struct PathFinder *self, struct ActorGround *ground, int *width, int *height)
 {
     struct GridPathMap map;
 

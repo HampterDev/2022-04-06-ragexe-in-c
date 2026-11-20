@@ -20090,3 +20090,35 @@ scenes are those of the commit before (the frames where an effect took a champio
 
 Not checked: why turning the shadows off, or the main thread waiting for each frame, made the
 variation vanish (both change what the render thread allocates and when); Linux and macOS.
+
+## The shared C from the set game (2026-11-20)
+
+Decided by Patrick on 2026-11-20: the game's simulation is C in the pieces of the set `game`, and
+the client and the server build against those pieces instead of keeping copies. Until then the
+client held copies of the body core and the path search (`src/body`), the records a viewer keeps
+(`world/move_track`, `act_track`, `view_floors`, `presence`, `record_wait`), the predicted world
+(`world/predicted`), the place of a move record (in `world/drawn`) and the delivery piece
+(`src/delivery/delivery.*`); two checks held two of them to the server's copies.
+
+- **`game` is one submodule**, pinned at a commit of `game`, which pins every piece; the client
+  builds `rules` (which links `script-vm`) and `delivery` from it. One pin says what the client was
+  built and tested with. The pieces are changed in `game`.
+- **One build of the pieces for every user.** The top `CMakeLists.txt` adds the pieces with their
+  own `CMakeLists.txt`; `build.bat` builds their libraries through that tree, `Client.cmake` links
+  them, and the suite runs their own tests (`rules_*`, `delivery`) with the client's compiler. The
+  client's copies of those tests went with the copies.
+- **The pieces' names.** What the client called a body the set calls an actor: the client's code
+  uses `actor/actor.h`, `map/grid_path.h`, `view/*.h`, `prediction/predicted.h` and the `actor_*`
+  names. `src/actor` became `src/actors`, the client piece's name, so that `actor/actor.h` is the
+  core's. The original's message payloads `ActorAttack` and `ActorMove` became `GameActorAttack`
+  and `GameActorMove`, since `game/own_body.c` sees both them and the core's. `world/drawn` keeps
+  the drawn point; the place is `rules`' `move_place`, which the playground's runner loads as
+  `move_place.wasm`.
+- **What stays the client's.** The route table (`src/route/delivery_route.*`), which the server
+  keeps a copy of in its own tree until the gateway reads the catalog's delivery words; the drawn point,
+  the own swing, the swing's pace, the clocks, which `game`'s `client` piece takes from here.
+
+Checked: `build.bat check`; `tests\build.bat` with the pieces' 30 tests; the playground's no-lag and
+ping-150 sets against the server built from the same pin print what they printed before; the scene
+sets `scripts`, `motion` and `load` give the same captures, byte for byte, as `custom` before the
+change, run one after the other.

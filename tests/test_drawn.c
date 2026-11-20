@@ -1,6 +1,5 @@
 #include "world/drawn.h"
-#include "body/body.h"
-#include "body/grid_path.h"
+#include "map/grid_path.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -50,122 +49,6 @@ static void stand(struct MoveRecord *record, uint32_t at, int x, int y, int caus
     record->y = y;
     record->speed_ms = 150;
     record->cause = (unsigned char)cause;
-}
-
-/* ---- the place ---- */
-
-static void a_record_without_steps_is_its_cells_middle(void)
-{
-    struct MoveRecord record;
-    struct DrawnPlace place;
-
-    walk(&record, 1000, 0, 0, 150);
-    drawn_place(&record, 0, &place);
-    assert(place.x == 100 * DRAWN_CELL && place.y == 100 * DRAWN_CELL && !place.moving);
-    drawn_place(&record, 999999, &place);
-    assert(place.x == 100 * DRAWN_CELL && place.y == 100 * DRAWN_CELL && !place.moving);
-}
-
-/* East, east, north-east at 150 ms a cell, the first landing 100 ms after the record: before the
-   first step its start cell, half way through a step half way between, on a step's time its
-   cell's middle, after the last step the last cell. */
-static void a_walk_is_on_its_lines_by_its_steps_times(void)
-{
-    struct MoveRecord record;
-    struct DrawnPlace place;
-
-    memset(&record, 0, sizeof record);
-    record.at_tick = 1000;
-    record.x = 10;
-    record.y = 20;
-    record.land_ms = 100;
-    record.speed_ms = 150;
-    record.steps = 3;
-    record.path[0] = 6; /* east */
-    record.path[1] = 6;
-    record.path[2] = 7; /* north-east */
-    /* the first step started 50 ms before the record: it is under way at its tick */
-    drawn_place(&record, 950, &place);
-    assert(place.x == 10 * 256 && place.y == 20 * 256 && !place.moving);
-    drawn_place(&record, 1025, &place);
-    assert(place.x == 10 * 256 + 128 && place.y == 20 * 256 && place.moving);
-    drawn_place(&record, 1100, &place);
-    assert(place.x == 11 * 256 && place.y == 20 * 256);
-    drawn_place(&record, 1175, &place);
-    assert(place.x == 11 * 256 + 128 && place.y == 20 * 256);
-    drawn_place(&record, 1250, &place);
-    assert(place.x == 12 * 256 && place.y == 20 * 256);
-    drawn_place(&record, 1300, &place);
-    assert(place.x > 12 * 256 && place.x < 13 * 256 && place.x == place.y - 8 * 256 && place.moving);
-    drawn_place(&record, 5000, &place);
-    assert(place.x == 13 * 256 && place.y == 21 * 256 && !place.moving);
-}
-
-/* For random walks, against the body core playing the same record (body_move_at): at every
-   millisecond the place lies on the line between the cell the core has the body on and the next
-   cell of the walk, and on the tick the core enters a cell the place is on that cell's middle. */
-static void the_core_enters_each_cell_when_the_place_is_on_its_middle(void)
-{
-    int n;
-
-    for (n = 0; n < 400; n++) {
-        struct MoveRecord record;
-        struct BodyMove core, at;
-        struct DrawnPlace place;
-        uint32_t base = 0x7fffff00u + next() % 512, t;
-        int steps = 1 + (int)(next() % 12), i, lastx = 100, lasty = 100;
-        unsigned speed = 80 + next() % 400;
-
-        walk(&record, base, steps, 1 + next() % speed, speed);
-        memset(&core, 0, sizeof core);
-        core.at_tick = base;
-        core.x = (int16_t)record.x;
-        core.y = (int16_t)record.y;
-        core.land_ms = (uint16_t)record.land_ms;
-        core.speed_ms = (uint16_t)record.speed_ms;
-        core.dir = record.dir;
-        core.steps = record.steps;
-        for (i = 0; i < steps; i++)
-            core.path[i] = record.path[i];
-        for (t = base; t < base + (uint32_t)(steps + 2) * speed * 2; t++) {
-            body_move_at(&core, t, &at);
-            drawn_place(&record, t, &place);
-            if (at.x != lastx || at.y != lasty) {
-                assert(place.x == at.x * 256 && place.y == at.y * 256);
-                lastx = at.x;
-                lasty = at.y;
-            }
-            assert(place.x - at.x * 256 <= 256 && at.x * 256 - place.x <= 256);
-            assert(place.y - at.y * 256 <= 256 && at.y * 256 - place.y <= 256);
-            if (at.steps == 0)
-                assert(place.x == at.x * 256 && place.y == at.y * 256 && !place.moving);
-        }
-    }
-}
-
-/* The same record and tick give the same place in any order of asking, and between two ticks
-   the place moves no further than the walk's speed allows. */
-static void any_order_and_no_faster_than_the_walk(void)
-{
-    int n;
-
-    for (n = 0; n < 200; n++) {
-        struct MoveRecord record;
-        struct DrawnPlace a, b, c;
-        uint32_t base = next(), t, u;
-        unsigned speed = 80 + next() % 400;
-
-        walk(&record, base, 1 + (int)(next() % 20), 1 + next() % speed, speed);
-        for (t = base - 100; t < base + 20 * speed * 2; t += 1 + next() % 37) {
-            drawn_place(&record, t, &a);
-            u = base + next() % (20 * speed * 2);
-            drawn_place(&record, u, &b);
-            drawn_place(&record, t, &c);
-            assert(a.x == c.x && a.y == c.y && a.moving == c.moving);
-            drawn_place(&record, t + 1, &b);
-            assert(abs32(b.x - a.x) <= (int32_t)(256 / speed + 2) && abs32(b.y - a.y) <= (int32_t)(256 / speed + 2));
-        }
-    }
 }
 
 /* ---- frames ---- */
@@ -405,7 +288,7 @@ static void records_in_any_order_end_on_the_newest(void)
         struct RecordFloors floors;
         struct Drawn drawn;
         struct DrawnFrame frame;
-        struct DrawnPlace place;
+        struct MovePlace place;
         uint32_t tick = 0x7fffff00u + next() % 1000, real = next(), base = tick;
         int count = 2 + (int)(next() % 7), order[24], filings, i, newest = 0;
 
@@ -447,7 +330,7 @@ static void records_in_any_order_end_on_the_newest(void)
         }
         /* the newest record that came is the place, and the point is on it */
         assert(drawn_record(&drawn) != NULL && drawn_record(&drawn)->rev == made[newest].rev);
-        drawn_place(&made[newest], tick, &place);
+        move_place(&made[newest], tick, &place);
         drawn_frame(&drawn, tick, real, &frame);
         assert(frame.on_place && frame.x == place.x && frame.y == place.y);
     }
@@ -631,10 +514,6 @@ static void the_point_is_the_references(void)
 
 int main(void)
 {
-    a_record_without_steps_is_its_cells_middle();
-    a_walk_is_on_its_lines_by_its_steps_times();
-    the_core_enters_each_cell_when_the_place_is_on_its_middle();
-    any_order_and_no_faster_than_the_walk();
     a_point_on_a_walking_place_stays_on_it();
     a_gap_is_walked_off_in_the_same_real_time();
     a_walked_gap_of_six_cells_is_at_once();

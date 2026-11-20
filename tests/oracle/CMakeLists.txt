@@ -15,8 +15,10 @@ set(RAGE_ORACLE_EXE "${default_original}" CACHE FILEPATH "The original executabl
 # objects it uses from the library.
 set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 add_compile_options(/UNDEBUG /W3 /WX /we4013)
+# The client's actor types name the records of the piece rules (game/rules/view), headers only here.
 include_directories(${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/vendor/lua-5.1.4/src
-    ${PROJECT_SOURCE_DIR}/vendor/zlib-1.2.11 ${PROJECT_SOURCE_DIR}/vendor/libpng-1.6.36 ${PROJECT_SOURCE_DIR}/vendor/yyjson-0.13.0)
+    ${PROJECT_SOURCE_DIR}/vendor/zlib-1.2.11 ${PROJECT_SOURCE_DIR}/vendor/libpng-1.6.36 ${PROJECT_SOURCE_DIR}/vendor/yyjson-0.13.0
+    ${PROJECT_SOURCE_DIR}/game/rules)
 add_library(oracle_lifted STATIC oracle_image.c
     ${PROJECT_SOURCE_DIR}/src/actors/ground_skill.c ${PROJECT_SOURCE_DIR}/src/effects/durations.c
     ${PROJECT_SOURCE_DIR}/src/game/cell_coordinates.c ${PROJECT_SOURCE_DIR}/src/game/skill_cast.c

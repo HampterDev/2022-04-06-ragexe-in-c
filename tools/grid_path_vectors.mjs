@@ -1,8 +1,12 @@
-// Writes tests/data/grid_path_vectors.txt: what the server's walk path search and step time
-// answer for a fixed set of grids, for tests/test_grid_path.c and tools/check_grid_path_wasm.mjs
-// to hold src/body/grid_path.c to.
+// Writes the path search's vectors: what the server's walk path search and step time answer for
+// a fixed set of grids, which the piece rules holds its map/grid_path.c to
+// (game/rules/tests/data/grid_path_vectors.txt, read by its grid_path test) and
+// tools/check_grid_path_wasm.mjs holds the wasm build of that file to.
 //
-//   node tools/grid_path_vectors.mjs [server checkout] [output file]
+//   node tools/grid_path_vectors.mjs <server checkout> <output file>
+//
+// The piece's file is changed in rules, not in this checkout's submodule: write it into a
+// checkout of rules and commit it there.
 //
 // The answers come from the server's own code, consumers/spatial/hercules-path.js (searchPath
 // and stepDelayMs), directions.js and movement-speed.js. The grids come from the generator
@@ -23,7 +27,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const DEFAULT_SERVER = "C:\\Users\\Patrick Kuhlmann\\GIT\\ring-buffer\\local\\worktrees\\action-timing";
 export const CLIENT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-export const VECTORS_FILE = join(CLIENT_ROOT, "tests", "data", "grid_path_vectors.txt");
+export const VECTORS_FILE = join(CLIENT_ROOT, "game", "rules", "tests", "data", "grid_path_vectors.txt");
 
 const VECTORS_SEED = 0x20220406;
 
@@ -408,8 +412,8 @@ const STEP_SPEEDS = [-2147483648, -5, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 49, 
 export function buildVectors(server) {
   const rng = makeRng(VECTORS_SEED);
   const lines = [
-    "# Walk paths and step times as the server gives them, for src/body/grid_path.c.",
-    "# Written by tools/grid_path_vectors.mjs, which describes the lines. Do not edit.",
+    "# Walk paths and step times as the server gives them, for map/grid_path.c.",
+    "# Recorded from the backend's path search. Do not edit.",
   ];
   const counts = { grids: 0, paths: 0, times: 0, found: 0, empty: 0, none: 0, longest: 0, atLimit: 0 };
 
@@ -494,7 +498,8 @@ export function parseVectors(text) {
 }
 
 async function main() {
-  const [checkout = DEFAULT_SERVER, output = VECTORS_FILE] = process.argv.slice(2);
+  const [checkout, output] = process.argv.slice(2);
+  if (checkout == null || output == null) throw new Error("usage: node tools/grid_path_vectors.mjs <server checkout> <output file>");
   const { text, counts } = buildVectors(await loadServer(checkout));
   mkdirSync(dirname(resolve(output)), { recursive: true });
   writeFileSync(output, text);

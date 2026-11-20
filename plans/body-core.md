@@ -286,7 +286,7 @@ While a rule moved, its JS was the oracle: for generated sessions the core and t
 attack and keeper of intents gave the same events. The JS of a player's walk, attack and
 intent is gone; its answers stay as digests in the server's `consumers/body/*-recorded.test.mjs`
 and as recorded lines of whole sessions (`consumers/host/recorded`), as
-`tests/data/grid_path_vectors.txt` does for the path search.
+the piece `rules`' `tests/data/grid_path_vectors.txt` does for the path search.
 
 ## Build order
 
@@ -311,9 +311,9 @@ On the server (ring-buffer worktree `local\worktrees\action-timing`), not commit
 
 | Part | Built | Not built or not covered |
 |---|---|---|
-| Requests, `ZC_OWN_BODY`, the predicted world | Rules version 10, the server's `ZC_OWN_BODY` and the client's `world/predicted.c`: see `plans/predicted-world.md`, "What is built" | Nothing is drawn from the predicted world; the rows below on the client's present predictors still say what is drawn |
-| 5a Frame | `sim/body/body.c`: the world in an arena of fixed-width fields, a 64-bit clock, add, place and remove, the move-changed event, `body_world_check`. Native tests in the server's `make check`; the same core as wasm gives the same digests | Nothing calls the core. No random input in the scenarios happens to be applied with a far-off tick |
-| 5b Walk, in the client | `src/body/` is the server's `sim/body`, the same bytes, checked by `tools/check_body_copy.py` in `build.bat check`; the path search moved there. The core's own tests run in the client's suite, built with 32-bit MSVC, and give the server's digests. `world/own_walk.c` puts the player's character into a world of one body and asks the core where and when a requested walk starts; `player_predict_walk` uses that and has no rule of its own left. `body_put_move` was added to the core for it | No `ZC_OWN_BODY` and no rules version sent. The client's `move_track` still has its own record type. `player_predict_walk` has no test of its own. Not played |
+| Requests, `ZC_OWN_BODY`, the predicted world | Rules version 10, the server's `ZC_OWN_BODY` and the client's `prediction/predicted.c`: see `plans/predicted-world.md`, "What is built" | Nothing is drawn from the predicted world; the rows below on the client's present predictors still say what is drawn |
+| 5a Frame | `rules`' `actor/actor.c`: the world in an arena of fixed-width fields, a 64-bit clock, add, place and remove, the move-changed event, `body_world_check`. Native tests in the server's `make check`; the same core as wasm gives the same digests | Nothing calls the core. No random input in the scenarios happens to be applied with a far-off tick |
+| 5b Walk, in the client | The client builds the core the server builds; the path search moved into it. The core's own tests run in the client's suite and give the server's digests. `world/own_walk.c` puts the player's character into a world of one body and asks the core where and when a requested walk starts; `player_predict_walk` uses that and has no rule of its own left. `body_put_move` was added to the core for it | No `ZC_OWN_BODY` and no rules version sent. The client's `move_track` still has its own record type. `player_predict_walk` has no test of its own. Not played |
 | 5b Own records | The owner gets `ZC_TRACK_MOVE` for its character's walks, in the place of `ZC_NOTIFY_PLAYERMOVE`, and for a delayed walk. The client follows such a record as it follows the classic walk start, plays it on the own clock like any actor's record, and turns it for a request that still waits, asked of the core on the walk as the server has it. A held first step counts as a step under way | Not played. A stop is still the classic position fix. Holds are not predicted: a held start is learned from the record. The client's handling (`player_own_move_record`, playing a record on the player) has no test |
 | 5d Intent | In the core (rules version 7): the intent's step and keeper: set, clear, release, run, swung, walk failed; the step every 100 ms, the 300 ms wait limit, the 300 ms between walks, the eight tries; phases told on change; four questions the game answers (what it sees, stand up, act, walk). Held to digests of what the server's JS keeper of intents said: six runs of 4,000 inputs, the same asked and told in the same order, the same next step. In the server `eos-combat/core-intents.js` keeps a player's intent there with the game's world; the sessions with attack and skill intents are held against recorded lines, and a restore with an intent under way replays | Walking is not an intent (kind 0): a walk request is the old packet and ends an intent. What an intent sees is all the game's answer, also what the world could see itself (a walk under way, a swing open). The client shows nothing of a predicted intent (held, under way, acting): check 7 is not built. Monsters have none |
 | 5c Casts and the act clock | In the core (rules version 6): a cast with its end, at which the core asks and the game answers whether the skill was carried out and what goes under the act clock; its cancel; the clock put there or only later; a clock of the game's own told with the answer to a look. In the server `skill-use.js` keeps a player's `ud->canact_tick` and cast timer in the core and carries the skill out when the core asks. Sessions of an acolyte who casts, attacks around casts, is interrupted by a hit and warps mid-cast are held against recorded lines; a restore in the middle of a cast replays. Twenty deliberate faults in the core's rules were each caught. Found and fixed on the way: a cast of the skill system survived a warp and was carried out where the player arrived | What a skill takes (cast time, delay, pose, cooldown, whether a hit interrupts it) stays the game's answer; the pose table is not in the core. The older skill handlers' delay is still a clock of combat's own, told at each look. The eighteen `DELAY_WALK` places are where they were. Companions' and monsters' casts are not the core's. Whether a cast forbids a swing is the game's answer, since Free Cast is content; the server's attack has no Free Cast at all, as before. The client predicts no cast |
@@ -330,12 +330,9 @@ On the server (ring-buffer worktree `local\worktrees\action-timing`), not commit
 Taken on 2026-11-10 under the aim Patrick gave for the core loop. He answered the first two
 the same day.
 
-1. **The source lives in the server's repository**, as `sim/body/`, because the server is the
-   authority and the rest of the C simulation will grow there. This client has an identical
-   copy under `src/body/` (built). A check compares the two when the server's checkout is
-   there, as `tools/check_grid_path_wasm.mjs` finds it, and the rules version, which is not
-   sent yet, is to cover the rest. Patrick: where it lives does not matter now; it can all be
-   pulled apart into repositories of its own later.
+1. **The source has one home**, the piece `rules` of the set `game` (`actor/actor.c` and
+   `map/grid_path.c`), which the server and this client both build from the submodule `game`;
+   neither keeps a copy, so the two cannot differ for the same pin of `game`.
 2. **The client replays its own requests onto the server's state.** The core loop says "no
    rewind and no re-simulation". Patrick: that meant the server. It does not re-simulate or
    rewind, and the only things that make play fair are the press order and the hold-back. So

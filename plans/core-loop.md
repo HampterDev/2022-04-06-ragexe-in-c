@@ -113,7 +113,7 @@ Client, each drawn frame:
 2. Draw every other actor at the render clock: cell and offset from its move record, sprite
    action and frame from its act record. Both are pure functions of record and clock. What it
    aims at the own character (a swing or a cast at it, a hit on it, and the end of such a swing
-   or cast) is played on the own clock instead (`world/act_track.h`): the server decides a
+   or cast) is played on the own clock instead (`view/act_track.h`): the server decides a
    swing's hit at the tick it lands at, and a request sent now is applied at the own clock's
    tick, so the swing lands on the screen at the last moment a request is still applied before
    it.

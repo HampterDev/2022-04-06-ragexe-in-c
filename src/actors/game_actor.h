@@ -20,7 +20,7 @@ struct SqQuad;
 
 void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long par1, long long par2, long long par3, long long par4);
 
-void game_actor_msg_attack(struct GameActor *self, const struct ActorAttack *attack);
+void game_actor_msg_attack(struct GameActor *self, const struct GameActorAttack *attack);
 void game_actor_swing_begin(struct GameActor *self, int target_aid, int attack_mt, int lands_ms);
 void game_actor_pace_attack(struct GameActor *self);
 void game_actor_swing_cancel(struct GameActor *self);

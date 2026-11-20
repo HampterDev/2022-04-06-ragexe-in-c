@@ -28,7 +28,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include <stdint.h>
 #include "platform/clock.h"
-#include "world/move_track.h"
+#include "view/move_track.h"
 #include <string.h>
 #include "effects/skills/msg_effect.h"
 #include "world/world.h"

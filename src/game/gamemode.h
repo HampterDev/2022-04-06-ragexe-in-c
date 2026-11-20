@@ -102,9 +102,9 @@ struct UITransBalloonText;
 #include "std/clock_sync.h"
 #include "std/way_up.h"
 #include "std/render_delay.h"
-#include "world/act_track.h"
-#include "world/record_wait.h"
-#include "world/view_floors.h"
+#include "view/act_track.h"
+#include "view/record_wait.h"
+#include "view/view_floors.h"
 #include "world/own_swing.h"
 
 struct GameMode {

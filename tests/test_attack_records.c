@@ -41,7 +41,7 @@ struct Sent {
     long long par2;
     intptr_t value[5];
     char text[32];
-    struct ActorAttack attack;
+    struct GameActorAttack attack;
     struct ActorSkillUse use;
     struct ActorHit hit;
 };
@@ -68,7 +68,7 @@ static void send_msg(struct GameObject *object, struct GameObject *sender, Rende
     (void)sender; (void)par4;
     switch (msg) {
     case 0xb:
-        record(SENT_ATTACK, object)->attack = *(const struct ActorAttack *)MSG_PTR(par1);
+        record(SENT_ATTACK, object)->attack = *(const struct GameActorAttack *)MSG_PTR(par1);
         game_actor_msg_attack((struct GameActor *)object, MSG_PTR(par1));
         break;
     case 0x25:
@@ -756,7 +756,7 @@ static void send_cast(unsigned gid, unsigned tick, unsigned end, unsigned target
 }
 
 /* What another actor aims at the player's own character is played on the own clock
-   (world/act_track.h): its swing begins as soon as the record is here, played faster so that it
+   (view/act_track.h): its swing begins as soon as the record is here, played faster so that it
    lands when the own clock reaches the tick it lands at; the hit shows as soon as its notice is
    here; and so does the swing's end. The render clock has reached none of them. */
 static void threats(void)
