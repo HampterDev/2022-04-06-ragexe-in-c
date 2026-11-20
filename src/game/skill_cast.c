@@ -143,7 +143,7 @@ void game_mode_zc_useskill_ack(struct GameMode *mode, unsigned src_aid,
 
         session_get_cast_effect(&g_session1, skill, &cast_effect, &cast_state, property, job);
     }
-    actor_set_state(caster, cast_state, 1);
+    actor_set_state(caster, cast_state);
     if (!is_skill_39_3e(skill) && delay_ms)
         render_object_send(caster, NULL, ACTOR_MSG_CAST_TIME, delay_ms, 0, 0, 0);
     skill_cast_play_cast_look(caster, x, y, skill_id, delay_ms, cast_effect);

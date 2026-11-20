@@ -102,7 +102,7 @@ unsigned char player_on_process(struct GameObject *object)
     return result;
 }
 
-void player_set_state(struct GameActor * base_actor, int state, unsigned char snap)
+void player_set_state(struct GameActor * base_actor, int state)
 {
     struct Player * self = (struct Player *)base_actor;
 
@@ -120,7 +120,7 @@ void player_set_state(struct GameActor * base_actor, int state, unsigned char sn
         game_mode_launch_dummy_effect(mode, &self->pos, 0x174, 0x12c, 0);
         g_wobbleFramesLeft = 0;
     }
-    pc_set_state((struct GameActor *)self, state, snap);
+    pc_set_state((struct GameActor *)self, state);
 }
 
 unsigned char player_process_state(struct GameActor * base_actor)
@@ -270,7 +270,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         player_msg_walk(self, mode, MSG_PTR(par1));
         break;
     case 0x8:
-        actor_set_state(self, 0, 1);
+        actor_set_state(self, 0);
         break;
     case 0x9:
         self->move_request_pending = 1;
@@ -488,7 +488,7 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->asked_walk_y = -1;
     self->intent_skill = 0;
     self->intent_hold = 0;
-    actor_set_state(self, 0, 1);
+    actor_set_state(self, 0);
     self->walk_speed = g_session1.walkSpeed;
     self->is_pc = 1;
     game_actor_set_sex((struct GameActor *)self, session_get_sex(&g_session1));

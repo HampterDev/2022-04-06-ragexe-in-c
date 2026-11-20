@@ -21,5 +21,5 @@ void game_actor_stop_cast(struct GameActor *actor, int own)
     if (!own)
         effect_mgr_remove_type(g_effectMgr, actor->aid, EF_WARNING_PLANE);
     if (actor->state == ACTOR_STATE_CASTING)
-        actor_set_state(actor, 0, 1);
+        actor_set_state(actor, 0);
 }

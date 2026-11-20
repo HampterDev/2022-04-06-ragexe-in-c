@@ -9,7 +9,7 @@ struct ActorHeadExtent { float width, height; };
 struct GameActorOps {
     struct RenderObjectOps base;
     unsigned char (*process_state)(struct GameActor *);
-    void (*set_state)(struct GameActor *, int, unsigned char);
+    void (*set_state)(struct GameActor *, int);
     void (*set_unit_cell)(struct GameActor *);
     void (*clear_unit_cell)(struct GameActor *);
     void (*set_job_model)(struct GameActor *, int, int);
@@ -79,10 +79,10 @@ static __inline unsigned char actor_process_state(void *object)
     return actor_ops_of(actor)->process_state(actor);
 }
 
-static __inline void actor_set_state(void *object, int state, unsigned char snap)
+static __inline void actor_set_state(void *object, int state)
 {
     struct GameActor *actor = object;
-    actor_ops_of(actor)->set_state(actor, state, snap);
+    actor_ops_of(actor)->set_state(actor, state);
 }
 
 static __inline void actor_set_unit_cell(void *object)
@@ -328,12 +328,12 @@ void game_actor_set_guild_id(struct GameActor *actor, int value0);
 void game_actor_set_mounted(struct GameActor *actor, unsigned char value0);
 void game_actor_set_request(struct GameActor *actor, const int *value0, int value1);
 void game_actor_set_request2(struct GameActor *actor, const int *value0, int value1);
-void game_actor_set_state(struct GameActor *actor, int value0, unsigned char value1);
+void game_actor_set_state(struct GameActor *actor, int value0);
 void game_actor_set_unit_cell(struct GameActor *actor);
 void game_actor_walk_motion(struct GameActor *actor);
 void npc_clear_unit_cell(struct GameActor *actor);
 void npc_set_job_and_sex(struct GameActor *actor, int value0, int value1);
-void npc_set_state(struct GameActor *actor, int value0, unsigned char value1);
+void npc_set_state(struct GameActor *actor, int value0);
 void npc_set_unit_cell(struct GameActor *actor);
 void npc_set_spr_job_(struct GameActor *actor, int value0);
 int pc_get_char_id(struct GameActor *actor);
@@ -361,12 +361,12 @@ void pc_set_skip_arrow(struct GameActor *actor, unsigned char value0);
 void pc_set_spr_act(struct GameActor *actor, const struct ActorLook *value0);
 void pc_set_spr_act_with_state(struct GameActor *actor, const struct ActorLook *value0, int value1);
 void pc_set_spr_job(struct GameActor *actor, int value0);
-void pc_set_state(struct GameActor *actor, int value0, unsigned char value1);
+void pc_set_state(struct GameActor *actor, int value0);
 void pc_set_weapon(struct GameActor *actor, int64_t value0);
 void pc_set_weapon_look(struct GameActor *actor, int64_t value0);
 struct ActorHeadExtent game_actor_get_head_extent(struct GameActor *actor);
 unsigned char player_process_state(struct GameActor *actor);
-void player_set_state(struct GameActor *actor, int value0, unsigned char value1);
+void player_set_state(struct GameActor *actor, int value0);
 void pc_set_shoes(struct GameActor *actor, int value0);
 struct ActorHeadExtent pc_get_head_extent(struct GameActor *actor);
 int pc_get_sprite_variant(struct GameActor *actor);

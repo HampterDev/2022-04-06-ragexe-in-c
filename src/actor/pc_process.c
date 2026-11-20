@@ -189,21 +189,21 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
     case 3:
         pc_stand_place(self, mode, entry);
         pc_stand_look(self, entry, 0);
-        actor_set_state(self, pc_packet_state(entry->state), 1);
+        actor_set_state(self, pc_packet_state(entry->state));
         return;
     case 0x7c:
         self->body_style = entry->body;
         pc_stand_place(self, mode, entry);
         pc_stand_look(self, entry, 1);
         self->char_id = entry->char_id;
-        actor_set_state(self, pc_packet_state(entry->state), 1);
+        actor_set_state(self, pc_packet_state(entry->state));
         return;
     case 4:
         self->aid = entry->aid;
         pc_stand_place(self, game_current_mode(), entry);
         self->walk_speed = entry->speed;
         pc_stand_look(self, entry, 0);
-        actor_set_state(self, pc_packet_state(entry->state), 1);
+        actor_set_state(self, pc_packet_state(entry->state));
         pc_appear_effect(self, par2);
         game_actor_show_party_mark((struct GameActor *)self, entry->aid);
         return;
@@ -213,7 +213,7 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
         pc_stand_place(self, game_current_mode(), entry);
         self->walk_speed = entry->speed;
         pc_stand_look(self, entry, 1);
-        actor_set_state(self, pc_packet_state(entry->state), 1);
+        actor_set_state(self, pc_packet_state(entry->state));
         pc_appear_effect(self, par2);
         game_actor_show_party_mark((struct GameActor *)self, entry->aid);
         self->char_id = entry->char_id;
@@ -318,7 +318,7 @@ unsigned char pc_process_state(struct GameActor * base_actor)
     case 2: case 7: case 45:
         render_object_update_motion((struct RenderObject *)self);
         if (self->motion_finished)
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
         return 1;
     case 3:
         self->script_range_on = 0;
@@ -421,7 +421,7 @@ static void pc_shoot(struct Pc *self, float height, int job)
     self->attack_motion_count = 8.0f / self->motion_delay + self->attack_motion_count;
 }
 
-void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
+void pc_set_state(struct GameActor * base_actor, int state)
 {
     struct Pc * self = (struct Pc *)base_actor;
 
@@ -444,7 +444,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
     }
     switch (state) {
     case 0:
-        game_actor_set_state(actor, 0, snap);
+        game_actor_set_state(actor, 0);
         self->motion = self->head_dir;
         if (old == 2 || old == 4 || old == 8 || old == 52 || old == 53 || old == 54 || old == 58 || old == 59
             || self->pk_mode)
@@ -454,7 +454,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
     case 1:
         pc_attack_reset(self);
         self->head_dir = 0;
-        game_actor_set_state(actor, 1, snap);
+        game_actor_set_state(actor, 1);
         break;
     case 2: {
         unsigned char accepts, arrow;
@@ -473,7 +473,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
             break;
         }
         }
-        game_actor_set_state(actor, accepts ? 9 : 2, snap);
+        game_actor_set_state(actor, accepts ? 9 : 2);
         self->attack_motion_count = session_get_job_float(&g_session1, game_actor_get_job(actor), self->sex,
                                              (int)self->weapon, accepts);
         game_actor_pace_attack(actor);
@@ -535,7 +535,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         pc_attack_reset(self);
         accepts = session_job_accepts_weapon(&g_session1, game_actor_get_job(actor), self->sex,
                                             (uint64_t)self->weapon);
-        game_actor_set_state(actor, accepts ? 9 : 2, snap);
+        game_actor_set_state(actor, accepts ? 9 : 2);
         t = session_get_job_float(&g_session1, game_actor_get_job(actor), self->sex,
                                  (int)self->weapon, accepts);
         self->attack_motion_count = t;
@@ -545,7 +545,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         break;
     }
     default:
-        game_actor_set_state(actor, state, snap);
+        game_actor_set_state(actor, state);
         return;
     }
     self->action = game_actor_dir_of((struct GameObject *)self, self->roty)

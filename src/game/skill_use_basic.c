@@ -132,7 +132,7 @@ int skill_use_basic(const struct SkillCast *cast)
         if (!caster)
             return 1;
         render_object_send(caster, NULL, ACTOR_MSG_PROGRESS, cast->level * 400, 0, 0, 0);
-        actor_set_state(caster, 0xd, 1);
+        actor_set_state(caster, 0xd);
         if ((unsigned)cast->src_aid != (unsigned)g_session1.ownAid)
             actor_send(caster, ACTOR_MSG_PROGRESS_STOP);
         return 1;

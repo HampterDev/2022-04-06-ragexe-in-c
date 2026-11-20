@@ -161,14 +161,14 @@ static int state_began(struct GameMode *mode, const struct PacketMsgStateChange 
     case 0x37d:
         if (is_own(packet)) {
             world_get_game_actor_by_aid(mode->world, packet->aid);
-            actor_set_state(own_player(mode), 0x2f, 1);
+            actor_set_state(own_player(mode), 0x2f);
         }
         break;
     case 0x380: case 0x395: case 0x397: case 0x3a9: case 0x3d6:
         break;
     case 0x3a5:
         if (is_own(packet)) {
-            actor_set_state(own_player(mode), 0x30, 1);
+            actor_set_state(own_player(mode), 0x30);
             own_player(mode)->motion_held = 1;
         }
         break;
@@ -270,7 +270,7 @@ static int state_ended(struct GameMode *mode, const struct PacketMsgStateChange 
     case 0x1d:
         no_line(text);
         if (is_own(packet)) {
-            actor_set_state(own_player(mode), 0, 1);
+            actor_set_state(own_player(mode), 0);
             own_player(mode)->motion_held = 0;
         }
         break;
@@ -348,11 +348,11 @@ static int state_ended(struct GameMode *mode, const struct PacketMsgStateChange 
         break;
     case 0x37d:
         if (is_own(packet) && own_player(mode)->pose_locked == 0)
-            actor_set_state(own_player(mode), 0, 1);
+            actor_set_state(own_player(mode), 0);
         break;
     case 0x3a5:
         if (is_own(packet)) {
-            actor_set_state(own_player(mode), 0, 1);
+            actor_set_state(own_player(mode), 0);
             own_player(mode)->motion_held = 0;
         }
         break;

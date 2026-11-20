@@ -24,7 +24,7 @@ void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameAc
         break;
     case 0x2c4:
         actor_launch_effect(target, 0x5c);
-        actor_set_state(caster, 7, 1);
+        actor_set_state(caster, 7);
         break;
     case 0x2ed:
         if (caster == (struct GameActor *)mode->world->player)

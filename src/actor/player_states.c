@@ -300,7 +300,7 @@ void player_refresh_status_effects(struct Player *self)
         case 0x395:                 ps_respawn_here(self, 0x45f); break;
         case 0x397:                 ps_respawn_here(self, 0x449); break;
         case 0x3a5:
-            actor_set_state(self, 0x30, 1);
+            actor_set_state(self, 0x30);
             self->motion_held = 1;
             break;
         case 0x3a9:                 ps_respawn_here(self, 0x448); break;

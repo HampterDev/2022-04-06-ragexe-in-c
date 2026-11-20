@@ -265,7 +265,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
         int pc = session_is_pc_job(&g_session1, game_actor_get_job(self));
 
         if (self->state != 3 && !(pc && self->state == 2) && msg != 0x27 && msg != 0x61) {
-            actor_set_state(self, 4, 1);
+            actor_set_state(self, 4);
             if (motion > 1.0f)
                 self->plays = motion;
             else
@@ -407,7 +407,7 @@ static void sm_appear_stand(struct GameActor *self, struct GameMode *mode, const
     sm_appear_fields(self, info);
     self->entry_head = info->head;
     game_actor_set_attr_state(self, info->body_state, info->effect_state, info->health_state, 0);
-    actor_set_state(self, 0, 1);
+    actor_set_state(self, 0);
     game_actor_set_guild(self, info->guild_id, info->emblem_version);
 }
 
@@ -424,7 +424,7 @@ static void sm_appear_new(struct GameActor *self, struct GameMode *mode, struct 
     self->walk_speed = info->speed;
     self->entry_head = info->head;
     game_actor_set_attr_state(self, info->body_state, info->effect_state, info->health_state, 0);
-    actor_set_state(self, 0, 1);
+    actor_set_state(self, 0);
     self->pk_mode = info->is_pk_mode;
     if (info->job == 0x2d2 || info->job == 0x508)
         game_actor_set_guild(self, info->guild_id, info->emblem_version);
@@ -519,11 +519,11 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         break;
     case 0x0c:
         if (self->state != 3)
-            actor_set_state(self, 3, 1);
+            actor_set_state(self, 3);
         break;
     case 0x13: {
         int sx, sy, ux, uy, speed = (int)par3;
-        unsigned char ok, snap = par4 == 0;
+        unsigned char ok;
 
         /* the stop of the original, a placing, is taken at once; the dash of a relocation is
            walked at its own speed without the walk's animation */
@@ -536,7 +536,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
                                                        MOVE_CAUSE_PUSHED, game_actor_walk_time(self));
             if (ok) {
                 actor_clear_unit_cell(self);
-                actor_set_state(self, 1, snap);
+                actor_set_state(self, 1);
                 self->glide = 1;
                 self->motion_held = 1;
             }
@@ -552,7 +552,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
                 g_session1.merc_command[2] = 0;
                 g_session1.merc_command[3] = 0;
             }
-            actor_set_state(self, 0, snap);
+            actor_set_state(self, 0);
         }
         break;
     }
@@ -637,7 +637,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
             break;
         }
         if (self->hit_queue.size == 0 || session_is_pc_job(&g_session1, game_actor_get_job(self)))
-            actor_set_state(self, 3, 1);
+            actor_set_state(self, 3);
         else
             self->dies_after_hits = 1;
         break;
@@ -736,14 +736,14 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
     case 0x45:
         if (self->sleep_mark == 0) {
             self->sleep_mark = sm_msg_effect(self, mode, 7, 1);
-            actor_set_state(self, 0xa, 1);
+            actor_set_state(self, 0xa);
         }
         break;
     case 0x46:
         if (self->sleep_mark) {
             render_object_send(self->sleep_mark, NULL, 0x35, 0, 0, 0, 0);
             self->sleep_mark = 0;
-            actor_set_state(self, self->resume_state, 1);
+            actor_set_state(self, self->resume_state);
         }
         break;
     case 0x47: sm_hold(self, mode, &self->stun_mark, 8); break;
@@ -817,7 +817,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         self->slant_depth = 0;
         self->pickable = 1;
         game_complete_item_use();
-        actor_set_state(self, 0, 1);
+        actor_set_state(self, 0);
         break;
     case 0x63: {
         unsigned until;
@@ -859,7 +859,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         }
         break;
     case 0x6c: {
-        actor_set_state(self, 2, 1);
+        actor_set_state(self, 2);
         self->attack_motion_count = (float)actor_get_attack_motion(self);
         actor_set_unit_cell(self);
         self->start_tick = platform_ticks_ms();

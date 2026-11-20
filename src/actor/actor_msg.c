@@ -67,13 +67,13 @@ void game_actor_msg_attack(struct GameActor *self,
     damage /= hits;
     switch (type) {
     case 1:
-        actor_set_state(self, 5, 1);
+        actor_set_state(self, 5);
         return;
     case 2:
-        actor_set_state(self, 6, 1);
+        actor_set_state(self, 6);
         return;
     case 3:
-        actor_set_state(self, 0, 1);
+        actor_set_state(self, 0);
         return;
     case 0: case 4: case 8: case 9: case 10: case 11: case 13:
         break;
@@ -94,7 +94,7 @@ void game_actor_msg_attack(struct GameActor *self,
     } else {
         actor_set_attack_speed(self, attack_mt);
         if (attack->target_aid != self->aid)
-            actor_set_state(self, 2, 1);
+            actor_set_state(self, 2);
         render_object_turn_toward((struct RenderObject *)self, tx, tz);
         delay = (unsigned)(self->attack_motion_count * self->motion_delay * 24.0f);
         if (game_actor_get_job(self) == 0x3f8 || game_actor_get_job(self) == 0x58c)
@@ -220,7 +220,7 @@ void game_actor_swing_begin(struct GameActor *self, int target_aid, int attack_m
         self->swing_lands_ms = lands_ms;
         self->swing_own_delay = 0.0f;
         self->swing_paces = 1;
-        actor_set_state(self, 2, 1);
+        actor_set_state(self, 2);
         self->swing_paces = 0;
     }
     if (target)
@@ -245,7 +245,7 @@ void game_actor_pace_attack(struct GameActor *self)
 void game_actor_swing_cancel(struct GameActor *self)
 {
     if (self->state == 2)
-        actor_set_state(self, 0, 1);
+        actor_set_state(self, 0);
 }
 
 void game_actor_set_attack_speed(struct GameActor * self, int ms)

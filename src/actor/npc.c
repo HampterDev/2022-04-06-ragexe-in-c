@@ -430,7 +430,7 @@ static void npc_set_state_general(struct Npc *self, int state)
     }
 }
 
-void npc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
+void npc_set_state(struct GameActor * base_actor, int state)
 {
     struct Npc * self = (struct Npc *)base_actor;
 

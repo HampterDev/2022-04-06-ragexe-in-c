@@ -67,7 +67,7 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
         self->motion = actres_frame_count(act, 0x58) - 1;
     } else {
         render_object_turn_toward((struct RenderObject *)self, x, z);
-        actor_set_state(self, state, 1);
+        actor_set_state(self, state);
     }
 
     at.x = x;

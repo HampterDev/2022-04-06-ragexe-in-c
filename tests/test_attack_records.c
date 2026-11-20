@@ -108,12 +108,11 @@ static void send_msg(struct GameObject *object, struct GameObject *sender, Rende
 #define OWN_FRAME_DELAY 3.0f
 #define HIT_FRAME       2.0f
 
-static void set_state(struct GameActor *actor, int state, unsigned char snap)
+static void set_state(struct GameActor *actor, int state)
 {
     struct Sent *s = record(SENT_STATE, actor);
 
     s->value[0] = state;
-    s->value[1] = snap;
     /* as the setup of an attack does: the attack's own delay, the frame its hit is on, and the
        pace of an announced swing */
     if (state == 2) {
@@ -337,7 +336,7 @@ static void act_position(void)
     assert(sent[0].attack.attack_mt == 0x1b0 && sent[0].attack.attacked_mt == 0x120);
     assert(sent[0].attack.is_sp_damage == 0);
     assert(sent[1].what == SENT_SPEED && sent[1].to == &monster && sent[1].value[0] == 0x1b0);
-    assert(sent[2].what == SENT_STATE && sent[2].to == &monster && sent[2].value[0] == 2 && sent[2].value[1] == 1);
+    assert(sent[2].what == SENT_STATE && sent[2].to == &monster && sent[2].value[0] == 2);
     expect_hit(&sent[3], &player, 0x1a, 25, 0, MONSTER_AID, 50, 60, 0x120 / 288.0f, 0, t0, t1, 144);
     assert(sent[3].hit.effect == -1 && sent[3].hit.hit_effect == 0 && sent[3].hit.value == 1);
 
@@ -559,7 +558,7 @@ static void swing(void)
     assert(sent[0].value[0] == MONSTER_AID && sent[0].value[1] == 300 && sent[0].value[2] == 300);
     assert(sent[1].what == SENT_SPEED && sent[1].to == &player && sent[1].value[0] == 300);
     assert(hit_shows(&player, 300));
-    assert(sent[2].what == SENT_STATE && sent[2].to == &player && sent[2].value[0] == 2 && sent[2].value[1] == 1);
+    assert(sent[2].what == SENT_STATE && sent[2].to == &player && sent[2].value[0] == 2);
     assert(mode.open_swing_count == 1 && player.attack_target_aid == MONSTER_AID);
 
     /* Its impact shows the hit now and leaves the animation alone. */
@@ -601,7 +600,7 @@ static void swing(void)
     send_act(OWN_AID, 710, 0, 0, 0);
     play_at(710);
     assert(sent_count == 5 && sent[3].what == SENT_SWING_CANCEL && sent[3].to == &player);
-    assert(sent[4].what == SENT_STATE && sent[4].value[0] == 0 && sent[4].value[1] == 1);
+    assert(sent[4].what == SENT_STATE && sent[4].value[0] == 0);
     assert(mode.open_swing_count == 0);
     send_act(OWN_AID, 720, 0, 0, 0);
     play_at(720);

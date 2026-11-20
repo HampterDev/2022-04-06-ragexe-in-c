@@ -436,12 +436,12 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
     case 0x37d:
         if (own) {
             world_get_game_actor_by_aid(mode->world, aid);
-            actor_set_state(player, 0x2f, 1);
+            actor_set_state(player, 0x2f);
         }
         break;
     case 0x3a5:
         if (own) {
-            actor_set_state(player, 0x30, 1);
+            actor_set_state(player, 0x30);
             mode->world->player->motion_held = 1;
         }
         break;
@@ -501,7 +501,7 @@ static int change_ended(struct GameMode *mode, int aid, int index, int val1, cha
     case 0x1d:
         no_line(text);
         if (own) {
-            actor_set_state(player, 0, 1);
+            actor_set_state(player, 0);
             mode->world->player->motion_held = 0;
         }
         break;
@@ -569,11 +569,11 @@ static int change_ended(struct GameMode *mode, int aid, int index, int val1, cha
         break;
     case 0x37d:
         if (own)
-            actor_set_state(player, 0, 1);
+            actor_set_state(player, 0);
         break;
     case 0x3a5:
         if (own) {
-            actor_set_state(player, 0, 1);
+            actor_set_state(player, 0);
             mode->world->player->motion_held = 0;
         }
         break;

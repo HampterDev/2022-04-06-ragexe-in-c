@@ -737,7 +737,7 @@ void game_mode_zc_progress_cancel(struct GameMode *self, const unsigned char *pk
         return;
     actor_send(player, ACTOR_MSG_PROGRESS_STOP, 0, 0);
     if (player->state == 8)
-        actor_set_state(player, 0, 1);
+        actor_set_state(player, 0);
 }
 
 #define ACTOR_MSG_MVP           0x24

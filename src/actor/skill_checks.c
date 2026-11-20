@@ -194,7 +194,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     if (!skill_skips_attack_speed(skill))
         actor_set_attack_speed(self, rec->attack_mt);
     if (!skill_skips_cast_state(skill, type))
-        actor_set_state(self, use_state, 1);
+        actor_set_state(self, use_state);
     if (skill_info_shows_use_effect(skill) && value != -2) {
         e = sot_launch(self, use_effect);
         if (e != NULL)

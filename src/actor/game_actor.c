@@ -334,7 +334,7 @@ void game_actor_launch_ranged_attack(struct GameActor *self, int id, float heigh
 static void actor_rejob(struct GameActor *self, int job)
 {
     actor_set_spr_job(self, job > 0 ? job : game_actor_get_job(self));
-    actor_set_state(self, self->state, 1);
+    actor_set_state(self, self->state);
 }
 
 void game_actor_raise_body_quarter_height(struct GameActor *self, int value)

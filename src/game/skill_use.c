@@ -44,7 +44,7 @@ static void play_cast_motion(struct GameMode *mode, unsigned short skill_id, int
     int action = -1, loop_type, motion, state;
 
     if (skill_id == SKILL_CR_AUTOGUARD || skill_id == SKILL_ML_AUTOGUARD)
-        actor_set_state(caster, 2, 1);
+        actor_set_state(caster, 2);
 
     if (!session_is_monster_actor(&g_session1, caster) && skill_id != SKILL_MG_SRECOVERY) {
         if (skill_id == SKILL_WE_MALE || skill_id == SKILL_WE_FEMALE)
@@ -64,9 +64,9 @@ static void play_cast_motion(struct GameMode *mode, unsigned short skill_id, int
         return;
     session_get_use_effect(&g_session1, skill_id, &motion, &state);
     if (caster->state != 1 && state == 1)
-        actor_set_state(caster, 7, 1);
+        actor_set_state(caster, 7);
     else
-        actor_set_state(caster, state, 1);
+        actor_set_state(caster, state);
 }
 
 static void face_the_target(struct GameMode *mode, unsigned short skill_id, int src_aid, unsigned target_aid,

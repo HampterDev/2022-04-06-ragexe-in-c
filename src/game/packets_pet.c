@@ -221,7 +221,7 @@ void game_mode_zc_change_state_pet(struct GameMode *self, const unsigned char *p
         if (!pet)
             return;
         game_actor_set_pk_mode(pet, value);
-        actor_set_state(pet, 0, 1);
+        actor_set_state(pet, 0);
         return;
     case PET_STATE_EGG:
         if (value == 0) {

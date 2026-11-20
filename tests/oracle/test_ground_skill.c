@@ -90,7 +90,7 @@ float c3d_attr_get_height(struct C3dAttr *self, float x, float z) { (void)self; 
 void *render_object_get_act_res(struct RenderObject *self) { (void)self; return &lift_act; }
 unsigned actres_frame_count(const struct ActRes *self, unsigned action) { (void)self; (void)action; return 1; }
 void render_object_turn_toward(struct RenderObject *self, float x, float z) { (void)self; (void)x; (void)z; event("turn"); }
-static void lift_set_state(struct GameActor *actor, int state, unsigned char snap) { (void)actor; (void)snap; event("state %d", state); }
+static void lift_set_state(struct GameActor *actor, int state) { (void)actor; event("state %d", state); }
 BYTE session_play_ground_skill_effect(struct Session *self, int skill, struct Vec3 pos) { (void)self; (void)skill; (void)pos; return 0; }
 unsigned long long game_mode_launch_dummy_effect(struct GameMode *mode, const Vec3 *at, int effect_id, int frames, int value)
 { (void)mode; (void)at; (void)value; event("dummy %x for %d", effect_id, frames); return 0; }

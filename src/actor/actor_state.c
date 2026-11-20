@@ -249,9 +249,9 @@ int game_actor_play_place(struct GameActor *self)
     }
     /* the state chooses the animation from the place and the drawn point (part 3) */
     if (self->state == ACTOR_STATE_STAND && moved && !self->glide) {
-        actor_set_state(self, ACTOR_STATE_WALKING, 0);
+        actor_set_state(self, ACTOR_STATE_WALKING);
     } else if (self->state == ACTOR_STATE_WALKING && !place.moving && px == place.x && py == place.y) {
-        actor_set_state(self, ACTOR_STATE_STAND, 1);
+        actor_set_state(self, ACTOR_STATE_STAND);
         self->glide = 0;
         self->motion_held = 0;
         if (self->body_relocation) {
@@ -296,7 +296,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
     switch (self->state) {
     case 0x00:
         if (self->play_mode == 1 && self->motion_finished)
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
         else
             pet_idle_emotion(self, mode);
         render_object_update_motion((struct RenderObject *)self);
@@ -312,7 +312,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
     case 0x3b:
         render_object_update_motion((struct RenderObject *)self);
         if (self->motion_finished)
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
         break;
 
     case 0x03:
@@ -341,7 +341,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
         self->casting = 0;
         render_object_update_motion((struct RenderObject *)self);
         if (self->motion_finished)
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
         break;
 
     case 0x08: {
@@ -391,7 +391,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
         if (now >= self->cast_end_tick) {
             self->casting = 0;
             self->motion_held = 0;
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
             render_object_send(self, NULL, 0x53, 0, 0, 0, 0);
         }
         render_object_update_motion((struct RenderObject *)self);
@@ -453,7 +453,7 @@ static void face_target(struct GameActor *self, struct GameMode *mode)
     render_object_turn_toward((struct RenderObject *)self, target->pos.x, target->pos.z);
 }
 
-void game_actor_set_state(struct GameActor * self, int state, unsigned char snap)
+void game_actor_set_state(struct GameActor * self, int state)
 {
     struct GameMode *mode;
     unsigned char member;

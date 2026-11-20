@@ -109,7 +109,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
     if (ACTOR_STATE(actor) == 2 || ACTOR_STATE(actor) == 7) {
         if (ACTOR(actor)->motion_finished == 0)
             return 0;
-        actor_set_state(actor, 0, 1);
+        actor_set_state(actor, 0);
     }
 
     if (self->startTick == 0) {
@@ -129,7 +129,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
             return 0;
         }
     } else if (platform_coarse_ticks_ms() - self->startTick > self->duration) {
-        actor_set_state(actor, 0, 1);
+        actor_set_state(actor, 0);
         if (self->kind == 0) {
             g_session1.homun_ai_state[0] = 0;
             self->startTick = 0;

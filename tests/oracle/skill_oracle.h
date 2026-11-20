@@ -302,7 +302,7 @@ static int lift_mode_send(struct Mode *mode, int message, int a, int b, int c, i
 static void lift_send_msg(struct GameObject *object, struct GameObject *sender, RenderMsgArg msg, RenderMsgArg p1, RenderMsgArg p2, RenderMsgArg p3, RenderMsgArg p4)
 { (void)sender; event("msg %s %s", who(object), msg_text(msg, p1, p2, p3, p4)); }
 static void lift_set_action(struct RenderObject *self, int action, int type) { event("setaction %s %d %d", who(self), action, type); }
-static void lift_set_state(struct GameActor *actor, int state, unsigned char snap) { event("state %s %d %d", who(actor), state, snap); }
+static void lift_set_state(struct GameActor *actor, int state) { event("state %s %d", who(actor), state); }
 static void lift_effect_delay(struct Effect *self, int ms) { event("delay %s %d", who(self), ms); }
 static void lift_effect_zoom(struct Effect *self, float zoom) { event("zoom %s %.2f", who(self), zoom); }
 static void lift_effect_spin(struct Effect *self, float degrees) { event("spin %s %.2f", who(self), degrees); }
@@ -378,7 +378,8 @@ static int __fastcall o_mode_send_msg(void *self, void *edx, int msg, int a, int
 static void __fastcall o_actor_send_msg(void *self, void *edx, void *sender, long long msg, long long p1, long long p2, long long p3, long long p4)
 { (void)edx; (void)sender; event("msg %s %s", who(self), msg_text(msg, p1, p2, p3, p4)); }
 static void __fastcall o_set_action(void *self, void *edx, int action, int type, int flag) { (void)edx; (void)type; event("setaction %s %d %d", who(self), action, flag); }
-static void __fastcall o_set_state(void *self, void *edx, int state, int snap) { (void)edx; event("state %s %d %d", who(self), state, snap); }
+/* the original passes a third argument, the slide's snap, which custom no longer has (plans/drawn-place.md) */
+static void __fastcall o_set_state(void *self, void *edx, int state, int snap) { (void)edx; (void)snap; event("state %s %d", who(self), state); }
 static void __fastcall o_rag_send_msg(void *self, void *edx, void *sender, long long msg, long long a, long long b, long long c)
 { (void)edx; (void)sender; event("ragmsg %s %s", who(self), msg_text(msg, a, b, c, 0)); }
 static void __fastcall o_effect_delay(void *self, void *edx, int ms) { (void)edx; event("delay %s %d", who(self), ms); }

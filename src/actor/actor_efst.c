@@ -241,7 +241,7 @@ static void ef_mount(struct GameActor *self, int on)
     if (on) {
         actor_set_mounted(self, 1);
         if (self->state == 0x19)
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
     } else {
         int job;
 
@@ -293,7 +293,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
             self->state = 0;
             self->slant_depth = 0;
             self->pickable = 1;
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
             self->motion_held = 0;
         }
         break;
@@ -714,9 +714,9 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
     case 0x368: game_actor_set_hat_effect_by_aid(self, self->aid, 0x447, (unsigned char)on); break;
     case 0x37d:
         if (on)
-            actor_set_state(self, 0x2f, 1);
+            actor_set_state(self, 0x2f);
         else if (!self->pose_locked)
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
         break;
     case 0x37f: game_actor_set_hat_effect_by_aid(self, self->aid, value + 0x950, (unsigned char)on); break;
     case 0x380:
@@ -733,14 +733,14 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
         break;
     case 0x3a5:
         if (on) {
-            actor_set_state(self, 0x30, 1);
+            actor_set_state(self, 0x30);
             self->motion_held = 1;
             self->pose_locked = 1;
         } else {
             self->state = 0;
             self->slant_depth = 0;
             self->pickable = 1;
-            actor_set_state(self, 0, 1);
+            actor_set_state(self, 0);
             self->motion_held = 0;
             self->pose_locked = 0;
         }

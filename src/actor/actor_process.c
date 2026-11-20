@@ -103,7 +103,7 @@ void game_actor_process_chat_balloon_(struct GameActor *self)
         if (now > self->cast_end_tick) {
             render_object_send(self, NULL, 0x53, 0, 0, 0, 0);
             if (self->state == 8)
-                actor_set_state(self, 0, 1);
+                actor_set_state(self, 0);
         } else {
             int total, done;
 
