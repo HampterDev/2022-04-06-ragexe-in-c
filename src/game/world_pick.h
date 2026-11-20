@@ -1,4 +1,5 @@
 #include "world/mode_actions.h"
+#include "actor/actor_states.h"
 #include "session/party_queries.h"
 #include "actor/actor_ops.h"
 #include "skills/skill_info.h"
@@ -71,7 +72,6 @@ static __inline void pet_target_order(struct GameActor *pet, PetOrderFn set_orde
 }
 enum { PET_ORDER_ATTACK = 3, PET_ORDER_SKILL_AT_ACTOR = 7 };
 
-enum { ACTOR_STATE_DEAD = 3 };
 enum {
     OBJECT_TYPE_PET = 7, OBJECT_TYPE_HOMUNCULUS = 8, OBJECT_TYPE_MERCENARY = 9,
 };

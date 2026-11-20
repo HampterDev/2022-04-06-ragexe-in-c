@@ -40,7 +40,7 @@ note    Containers and strings (std/), JSON (json/), memory, UTF-8 and text form
         (delivery/). Uses nothing else of the client.
 uses
 paths   body/ core/ delivery/
-        initializers/ json/ std/ actor/actor_ops.h base.h fileio/file_api.h platform/vk.h
+        initializers/ json/ std/ actor/actor_ops.h actor/actor_states.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 
 library platform

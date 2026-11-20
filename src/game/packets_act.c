@@ -14,6 +14,7 @@
 #include "game/net_clock.h"
 #include "game/own_body.h"
 #include "game/cells.h"
+#include "actor/actor_states.h"
 #include "actor/render_object.h"
 #include "actor/cast_stop.h"
 #include "game/skill_cast.h"
@@ -171,8 +172,6 @@ static void play_vitals(struct GameMode *self, const struct VitalsRecord *vitals
         render_object_send(actor, NULL, AM_SET_HP_BAR, vitals->hp, vitals->max_hp, 0, 0);
 }
 
-#define ACTOR_STATE_CASTING 8
-
 /* The cast `gid` shows ends without its skill, if it shows one. */
 static void cast_cancel(struct GameMode *self, unsigned gid)
 {
@@ -259,8 +258,6 @@ static DWORD item_clock(struct GameMode *self, const struct TimedItem *item)
    act's tick: the walk the server ended before the act is over on that clock then, and what
    is left of it on the screen is an actor that runs behind its walk. One waits for an actor at
    most. */
-
-#define ACTOR_STATE_WALKING 1
 
 /* When an act that begins at `tick` can begin on `actor` as it is drawn. */
 enum {
