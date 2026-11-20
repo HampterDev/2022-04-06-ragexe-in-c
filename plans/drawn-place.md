@@ -1,32 +1,26 @@
 # The drawn place
 
 How the place an actor is drawn at follows from its move records and its clock alone, so that
-nothing can leave it where the records do not put it. Status, 2026-11-20: built, steps 1 to 5
-(`world/move_place.c`; the server's record for a slide in `eos-world/aoi-render.js`; the measure in
-the playground's `places.js`).
+nothing can leave it where the records do not put it. Steps 1 to 5 are built; see "What is
+built".
 
 `plans/core-loop.md` has the records and rule 6 (a late walk is steered, never set),
 `plans/netcode.md` the clocks, `plans/predicted-world.md` the own character's records.
 
-## What is wrong today
+## The problem
 
 The server's body core gives a body's cell as one function of its state and the tick, and the
-client runs the same core for the player's own body. What is drawn of an actor is not such a
-function.
+client runs the same core for the player's own body. What is drawn of an actor has to be such a
+function too, or it drifts from what the server has.
 
-- **The animation states keep the place.** The walking state moves an actor a frame at a time
-  from where it is toward the next cell of its path (`game_actor_process_state`, state 1). A
-  stand, a swing, a flinch and a cast do not move it. A record is put into effect by asking
-  what the actor is doing at that moment (`apply_move_record`, `move_record_stand`: set it,
-  finish the walk, halt, walk there, or nothing).
-- **So the place has a memory of its own.** A walk that a swing or a flinch ended between two
-  cells leaves the actor there. A stop that names the cell it is drawn on asks nothing of it,
-  and it stands, swings and flinches off the middle of its cell until its next walk. Found on
-  screen: monsters 0.38 to 0.47 cells off for up to 1.6 s, the player's own character 0.35
-  cells off.
-- **Every such case needs a case of its own.** A late walk is steered in the walking state; an
-  actor at rest is steered by a rule beside the states. A state the rules did not think of
-  leaves the actor where it happened to be.
+- **A place kept by the animation states has a memory of its own.** If the walking state moves
+  an actor a frame at a time and a stand, a swing, a flinch or a cast do not move it, a walk
+  that a swing or a flinch ends between two cells leaves the actor there, and a stop that names
+  the cell it is drawn on changes nothing. The actor then stands, swings and flinches off the
+  middle of its cell until its next walk.
+- **Every such case needs a rule of its own.** A late walk is steered in the walking state, an
+  actor at rest by a rule beside the states, and a state the rules did not think of leaves the
+  actor where it happened to be.
 
 ## What kind of problem this is
 
@@ -68,7 +62,8 @@ the place of this frame, of at most the real time since the last frame at 13/10 
 walk speed; a gap of more than four cells is taken at once. The bound is by real time and not
 by how far the actor's clock moved: a clock moves further in one frame when its lead grows,
 and the place may then be a cell on, which is walked off like any other gap. That is
-`walk_steer` (`std/walk_steer.h`), which exists, called in one spot.
+`move_follow` in `world/move_place.c`, beside `move_place`, and `game_actor_play_place`
+(`actor/actor_state.c`) calls it once a frame for every actor.
 
 So what is drawn is the place and an offset that only shrinks. While the offset is nothing the
 actor is drawn exactly where its record has it. A record that puts the actor elsewhere makes
@@ -107,14 +102,12 @@ The same two parts. Its records are the predicted world's and its clock is the o
 (`game/own_body.c`). A correction of the predicted world is a new record like any other: an
 offset that is walked off.
 
-### 6. What goes
+### 6. Nothing else writes the place
 
-The answers of `move_record_stand` and the cases of `apply_move_record` that act on them; the
-walking state's own stepping; the rule for an actor at rest (`settle_at_rest`,
-`move_rest_walks`); the marks that say a walk is steered or waits for its first step
-(`steered`, `track_waiting`, `track_go`); the walk by a path search of the client's own that
-the original's move packets started; and every other place a packet's reader wrote an actor's
-place itself.
+No animation state steps an actor, there is no rule for an actor at rest, no mark says a walk is
+steered or waits for its first step, the client searches no path of its own for another
+actor's move packet, and no packet's reader writes an actor's place. `game_actor_set_place`
+(`actor/actor_state.c`) is the one way a record becomes the place.
 
 ## Constraints
 
@@ -154,6 +147,28 @@ place itself.
 | 3 The states | The animation is chosen from the place and the drawn point; swing, flinch, cast, sitting and death hold nothing | 3 |
 | 4 Every place a record | The server's record for a slide and a knockback; the cause chooses how the drawn point joins; the original's placing packets become records where they are read | 3, 4 |
 | 5 The measure | The playground judges by the place | 3, 5 |
+
+## What is built
+
+Client branch `claude/netcode-fight-clock-315b2d` and the server's branch `fight-clock`
+(ring-buffer), neither merged.
+
+| Step | Built | Not built or not covered |
+|---|---|---|
+| 1 The place | `world/move_place.c`: `move_place`, the place a record gives at a tick in 256ths of a cell, and `move_follow`, the drawn point's step. `tests/test_move_place.c`, built without `/std:c11` (`tests/build_move_place.bat`): the place in any order of asking, the middles, the speed between two ticks, the body core entering each cell when the place is on its middle, and check 2 over 3,000 random runs of walks and stops coming at random frames. Nine of their rules broken on purpose were each caught | |
+| 2 Following | `game_actor_play_place` (`actor/actor_state.c`) plays the track and follows the place once a frame in every state; `game_actor_set_place` is the one way a record becomes the place. Part 6 holds | |
+| 3 The states | The animation is chosen from the place and the drawn point; a swing, a flinch, a cast, sitting and death hold nothing. Setting a state takes no snap | |
+| 4 Every place a record | The server: a slide, a knockback and a body relocation send a move record without steps, cause pushed, dated at the tick spatial moved the unit, and none of the original's placing packets (`eos-world/aoi-render.js`); the player's own body is placed as pushed and she is told it at once. The tracks session test: a knockback sends that record, and the own client has her body on the new cell, pushed, within 60 ms. The client: the cause chooses how the drawn point joins, and the original's placing packets become records where they are read | A body relocation is held by the slide's path, not by a session of its own. The own character pushed by a monster's skill was not seen on screen |
+| 5 The measure | The playground's `places.js` mirrors `move_place`, and `run.mjs` judges every actor by the place of the server's records at the tick it is drawn on. A slide is allowed for its 200 ms and a frame and a half. The driver can use a skill on a body; the mood `magnum` knocks monsters back | Not played |
+
+Check 3, seven sets of four 40 s runs with Zombies at hold-back 0 (no lag, ping 80 and 150, ping 80
+with 30 of 100 datagrams lost, and the three with the mood `strike`): no finding on screen, and
+no actor off its place at rest but once, in the set with loss. There the own character was 0.53
+cells off for 96 ms. It is drawn on the predicted body's place, which the server's body left: a
+Zombie's swing landed 14 ms before the tick of a walk the client had predicted, the server rolled
+a hit, and the hit held the body's walk for 150 ms. A hit's outcome is the server's roll, so the
+predicted body has it only with the server's next word. In the set `magnum`, with 18 pushed
+records in its first run, no finding and nothing off at rest.
 
 ## What this does not do
 
