@@ -60,6 +60,7 @@
 #include "render/shaders/quad.h"
 #include "render/shaders/world.h"
 #include "render/shaders/world_caster.h"
+#include "render/shaders/world_caster_solid.h"
 #include "render/shaders/world_depth.h"
 #include "render/shaders/world_transform.h"
 #include "render/shaders/world_cull.h"
@@ -108,7 +109,9 @@ struct GpuView {
     float toClip[16];
 };
 
-enum { PROG_QUAD, PROG_WORLD, PROG_CASTER, PROG_DEPTH, PROG_WATER, PROG_ROWS, PROG_SKIN, PROG_COUNT };
+/* PROG_CASTER draws the casters whose texels the alpha test drops, PROG_CASTER_SOLID the others
+   (world_caster.hlsli), sharing its vertex shader */
+enum { PROG_QUAD, PROG_WORLD, PROG_CASTER, PROG_CASTER_SOLID, PROG_DEPTH, PROG_WATER, PROG_ROWS, PROG_SKIN, PROG_COUNT };
 /* The cull modes of the pipelines: Direct3D 9's, which culls by the winding on the screen, y down:
    CULL_CW drops the clockwise triangles, CULL_CCW the others. */
 enum { CULL_NONE = 1, CULL_CW, CULL_CCW };
@@ -323,7 +326,7 @@ struct world_frame {
     struct WlDrawLayout drawLayout;
     struct world_run *runs;  /* the view's runs, nindirect */
     size_t runCapacity;
-    uint8_t *casterArrays;   /* the texture array of each of the casters' runs, ncasterRuns */
+    uint8_t *casterArrays;   /* the caster's array of each of the casters' runs, ncasterRuns */
     size_t casterArrayCapacity;
     SDL_GPUTexture *fitFront, *fitBack, *fitDepth, *shadowMaps, *shadowDepth;
     int fitW, fitH;
@@ -427,7 +430,8 @@ static struct {
     /* every pipeline, made once (make_pipelines), and which serves what: a mode's quads into each
        kind of target, flat or not; its world records by cull mode (CULL_* - 1) and its water; the
        effect modes' quads by depth test or none and blend factors; the depth pass's by whether it
-       writes the opaque depth and cull mode; the shadow casters; the wobble */
+       writes the opaque depth and cull mode; the shadow casters' by whether they are alpha-tested;
+       the wobble */
     struct { struct pipe_desc desc; SDL_GPUGraphicsPipeline *pipeline; } pipelines[PIPELINE_MAX];
     int npipelines;
     SDL_GPUGraphicsPipeline *quadPipeline[DRAW_MODE_COUNT][CLASS_COUNT][2];
@@ -436,7 +440,7 @@ static struct {
     SDL_GPUGraphicsPipeline *skinPipeline[DRAW_MODE_COUNT];
     SDL_GPUGraphicsPipeline *effectPipeline[2][DRAW_FACTOR_COUNT][DRAW_FACTOR_COUNT];
     SDL_GPUGraphicsPipeline *depthPipeline[2][3];
-    SDL_GPUGraphicsPipeline *casterPipeline, *rowsPipeline;
+    SDL_GPUGraphicsPipeline *casterPipeline[2], *rowsPipeline;
     SDL_GPUSampler *samplers[2][3];  /* wrapped or not, by enum DrawFilter */
     SDL_GPUSampler *pointClamp;
     SDL_GPUTexture *white;
@@ -571,7 +575,7 @@ static struct {
     size_t nindirect, indirectCapacity;
     struct WlRun *casterRuns;
     size_t ncasterRuns, casterRunCapacity;
-    uint8_t *casterArrays;  /* the texture array of each of the casters' runs */
+    uint8_t *casterArrays;  /* the caster's array of each of the casters' runs (wl_caster_array) */
     size_t casterArrayCapacity;
     uint32_t *order;
     size_t orderHeld, orderCapacity;
@@ -1554,7 +1558,7 @@ static SDL_GPUGraphicsPipeline *create_pipeline(const struct pipe_desc *p)
         ATTR(4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 32);
         ATTR(5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 40);
         ATTR(6, 1, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 0);
-    } else if (p->program == PROG_CASTER || p->program == PROG_DEPTH) {
+    } else if (p->program == PROG_CASTER || p->program == PROG_CASTER_SOLID || p->program == PROG_DEPTH) {
         buffers[0].pitch = sizeof(struct GfxMeshVertex);
         ATTR(0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0);
         ATTR(1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 32);
@@ -1743,7 +1747,8 @@ static int make_pipelines(void)
         return 0;
     /* the shadows' own, last, which only turn the shadows off where they cannot be made: the depth
        pass's, single-sampled into two targets of view depth, by whether it writes the second (the
-       passes up to the ground) and by cull mode, and the casters' */
+       passes up to the ground) and by cull mode, and the casters', without the alpha test and with
+       it */
     if (G.shadowState < 0)
         return 1;
     for (d = 0; d < 2; d++)
@@ -1762,16 +1767,20 @@ static int make_pipelines(void)
                 return 1;
             }
         }
-    memset(&p, 0, sizeof p);
-    p.program = PROG_CASTER;
-    p.depth = DRAW_DEPTH_WRITE;
-    p.cull = CULL_NONE;
-    p.mask = MASK_RGBA;
-    p.r32f = 1;
-    p.hasDepth = 1;
-    p.samples = SDL_GPU_SAMPLECOUNT_1;
-    if (!(G.casterPipeline = pipeline(&p)))
-        shadows_off("the casters' pipeline");
+    for (d = 0; d < 2; d++) {
+        memset(&p, 0, sizeof p);
+        p.program = d ? PROG_CASTER : PROG_CASTER_SOLID;
+        p.depth = DRAW_DEPTH_WRITE;
+        p.cull = CULL_NONE;
+        p.mask = MASK_RGBA;
+        p.r32f = 1;
+        p.hasDepth = 1;
+        p.samples = SDL_GPU_SAMPLECOUNT_1;
+        if (!(G.casterPipeline[d] = pipeline(&p))) {
+            shadows_off("the casters' pipelines");
+            return 1;
+        }
+    }
     return 1;
 }
 
@@ -2796,7 +2805,7 @@ int gfx_world_records(const struct SwRecord *records, size_t count, uint32_t ids
     W.nindirect = wl_runs(W.runs, W.nruns, W.indirect, &viewIndices);
     W.ncasterRuns = wl_caster_runs(records, count, W.order, &W.orderHeld, W.casterRuns, &casterIndices);
     for (i = 0; i < W.ncasterRuns; i++)
-        W.casterArrays[i] = records[W.order[W.casterRuns[i].first]].textureArray;
+        W.casterArrays[i] = wl_caster_array(&records[W.order[W.casterRuns[i].first]]);
     W.nchunks = wl_chunks(records, count, W.chunks);
     W.sectionIndices = viewIndices > casterIndices ? viewIndices : casterIndices;
     wl_cull_layout(count, W.nindirect, W.ncasterRuns, W.orderHeld, W.nchunks, &W.cullLayout);
@@ -4011,12 +4020,13 @@ static int depth_pass(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
    be recorded. */
 static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf, const struct ShadowFitGpuFrame *u)
 {
-    const struct GpuComputeCode *code[2] = { &shadow_range_cs, &shadow_extents_cs };
     SDL_GPUComputePipeline *pipes[2] = { W.fitRange, W.fitExtents };
     SDL_GPUStorageBufferReadWriteBinding rw[2];
     SDL_GPUTexture *depths[2] = { wf->fitFront, wf->fitBack };
     SDL_GPUComputePass *pass;
+    uint32_t groups[2];
     int p;
+    shadow_fit_gpu_groups(u->size[0], u->size[1], groups);
     for (p = 0; p < 2; p++) {
         SDL_zero(rw);
         rw[0].buffer = wf->fitState;
@@ -4029,8 +4039,7 @@ static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf, c
         if (p == 1)
             SDL_BindGPUComputeStorageBuffers(pass, 0, &wf->fitHistory, 1);
         SDL_PushGPUComputeUniformData(cmd, 0, u, sizeof *u);
-        SDL_DispatchGPUCompute(pass, (u->size[0] + code[p]->threads[0] - 1) / code[p]->threads[0],
-                               (u->size[1] + code[p]->threads[1] - 1) / code[p]->threads[1], 1);
+        SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
         SDL_EndGPUComputePass(pass);
     }
     SDL_zero(rw);
@@ -4095,14 +4104,17 @@ static int caster_cull(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
 }
 
 /* The shadow pass (world_caster.hlsl): each cascade's casters into its layer of the maps, a draw a
-   texture array. The maps are a texel wider and taller than GFX_SHADOW_SIZE (MARGIN), drawn at the
-   same half-pixel viewport as every pass. 0 where it could not be recorded. */
+   run, the alpha-tested runs with their texture array and the others without the alpha test
+   (world_caster_solid.hlsl), in the casters' order. The maps are a texel wider and taller than
+   GFX_SHADOW_SIZE (MARGIN), drawn at the same half-pixel viewport as every pass. 0 where it could
+   not be recorded. */
 static int caster_pass(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
 {
     SDL_GPUBufferBinding binding[2];
     SDL_GPUBuffer *read[4];
     SDL_GPUViewport viewport;
     SDL_Rect scissor;
+    SDL_GPUGraphicsPipeline *bound;
     struct draw_state caster;
     int c;
     /* the casters read their texture as the opaque lists do */
@@ -4137,7 +4149,6 @@ static int caster_pass(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
             return 0;
         SDL_SetGPUViewport(pass, &viewport);
         SDL_SetGPUScissor(pass, &scissor);
-        SDL_BindGPUGraphicsPipeline(pass, G.casterPipeline);
         SDL_zero(binding);
         binding[0].buffer = wf->vertices;
         binding[1].buffer = wf->ids;
@@ -4150,11 +4161,19 @@ static int caster_pass(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
         read[3] = wf->fitResult;
         SDL_BindGPUVertexStorageBuffers(pass, 0, read, 4);
         SDL_PushGPUVertexUniformData(cmd, 0, uniform, sizeof uniform);
+        bound = NULL;
         for (k = 0; k < wf->ncasterRuns; k++) {
-            SDL_GPUTextureSamplerBinding texture;
-            texture.texture = world_array(wf, wf->casterArrays[k]);
-            texture.sampler = stage_sampler(&caster, 0);
-            SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
+            int tested = wf->casterArrays[k] != SW_NO_ARRAY;
+            if (G.casterPipeline[tested] != bound) {
+                bound = G.casterPipeline[tested];
+                SDL_BindGPUGraphicsPipeline(pass, bound);
+            }
+            if (tested) {
+                SDL_GPUTextureSamplerBinding texture;
+                texture.texture = world_array(wf, wf->casterArrays[k]);
+                texture.sampler = stage_sampler(&caster, 0);
+                SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
+            }
             SDL_DrawGPUIndexedPrimitivesIndirect(
                 pass, wf->draws, wl_caster_command(wf->nindirect, wf->ncasterRuns, c, (uint32_t)k) * INDIRECT_SIZE, 1);
         }
@@ -5404,6 +5423,17 @@ static int choose_vsync(void)
    shader that reads more is not made on any device, rather than failing on the smallest alone. */
 #define STORAGE_BUFFERS_MAX 4
 
+/* the first program whose vertex shader is program i's code, which makes and releases the shader
+   object they share */
+static int vs_owner(int i)
+{
+    int j;
+    for (j = 0; j < i; j++)
+        if (G.vsCode[j] == G.vsCode[i])
+            return j;
+    return i;
+}
+
 static SDL_GPUShader *make_shader(const struct GpuShaderCode *code)
 {
     SDL_GPUShaderCreateInfo info;
@@ -5577,6 +5607,8 @@ static int create_device(void)
     G.fsCode[PROG_WORLD] = &world_fs;
     G.vsCode[PROG_CASTER] = &world_caster_vs;
     G.fsCode[PROG_CASTER] = &world_caster_fs;
+    G.vsCode[PROG_CASTER_SOLID] = &world_caster_vs;
+    G.fsCode[PROG_CASTER_SOLID] = &world_caster_solid_fs;
     G.vsCode[PROG_DEPTH] = &world_depth_vs;
     G.fsCode[PROG_DEPTH] = &world_depth_fs;
     G.vsCode[PROG_WATER] = &water_vs;
@@ -5604,12 +5636,12 @@ static int create_device(void)
         return 0;
     }
     for (i = 0; i < PROG_COUNT; i++) {
-        G.vs[i] = make_shader(G.vsCode[i]);
+        G.vs[i] = vs_owner(i) == i ? make_shader(G.vsCode[i]) : G.vs[vs_owner(i)];
         G.fs[i] = make_shader(G.fsCode[i]);
         if (G.vs[i] && G.fs[i])
             continue;
         /* the casters' and the depth pass's serve the shadows alone */
-        if (i == PROG_CASTER || i == PROG_DEPTH) {
+        if (i == PROG_CASTER || i == PROG_CASTER_SOLID || i == PROG_DEPTH) {
             shadows_off("the shadows' shaders");
             continue;
         }
@@ -5913,7 +5945,7 @@ static void destroy_device(void)
             if (G.samplers[i / 3][i % 3])
                 SDL_ReleaseGPUSampler(G.dev, G.samplers[i / 3][i % 3]);
         for (i = 0; i < PROG_COUNT; i++) {
-            if (G.vs[i])
+            if (G.vs[i] && vs_owner(i) == i)
                 SDL_ReleaseGPUShader(G.dev, G.vs[i]);
             if (G.fs[i])
                 SDL_ReleaseGPUShader(G.dev, G.fs[i]);
@@ -5952,7 +5984,7 @@ static void destroy_device(void)
     memset(G.skinPipeline, 0, sizeof G.skinPipeline);
     memset(G.effectPipeline, 0, sizeof G.effectPipeline);
     memset(G.depthPipeline, 0, sizeof G.depthPipeline);
-    G.casterPipeline = G.rowsPipeline = NULL;
+    G.casterPipeline[0] = G.casterPipeline[1] = G.rowsPipeline = NULL;
     memset(G.samplers, 0, sizeof G.samplers);
     memset(G.vs, 0, sizeof G.vs);
     memset(G.fs, 0, sizeof G.fs);

@@ -838,6 +838,15 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/world_layout.c
         LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(gfx_gpu_faults PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120)
+    # The pipelines and textures the shadow pass draws each run with, watched through the SDL calls
+    # that record them (tests/test_gfx_gpu_passes.c, which includes render/gfx_gpu.c); skipped
+    # without a GPU.
+    rage_test(gfx_gpu_passes src/render/texel_convert.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
+        render/frame_ring.c render/quads.c render/render_thread.c
+        render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/world_layout.c
+        LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(gfx_gpu_passes PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     # The client's quads as instances (render/shaders/quad.hlsl) on this machine's GPU, against the
     # client's C code within the tolerance plans/gpu-renderer.md sets, and drawn through
     # render/gfx_gpu.c within the captures' budget; skipped without a GPU. Its arguments: RAGEXE_MSAA

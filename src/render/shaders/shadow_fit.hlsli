@@ -27,6 +27,20 @@
 #define STATE_EXTENTS 2   // cascade c: STATE_EXTENTS + 4c + 0, 1 the least x, y; + 2, 3 the greatest
 #define STATE_SIZE (STATE_EXTENTS + 4 * CASCADES)
 
+// The range and the extents take the screen a tile of TILE by TILE pixels a group, its
+// TILE_THREADS by TILE_THREADS threads (within the 128 invocations every Vulkan device takes),
+// the numbers the C dispatches them by (render/shadow_fit_gpu_tile.h), each every TILE_THREADS-th
+// pixel across and down from its own, so that a row of threads reads a row of pixels. A thread
+// reduces its pixels in its registers, and its group reduces its threads' before the fit's state
+// takes them, so the state's atomics are a few per tile, not a few per pixel.
+#include "../shadow_fit_gpu_tile.h"
+#define TILE SHADOW_FIT_GPU_TILE
+#define TILE_THREADS SHADOW_FIT_GPU_TILE_THREADS
+#define THREADS (TILE_THREADS * TILE_THREADS)
+#if TILE % TILE_THREADS != 0
+#error "a tile is a whole number of pixels for each thread across and down"
+#endif
+
 // The frame's constants (render/shadow_fit_gpu.h, ShadowFitGpuFrame).
 cbuffer Frame : register(b0, space2)
 {

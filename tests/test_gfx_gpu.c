@@ -2563,10 +2563,11 @@ static void check_world_mips(struct C3dDevice *d)
 
 /* The world of check_world_shadows: a caster over the ground at depth 50, world x -16 to 0 and y -8
    to 8, the left half of its texture opaque; the ground over the whole screen at depth 100, its
-   lightmap baked in shadow (alpha 0x80, colour black). */
+   lightmap baked in shadow (alpha 0x80, colour black); and a caster without a texture beside the
+   first, x 4 to 20, which the shadow pass draws without the alpha test as it draws the ground. */
 static void shadow_world(gfx_surface *t, gfx_surface *lm)
 {
-    struct GfxMeshVertex mv[8];
+    struct GfxMeshVertex mv[12];
     struct SwRun run;
     int i;
     world_begin();
@@ -2591,6 +2592,12 @@ static void shadow_world(gfx_surface *t, gfx_surface *lm)
     run.pass = SW_PASS_GROUND;
     run.lightmapArray = 1;
     world_add(mv + 4, 4, quad_cw, 6, &run, 1, 0, NULL, 0);
+    for (i = 8; i < 12; i++) {
+        mv[i] = mv[i - 8];
+        mv[i].x += 20.0f;
+    }
+    run = model_run(0, 6, SW_CULL_NONE);
+    world_add(mv + 8, 4, quad_cw, 6, &run, 1, 0, NULL, 0);
     world_send(NULL, 0);
 }
 
@@ -2632,10 +2639,11 @@ static void shadow_frame(int way)
 }
 
 /* The frame's shadows, fitted, culled and drawn by the device itself (render/gfx.h; world_depth.hlsl,
-   shadow_*.hlsl, world_cull.hlsl, world_caster.hlsl): a model's record casts where its texture's
-   alpha passes the opaque lists' test (0xcf), and the ground drawn in that frame lies in its
-   shadow there, darkened to the shadow's darkness, and is lit around it and where the texture's
-   alpha drops the caster; its lightmap's baked shadow counts as lit down to the darkness. A frame
+   shadow_*.hlsl, world_cull.hlsl, world_caster.hlsl, world_caster_solid.hlsl): a model's record
+   casts where its texture's alpha passes the opaque lists' test (0xcf), one without a texture
+   everywhere, both in one cascade beside the ground, and the ground drawn in that frame lies in
+   their shadows there, darkened to the shadow's darkness, and is lit around them and where the
+   texture's alpha drops the caster; its lightmap's baked shadow counts as lit down to the darkness. A frame
    whose receivers all lie beyond the shadows' reach keeps the baked shadow everywhere, and so does
    a frame given no shadows. The fit keeps its squares and its range from frame to frame
    (gfx_read_shadow_fit), and a world made again (gfx_world_clear) starts from none. */
@@ -2651,9 +2659,13 @@ static void check_world_shadows(struct C3dDevice *d)
     shadow_world(t, lm);
     for (way = 0; way < 3; way++) {
         shadow_frame(way);
-        /* the opaque half shades the ground at x -16 to -8 (pixels 16 to 23 across, 16 to 31 down) */
+        /* the opaque half shades the ground at x -16 to -8 (pixels 16 to 23 across, 16 to 31 down),
+           and the caster without a texture at x 4 to 20 (pixels 36 to 51) */
         p = screen_pixel(d, 19, 24);
         assert(near_value(p >> 16 & 0xff, 0x80) && near_value(p >> 8 & 0xff, 0x80) && near_value(p & 0xff, 0x80));
+        p = screen_pixel(d, 44, 24);
+        assert(near_value(p >> 16 & 0xff, 0x80) && near_value(p >> 8 & 0xff, 0x80) && near_value(p & 0xff, 0x80));
+        assert(screen_pixel(d, 33, 24) == (way ? 0x808080u : 0xffffffu));
         p = way ? 0x808080 : 0xffffff;
         assert(screen_pixel(d, 29, 24) == p && screen_pixel(d, 10, 24) == p && screen_pixel(d, 19, 10) == p);
     }
