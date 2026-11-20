@@ -67,7 +67,7 @@
 
 /* Goes up with every change to what the core does with an input. A server and a client with
  * different versions do not predict each other. */
-#define BODY_RULES_VERSION 14u
+#define BODY_RULES_VERSION 15u
 
 /* The most slots a world has; a slot number fits 16 bits. */
 #define BODY_MAX_BODIES 0xFFFFu
@@ -133,7 +133,8 @@ enum {
                               land_ms); otherwise it is 0 */
     BODY_INPUT_WALK = 4,   /* the body walks to (x, y), over at most `value` steps (0: BODY_PATH_STEPS) */
     BODY_INPUT_STOP = 5,   /* a walk ends on the cell the body is on; the step under way is not taken */
-    BODY_INPUT_DELAY = 6,  /* the body takes no step before `tick` + `value` ms */
+    BODY_INPUT_DELAY = 6,  /* the body takes no step before `tick` + `value` ms, a hold of the kind
+                              `dir` (BODY_HOLD_*) says, which may leave it as it was */
     BODY_INPUT_SPEED = 7,  /* the body's speed is `value` from its next step on */
     BODY_INPUT_NEAR = 8,   /* the body walks until it is within `value` cells of (x, y) */
     BODY_INPUT_CHASE = 9,  /* the body walks after the body `target_id` in slot `target` until it is
@@ -188,6 +189,14 @@ enum {
  * swing (BODY_EVENT_ASK_BEGIN); its swing lands on a target within its range and a cell more.
  * Another unit (a homunculus, a mercenary) is neither. */
 enum { BODY_FIGHTER_OTHER = 0, BODY_FIGHTER_PLAYER = 1, BODY_FIGHTER_MONSTER = 2 };
+
+/* What kind of hold a BODY_INPUT_DELAY is (its `dir`), the fork's unit_set_walkdelay types. A
+ * flinch (damage) holds a body that is held no longer and was not within the hold's own length
+ * of now: a body is not stopped again for double the flinch time. A skill's or an attack's hold
+ * only ever puts the end of the hold later. What only the game knows, a status or a posture that
+ * keeps the body from moving at all (no flinch then) and a boss that ignores a skill's hold, it
+ * asks before it gives the input. */
+enum { BODY_HOLD_FLINCH = 0, BODY_HOLD_EXTEND = 1 };
 
 /* What a BODY_INPUT_REQUEST asks for (its `dir`). An attack, a skill and a pickup each give the
  * body an intent with the request's number in the place of the one it had: what its owner wants,
@@ -506,5 +515,10 @@ int body_put_move(struct BodyWorld *world, uint32_t slot, uint32_t id, const str
  * safe to give: more steps than a path has count as BODY_PATH_STEPS, and a direction is read
  * by its low three bits. */
 void body_move_at(const struct BodyMove *record, uint64_t tick, struct BodyMove *at);
+
+/* The move clock after a hold of `delay` ms at `tick` of the kind `kind` (BODY_HOLD_*), when it
+ * was `can_move`: the rule BODY_INPUT_DELAY holds a body by, for whoever keeps a move clock of
+ * its own. A hold of 0 ms, or of another kind, leaves the clock as it was. */
+uint64_t body_hold_until(uint64_t can_move, uint64_t tick, uint32_t delay, int kind);
 
 #endif

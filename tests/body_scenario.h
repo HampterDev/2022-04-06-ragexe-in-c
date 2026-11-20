@@ -51,7 +51,7 @@ struct BodyScenario {
     uint32_t refused_runs; /* body_run calls that were refused as they should be */
     /* what the scenario knows of each slot from the events alone */
     struct BodyMove record[BODY_SCENARIO_BODIES];
-    uint64_t hold[BODY_SCENARIO_BODIES]; /* the end of the longest hold put on the slot's body */
+    uint64_t hold[BODY_SCENARIO_BODIES]; /* the end of the longest skill's hold put on the slot's body */
     int16_t x[BODY_SCENARIO_BODIES], y[BODY_SCENARIO_BODIES];
     uint8_t known[BODY_SCENARIO_BODIES];   /* `record` is the record of the body in the slot */
     uint8_t located[BODY_SCENARIO_BODIES]; /* (x, y) is a cell an event gave for the slot */
