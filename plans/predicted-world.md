@@ -95,22 +95,26 @@ player's body again when two seconds have passed without a word of it, on a time
 which the journal replays (`body-again` in the server's `spatial/core-walks.js`: one pending
 timer a body, set for two seconds after its last word). The client treats it as any word: equal,
 and nothing is seen; different, and it is the one correction. It counts the words that differed
-without a request or a record to explain them (`unexplained`; the playground reads the count). A
-record is any track record, a
-hit, a coming or a going, and the end of the own intent (`ZC_OWN_INTENT`). The body travels
-first through the delivery piece and may overtake the record that explains it, so a word that
-differs with nothing before it is suspect until the next word, and a record of its tick or
+with nothing to explain them (`unexplained`; the playground reads the count). The word says what
+the server's game did to the body: `outside` counts, from the placement on, every input the
+server put to the body that the client's core does not make itself, that is all but the player's
+requests and an answer of yes without a wait (the server's `fromOutside` in
+`spatial/core-walks.js`). A word that differs is explained when it answers a request, when a
+waiting request was due by its tick, when its `outside` is not the last word's, or when a record
+of a body the own body names came since the last word: its move or act record, its coming or its
+going (the attack's, the swing's or the intent's target, as the last word has them or as
+predicted now). The body travels first through the delivery piece and may overtake that record,
+so a word with nothing before it is suspect until the next word, and such a record of its tick or
 before that comes in between still explains it (`predicted_heard`). Check:
 `tests/test_predicted.c`: a body the server moved behind the client's back converges with the
-word told two seconds after the last; that word counts, and is explained by a record before it
-or by one of its tick after it, not by one of a later tick. The playground's count of such words
-is 0.
+word told two seconds after the last; that word is not counted when its count moved or when a
+named body's record of its tick came after it; it is counted when only another unit's record
+came, or a named body's of a later tick. The playground's count of such words is 0 in all four
+sets, the three with loss included.
 
-What the count does not do: any record of any unit since the last word excuses a word, so in a
-busy scene only part of the words are judged; and a word does not say what the server's game did
-to the body (an answer that was not yes, a hit's delay, a change of how it fights), so the client
-infers that from what else arrives, and a word whose cause has no record of its own (an answer
-of the game's, stats told at a map's entry) counts as unexplained though no rule is at fault.
+What the count does not do: a record of a named body that comes after the next word does not
+explain the word it would have, which is then counted; and an input of the game's is said only as
+a count, not which one, so a word whose count moved is not judged at all.
 
 ## What goes away
 

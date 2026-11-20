@@ -320,7 +320,7 @@ reasons of `plans/intents.md`), tick (4: legal again from), x (2), y (2): the pl
 server. It is sent when an intent ends; what the intent makes of the player before that, the
 player's body says (`ZC_OWN_BODY`). The client reads its seq and state.
 
-`ZC_OWN_BODY` 0x0F25, 32 bytes and the body (built, `plans/predicted-world.md`), every field
+`ZC_OWN_BODY` 0x0F25, 36 bytes and the body (built, `plans/predicted-world.md`), every field
 on its own alignment:
 
 | off | size | field | note |
@@ -334,7 +334,8 @@ on its own alignment:
 | 20 | 4 | penalty_ms | the second |
 | 24 | 4 | placement | the player's placement on a map the body is of (`plans/presence.md`, part 5) |
 | 28 | 4 | arrival | the low 32 bits of the server's clock when the request it names arrived, when it names it anew; else 0 (`plans/netcode.md`) |
-| 32 | n | state | the body as the core's bytes |
+| 32 | 4 | outside | how many inputs the server's game put to the body that the client's core does not make itself, from the placement on (`plans/predicted-world.md`, "Told again") |
+| 36 | n | state | the body as the core's bytes |
 
 It travels through the delivery piece, the newest replacing every earlier one
 (`plans/delivery.md`). It took the id planned for `ZC_OWN_CLOCKS`: the ticks from which the character may

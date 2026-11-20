@@ -15622,10 +15622,12 @@ in `plans/netcode.md` and of "Told again when nothing told it" in `plans/predict
   back once (`way_new`) and `game/own_body.c` gives it to `way_up_sample`, which does not change.
   The head is 32 bytes, every field on its own alignment.
 - **Told again.** The server tells the body again two seconds after its last word. The
-  predicted world counts a word that differs from what was predicted for its tick when it
-  answers no request, no waiting request was due by its tick and no record came since the last
-  word, unless a record of its tick or before comes before the next word (the body travels first
-  and may overtake the record that explains it). Records are the units' track records, hits,
-  view stamps and `ZC_OWN_INTENT`. The playground reads the count through its driver.
+  word also carries `outside` (offset 32; the head is 36 bytes): how many inputs the server's game
+  put to the body that the client's core does not make itself. The predicted world counts a word
+  that differs from what was predicted for its tick when it answers no request, no waiting
+  request was due by its tick, its `outside` is the last word's, and no move or act record or view
+  stamp of a body the own body names came since the last word, unless such a record of its tick or
+  before comes before the next word (the body travels first and may overtake it). The playground
+  reads the count through its driver.
 - **The playground.** The driver reports per actor whether the client has its unit in view, for
   the runner's presence check, and on exit how late the own body was through the piece.
