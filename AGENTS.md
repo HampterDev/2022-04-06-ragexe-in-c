@@ -48,11 +48,20 @@ a format string, and carry on. Do not assert or abort on such data.
 - C11 with MSVC on Windows; the CMake builds in `docs/portability.md` must keep building.
 - Nothing unused stays: a function, global, type or macro without a user is removed.
 - Third-party code in `vendor/` stays as published.
-- The pieces under `game/` (a submodule) are changed in the set `game` and come here as a new pin
-  of it, never as an edit in this checkout.
+- The pieces under `game/` are changed as "The pieces in `game`" below says.
 - Packet, file and DLL layouts stay the original's, except where `README.md` lists a change.
 - Every source file belongs to a library in `tools/libraries.txt`; `build.bat check` checks the
   includes and links against it.
+
+## The pieces in `game`
+
+The actor rules, the records a viewer keeps, delivery, the delivery routes and the other pieces in
+the submodule `game` are edited in `game`, not here: `game/CONTRIBUTING.md` says where (the `game`
+submodule of your own worktree of this repository, never another worktree's and never the folder
+`game` beside this repository), which commits a change needs (the piece, `game`'s pin of it, this
+repository's pin of `game`, on one topic branch), and how they land. A commit here pins only a
+`game` commit whose whole set passed, and a branch is merged here only when its `game` pin is on
+`game`'s `main`. `python game/tools/pins.py -C game check --outer .` says whether the levels agree.
 
 ## Changes and reverts
 
