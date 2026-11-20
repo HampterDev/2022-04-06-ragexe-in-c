@@ -7,7 +7,8 @@
 
    Environment: RAGEXE_SCENE=<script.lua>, RAGEXE_SCENE_OUT=<directory for captures>,
    RAGEXE_SCENE_TRACE=1 for the packets and mode changes, RAGEXE_SCENE_SHADOW_FIT=1 to check each
-   capture's shadow fit on the GPU against render/shadow_fit.c. See tests/scenes/README.md. */
+   capture's shadow fit on the GPU against render/shadow_fit.c, RAGEXE_SCENE_LAYOUT=<n> for memory
+   laid out otherwise (layout_heap). See tests/scenes/README.md. */
 #include "core/app.h"
 #include "core/drive_state.h"
 #include "core/user_input.h"
@@ -83,6 +84,51 @@ static struct {
     } measure;                     /* scene.measure: the frames still to log */
 } S;
 
+/* RAGEXE_SCENE_LAYOUT=<n>, n > 0: the client's memory laid out and left over otherwise than in a
+   run without it or with another n, the same way in every run with this n, so that two runs whose
+   frames differ betray an order kept by addresses or a read of memory nothing wrote. Before the
+   client starts, blocks of n's sizes are taken from the heap, filled with n's byte, and every other
+   one given back; at every message pump the stack below the driver is filled with that byte. */
+#define LAYOUT_BLOCKS 1024
+#define LAYOUT_STACK (64 * 1024)
+
+static unsigned char layout_byte;
+
+static void layout_heap(unsigned n)
+{
+    static void *kept[LAYOUT_BLOCKS];
+    unsigned i, x = n;
+    layout_byte = (unsigned char)(n * 0x5b + 0x11);
+    for (i = 0; i < LAYOUT_BLOCKS; i++) {
+        size_t size;
+        x = x * 1103515245u + 12345u;
+        size = 16 + (x >> 16) % 4096;
+        kept[i] = malloc(size);
+        if (kept[i])
+            memset(kept[i], layout_byte, size);
+    }
+    for (i = n & 1; i < LAYOUT_BLOCKS; i += 2) {
+        free(kept[i]);
+        kept[i] = NULL;
+    }
+}
+
+static void layout_stack(void)
+{
+    volatile unsigned char below[LAYOUT_STACK];
+    size_t i;
+    for (i = 0; i < sizeof below; i++)
+        below[i] = layout_byte;
+}
+
+static void scene_layout(void)
+{
+    const char *layout = getenv("RAGEXE_SCENE_LAYOUT");
+    unsigned long n = layout ? strtoul(layout, NULL, 10) : 0;
+    if (n)
+        layout_heap((unsigned)n);
+}
+
 /* Headless, silent and without vsync unless the caller says otherwise; set before the client
    reads them. */
 #ifdef _WIN32
@@ -92,6 +138,7 @@ static void scene_defaults(void)
         _putenv_s("RAGEXE_VSYNC", "0");
     if (!getenv("SDL_AUDIODRIVER"))
         _putenv_s("SDL_AUDIODRIVER", "dummy");
+    scene_layout();
 }
 #pragma section(".CRT$XCU", read)
 __declspec(allocate(".CRT$XCU")) void (*scene_defaults_entry)(void) = scene_defaults;
@@ -105,6 +152,7 @@ __attribute__((constructor)) static void scene_defaults(void)
 #endif
     setenv("SDL_AUDIODRIVER", "dummy", 0);
     setenv("RAGEXE_VSYNC", "0", 0);
+    scene_layout();
 }
 #endif
 
@@ -1047,6 +1095,8 @@ void drive_state_tick(void)
 {
     int status;
     int64_t resumed;
+    if (layout_byte)
+        layout_stack();
     S.frame++;
     if (getenv("RAGEXE_SCENE_TRACE") && g_modeMgr.curModeType != S.traced_mode) {
         fprintf(stderr, "scene: mode %d at frame %u (%s)\n", g_modeMgr.curModeType, S.frame, g_modeMgr.curModeName);

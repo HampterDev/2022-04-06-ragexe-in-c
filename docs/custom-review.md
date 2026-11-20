@@ -17816,3 +17816,69 @@ change it (3 of 11), and GPU-assisted validation with synchronization validation
 the scene. Its cause is not found; it is a bug of the line, not of this change.
 
 Not checked: the shaders' MSL on Metal, Linux, and any GPU but a GTX 970.
+
+## A sprite part off the screen is left out (2026-11-20)
+
+Two runs of a load scene with the same client gave frames that differed now and then: in
+`arrive_prontera` and `town_prontera` one frame's `draws` came out one or two apart in about half of
+the runs, and more frames did once a build took a few thousand more heap blocks at startup. A trace of
+every draw and of each sorted queue's entries showed one sprite quad in the list of blended quads
+that write depth taking another place from run to run: its sort key was a denormal float that
+changed with every run. The quad came from `pc_render_robe`, and every field of it was whatever the
+stack held. `render_object_clip_to_quad` answers 0, writing neither the quad, its depths nor its
+box, when a sprite part lies off the screen; the robe and both branches of `pc_render_body_alone` (a
+transformed player's body) went on regardless: they queued the quad, the body set its quarter
+height (which places the damage numbers and messages over the actor) from the box and grew the pick
+box from the quad. The other sprites (`render_sprite.c`, `merc_render.c`, `body_layer.c`) leave such
+a part out.
+
+The original does the same. Its robe routine (`0xad7e30`, found by the robe's depth offsets
+`6.5e-6` at `0xd364d8` and `0.000251` at `0xd36510`) calls the clip (`0xad7680`) at `0xad8093`, reads
+the depths at `[ebp-0x60]` and `[ebp-0x64]` right after without looking at `al`, and hands the quad
+at `[ebp-0xa4]` to the sprite's submit (`0xadbbb0`) at `0xad81d6`. The transformed body (found by
+`8e-5` at `0xd364f0`) calls the clip through the vtable at `0x82f954` and `0x82f9ac`, ignores the
+answer, and passes the box to the quarter height (`0x75edf0`) and the quad to the pick box
+(`0x760dd0`). So this is a bug the original has too, not a lift's: what it drew depended on its own
+stack's leftovers. `custom` leaves the part out, as its other sprites do (`src/actor/pc_layers.c`).
+Off the screen it could not be seen; what changes is that nothing is queued from memory nobody
+wrote, the quarter height and pick box take only parts on the screen, and the frames are the same in
+every run.
+
+Against f555328e's client (`RAGEXE_MSAA=1`):
+
+- `arrive_prontera` and `town_prontera`, 6 runs each, f555328e's client alternating with a build of
+  it that takes 3,000 more heap blocks at startup: no run of either scene equal to the first in its
+  per-frame counts (1 to 24 frames apart). This client alternating no layout and
+  `RAGEXE_SCENE_LAYOUT` 1 and 2: every run equal, counts and captures. Six more runs of each with a
+  draw trace (every draw's textures, layers and contents, every sorted queue's keys) and 0, 3,000
+  and 777 extra heap blocks gave the same trace bit for bit, as did `woe_choke` and `woe_emperium`.
+- `woe_emperium`: f555328e's client had varied in two of its earlier runs (one frame with one more
+  quad, another with one fewer), and a run of a later build a damage number moved; in six more runs
+  by turns with this client both gave the same frames every time, and this client 12 times in all. The scene skips no off-screen part, so that
+  variation is not this cause; it did not show again and was not found.
+- The scene set at 1 and 4 samples, with and without shadows: 40 of 40 captures and counters equal to
+  f555328e's each time. The load scenes: equal but where f555328e queued the quads from leftovers.
+  In `arrive_prontera`, `town_prontera` and `snow_lutie` f555328e made, in every measured frame, as
+  many more draw calls as this client skips off-screen parts (counted in a build that logged the
+  skips); in `woe_choke` that, or two more where the leftovers also drew the part's overlays; the
+  captures of `town_prontera` (58 pixels) and `woe_choke` (566) differ there. `bombers_ifrit`'s quake
+  capture differed by 52 pixels in one run of f555328e's client, with equal counts and no skipped
+  part; eleven more runs of that client and 17 of this one all gave the other picture.
+- Still open, in f555328e's client as in this one: now and then a run of a load scene draws, from
+  some frame on, a few world sprites and damage numbers a few pixels off and at a slightly other
+  size, with the same counts (`mvp_baphomet`: 3 of 44 traced runs of this client, one in a batch of
+  14, two in one of 18 and none in a later one of 12, and one of the two runs of a `layouts.py` pass; the `bombers_ifrit` and `woe_emperium` runs above look the
+  same). The quads' contents differ on the CPU, so it is the game's state or the quads built from
+  it, not the GPU. Neither the heap layout nor the stack's leftovers bring it out (the layouts gave
+  the same frames in every pair but one), and its cause was not found.
+
+`tests/scenes/layouts.py` keeps it so: it runs scenes with `RAGEXE_SCENE_LAYOUT=1` and `2` (the
+harness lays the heap out otherwise and fills the stack below its driver with another byte;
+`tests/scenes/README.md`, *Same frames in every run*) and fails where a capture, its counts or a
+measured frame's counts differ. On `arrive_prontera` and `town_prontera`, its default, f555328e's
+code with that harness failed in each of 4 passes, this client passed every pass. A stray read can
+find leftovers of the client's own rather than the harness's byte, so a pass is no proof. With a game
+folder it is the CMake ctest `scene_layouts`.
+
+Not checked: Linux and macOS were not built or run; the CMake test was not run (the Windows suite
+does not build the client); main was not touched.

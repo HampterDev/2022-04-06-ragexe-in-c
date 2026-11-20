@@ -183,6 +183,10 @@ if(BUILD_TESTING AND NOT ANDROID)
             ${RAGE_SCENE_COMPARE})
         # run.py gives the client SDL's dummy audio driver; the harness picks its own video driver.
         set_tests_properties(scenes PROPERTIES TIMEOUT 1800 LABELS client-files)
+        # Two load scenes under two memory layouts, which must give the same frames (tests/scenes/README.md).
+        add_test(NAME scene_layouts COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tests/scenes/layouts.py
+            --exe $<TARGET_FILE:ragexe_scenes> --game ${RAGE_SCENE_GAME_DIR} --out ${CMAKE_BINARY_DIR}/scene_layouts)
+        set_tests_properties(scene_layouts PROPERTIES TIMEOUT 600 LABELS "client-files;long")
         # Granny's actors skinned by the device against the CPU code they replaced, on the game
         # folder's converted models (tests/CMakeLists.txt says more).
         add_executable(test_skin_instances tests/test_skin_instances.c tests/fixtures/granny_reference.c
