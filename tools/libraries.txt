@@ -303,7 +303,7 @@ paths   actors/actor_common.h actors/actor_corpse.c actors/actor_spawns.c actors
         effects/str_path.c effects/str_path.h game/actor_marks.h game/actor_name_lookup.c
         game/actor_names.h game/ground_item_state.h game/input.h game/input_queries.c
         game/mode_listed.c game/mode_misc.h game/mode_util.h game/msg_skills.c game/name_balloon.c
-        game/name_balloon.h game/net_clock.h game/own_body.* game/party_member.h
+        game/name_balloon.h game/net_clock.h game/own_actor.* game/party_member.h
         game/world_objects.h
         login/merc_ai.c login/merc_ai.h login/merc_ai_cmds.c navi/grid_uv.h navi/navi_instance.c
         navi/navi_manager.h navi/navigation.h session/job_sounds.h session/predicates.c

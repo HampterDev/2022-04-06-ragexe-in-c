@@ -48,7 +48,7 @@ u32 own clock                 the server's tick the own character is drawn on
 i32 x, y                      the cell the walk it is drawn on has it on at that tick
 u32 lands                     the tick the step it has under way lands at; 0: it stands
 u32 predicted tick            the server's tick the predicted body is of
-224 bytes                     the predicted body (`game/own_body.h`); zero without one
+224 bytes                     the predicted body (`game/own_actor.h`); zero without one
 ```
 
 An actor's x, y is the drawn point of its place (`world/drawn.h`), in 256ths of a cell: a cell's
@@ -57,7 +57,7 @@ the world that is no unit has the gid 0xFFFFFFFF.
 
 The last block is the own body, for the runner to hold against the server's body by tick: what
 the client draws its character from now (the cell of its walk at the own clock), and what the
-predicted world has (`plans/predicted-world.md`), whose bytes are the body core's and have to
+predicted world has (`plans/predicted-world.md`), whose bytes are the actor core's and have to
 be the server's at the same tick.
 
 Step, runner to client:
@@ -115,4 +115,4 @@ by the piece when the driver next ticks, 16 ms on, unless something newer replac
 When it ends, the client writes on its standard error how late the own body was through the
 piece, which the runner reads: of each `ZC_OWN_BODY` the client's end handed on, the time from
 the gateway's end being handed it to then, in all and at worst; and how many words of the own
-body differed from what was predicted with nothing to explain them (`game_mode_own_body_unexplained`).
+body differed from what was predicted with nothing to explain them (`game_mode_own_actor_unexplained`).

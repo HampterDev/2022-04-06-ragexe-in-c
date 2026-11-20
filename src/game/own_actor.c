@@ -1,4 +1,4 @@
-#include "game/own_body.h"
+#include "game/own_actor.h"
 #include <string.h>
 #include "actors/actor_states.h"
 #include "actors/types.h"
@@ -29,13 +29,13 @@ static uint16_t g_drawn_rev;
    body names. 0: nobody. */
 static uint32_t g_ordered;
 
-/* The map as the body core reads it. A prediction that was begun on another map is begun
+/* The map as the actor core reads it. A prediction that was begun on another map is begun
    again: its requests and the server's last word were of that one. Returns 0 without a map. */
 static int own_ground(struct ActorGround *ground)
 {
     int width, height;
 
-    if (!path_finder_body_ground(&g_pathFinder, ground, &width, &height))
+    if (!path_finder_actor_ground(&g_pathFinder, ground, &width, &height))
         return 0;
     if (g_own_map != g_pathFinder.attr || g_own.width != width || g_own.height != height) {
         predicted_init(&g_own, width, height);
@@ -123,9 +123,9 @@ static void other_move(struct GameMode *self, struct GameActor *actor, struct Ac
 }
 
 /* The world is told where the body `id` is, while its unit is in view and has an actor. The
-   server's body core names a body by the id the client knows its unit by (a player's account
+   server's actor core names a body by the id the client knows its unit by (a player's account
    id, a monster's own), so the actor of that id is the body's. Its going is told with its tick
-   when its stamp is read (game_mode_own_body_gone): an actor that is still shown after that,
+   when its stamp is read (game_mode_own_actor_gone): an actor that is still shown after that,
    dying, is no body. */
 static void own_other(struct GameMode *self, uint32_t id)
 {
@@ -177,7 +177,7 @@ static void own_others(struct GameMode *self)
         own_other(self, g_ordered);
 }
 
-int game_mode_own_body_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms)
+int game_mode_own_actor_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms)
 {
     struct PredictedSwing swing;
 
@@ -200,12 +200,12 @@ static void own_way_up(struct GameMode *self)
     way_up_sample(&self->way_up, g_own.way_left, g_own.way_arrival);
 }
 
-void game_mode_own_body_heard(unsigned id, DWORD tick)
+void game_mode_own_actor_heard(unsigned id, DWORD tick)
 {
     predicted_heard(&g_own, (uint32_t)id, predicted_wide(&g_own, tick));
 }
 
-unsigned game_mode_own_body_unexplained(void)
+unsigned game_mode_own_actor_unexplained(void)
 {
     return g_own.unexplained;
 }
@@ -218,17 +218,17 @@ void game_mode_zc_own_body(struct GameMode *self, const unsigned char *pkt, size
     if (pkt && predicted_read(pkt, size, &body) && own_ground(&ground)) {
         predicted_confirm(&g_own, &ground, &body);
         own_way_up(self);
-        game_mode_own_body_frame(self);
+        game_mode_own_actor_frame(self);
     }
 }
 
-void game_mode_own_body_placed(struct GameMode *self, unsigned placement)
+void game_mode_own_actor_placed(struct GameMode *self, unsigned placement)
 {
     struct ActorGround ground;
 
     if (own_ground(&ground) && predicted_placed(&g_own, &ground, (uint32_t)placement) != PREDICTED_REFUSED) {
         own_way_up(self);
-        game_mode_own_body_frame(self);
+        game_mode_own_actor_frame(self);
     }
 }
 
@@ -245,10 +245,10 @@ static void own_request(struct GameMode *self, struct PredictedRequest *request,
     request->apply_tick = predicted_wide(&g_own, self->stamp_tick);
     request->left = platform_ticks_ms();
     if (predicted_request(&g_own, request))
-        game_mode_own_body_frame(self);
+        game_mode_own_actor_frame(self);
 }
 
-void game_mode_own_body_walk(struct GameMode *self, unsigned number, int x, int y)
+void game_mode_own_actor_walk(struct GameMode *self, unsigned number, int x, int y)
 {
     struct PredictedRequest request = {0};
     const struct Player *player = self->world ? self->world->player : NULL;
@@ -285,7 +285,7 @@ static void drawn_cell(struct GameMode *self, const struct GameActor *actor, int
    item by their cells. A skill's range is its attack range at its level as the skill list says
    it (skill_attack_range). An item the client does not see is none the server has: that request
    is a cancel there, and here. */
-void game_mode_own_body_intent(struct GameMode *self, unsigned number, int kind, int mode, unsigned target, int x, int y,
+void game_mode_own_actor_intent(struct GameMode *self, unsigned number, int kind, int mode, unsigned target, int x, int y,
                                int skill_id, int skill_lv)
 {
     struct PredictedRequest request = {0};
@@ -337,13 +337,13 @@ void game_mode_own_body_intent(struct GameMode *self, unsigned number, int kind,
     own_request(self, &request, number);
 }
 
-void game_mode_own_body_gone(unsigned id, DWORD tick)
+void game_mode_own_actor_gone(unsigned id, DWORD tick)
 {
     if (id != (unsigned)g_session1.ownAid)
         predicted_gone(&g_own, id, predicted_wide(&g_own, tick));
 }
 
-void game_mode_own_body_frame(struct GameMode *self)
+void game_mode_own_actor_frame(struct GameMode *self)
 {
     struct ActorGround ground;
 
@@ -355,7 +355,7 @@ void game_mode_own_body_frame(struct GameMode *self)
     own_draw(self);
 }
 
-int game_mode_own_body_walk_waits(void)
+int game_mode_own_actor_walk_waits(void)
 {
     uint32_t i;
 
@@ -366,7 +366,7 @@ int game_mode_own_body_walk_waits(void)
     return 0;
 }
 
-int game_mode_own_body(DWORD *tick, unsigned char *state)
+int game_mode_own_actor(DWORD *tick, unsigned char *state)
 {
     if (!predicted_state(&g_own, state))
         return 0;

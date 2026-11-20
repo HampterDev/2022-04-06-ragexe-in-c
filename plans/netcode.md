@@ -194,7 +194,7 @@ Each request the server confirms is a sample of the same kind, of the path that 
   body names none anew.
 - **Client.** Each request that waits in the predicted world keeps the local clock at which it
   left (`PredictedRequest.left`). A word of the server that confirms it with an arrival hands
-  the pair back once (`way_new`), and `game/own_body.c` gives it to `way_up_sample`, as an
+  the pair back once (`way_new`), and `game/own_actor.c` gives it to `way_up_sample`, as an
   exchange's is. The estimator does not change: the second longest of the last sixteen and half its
   height above the shortest, growing at once and shrinking a millisecond in ten.
 

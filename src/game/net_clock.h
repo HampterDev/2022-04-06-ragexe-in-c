@@ -7,7 +7,7 @@
 #include "session/session_state.h"
 #include "platform/clock.h"
 #include "std/way_up.h"
-#include "game/own_body.h"
+#include "game/own_actor.h"
 
 /* The clocks of plans/netcode.md. The render clock, which everyone else is drawn on, stays
    session_get_server_time. */
@@ -134,7 +134,7 @@ static __inline void game_mode_send_intent(struct GameMode *self, int kind, int 
     packet.skill_id = (unsigned short)skill_id;
     packet.skill_lv = (unsigned short)skill_lv;
     rag_connection_send_packet(rag_connection_instance(), sizeof packet, &packet);
-    game_mode_own_body_intent(self, stamp, kind, mode, target, x, y, skill_id, skill_lv);
+    game_mode_own_actor_intent(self, stamp, kind, mode, target, x, y, skill_id, skill_lv);
 }
 
 #endif

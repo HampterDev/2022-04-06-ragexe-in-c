@@ -759,10 +759,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(cooldown_storage CLIENT ui/cooldown_timer.c)
     rage_test(crash_dialog W4 OBJECTS test_crash_dialog_crash_dialog)
     rage_test(crash_report OBJECTS test_crash_report_crash_report)
-    # The drawn point compiles without /std:c11 (world/drawn.h), so the test builds its own copy as
-    # C99, which MSVC compiles in its default mode.
-    rage_test(drawn W4 WE4013 src/world/drawn.c LIBS rules)
-    set_target_properties(test_drawn PROPERTIES C_STANDARD 99)
+    rage_test(drawn W4 WE4013 CLIENT world/drawn.c)
     rage_test(edit_history W1 CLIENT core/owned_text.c core/text_array.c core/utf8.c
         platform/code_page_win32.c std/string.c ui/chat/edit_history.c ui/controls/edit_text.c
         ui/wndmgr/whisper_names.c)

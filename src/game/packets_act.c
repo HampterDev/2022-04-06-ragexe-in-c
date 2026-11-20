@@ -13,7 +13,7 @@
 #include "actors/actor_ops.h"
 #include "view/presence.h"
 #include "game/net_clock.h"
-#include "game/own_body.h"
+#include "game/own_actor.h"
 #include "game/cells.h"
 #include "actors/actor_states.h"
 #include "actors/render_object.h"
@@ -450,7 +450,7 @@ static void file_move(struct GameMode *self, unsigned gid, const struct MoveReco
    come before the packet that makes its actor known. How long after its tick it came, by the
    server's clock, feeds the render delay; a record the server sent later than it made it says
    nothing about that. The player's own character has none: its walk is the predicted world's
-   (game/own_body.c). */
+   (game/own_actor.c). */
 void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt)
 {
     struct MoveRecord record;
@@ -458,7 +458,7 @@ void game_mode_zc_track_move(struct GameMode *self, const unsigned char *pkt)
 
     if (!move_record_read(pkt, (size_t)(pkt[2] | pkt[3] << 8), &gid, &record))
         return;
-    game_mode_own_body_heard(gid, record.at_tick);
+    game_mode_own_actor_heard(gid, record.at_tick);
     if (game_mode_knows_clock(self) && !record.old)
         render_delay_sample(&self->render_delay, (int)(game_mode_true_time(self) - record.at_tick));
     if (gid == (uint32_t)g_session1.ownAid)
@@ -472,7 +472,7 @@ void game_mode_zc_view_stamp(struct GameMode *self, const unsigned char *pkt, un
 {
     self->view_stamp_waits = (unsigned char)view_stamp_read(pkt, size, &self->view_stamp);
     if (self->view_stamp_waits)
-        game_mode_own_body_heard(self->view_stamp.gid, self->view_stamp.tick);
+        game_mode_own_actor_heard(self->view_stamp.gid, self->view_stamp.tick);
 }
 
 void game_mode_view_stamped(struct GameMode *self, int packet_id, const unsigned char *pkt, unsigned size)
@@ -493,7 +493,7 @@ void game_mode_view_stamped(struct GameMode *self, int packet_id, const unsigned
     /* a swing at the own character that waited for its actor goes with it */
     if ((at = waiting_index(self, stamp->gid)) >= 0)
         waiting_remove(self, at);
-    game_mode_own_body_gone(stamp->gid, stamp->tick);
+    game_mode_own_actor_gone(stamp->gid, stamp->tick);
 }
 
 /* Files what arrived. How long after its tick it came feeds the render delay; what was sent
@@ -558,7 +558,7 @@ void game_mode_zc_track_act(struct GameMode *self, const unsigned char *pkt)
 
     if (!act_record_read(pkt, &item.u.act))
         return;
-    game_mode_own_body_heard(item.u.act.gid, item.u.act.at_tick);
+    game_mode_own_actor_heard(item.u.act.gid, item.u.act.at_tick);
     if (item.u.act.gid == (uint32_t)g_session1.ownAid) {
         /* the record of the swing that is already shown is not played again */
         if (item.u.act.kind == ACT_SWING && own_swing_record(&self->own_swing, &item.u.act))
@@ -603,7 +603,7 @@ void game_mode_play_tracks(struct GameMode *self)
     unsigned target = 0, motion_ms = 0;
     DWORD at_tick = 0, lands = 0;
     uint32_t now;
-    int has = game_mode_own_body_swing(&target, &at_tick, &lands, &motion_ms);
+    int has = game_mode_own_actor_swing(&target, &at_tick, &lands, &motion_ms);
 
     game_mode_own_swing(self, has, target, at_tick, lands, motion_ms);
     file_waiting(self);
@@ -627,7 +627,7 @@ static void intent_ended(struct GameMode *self, unsigned seq)
    number, which is its stamp's (game_mode_send_intent). It clears the attack cursor state
    (intent_ended). What the intent makes of the character before that, its walk into reach and
    its swing, is the predicted world's to show, from the server's word of the body
-   (game/own_body.c), and the server says nothing else of it. Its seq and state are read. */
+   (game/own_actor.c), and the server says nothing else of it. Its seq and state are read. */
 #pragma pack(push, 1)
 struct PACKET_ZC_OWN_INTENT {
     unsigned short id;

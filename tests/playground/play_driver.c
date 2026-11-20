@@ -31,7 +31,7 @@
 #include "game/cells.h"
 #include "game/gamemode.h"
 #include "game/net_clock.h"
-#include "game/own_body.h"
+#include "game/own_actor.h"
 #include "actor/actor.h"
 #include "login/char_info.h"
 #include "login/loginmode.h"
@@ -107,7 +107,7 @@ static void leave(int code, const char *why)
     /* read by the runner */
     fprintf(stderr, "playground: own body through the piece: %lu taken, %lu ms late in all, %lu at worst\n", B.taken,
             B.total_ms, B.worst_ms);
-    fprintf(stderr, "playground: own body words that differed unexplained: %u\n", game_mode_own_body_unexplained());
+    fprintf(stderr, "playground: own body words that differed unexplained: %u\n", game_mode_own_actor_unexplained());
     fflush(stdout);
     fflush(stderr);
     exit(code);
@@ -343,7 +343,7 @@ static void point_of(const struct GameActor *actor, long *x, long *y)
 
 /* The own body, for the runner to hold against the server's by tick: the cell the walk the
    character is drawn on has it on at the own clock, with the tick the step under way lands
-   at; and the body the predicted world has (game/own_body.h), with its tick. Returns what it
+   at; and the body the predicted world has (game/own_actor.h), with its tick. Returns what it
    wrote. */
 static size_t report_body(struct GameMode *mode, struct GameActor *own, unsigned char *p)
 {
@@ -371,7 +371,7 @@ static size_t report_body(struct GameMode *mode, struct GameActor *own, unsigned
                 lands = cells[i].tick;
         }
     }
-    predicted = game_mode_own_body(&tick, state);
+    predicted = game_mode_own_actor(&tick, state);
     p[0] = (unsigned char)known;
     p[1] = (unsigned char)predicted;
     p[2] = p[3] = 0;

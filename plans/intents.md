@@ -121,11 +121,11 @@ Server: ring-buffer worktree `local\worktrees\action-timing`, described in that 
 
 Client: `CZ_INTENT` from the attack, skill and pickup messages of the player, the release from
 the mouse button, the end of the newest intent clearing the attack cursor. Each goes into the
-predicted world as a request of the body core (`plans/predicted-world.md`).
+predicted world as a request of the actor core (`plans/predicted-world.md`).
 
 Where the server differs from the rules above:
 
-- The step, reach and the walk into range are the body core's: the walk goes with the act's
+- The step, reach and the walk into range are the actor core's: the walk goes with the act's
   range, one cell shorter for each walk that arrived out of range (a wall in the line of fire).
   The step does not pick the first cell of a path from which the act's own test passes.
 - "Disabled" is the stun and Blade Stop tests the action handlers use. Other statuses that stop

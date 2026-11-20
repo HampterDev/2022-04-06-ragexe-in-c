@@ -76,7 +76,7 @@ unsigned char player_on_process(struct GameObject *object)
         render_object_send(self, NULL, 0, (intptr_t)&req, 0, 0, 0);
     }
     /* The walk the player asked for since the last frame leaves now, and is in the predicted
-       world and drawn in this frame (game/own_body.c). Of several clicks of one frame the
+       world and drawn in this frame (game/own_actor.c). Of several clicks of one frame the
        newest is the one that counts. Nothing spaces the requests: a click is not held back
        for the one before it (docs/custom-review.md, "The own walk is drawn from the
        predicted world"). */
@@ -239,7 +239,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
 
     /* A swing announced while a move of the player is under way to the server: that move
        cancels it there, so it is not shown here. */
-    if (msg == ACTOR_MSG_SWING_BEGIN && game_mode_own_body_walk_waits())
+    if (msg == ACTOR_MSG_SWING_BEGIN && game_mode_own_actor_walk_waits())
         return;
     if (msg < 0 || msg > 0x95)
         {

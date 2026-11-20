@@ -157,7 +157,7 @@ int game_mode_msg_request_move(struct GameMode *self, int x, int y)
     packet.cell[2] = (unsigned char)(y << 4);
     self->move_seq = game_mode_send_input_stamp(self);
     send_packet(CZ_REQUEST_MOVE2, &packet);
-    game_mode_own_body_walk(self, self->move_seq, x, y);
+    game_mode_own_actor_walk(self, self->move_seq, x, y);
     return 0;
 }
 

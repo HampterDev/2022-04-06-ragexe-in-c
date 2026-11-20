@@ -46,7 +46,7 @@ DWORD g_firstKeepAliveTime;
 #include "actors/render_ops.h"
 #include "platform/clock.h"
 #include "game/net_clock.h"
-#include "game/own_body.h"
+#include "game/own_actor.h"
 
 #define WND_LOADING          6
 #define MSGBOX_RESULT_CLOSED 0x105
@@ -153,7 +153,7 @@ void game_mode_zc_hold_back(struct GameMode *self, const unsigned char *pkt)
     const struct PACKET_ZC_HOLD_BACK *packet = (const struct PACKET_ZC_HOLD_BACK *)pkt;
 
     self->hold_back_ms = packet->hold_back_ms;
-    game_mode_own_body_placed(self, packet->placement);
+    game_mode_own_actor_placed(self, packet->placement);
 }
 
 /* The server's half of a timed exchange: the tick this client sent in its keep-alive, and the

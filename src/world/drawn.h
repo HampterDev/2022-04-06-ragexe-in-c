@@ -28,9 +28,9 @@
  *   at once     a placed record, and an actor's first record.
  *
  * Places and points are in 256ths of a cell, a cell's middle at a whole multiple of MOVE_PLACE_CELL.
- * Freestanding integer C: no clock, no float, no library, no allocation, no 64-bit product, and
- * it compiles without /std:c11. Ticks are the server's, 32 bits, which wrap; the caller's real
- * time is milliseconds that only go forward and may wrap. */
+ * Freestanding integer C: no clock, no float, no library, no allocation, no 64-bit product.
+ * Ticks are the server's, 32 bits, which wrap; the caller's real time is milliseconds that only
+ * go forward and may wrap. */
 
 /* The point walks at most DRAWN_RATE_NUM / DRAWN_RATE_DEN of the walk speed. */
 #define DRAWN_RATE_NUM 13

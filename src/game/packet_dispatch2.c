@@ -9,7 +9,7 @@
 #include "game/item_list_packets.h"
 #include "game/item_upgrade.h"
 #include "game/navigation.h"
-#include "game/own_body.h"
+#include "game/own_actor.h"
 #include "game/packet_data.h"
 #include "game/packet_handlers.h"
 #include "game/quest_packets.h"

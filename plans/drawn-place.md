@@ -9,7 +9,7 @@ built".
 
 ## The problem
 
-The server's body core gives a body's cell as one function of its state and the tick, and the
+The server's actor core gives a body's cell as one function of its state and the tick, and the
 client runs the same core for the player's own body. What is drawn of an actor has to be such a
 function too, or it drifts from what the server has.
 
@@ -48,9 +48,8 @@ that have worked on it, and what is taken from each:
 
 ## The design
 
-One piece, `world/drawn.c` (`world/drawn.h`): freestanding integer C like the body core, with no
-clock, no float, no library, no allocation and no 64-bit product, which a 32-bit MSVC build
-without `/std:c11` compiles. Its state is one block per actor (`struct Drawn`): the record the
+One piece, `world/drawn.c` (`world/drawn.h`): freestanding integer C like the actor core, with no
+clock, no float, no library, no allocation and no 64-bit product. Its state is one block per actor (`struct Drawn`): the record the
 place comes from, the drawn point with the share of a 256th beyond it, the reach not yet taken,
 and a slide's offset and time. The actor feeds it and reads it, and does nothing else with where
 it is.
@@ -120,8 +119,8 @@ end motion plays when the slide is over.
 ### 5. The player's own character
 
 The same piece. Its records are the predicted world's and its clock is the own clock
-(`game/own_body.c`). A correction of the predicted world is a new record like any other: an
-offset that is walked off. A push of her body keeps its time in the body's move (the body core's
+(`game/own_actor.c`). A correction of the predicted world is a new record like any other: an
+offset that is walked off. A push of her body keeps its time in the body's move (the actor core's
 rules version 14), so her record carries it as everyone else's does.
 
 ### 6. Nothing else writes the place
@@ -145,8 +144,8 @@ path of its own for any actor.
 - The server sends a move record for a slide, a knockback and a body relocation, and no longer
   the original's packets that placed the actor for them. No packet's layout changes.
 - Which animation plays for which state stays the original's.
-- The piece is freestanding C that a 32-bit MSVC build without `/std:c11` compiles, and that
-  clang builds to wasm for the playground's runner.
+- The piece is freestanding C; the place it joins, `rules`' `move_place`, clang builds to wasm
+  for the playground's runner.
 - One path: the old way of moving an actor goes in the same change.
 
 ## What can be shown to hold
@@ -154,7 +153,7 @@ path of its own for any actor.
 1. **The place is a function.** `rules`' `tests/move_place_tests.c`: the same record and tick give the same
    place in any order of asking; a record without steps gives the middle; at each step's time a
    walk gives that cell's middle; between two ticks the place moves no further than the walk's
-   speed allows; and for the same walk the body core enters each cell at the time the place is
+   speed allows; and for the same walk the actor core enters each cell at the time the place is
    on its middle.
 2. **The drawn point arrives, whatever the frames.** `tests/test_drawn.c`: for walk speeds of 100 to 2000 ms a cell and
    frame times of 1 to 50 ms, and mixed: a point on a walking place stays on it at every frame;
@@ -189,7 +188,7 @@ Client branch `claude/netcode-fight-clock-315b2d` and the server's branch `fight
 | The piece | `world/drawn.c` and `world/drawn.h`: `drawn_take`, `drawn_frame`, `drawn_record`, `drawn_on_place`, `drawn_motion`, `drawn_point`. `tests/test_drawn.c` holds check 2, `rules`' `tests/move_place_tests.c` check 1. Eighteen of the piece's rules broken on purpose were each caught | |
 | The actor | `struct Drawn place` in the actor; `game_actor_set_place` feeds it, `game_actor_play_place` reads it once a frame through what it hands out and writes the actor's position from it, and the animation follows its motion. After Asura Strike the actor owes the strike's end motion until the slide is over (`end_motion_after_slide`). The predicted world takes a push's time with the body's move (`tests/test_predicted.c`) | |
 | The original's placing packets | The eight that this server does not send are consumed without effect (part 6); their readers, the actor messages only they sent and the client's path search for an actor are gone | |
-| The server | A slide, a knockback by a blow or by a count of cells, and a move a skill makes are pushed records with how long they take to show, which whoever asks for the push names once (`pushShowMs`) and the body core keeps in the body's move (rules version 14); a monster set on another cell of its map is a placed record; a new speed in the middle of a walk is a record of what is left of it at that speed. The tracks session tests hold each: the viewer's record and the pushed player's own body carry the same time, and each later cell of a walk whose speed changed is entered on the tick the record gives it | Which skill names which time is held by `pushShowMs`'s test, not by a session of each skill |
+| The server | A slide, a knockback by a blow or by a count of cells, and a move a skill makes are pushed records with how long they take to show, which whoever asks for the push names once (`pushShowMs`) and the actor core keeps in the body's move (rules version 14); a monster set on another cell of its map is a placed record; a new speed in the middle of a walk is a record of what is left of it at that speed. The tracks session tests hold each: the viewer's record and the pushed player's own body carry the same time, and each later cell of a walk whose speed changed is entered on the tick the record gives it | Which skill names which time is held by `pushShowMs`'s test, not by a session of each skill |
 | The measure | `tools/build_move_place_wasm.bat` builds `rules`' `move_place` to `move_place.wasm`, and the playground's build puts it beside its client. The runner loads it, holds it to the core's step times before each run, and judges every actor by it against the record it follows (`places.js`, `fight.js`): the server's, or for the own character its predicted world's. It reports apart how often the own predicted body is off the server's, how far and how long. The driver reports each actor's drawn point in 256ths from the piece | Not played |
 
 Check 3, eight sets of four 40 s runs with Zombies at hold-back 0 (no lag, ping 80 and 150, ping 80

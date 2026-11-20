@@ -154,19 +154,19 @@ void game_actor_stop_cast(struct GameActor *actor, int own)
    last (says), which the frame's play of the tracks asks for again. */
 static struct { int has; unsigned target, motion_ms; DWORD at_tick, lands; } world_swing;
 
-void game_mode_own_body_gone(unsigned id, DWORD tick)
+void game_mode_own_actor_gone(unsigned id, DWORD tick)
 {
     (void)id;
     (void)tick;
 }
 
-void game_mode_own_body_heard(unsigned id, DWORD tick)
+void game_mode_own_actor_heard(unsigned id, DWORD tick)
 {
     (void)id;
     (void)tick;
 }
 
-int game_mode_own_body_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms)
+int game_mode_own_actor_swing(unsigned *target, DWORD *at_tick, DWORD *lands, unsigned *motion_ms)
 {
     *target = world_swing.target;
     *at_tick = world_swing.at_tick;

@@ -7,9 +7,9 @@
      once, with ZC_NOTIFY_TIME and ZC_TIME_SYNC, both stamped with that clock;
    - every map the player is placed on is told when it has loaded (CZ_NOTIFY_ACTORINIT): the
      placement's number with an ordinary map's hold-back, 0 (ZC_HOLD_BACK), and the player's own
-     body as the body core has it (ZC_OWN_BODY);
+     body as the actor core has it (ZC_OWN_BODY);
    - every unit's coming and going is stamped (ZC_VIEW_STAMP) with the tick and its revisions;
-   - a walk is the body core's (actor/actor.h), run here as the server's spatial runs it: the
+   - a walk is the actor core's (actor/actor.h), run here as the server's spatial runs it: the
      server's path and steps at the unit's speed, sent to the client as a move record
      (ZC_TRACK_MOVE), or for the player's own character as its body (ZC_OWN_BODY);
    - a basic attack is a swing record (ZC_TRACK_ACT) and its hit a notice dated when it lands
@@ -123,7 +123,7 @@ static int ground(struct ActorGround *out)
 {
     int width, height;
 
-    return W.world && g_pathFinder.attr == W.map && path_finder_body_ground(&g_pathFinder, out, &width, &height)
+    return W.world && g_pathFinder.attr == W.map && path_finder_actor_ground(&g_pathFinder, out, &width, &height)
         && width == W.width && height == W.height;
 }
 
@@ -243,7 +243,7 @@ static int input(struct ActorInput *in)
     return result;
 }
 
-static int body_add(struct Unit *unit, int x, int y, int dir, int speed)
+static int world_add_unit(struct Unit *unit, int x, int y, int dir, int speed)
 {
     struct ActorInput in;
     int slot;
@@ -273,7 +273,7 @@ static int body_add(struct Unit *unit, int x, int y, int dir, int speed)
     return 1;
 }
 
-static void body_remove(struct Unit *unit)
+static void world_remove_unit(struct Unit *unit)
 {
     struct ActorInput in;
 
@@ -310,7 +310,7 @@ int scene_world_loaded(void)
 
     if (!W.arena)
         W.arena = malloc(size);
-    if (!W.arena || !path_finder_body_ground(&g_pathFinder, &g, &width, &height))
+    if (!W.arena || !path_finder_actor_ground(&g_pathFinder, &g, &width, &height))
         return 0;
     W.world = actor_world_init(W.arena, size, SLOTS, EVENTS, width, height, platform_ticks_ms());
     if (!W.world)
@@ -328,7 +328,7 @@ int scene_world_loaded(void)
     put16(hold + 2, 0);
     put32(hold + 4, W.placement);
     own = unit_of(W.own);
-    return deliver_packet(hold, sizeof hold) && own && body_add(own, W.own_x, W.own_y, W.own_dir, W.own_speed)
+    return deliver_packet(hold, sizeof hold) && own && world_add_unit(own, W.own_x, W.own_y, W.own_dir, W.own_speed)
         && send_own_body(own);
 }
 
@@ -358,8 +358,8 @@ int scene_world_spawn(uint32_t aid, int player, int x, int y, int dir, int speed
     if (!unit)
         return 0;
     unit->player = (unsigned char)(player != 0);
-    body_remove(unit);
-    body_add(unit, x, y, dir, speed);
+    world_remove_unit(unit);
+    world_add_unit(unit, x, y, dir, speed);
     return send_stamp(unit, VIEW_COMES);
 }
 
@@ -370,7 +370,7 @@ int scene_world_vanish(uint32_t aid, int how)
     /* a player who died lies where she fell, a body that can be raised: no going */
     if (!unit || (unit->player && how == 1))
         return 1;
-    body_remove(unit);
+    world_remove_unit(unit);
     return send_stamp(unit, VIEW_GOES);
 }
 

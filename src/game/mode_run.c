@@ -197,7 +197,7 @@ static void run_logic_steps(struct GameMode *self)
         renderer_run_every15s();
     }
     game_mode_pin_render_clock(self);
-    game_mode_own_body_frame(self);
+    game_mode_own_actor_frame(self);
     game_mode_play_tracks(self);
     steps = frame_timer_step_count();
     g_isSkipFrame = steps;

@@ -1,7 +1,7 @@
-# Body core
+# Actor core
 
 Build step 5 of `plans/core-loop.md`, redesigned on 2026-11-10: the rules for where an actor is
-and what it does next become one freestanding C library, the body core. The server runs it as
+and what it does next become one freestanding C library, the actor core. The server runs it as
 the authority and this client runs the same source to predict its own character. Status,
 2026-11-10: the frame (5a) and walking (5b) are built on the server, and spatial runs its
 walks through the core; it has not been played. The client has the core's source and asks
@@ -114,9 +114,9 @@ way lands, a swing lands, a cast ends, a clock runs out, the intent looks again.
 drives it:
 
 ```c
-while (body_next_due(world, &tick) && tick_not_after(tick, frame_time)) {
-    body_run(world, cells, tick);          /* everything due at exactly this tick */
-    while (body_take_event(world, &event))
+while (actor_next_due(world, &tick) && tick_not_after(tick, frame_time)) {
+    actor_run(world, cells, tick);          /* everything due at exactly this tick */
+    while (actor_take_event(world, &event))
         react(&event);                     /* may put inputs in at this tick */
 }
 ```
@@ -141,7 +141,7 @@ while (body_next_due(world, &tick) && tick_not_after(tick, frame_time)) {
 | Question: the hit is made now | Calculates the hit, applies it, puts in what follows (a death, a flinch), and answers whether a hit was made. Built; the core has checked the reach before it asks |
 | A cast ended | Carries the skill out |
 
-A question must be answered before the core runs a later tick; `body_run` refuses to pass an
+A question must be answered before the core runs a later tick; `actor_run` refuses to pass an
 open one. The questions are exactly the places where content decides, so they are also exactly
 the places where the client's prediction can be wrong.
 
@@ -257,7 +257,7 @@ calls into a game, and these are the checks, each a test program in C:
 
 1. **Same bytes.** The same arena and inputs give the same arena and events: twice in a row,
    through a snapshot taken at any point, and native against wasm.
-2. **Any input.** Random bytes as inputs never leave the arena invalid. `body_world_check`
+2. **Any input.** Random bytes as inputs never leave the arena invalid. `actor_world_check`
    says what valid means: slots in range, a walk's position within its steps, cells on the
    map, due ticks not behind the clock.
 3. **Time.** The clock never goes back, events come out in tick order, and a tick's work ends:
@@ -312,8 +312,8 @@ On the server (ring-buffer worktree `local\worktrees\action-timing`), not commit
 | Part | Built | Not built or not covered |
 |---|---|---|
 | Requests, `ZC_OWN_BODY`, the predicted world | Rules version 10, the server's `ZC_OWN_BODY` and the client's `prediction/predicted.c`: see `plans/predicted-world.md`, "What is built" | Nothing is drawn from the predicted world; the rows below on the client's present predictors still say what is drawn |
-| 5a Frame | `rules`' `actor/actor.c`: the world in an arena of fixed-width fields, a 64-bit clock, add, place and remove, the move-changed event, `body_world_check`. Native tests in the server's `make check`; the same core as wasm gives the same digests | Nothing calls the core. No random input in the scenarios happens to be applied with a far-off tick |
-| 5b Walk, in the client | The client builds the core the server builds; the path search moved into it. The core's own tests run in the client's suite and give the server's digests. `world/own_walk.c` puts the player's character into a world of one body and asks the core where and when a requested walk starts; `player_predict_walk` uses that and has no rule of its own left. `body_put_move` was added to the core for it | No `ZC_OWN_BODY` and no rules version sent. The client's `move_track` still has its own record type. `player_predict_walk` has no test of its own. Not played |
+| 5a Frame | `rules`' `actor/actor.c`: the world in an arena of fixed-width fields, a 64-bit clock, add, place and remove, the move-changed event, `actor_world_check`. Native tests in the server's `make check`; the same core as wasm gives the same digests | Nothing calls the core. No random input in the scenarios happens to be applied with a far-off tick |
+| 5b Walk, in the client | The client builds the core the server builds; the path search moved into it. The core's own tests run in the client's suite and give the server's digests. `world/own_walk.c` puts the player's character into a world of one body and asks the core where and when a requested walk starts; `player_predict_walk` uses that and has no rule of its own left. `actor_put_move` was added to the core for it | No `ZC_OWN_BODY` and no rules version sent. The client's `move_track` still has its own record type. `player_predict_walk` has no test of its own. Not played |
 | 5b Own records | The owner gets `ZC_TRACK_MOVE` for its character's walks, in the place of `ZC_NOTIFY_PLAYERMOVE`, and for a delayed walk. The client follows such a record as it follows the classic walk start, plays it on the own clock like any actor's record, and turns it for a request that still waits, asked of the core on the walk as the server has it. A held first step counts as a step under way | Not played. A stop is still the classic position fix. Holds are not predicted: a held start is learned from the record. The client's handling (`player_own_move_record`, playing a record on the player) has no test |
 | 5d Intent | In the core (rules version 7): the intent's step and keeper: set, clear, release, run, swung, walk failed; the step every 100 ms, the 300 ms wait limit, the 300 ms between walks, the eight tries; phases told on change; four questions the game answers (what it sees, stand up, act, walk). Held to digests of what the server's JS keeper of intents said: six runs of 4,000 inputs, the same asked and told in the same order, the same next step. In the server `eos-combat/core-intents.js` keeps a player's intent there with the game's world; the sessions with attack and skill intents are held against recorded lines, and a restore with an intent under way replays | Walking is not an intent (kind 0): a walk request is the old packet and ends an intent. What an intent sees is all the game's answer, also what the world could see itself (a walk under way, a swing open). The client shows nothing of a predicted intent (held, under way, acting): check 7 is not built. Monsters have none |
 | 5c Casts and the act clock | In the core (rules version 6): a cast with its end, at which the core asks and the game answers whether the skill was carried out and what goes under the act clock; its cancel; the clock put there or only later; a clock of the game's own told with the answer to a look. In the server `skill-use.js` keeps a player's `ud->canact_tick` and cast timer in the core and carries the skill out when the core asks. Sessions of an acolyte who casts, attacks around casts, is interrupted by a hit and warps mid-cast are held against recorded lines; a restore in the middle of a cast replays. Twenty deliberate faults in the core's rules were each caught. Found and fixed on the way: a cast of the skill system survived a warp and was carried out where the player arrived | What a skill takes (cast time, delay, pose, cooldown, whether a hit interrupts it) stays the game's answer; the pose table is not in the core. The older skill handlers' delay is still a clock of combat's own, told at each look. The eighteen `DELAY_WALK` places are where they were. Companions' and monsters' casts are not the core's. Whether a cast forbids a swing is the game's answer, since Free Cast is content; the server's attack has no Free Cast at all, as before. The client predicts no cast |
@@ -323,7 +323,7 @@ On the server (ring-buffer worktree `local\worktrees\action-timing`), not commit
 | 5c Act, in the core | The basic attack as inputs and events: fighter stats, attack, attack stop, swing cancel, act clock; the attack delay, the windup and its impact, the penalty after a cancel, far and no line of fire (which starts the core's chase), the turn. What only the game knows the core asks, and waits: may it swing, and was the hit made. Held to digests of what the fork's attack in JS with the project's windup said (`consumers/body/attack-recorded.test.mjs`): six runs of 3,000 inputs, the same doings in the same order and the same tick due next; the comparison found one fault in the core. Fourteen deliberate faults were each caught | Nothing calls it: `eos-combat` still fights with `unit-attack.js`, its three clocks and the pose copy are where they were. No casts, no skills, no pose hold in the core. The client predicts no swing. The comparison leaves out units that walk |
 | 5b Chase walks | In the core: a walk to within a range of a cell and a walk after another body, which looks where the other is on every cell it comes onto, stops within the range and tells when the other is gone. In the server spatial's walks to within a range and after a unit go through it; whatever a unit walks after gets a body, kept on its unit's cell | Not played. It is the core's own rule: the walk's way of at most 32 steps, other units not in the way, the unit on its cell when the step lands. Monsters' own walks are still driven by the mob consumer. The scenarios' own checks do not know the range rule; the examples hold it |
 | 5b Walk, in the server | `spatial/core-walks.js` runs spatial's walks in the core, one world a map; holds reach it through `DELAY_WALK`, also for a player that stands; cell flags update the world's cells; the worlds' bytes are in the unit's snapshot and state hash. A session with a turn, holds, an ice wall, a speed change, a stop, a warp and a despawn is held against recorded lines, and its journal replays. A unit restored in the middle of a walk goes on the same | Not played. Monsters' own walks are still the mob consumer's. Spatial still owns where a unit is and whether it may move; the core is told when a walk starts. Combat still sends holds from eighteen places. The server needs clang the first time it starts |
-| 5b Walk, in the core | Walk, stop, hold and speed as inputs; `body_next_due` and `body_run`; the cell and no-path events; `body_move_at`, which plays a record; `grid_path.c` copied in; the wasm a host loads and its JS loader (`consumers/body/core.js`). Check 5 and check 6 for moves hold after every call of four scenarios of 50,000 inputs with cells opening and closing. Held to digests of what the fork's walk in JS said (`consumers/body/walk-recorded.test.mjs`): about 14,800 steps of 7,650 walks, the same cell, steps left and next landing after every one. Thirteen deliberate faults were each caught | Whether a body may move at all (sitting, dead, a status). Check 9 (every sequence on a small map) is not written. `grid_path.c` is a second copy that nothing compares with the client's. Two rules differ from the JS on purpose and are kept out of the comparison: a hold on a standing body, and a request at the tick a step landed |
+| 5b Walk, in the core | Walk, stop, hold and speed as inputs; `actor_next_due` and `actor_run`; the cell and no-path events; `actor_move_at`, which plays a record; `grid_path.c` copied in; the wasm a host loads and its JS loader (`consumers/body/core.js`). Check 5 and check 6 for moves hold after every call of four scenarios of 50,000 inputs with cells opening and closing. Held to digests of what the fork's walk in JS said (`consumers/body/walk-recorded.test.mjs`): about 14,800 steps of 7,650 walks, the same cell, steps left and next landing after every one. Thirteen deliberate faults were each caught | Whether a body may move at all (sitting, dead, a status). Check 9 (every sequence on a small map) is not written. `grid_path.c` is a second copy that nothing compares with the client's. Two rules differ from the JS on purpose and are kept out of the comparison: a hold on a standing body, and a request at the tick a step landed |
 
 ## Decided here
 

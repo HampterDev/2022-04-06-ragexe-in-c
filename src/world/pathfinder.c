@@ -410,10 +410,10 @@ static int server_map(struct PathFinder *self, struct GridPathMap *map)
     return 1;
 }
 
-/* The body core's working memory for the questions about the player's own character. */
+/* The actor core's working memory for the questions about the player's own character. */
 static int32_t own_scratch[(ACTOR_SCRATCH_SIZE + sizeof(int32_t) - 1) / sizeof(int32_t)];
 
-BYTE path_finder_body_ground(struct PathFinder *self, struct ActorGround *ground, int *width, int *height)
+BYTE path_finder_actor_ground(struct PathFinder *self, struct ActorGround *ground, int *width, int *height)
 {
     struct GridPathMap map;
 

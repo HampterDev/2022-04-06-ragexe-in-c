@@ -221,7 +221,7 @@ standing on it.
   `docs/custom-review.md`); the record confirms the swing and does not time it again. It extends the animation fit of `responsive-combat.md`, which scales the swing so
   its hit frame lands at the windup and which the action-timing stage left out.
 - **The own intent**: what an order to attack makes of the player's own character is planned
-  when the order leaves, by the rules the server runs (`world/own_attack.c`, the body core):
+  when the order leaves, by the rules the server runs (`world/own_attack.c`, the actor core):
   the walk into reach, the step under way that lands before a swing, and the swing that ends
   the walk. The plan's records of the walk go into the character's own track and its swing into
   the queue, at the ticks the server will give them, and play on the own clock; the server's
@@ -327,7 +327,7 @@ on its own alignment:
 |---|---|---|---|
 | 0 | 2 | id | 0x0F25 |
 | 2 | 2 | length | of the packet |
-| 4 | 4 | version | the body core's rules version |
+| 4 | 4 | version | the actor core's rules version |
 | 8 | 8 | tick | the server's clock the body is of, whole |
 | 16 | 2 | request | the number of the last request the body includes |
 | 18 | 2 | request_steps | the first setting of the core's world |
@@ -377,7 +377,7 @@ action-timing stage as first built sent 55 (0x0F10 and 0x08C8). A walk of ten st
 3. Own intent and own clocks, walking as an intent, the order rules. `ZC_MOVE_RESULT` and
    `ZC_INTENT_ENDED` go (gone on both sides).
 4. Casts and skill poses, with the pose table. This settles the skill rate on the server.
-5. The body core (`plans/body-core.md`): the rules for where an actor is and what it does
+5. The actor core (`plans/body-core.md`): the rules for where an actor is and what it does
    next as one freestanding C library, run by the server as the authority and by the client to
    predict its own character. It replaces the plan of sharing only the intent step, and takes
    over what steps 1 to 4 fitted into the code that was there.
@@ -394,7 +394,7 @@ committed. The server needs no setting for it (the server's `docs/tracks.md`).
 | 2 Act, hit, vitals | `ZC_TRACK_ACT` for a swing and its cancel, `ZC_NOTICE_HIT` dated when the hit lands, `ZC_TRACK_VITALS` for monsters to every viewer; the client's queue, played on the render clock or the own clock; `ZC_ACTION_BEGIN`, `ZC_ACTION_CANCEL` and `ZC_NOTIFY_ACT2` for hits are not sent. Monster hits at impact (server's `docs/action-timing.md`) | Skill hits, casts, sit, stand and death are the old packets. Players' HP is the old packets. A swing seen from its middle has no record. Nothing cancels a monster's swing but its impact check. Not run client against server |
 | 3 Own intent, own clocks | `ZC_OWN_INTENT` in place of `ZC_MOVE_RESULT` and `ZC_INTENT_ENDED`: a move's answer, and an intent's held, under way, acting and ended, each said once; one counter for moves and intents on the client | `ZC_OWN_CLOCKS` is not built: nothing would read it before step 4. The client acts on a walk's answer and on an end; held and acting are not shown. Walking is still `CZ_REQUEST_MOVE2`, which already ends an intent. The order rules were already the server's (press tick, then arrival). Not run client against server |
 | 4 Casts and poses | A cast and its cancel as `ZC_TRACK_ACT` in place of `ZC_USESKILL_ACK` and `ZC_DISPEL`, played with the time the cast still has. The skill rate on the server: a player's act clock is held for one attack delay (`skill_pose_rate`) from when a skill with a pose is carried out, the cast's end for one with a cast time; the list of skills without one is the client's, held to its code by a test | The pose is not a record; the client plays it from the skill's packets. Skill hits are the old packets. The pose's length is a setting and not measured from the animations. A skill with a begin effect in the client's Lua data has a pose in the client whatever the list says. Not run client against server |
-| 5 Body core | The design, `plans/body-core.md`, and on the server the core's frame (5a) and plain walking (5b), which spatial runs; the client has the core's source and asks it where its own predicted walk starts; the owner gets and follows move records of its own character, and walks to within a range and after a unit are the core's; the basic attack's loop is in the core, and the server's combat runs its players' basic attacks through it; the client shows its own swing when the request for it leaves, if the core says it begins then, stretched to meet the damage number and taken back when the server does not confirm it | All of it off by default on the server and not played; the own swing not seen on screen, and only the swing a click begins at once. With `body_attack` the skill code's casts and act clock and the players' intents are the core's too. Of 5d walking as an intent and the client's predicted intent are not built; 5e is not built |
+| 5 Actor core | The design, `plans/body-core.md`, and on the server the core's frame (5a) and plain walking (5b), which spatial runs; the client has the core's source and asks it where its own predicted walk starts; the owner gets and follows move records of its own character, and walks to within a range and after a unit are the core's; the basic attack's loop is in the core, and the server's combat runs its players' basic attacks through it; the client shows its own swing when the request for it leaves, if the core says it begins then, stretched to meet the damage number and taken back when the server does not confirm it | All of it off by default on the server and not played; the own swing not seen on screen, and only the swing a click begins at once. With `actor_attack` the skill code's casts and act clock and the players' intents are the core's too. Of 5d walking as an intent and the client's predicted intent are not built; 5e is not built |
 
 Found on the way: a chase or range walk (a monster's, an intent's way into range) started
 each step at the sweep that ran the one before, so a 150 ms step took 160 ms on the server
@@ -427,6 +427,6 @@ answer.
   arrived or a newer one of its track has replaced it (`plans/delivery.md`), not in one stream in
   order.
 - No rewind and no re-simulation on the server. The verdict of 2026-10-31 stands: press order
-  and hold-back are the only things that make play fair. The body core runs the player's own
+  and hold-back are the only things that make play fair. The actor core runs the player's own
   body forward again on the client from the server's state, which Patrick confirmed on
   2026-11-10 is outside that verdict (`plans/body-core.md`, decision 2).
