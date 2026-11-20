@@ -8,7 +8,9 @@ REM ctest runs, for example -R chat_tabs (tests by name) or -L render (the tests
 REM tools\libraries.txt). Tests labelled interactive, which need a real window, are left out. Tests
 REM labelled long take half a minute or more; -LE long leaves them out of a quick run.
 setlocal
-for %%i in ("%~dp0..") do set "ROOT=%%~fi"
+REM The root is left as tests\.. rather than resolved: at a drive's root (subst) a resolved root
+REM ends in a backslash, which escapes the closing quote of "%ROOT%".
+set "ROOT=%~dp0.."
 set "JOBS=%NUMBER_OF_PROCESSORS%"
 if not defined JOBS set "JOBS=4"
 

@@ -77,7 +77,8 @@ if not exist "%OUT%\sdl3-src\CMakeLists.txt" (
   curl -sSfL -o "%SDL_TAR%" "https://codeload.github.com/libsdl-org/SDL/tar.gz/%SDL_COMMIT%" || exit /b 1
   powershell -NoProfile -Command "if ((Get-FileHash -Algorithm SHA256 '%SDL_TAR%').Hash -ne '%SDL_SHA256%') { exit 1 }" || ( echo *** SDL3 download does not match its hash & exit /b 1 )
   if not exist "%OUT%\sdl3-src" mkdir "%OUT%\sdl3-src"
-  tar -xzf "%SDL_TAR%" -C "%OUT%\sdl3-src" --strip-components=1 || exit /b 1
+  REM Windows' own tar: a tar earlier on PATH (Git's) reads "C:" in a path as a remote host.
+  "%SystemRoot%\System32\tar.exe" -xzf "%SDL_TAR%" -C "%OUT%\sdl3-src" --strip-components=1 || exit /b 1
 )
 set "GEN=NMake Makefiles"
 where ninja >nul 2>nul && set "GEN=Ninja"
@@ -105,7 +106,7 @@ if not exist "%OUT%\freetype-src\CMakeLists.txt" (
   curl -sSfL -o "%FT_TAR%" "https://codeload.github.com/freetype/freetype/tar.gz/refs/tags/%FT_TAG%" || exit /b 1
   powershell -NoProfile -Command "if ((Get-FileHash -Algorithm SHA256 '%FT_TAR%').Hash -ne '%FT_SHA256%') { exit 1 }" || ( echo *** FreeType download does not match its hash & exit /b 1 )
   if not exist "%OUT%\freetype-src" mkdir "%OUT%\freetype-src"
-  tar -xzf "%FT_TAR%" -C "%OUT%\freetype-src" --strip-components=1 || exit /b 1
+  "%SystemRoot%\System32\tar.exe" -xzf "%FT_TAR%" -C "%OUT%\freetype-src" --strip-components=1 || exit /b 1
 )
 set "GEN=NMake Makefiles"
 where ninja >nul 2>nul && set "GEN=Ninja"
