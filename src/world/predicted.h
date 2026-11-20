@@ -190,7 +190,7 @@ int predicted_request(struct Predicted *predicted, const struct PredictedRequest
  * the body where its last record has it, on the same steps at the same ticks, says nothing
  * new and changes nothing, so a caller may say what it sees of a body every frame. Returns 0
  * when the world holds PREDICTED_OTHERS others already and none of them can go: the own body
- * names each. A record is of the stay of the body its tick is in; one dated at or after the
+ * names each, in the world as it runs or in the server's last word. A record is of the stay of the body its tick is in; one dated at or after the
  * body's last going is of the body that came back, which is in the world from its earliest
  * record on. */
 int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyMove *record);

@@ -818,6 +818,45 @@ static void test_gone(void)
     CHECK(differences(&predicted, server, T + 301, T + 900) == 0);
 }
 
+/* A body the server's last word names stays in the room for others, though the world as it runs
+   names it no more: her walk ended the attack in the running world before the server took the
+   walk, and a word of the server from before the walk names the monster still. Given up for a
+   fourth body's record, the world made from that word would find the monster gone and end the
+   attack, where the server's goes on. */
+static void test_named_by_word(void)
+{
+    static struct Predicted predicted;
+    static uint64_t arena[(SERVER_ARENA + 7) / 8];
+    const uint64_t T = 0x12a05f200ull;
+    struct PredictedRequest order = attack_on(1, T + 100, MOB_ID, BODY_ATTACK_REPEAT), away = walk_to(2, T + 800, 20, 10);
+    struct BodyWorld *server = begin(&predicted, arena, T, 10, 10, 11, 10);
+    struct BodyMove a = standing(T, 30, 30, 200), b = standing(T, 31, 30, 200), c = standing(T, 32, 30, 200);
+    struct PredictedBody word, before;
+    struct BodyAttack attack;
+    int i, kept;
+
+    CHECK(predicted_request(&predicted, &order) == 1 && server_attack(server, T + 100, 1, BODY_ATTACK_REPEAT) == BODY_OK);
+    CHECK(differences(&predicted, server, T + 100, T + 120) == 0);
+    word = word_of(server, 17, 150);
+    CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_SAME);
+    CHECK(differences(&predicted, server, T + 130, T + 300) == 0);
+    before = word_of(server, 17, 150);
+    /* her walk ends the attack in the world as it runs; the server has not taken it yet */
+    CHECK(predicted_request(&predicted, &away) == 1 && predicted_run(&predicted, &ground, T + 850));
+    CHECK(predicted_attack(&predicted, &attack) && !attack.has_target);
+    /* the room fills, and a fourth body's record comes: one of the others goes, not the monster */
+    CHECK(predicted_other(&predicted, 21, &a) == 1 && predicted_other(&predicted, 22, &b) == 1);
+    CHECK(predicted_other(&predicted, 23, &c) == 1);
+    for (i = 0, kept = 0; i < PREDICTED_OTHERS; i++)
+        kept += predicted.other[i].used && (predicted.other[i].id == MOB_ID || predicted.other[i].id == 23);
+    CHECK(kept == 2);
+    /* the server's word from before the walk: the world made from it attacks on as the server
+       does, its next look (700) and swing included, tick by tick until the walk */
+    CHECK(predicted_confirm(&predicted, &ground, &before) != PREDICTED_REFUSED);
+    CHECK(differences(&predicted, server, T + 310, T + 790) == 0);
+    CHECK(predicted_attack(&predicted, &attack) && attack.has_target && attack.target_id == MOB_ID);
+}
+
 /* A request the core refuses is what the server makes of it: a walk one that did nothing, whose
    number the body keeps; an attack, a skill or a pickup a cancel by its number, which ends the
    attack under way. */
@@ -1901,6 +1940,7 @@ int main(void)
     test_records();
     test_skills_and_pickups();
     test_gone();
+    test_named_by_word();
     test_refused();
     test_walk_news();
     test_placement();

@@ -273,6 +273,12 @@ static int names(const struct Predicted *predicted, uint32_t id)
     return names_in(world_at(predicted), id);
 }
 
+/* Whether the own body in the server's last word names the body `id`. */
+static int named_by_word(const struct Predicted *predicted, uint32_t id)
+{
+    return id == predicted->word_names[0] || id == predicted->word_names[1] || id == predicted->word_names[2];
+}
+
 /* The bodies the own body names in a world: its attack's, its swing's and its intent's targets. */
 static void named_in(const struct BodyWorld *world, uint32_t ids[3])
 {
@@ -382,8 +388,7 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
 
 void predicted_heard(struct Predicted *predicted, uint32_t id, uint64_t tick)
 {
-    if (!id || !(id == predicted->word_names[0] || id == predicted->word_names[1] || id == predicted->word_names[2]
-                 || (predicted->live && names(predicted, id))))
+    if (!id || !(named_by_word(predicted, id) || (predicted->live && names(predicted, id))))
         return;
     predicted->heard = 1;
     if (predicted->suspect && tick <= predicted->suspect_tick)
@@ -485,12 +490,15 @@ int predicted_other(struct Predicted *predicted, uint32_t id, const struct BodyM
     for (i = 0; i < PREDICTED_OTHERS && other == NULL; i++)
         if (!predicted->other[i].used)
             other = &predicted->other[i];
-    /* no room: one that went goes first, then one the own body does not name */
+    /* no room: one that went goes first, then one the own body names neither in the world as it
+       runs nor in the server's last word. A world is made again from that word or a later one,
+       which may name a body the running world let go of by a request the server has not taken
+       yet: that world would find the body gone and end what the own body does with it */
     for (i = 0; i < PREDICTED_OTHERS && other == NULL; i++)
         if (predicted->other[i].gone)
             other = &predicted->other[i];
     for (i = 0; i < PREDICTED_OTHERS && other == NULL; i++)
-        if (!names(predicted, predicted->other[i].id))
+        if (!names(predicted, predicted->other[i].id) && !named_by_word(predicted, predicted->other[i].id))
             other = &predicted->other[i];
     if (other == NULL)
         return 0;
