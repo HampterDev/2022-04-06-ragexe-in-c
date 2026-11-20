@@ -4,6 +4,7 @@
 #include "std/std.h"
 #include "actor/game_actor.h"
 #include "effects/skills/msg_effect.h"
+#include "world/world.h"
 
 void game_actor_show_number(struct GameActor *self, int value, unsigned argb, int style)
 {
@@ -44,6 +45,8 @@ void game_actor_show_number(struct GameActor *self, int value, unsigned argb, in
                 game_actor_forget_handle(self, (struct GameObject *)obj);
                 msg_effect_send_msg((struct GameObject *)obj, (struct GameObject *)self, 0x18, 0, 0, 0, 0);
                 node = list_erase(&self->attached, node, NULL);
+                obj->attached_node = NULL;
+                /* alive: it was on the attached objects, which an effect leaves as it goes */
                 game_remove_object(obj);
             } else {
                 node = node->next;
@@ -64,8 +67,8 @@ void game_actor_show_number(struct GameActor *self, int value, unsigned argb, in
         e->cell_lit = 0;
         if (style == 0x16)
             e->zoom = 0.5f;
-        game_mode_add_world_object(mode, e);
-        list_push_back(&self->attached, &e, sizeof e);
+        world_add_object(game_current_world(), e);
+        msg_effect_attach((struct MsgEffect *)e, &self->attached);
     }
     vec_free(&digits);
 }

@@ -13,11 +13,15 @@ routine ever reaches one. Globals therefore hold the file's `.data` values; a ro
 state the client fills at start-up needs that state seeded (`oracle_addr`), or the reading routine
 patched (`oracle_patch_return`), and the lifted side held to the same answer.
 
-Every test is a 32-bit program linked with `/BASE:0x10000000 /FIXED /DYNAMICBASE:NO`; a fault
-inside the original is caught with SEH and reported with its address in the original image
-(`test_skill_poses.c` shows the pattern). `build.bat` builds and runs them all; it needs the
-original executable at `%ORACLE_EXE%`, by default `..\client-files\2022-04-06_Ragexe_1648707856.exe`
-beside this checkout, and `tests\build.bat` runs it only when that file exists.
+Every test is a 32-bit program, as the original is (`tools\find_vcvars.bat x86`), linked with
+`/BASE:0x10000000 /FIXED /DYNAMICBASE:NO`; they are the suite's only 32-bit programs, the rest is
+64-bit like the client. A fault inside the original is caught with SEH and reported with its
+address in the original image (`test_skill_poses.c` shows the pattern). They are a CMake
+configuration of their own (`CMakeLists.txt` here, `-DRAGE_ORACLE=ON` from a 32-bit MSVC
+environment), which `tests\build.bat` builds in `build\oracle` and runs after the rest of the suite
+when the original executable is there: `%ORACLE_EXE%`, by default
+`..\client-files\2022-04-06_Ragexe_1648707856.exe` beside this checkout. A test that cannot find it
+reports itself skipped (`run.cmake`). `tests\build.bat -L oracle` runs only them.
 
 ## On custom
 
@@ -125,8 +129,8 @@ only the target, the third only the time and the position, and the base class re
 The lift's hooks take exactly what is read.
 
 `extract_functions.py` copies named production functions (and a file-local struct or helper)
-into an include file, so a test links a lookup without the file it lives in; `build.bat` shows
-the call for `test_job_lookups`.
+into an include file, so a test links a lookup without the file it lives in; `CMakeLists.txt`
+shows the call for `test_job_lookups`.
 
 ## Candidates next
 

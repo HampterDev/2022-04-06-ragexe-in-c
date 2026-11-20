@@ -9,6 +9,7 @@
 #include "platform/clock.h"
 #include "platform/window.h"
 #include "render/device.h"
+#include "render/fonts.h"
 #include "render/gfx.h"
 #include "render/renderer.h"
 #include "world/mode_dispatch.h"
@@ -69,17 +70,36 @@ int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out)
     return 0;
 }
 int gfx_unlock(gfx_surface *s) { (void)s; return 0; }
-int gfx_get_render_state(int state, DWORD *out) { (void)state; *out = 0; return 0; }
-void gfx_set_render_state(int state, DWORD value) { (void)state; (void)value; }
-void gfx_set_stage_state(int stage, int state, DWORD value) { (void)stage; (void)state; (void)value; }
-void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
-void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
+/* The overlay's text: Lucida Console at a 12-pixel em, whose characters are 7 by 12 pixels, drawn
+   nowhere. */
+struct FontCache g_fontCache;
+static char monospace;
+FontHandle font_cache_get_fixed(struct FontCache *cache, const char *family, int size)
 {
-    (void)prim; (void)vertexKind; (void)verts; (void)indices; (void)nindices;
-    assert(nverts == 4);
+    assert(cache == &g_fontCache && !strcmp(family, "Lucida Console") && size == -12);
+    return (FontHandle)&monospace;
+}
+void font_text_extent(FontHandle font, const uint16_t *text, int length, int black_box, SIZE *out)
+{
+    assert(font == (FontHandle)&monospace && text && length > 0 && !black_box);
+    out->cx = 7 * length;
+    out->cy = 12;
+}
+void font_text_out(FontHandle font, const struct FontTarget *target, int x, int y, const uint16_t *text, int length,
+                   COLORREF colour, const COLORREF *background)
+{
+    assert(font == (FontHandle)&monospace && target->bits && text && !background);
+    (void)x; (void)y; (void)length; (void)colour;
+}
+static int mode = -1;
+void gfx_set_mode(int m) { mode = m; }
+void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
+void gfx_draw_vertices(const struct TexDrawVertex *v, int n, int strip)
+{
+    (void)v;
+    assert(n == 4 && strip && mode == DRAW_PANEL);
     ++draws;
 }
-void renderer_set_blend_stages(struct Renderer *self, int mode) { (void)self; (void)mode; }
 
 #define getenv test_environment
 #define platform_key_state test_key_state
@@ -157,7 +177,7 @@ static void check_on(void)
 static struct Mode *const current_mode = (struct Mode *)0x6d6f;
 static int screenshots;
 struct Mode *client_current_mode(void) { return current_mode; }
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mode == current_mode && message == MODE_MSG_SCREENSHOT && !a && !b && !c && !d);
     ++screenshots;

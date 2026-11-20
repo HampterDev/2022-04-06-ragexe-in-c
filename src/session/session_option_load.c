@@ -4,17 +4,23 @@
 #include "ui/window_manager_state.h"
 #include "session/csession.h"
 #include "session/session_options.h"
-#include "platform/display_depth.h"
 
 #include <string.h>
 #include "core/window_state.h"
 #include "ui/render/graphic_setting.h"
 #include "render/texture_cache.h"
 #include "game/camera.h"
+#include "render/display_options.h"
+
+static int option_int(void *session, const char *name, int fallback)
+{
+    return session_get_option_int(session, name, fallback);
+}
 
 void session_load_options(struct Session *self)
 {
     struct String text, *skin;
+    struct DisplayOptions display;
     int effectVolume;
 
     client_lua_call(g_session1.luaState, "SetCmdOnOffList", "");
@@ -24,7 +30,6 @@ void session_load_options(struct Session *self)
     sound_set_bgm_volume(session_get_option_int(self, "Bgm_Volume", 100));
     sound_set_bgm_fade_target(sound_bgm_volume());
     sound_set_effect_volume(effectVolume);
-    sound_set_effect_volume_3d(effectVolume);
 
     self->showWhisperWnd = session_get_option_int(self, "AutoOpen1to1Window", 1);
     self->showWhisperWndFriend = session_get_option_int(self, "AutoOpen1to1Window_Friend", 1);
@@ -69,22 +74,16 @@ void session_load_options(struct Session *self)
         self->monsterSnapInEffect = 1;
 
     g_session1.mouseExclusiveOption = session_get_option_int(self, "MouseExclusive", 1) != 0;
-    g_fullscreenMode = read_display_options(self, "ISFULLSCREENMODE", 0);
-    g_displayWidth = session_get_option_int(self, "WIDTH", 0x400);
-    g_displayHeight = session_get_option_int(self, "HEIGHT", 0x300);
-    g_savedWidth = session_get_option_int(self, "OLD_WIDTH", 0);
-    g_savedHeight = session_get_option_int(self, "OLD_HEIGHT", 0);
-    if ((unsigned)g_displayHeight < 0x298) {
-        g_displayWidth = 0x400;
-        g_displayHeight = 0x300;
-    }
-    g_screenWidth = g_displayWidth;
-    g_screenHeight = g_displayHeight;
-    g_bitsPerPixel = session_get_option_int(self, "BITPERPIXEL", 16);
-    if (!platform_display_has_16bit_modes())
-        g_bitsPerPixel = 32;
-    g_displayDeviceIndex = session_get_option_int(self, "DEVICECNT", 0);
-    g_displayModeIndex = session_get_option_int(self, "MODECNT", 0);
+    /* custom: windowed or fullscreen, and the windowed size (render/display_options.h) */
+    display_options_read(&display, option_int, self);
+    g_fullscreenMode = display.fullscreen;
+    g_windowMaximized = display.maximized;
+    g_displayWidth = display.width;
+    g_displayHeight = display.height;
+    g_windowX = display.x;
+    g_windowY = display.y;
+    g_savedWidth = display.placedWidth;
+    g_savedHeight = display.placedHeight;
     g_spriteMode = session_get_option_int(self, "SPRITEMODE", 2);
     switch (g_spriteMode) {
     case 0:

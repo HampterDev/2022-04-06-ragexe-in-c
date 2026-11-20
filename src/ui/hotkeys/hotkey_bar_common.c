@@ -1,6 +1,6 @@
 #include "ui/hotkeys/hotkey_bars.h"
 #include "session/session_jobs.h"
-#include "ui/render/graphic_setting.h"
+#include "ui/window_manager_state.h"
 #include "ui/draw_key.h"
 #include "iteminfo/item_api.h"
 #include "session/session_items.h"
@@ -89,9 +89,10 @@ void hotkey_place_describe(struct UIWindow *wnd, struct UIWindow *describe, int 
     int row = y / SHORTCUT_ROW_HEIGHT;
 
     ui_window_to_screen(wnd, &sx, &sy);
-    if ((unsigned)(g_displayWidth - (x + sx)) < (unsigned)describe->width)
-        over = describe->width - g_displayWidth + x + sx;
-    if ((float)sy > (float)(double)(unsigned)g_displayHeight * 0.5f)
+    /* custom: the screen's size, which fullscreen no longer makes the resolution option's */
+    if ((unsigned)(g_windowMgr.screen_width - (x + sx)) < (unsigned)describe->width)
+        over = describe->width - g_windowMgr.screen_width + x + sx;
+    if ((float)sy > (float)(double)(unsigned)g_windowMgr.screen_height * 0.5f)
         ui_window_move(describe, sx - over + x, row * SHORTCUT_ROW_HEIGHT - describe->height + sy);
     else
         ui_window_move(describe, sx - over + x, sy + (row + 1) * SHORTCUT_ROW_HEIGHT);

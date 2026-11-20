@@ -43,14 +43,149 @@ paths   body/ core/ delivery/
         initializers/ json/ std/ actor/actor_ops.h actor/actor_states.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 
-library platform
-note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, crash
-        dumps, display depth, the text-input editor and IME (platform/language*.c), client paths,
-        and the main window's handle and state (core/window_state.c).
+library display-options
+note    The window's display modes as pure logic (render/display_options.c): the saved display
+        options and how they follow the window, the windowed size's bounds and how it fits a
+        display, window coordinates for pixels, and the graphics settings' resolution picker. Uses
+        nothing else of the client.
+uses
+paths   render/display_options.*
+
+library texel-convert
+note    Texels as pure logic (render/texel_convert.c): the client's texel formats
+        (render/gfx_format.h) widened to the B8G8R8A8 bytes of the GPU's textures and narrowed back,
+        and a system surface's colour key as alpha. Uses nothing else of the client.
 uses    base
+paths   render/texel_convert.* render/gfx_format.h
+
+library draw-modes
+note    The ways the client draws, as data (render/draw_modes.c): each mode's texture-stage
+        combination, blending, depth test and write, alpha test, fog and sampling, the effect
+        presets' combinations, and Direct3D 9's blend factors as a GPU's. Uses nothing else of the
+        client.
+uses
+paths   render/draw_modes.*
+
+library dirty-rects
+note    The parts of a texture written since it went up, as pure logic (render/dirty_rects.c): a few
+        rectangles kept apart, merged where they touch or where there is no room. Uses nothing else
+        of the client.
+uses    base
+paths   render/dirty_rects.*
+
+library frame-ring
+note    The frames one thread records and another submits, as pure logic (render/frame_ring.c): the
+        slot of the ring each frame's packet lives in, when the recording thread may fill a slot
+        again, and which frame the submitting thread waits for on the GPU first. Uses nothing else of
+        the client.
+uses
+paths   render/frame_ring.*
+
+library render-thread
+note    The render thread (render/render_thread.c): a thread of SDL's that runs the frames another
+        thread records, one at a time and in the order they are handed over, by the ring's rules.
+uses    frame-ring
+paths   render/render_thread.*
+
+library quads
+note    The client's quads and triangles as instances, as pure logic (render/quads.c): what an
+        instance holds, and the record of each that the quad shader makes its vertices from, made
+        from an instance or from a primitive of the client's vertices. Uses nothing else of the
+        client.
+uses
+paths   render/quads.*
+
+library screen-wobble
+note    The screen wobble as pure logic (render/screen_wobble.c): for each frame of it, which row of
+        the frame each row shows and how far it is moved, drawing the C runtime's random numbers as
+        the original did, and how its amplitude and frames advance. Uses nothing else of the client.
+uses
+paths   render/screen_wobble.*
+
+library font-faces
+note    The font finder's rules as pure functions (render/font_faces.c): which family names a face
+        answers to, how a request ranks the installed faces, a face's family names from its name
+        table, and where a font the Windows registry lists is. Uses nothing else of the client.
+uses    base
+paths   render/font_faces.*
+
+library static-world
+note    The static world as data the GPU keeps, as pure rules (render/static_world.c): the map's
+        shared vertex and index buffers, a draw record per texture run of a ground block or a model
+        node, texture arrays by size and mipmap levels, and the cull that picks the records a view
+        or a shadow cascade draws. Uses nothing else of the client.
+uses
+paths   render/static_world.*
+
+library world-layout
+note    The static world as the device's shaders read it, as pure packing (render/world_layout.c):
+        its records by id and in draw order, the runs the GPU's cull compacts, its transform slots
+        and the uniforms of the frame's compute passes, which the device and the tests pack alike.
+uses    static-world
+paths   render/world_layout.*
+
+library skin-layout
+note    Granny's actors as the skinning shader reads them, as pure packing (render/skin_layout.c): a
+        model's vertices and indices, an actor's pose for a frame, which draws of its meshes one draw
+        takes, and a vertex where Granny's deformer put it. Uses nothing else of the client.
+uses
+paths   render/skin_layout.*
+
+library shadow-fit
+note    The frame's shadow cascades fitted to the view depths of what it shows, as pure logic
+        (render/shadow_fit.c): the constants the CPU works out for the GPU's fit, the steps of the
+        fit, which its compute passes are checked against, the squares kept from frame to frame,
+        and where a caster can shade the view. Uses nothing else of the client.
+uses
+paths   render/shadow_fit.*
+
+library shadow-fit-gpu
+note    The shadow fit as the device's compute passes read and write it, as pure packing
+        (render/shadow_fit_gpu.c): their constants, the state and the history they keep and the
+        cascades they leave, which the device and the tests pack and read alike.
+uses    shadow-fit
+paths   render/shadow_fit_gpu.*
+
+library atlas-index
+note    The sprite atlas's cells by what they hold, as pure logic (render/atlas_index.c): a sprite
+        frame's image, palette and size bucket to the cell holding them in constant time, which
+        the atlas keeps right as its cells are taken, reused and freed. Uses nothing else of the
+        client.
+uses
+paths   render/atlas_index.*
+
+library lua-memo
+note    The answers of Lua functions that answer from their arguments alone, as pure logic
+        (contents/lua_memo.c): a call's key to its answer, in bounded sets that give up the answer
+        used longest ago, each function's answers apart from the others', and when an answer is due
+        to be checked against Lua; the client's Lua calls keep them until a script is loaded again.
+        Uses nothing else of the client.
+uses
+paths   contents/lua_memo.*
+
+library id-index
+note    An index from ids to the entries of one list as pure logic (world/id_index.c): an id's first
+        entry in the list's order, kept right as entries are appended, leave and change their id
+        (the world's actors and skill units by their aid). Uses nothing else of the client.
+uses
+paths   world/id_index.*
+
+library platform
+note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
+        (platform/audio_sdl.c), crash dumps, the text-input editor and IME
+        (platform/language.c), the window services on SDL (platform/window_sdl.c), client paths,
+        and the main window's handle and state (core/window_state.c).
+uses    base display-options
 paths   platform/
         core/client_path.* core/file_util.* core/text_encoding.* core/text_tokens.c core/text_util.*
         core/window_state.*
+
+library font-finder
+note    The installed fonts, sorted for a request by font-faces' rules: read by the client from the
+        Windows registry's fonts or the font folders (render/font_match_scan.c), or found by
+        Fontconfig (render/font_match_fc.c).
+uses    platform font-faces
+paths   render/font_match*
 
 library fileio
 note    Game files and GRF archives, resource paths and names, the table and message-string readers
@@ -64,7 +199,8 @@ library render
 note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
-uses    fileio
+uses    fileio display-options texel-convert dirty-rects draw-modes quads screen-wobble font-finder world-layout
+        shadow-fit-gpu skin-layout atlas-index render-thread
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 
@@ -77,12 +213,19 @@ paths   resources/
         core/res_mgr.* fileio/res_cache.c fileio/res_get.c fileio/res_mgr.h ui/cooldown.h
         ui/cooldown_clock.c ui/cooldown_lists.c ui/cooldown_timer.c
 
+library named-res
+note    A resource an object names (resources/named_res.c): the name, and the resource looked up by it
+        once and held locked until the name is set again or the holder frees it, as the actors hold
+        their palettes and imf. Uses the resource manager's API (fileio/resource_api.h) only.
+uses    resources
+paths   resources/named_res.*
+
 library widgets
 note    The UI widgets (ui/controls), the UIWindow base, the window-manager core (ui/wndmgr: window
         list, slots, window table, forget, teardown, messages, modal loop, keyboard, snapping),
         skins, and the current mode and its dispatch (world/mode_context.c, world/mode_dispatch.c).
         The widgets and the window-manager core call each other, so they are one library.
-uses    resources
+uses    resources named-res
 paths   ui/
         actor/render_object.h actor/types.h contents/client_lua_calls.h contents/connection_api.h
         contents/mcstore_requests.h core/object_type_tables.h core/skin_path.* game/drag_info.h
@@ -99,12 +242,12 @@ note    The rest of the library layer below game-state: game-side modules the li
         and that never use them (the session's storage and tables, item and skill information,
         contents managers, Lua bindings, chat and link text, world, actor and navigation helpers,
         login records, startup settings).
-uses    widgets
+uses    widgets lua-memo id-index
 paths   contents/
         effects/stl/ iteminfo/ login/ session/ skills/ ui/character/ ui/chat/ ui/items/ ui/mail/
         web/ world/ actor/action.c actor/actor.h actor/actor_defaults.c
-        actor/actor_values.c actor/actorindex.c actor/getjob.c actor/granny_actor.h
-        actor/granny_model_storage.* actor/granny_projection.* actor/head_extent.c actor/job.h
+        actor/actor_values.c actor/getjob.c actor/granny_actor.h
+        actor/granny_model_storage.* actor/head_extent.c actor/job.h
         actor/layer_order.* actor/map_type_table.* actor/motion.c actor/motion_update.c
         actor/render_ops.h core/actor_slots.c core/drive_state.* core/startup_settings.c
         diag/crash_report_posix.c effects/durations.* effects/effect_data.* effects/effect_math.*
@@ -121,7 +264,7 @@ paths   contents/
         game/schedules.h game/scream_text.* game/screen_counters.* game/skill_cooldowns.*
         game/skill_fail.c game/store_entries.* game/store_search_items.* game/system_messages.*
         game/target_cursor.c game/ui_bridge.h game/user_config.* game/warp_list.c
-        game/world_object_lists.c navi/navi.h navi/navi_airship.c navi/navi_links.c
+        navi/navi.h navi/navi_airship.c navi/navi_links.c
         navi/navi_objects.c navi/navi_records.c navi/navi_text_lines.* platform/clientinfo.*
         ui/draw_key.* ui/hideui.* ui/hotkeys/hotkeys_std.* ui/hotkeys/session_option_map.c
         ui/misc/crash_dialog.c ui/quests/achievement.h ui/quests/image_wnd.c
@@ -173,9 +316,9 @@ paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/act
         ui/quests/world_view.c ui/quests/world_view.h ui/resource/resource_paths.c
         ui/resource/resource_paths.h ui/social/guild_containers.c ui/social/guild_member_sort.h
         world/actor_lookup.c world/hover_cell.h world/lifecycle.h world/load.h world/mode.h
-        world/model_actor.c world/model_load.c world/model_node_render.c world/models.c
-        world/models.h world/object_lookup.h world/objects_remove.c world/player.h world/tooltip.h
-        world/view_context.c world/world.c world/world.h world/world_imports.h world/world_near.c
+        world/model_actor.c world/model_load.c world/models.c world/models.h world/object_lookup.h
+        world/object_list.c world/player.h world/tooltip.h world/view_context.c world/world.c
+        world/world.h world/world_imports.h world/world_near.c world/aid_lists.c
 
 library actors
 note    The actor and effect object model: the method tables of actor/game_object.c, the actor
@@ -374,18 +517,18 @@ paths   ui/map/
 
 library app
 note    The composition points, the only library that may use the feature libraries: client_run and
-        startup (core/winmain.c, client_init.c, startup.c, app.c), the application layers and window
-        procedure (core/app_win32.c, app_sdl.c, wndproc.c), the manager table, the registries
-        (effects, windows and their rows, object types and their rows), the packet dispatchers, the
-        game mode's message switch (game/mode_msg.c), the login mode (login/mode.c, login_states.c,
-        login_dispatch.c, loginmode_vtables.c), the main loop (world/mode_loop.c) and the session's
-        construction (session/session_lifetime.c).
+        startup (core/winmain.c, client_init.c, startup.c, app.c), the SDL window and its events
+        (core/app_sdl.c), the manager table, the registries (effects, windows and their rows,
+        object types and their rows), the packet dispatchers, the game mode's message switch
+        (game/mode_msg.c), the login mode (login/mode.c, login_states.c, login_dispatch.c,
+        loginmode_vtables.c), the main loop (world/mode_loop.c) and the session's construction
+        (session/session_lifetime.c).
 uses    *
 paths   actor/actor_object_types.c
-        core/app.* core/app_sdl.c core/app_win32.c core/client_init.* core/client_managers.*
-        core/manager_table.* core/object_type_registry.* core/startup.c core/winmain.c
-        core/wndproc.c effects/effect_registry.* effects/skills/skill_object_types.c game/mode_msg.*
-        game/packet_dispatch.* game/packet_dispatch2.c login/login_dispatch.c login/login_states.c
+        core/app.* core/app_sdl.c core/client_init.* core/client_managers.* core/manager_table.*
+        core/object_type_registry.* core/startup.c core/winmain.c effects/effect_registry.*
+        effects/skills/skill_object_types.c game/mode_msg.* game/packet_dispatch.*
+        game/packet_dispatch2.c login/login_dispatch.c login/login_states.c
         login/loginmode_vtables.c login/mode.c resources/resource_object_types.c
         session/session_imports.h session/session_lifetime.c ui/character/character_object_types.c
         ui/chat/chat_object_types.c ui/controls/controls_object_types.c
@@ -486,7 +629,6 @@ include actor/motion_update.c actor/game_actor.h
 include actor/render_object.h actor/object_ops.h
 include actor/render_ops.h actor/object_ops.h
 include contents/agency_transport.c contents/agency_internal.h
-include contents/body_layer_maps.c contents/body_layer.h
 include contents/character_settings_json.c contents/character_settings_internal.h
 include contents/client_lua_globals.c contents/client_lua.h
 include contents/game_session.h effects/effect_mgr.h game/drag.h
@@ -497,7 +639,7 @@ include contents/ui_window_mgr.h world/tooltip.h
 include contents/user_hotkey_apply.c contents/client_lua.h contents/user_hotkeys.h
 include core/actor_slots.c actor/appearance.h
 include effects/effect_math.h effects/effect.h
-include effects/effect_sound.c effects/render_object.h
+include effects/effect_sound.c effects/effect.h
 include effects/rag/effect_prim_draw.c effects/rag/rag_effect.h
 include effects/rag/prim_flat_quads.c effects/rag/rag_effect.h
 include game/cells.c session/session_skills.h
@@ -506,7 +648,6 @@ include game/item_choice_lists.c game/objects.h
 include game/item_merge.c game/session_bridge.h
 include game/packets_hp.c game/objects.h
 include game/user_config.c game/session_bridge.h session/session_state.h
-include game/world_object_lists.c world/world_imports.h
 include login/loginmode.h contents/guild_info.h contents/mcstore_backup.h world/tooltip.h
 include login/merc_ai_trace.c login/merc_ai.h
 include navi/navi_airship.c navi/navi_manager.h navi/navi_search.h
@@ -618,7 +759,6 @@ remove  Give each lower library the settings it reads in a structure of its own,
         session when the options load, or hooks for the state.
 include core/text_util.c session/state.h
 include game/rodex_mail.h session/state.h
-include render/cframe.c session/state.h
 include render/render_api.h session/state.h
 include render/rp_hud.c session/state.h
 include ui/controls/button.c session/state.h
@@ -707,7 +847,6 @@ include ui/chat/whisper.c core/app.h
 include ui/controls/text_viewer_links.c core/app.h
 include ui/quests/navigation_cmd.c core/app.h
 include ui/quests/tag_text_viewer.c core/app.h
-include ui/render/graphic_setting.c core/app.h
 include ui/social/guild_info_tab.c core/app.h
 include world/mode_mgr.c core/app.h
 include world/world_load.c core/app.h
@@ -757,9 +896,9 @@ link    render/tex_cache.c g_resMgr g_resPurgeAgeMs res_mgr_get res_mgr_release
 
 exception main-loop-state
 why     The game and login code switch modes through the main loop (mode_mgr_switch,
-        world/mode_loop.c), pump window messages (check_system_message, core/app_win32.c and
-        app_sdl.c), and read g_loginStartMode (core/winmain.c) and g_mapServerAidPending
-        (login/login_dispatch.c); all of these are in app.
+        world/mode_loop.c), pump window messages (check_system_message, core/app_sdl.c), and read
+        g_loginStartMode (core/winmain.c) and g_mapServerAidPending (login/login_dispatch.c); all
+        of these are in app.
 remove  Move mode_mgr_switch to the mode manager (world/mode_mgr.c), make the message pump a
         platform call, and define the two login globals in a login file below the knot.
 link    game/enter_map.c mode_mgr_switch
@@ -788,17 +927,13 @@ link    platform/language.c g_windowMgr ui_window_mgr_get_focus_edit
 
 exception render-reaches-game-state
 why     The device notes a shown frame for the drive state (drive_state_frame_shown,
-        core/drive_state.c), the stale-GUID check reads the registry key path (g_registryKeyPath,
-        platform/clientinfo.c), and render files include game/context.h and platform/clientinfo.h.
-remove  A frame hook for the drive state; the key path handed to the device when it is created;
-        narrower includes.
+        core/drive_state.c), and render files include game/context.h and platform/clientinfo.h.
+remove  A frame hook for the drive state; narrower includes.
 include render/c3ddevice.c core/drive_state.h
-include render/cframe.c game/context.h
 include render/render_api.h game/context.h
 include render/screen_draw.c game/context.h
 include render/textdc.c platform/clientinfo.h
 link    render/c3ddevice.c drive_state_frame_shown
-link    render/stale_guid.c g_registryKeyPath
 
 exception client-dir
 why     g_clientDir, the game folder, is defined in core/app.c; core/client_path.c joins game paths

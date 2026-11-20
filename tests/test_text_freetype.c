@@ -10,18 +10,27 @@
 #include "platform/clientinfo.h"
 #include "platform/code_page.h"
 #include "platform/language.h"
+#include "render/font_match.h"
 #include "diag/perf.h"
 #include <assert.h>
-#include <fontconfig/fontconfig.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+static void set_variable(const char *name, const char *value) { assert(!_putenv_s(name, value)); }
+#else
+static void set_variable(const char *name, const char *value) { assert(!setenv(name, value, 1)); }
+#endif
 
+/* The installed fonts: the system's, through the client's font finder (the registry's fonts on
+   Windows, Fontconfig elsewhere). */
 struct C3dDevice g_3dDevice = {
     .faceNamesB = {L"Gulim", L"Arial", L"MS Gothic", L"SimSun", L"MingLiU", L"Tahoma",
                    L"Arial", L"Verdana", L"Verdana", L"Arial", L"Arial", L"Tahoma"},
+    .faceNamesA = {L"\xad74\xb9bc", L"Arial", L"\xff2d\xff33 \xff30\x30b4\x30b7\x30c3\x30af", L"\x5b8b\x4f53",
+                   L"\x7d30\x660e\x9ad4", L"Tahoma", L"Arial", L"Verdana", L"Verdana", L"Arial", L"Arial", L"Tahoma"},
     .faceCharsets = {CHARSET_HANGUL, CHARSET_ANSI, CHARSET_SHIFTJIS, CHARSET_GB2312, CHARSET_CHINESEBIG5,
                      CHARSET_THAI, CHARSET_VIETNAMESE, CHARSET_ANSI, CHARSET_ANSI, CHARSET_RUSSIAN,
                      CHARSET_VIETNAMESE + 1, CHARSET_ARABIC},
@@ -42,6 +51,8 @@ int texture_upload_pixels(struct Texture *tex, int x, int y, int w, int h, const
 { (void)tex; (void)x; (void)y; (void)w; (void)h; (void)pixels; (void)keyed; (void)pitch; abort(); }
 void texture_draw_surface(struct Texture *tex, int x, int y, int w, int h, DWORD colour)
 { (void)tex; (void)x; (void)y; (void)w; (void)h; (void)colour; abort(); }
+void texture_draw_surface_on_top(struct Texture *tex, int x, int y, int w, int h, DWORD colour)
+{ (void)tex; (void)x; (void)y; (void)w; (void)h; (void)colour; abort(); }
 struct SprClip *motion_get_clip(const struct Motion *motion, unsigned index) { (void)motion; (void)index; abort(); }
 struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct SprImg *image, const DWORD *palette,
                                      struct SpriteRegion *region)
@@ -53,25 +64,6 @@ void dc_bitmap_draw_texels_scaled(struct DcBitmap *self, int dx0, int dy0, int d
     (void)self; (void)dx0; (void)dy0; (void)dw; (void)dh; (void)tex; (void)sw; (void)sh; (void)scaleX;
     (void)scaleY; (void)colour; (void)mirror; (void)offX; (void)offY; (void)sx; (void)sy; abort();
 }
-
-static DWORD surface_pixels[64 * 32];
-static int surface_refs, surface_locks, surface_unlocks;
-static struct gfx_surface *const test_surface = (struct gfx_surface *)(uintptr_t)8;
-
-void gfx_addref(gfx_surface *surface) { assert(surface == test_surface); ++surface_refs; }
-void gfx_release(gfx_surface *surface) { assert(surface == test_surface && surface_refs > 0); --surface_refs; }
-int gfx_lock(gfx_surface *surface, const RECT *r, struct gfx_lock *out)
-{
-    assert(surface == test_surface && !r);
-    ++surface_locks;
-    out->bits = surface_pixels;
-    out->pitch = 64 * 4;
-    out->width = 64;
-    out->height = 32;
-    out->bpp = 32;
-    return 0;
-}
-int gfx_unlock(gfx_surface *surface) { assert(surface == test_surface); ++surface_unlocks; return 0; }
 
 #define BACKGROUND 0x77777777u
 #define INK RGB(0x12, 0x34, 0x56)
@@ -95,7 +87,7 @@ static SIZE extent(int face, int size, int bold, int italic, const char *text, i
 {
     struct TextDC dc;
     SIZE result;
-    text_dc_from_surface(&dc, NULL);
+    text_dc_construct(&dc, NULL);
     text_dc_select_font(&dc, face, size, bold, italic);
     text_dc_text_extent(&dc, text, length, &result);
     text_dc_destruct(&dc);
@@ -203,8 +195,8 @@ static void check_opaque(void)
     dc_bitmap_destroy(bitmap);
 }
 
-/* The Latin face (Arial's stand-in) has no Hangul, so a Hangul run is measured and drawn in the
-   Hangul fallback font (Gulim, then Malgun Gothic, then the free Korean fonts), as GDI does. */
+/* The Latin face (Arial, or a stand-in for it) has no Hangul, so a Hangul run is measured and drawn
+   in the Hangul fallback font (Gulim, then Malgun Gothic, then the free Korean fonts), as GDI does. */
 static void check_runs(void)
 {
     static const char mixed[] = "AB\xea\xb0\x80\xeb\x82\x98";
@@ -226,26 +218,6 @@ static void check_italic(void)
     assert(slanted.cx > 0 && slanted.cy == upright.cy);
 }
 
-static void check_surface(void)
-{
-    struct TextDC dc;
-    SIZE size;
-    int i, set = 0;
-    text_dc_from_surface(&dc, test_surface);
-    text_dc_select_font(&dc, 1, 12, 0, 0);
-    text_dc_text_extent(&dc, "Hi", 2, &size);
-    assert(surface_refs == 1 && !surface_locks);
-    text_dc_set_text_color(&dc, INK);
-    text_dc_text_out_plain(&dc, 2, 2, "Hi", 2);
-    text_dc_text_out(&dc, 2, 16, "Hi", 2);
-    assert(surface_locks == 1 && !surface_unlocks);
-    text_dc_destruct(&dc);
-    assert(!surface_refs && surface_unlocks == 1);
-    for (i = 0; i < 64 * 32; ++i)
-        set += surface_pixels[i] == INK_PIXEL;
-    assert(set > 10);
-}
-
 static long freetype_width(const char *file, int ppem, const char *text)
 {
     FT_Library library;
@@ -262,26 +234,35 @@ static long freetype_width(const char *file, int ppem, const char *text)
     return width;
 }
 
+/* The first file of a sans-serif face, as the font finder sorts the installed fonts. */
+static void sans_file(char *out, size_t size)
+{
+    static const char *const families[] = {"Arial", "Liberation Sans", "DejaVu Sans", "Noto Sans", NULL};
+    struct FontRequest request = {families, "en", 0, 0, 0};
+    struct FontMatches *matches = font_match_sort(&request);
+    int i, index;
+    assert(matches);
+    *out = 0;
+    for (i = 0; i < font_match_count(matches) && !*out; ++i) {
+        const char *file = font_match_file(matches, i, &index);
+        if (file && !index && strlen(file) < size)
+            strcpy(out, file);
+    }
+    font_match_free(matches);
+    assert(*out);
+    fprintf(stderr, "sans-serif -> %s\n", out);
+}
+
 static void check_override(void)
 {
-    FcPattern *pattern = FcNameParse((const FcChar8 *)"sans-serif:lang=en:scalable=true:weight=regular:slant=roman");
-    FcFontSet *fonts;
-    FcResult result;
-    FcChar8 *file = NULL;
+    char file[4096];
     struct DcBitmap *bitmap;
-    int i, index, plain;
+    int plain;
     long width;
-    FcConfigSubstitute(NULL, pattern, FcMatchPattern);
-    FcDefaultSubstitute(pattern);
-    fonts = FcFontSort(NULL, pattern, FcFalse, NULL, &result);
-    assert(fonts);
-    for (i = 0; i < fonts->nfont && !file; ++i)
-        if (FcPatternGetInteger(fonts->fonts[i], FC_INDEX, 0, &index) == FcResultMatch && !index)
-            FcPatternGetString(fonts->fonts[i], FC_FILE, 0, &file);
-    assert(file);
-    width = freetype_width((const char *)file, 13, "Hello");
-    setenv("RAGEXE_FONT_7", (const char *)file, 1);
-    setenv("RAGEXE_FONT", "/nonexistent/font.ttf", 1);
+    sans_file(file, sizeof file);
+    width = freetype_width(file, 13, "Hello");
+    set_variable("RAGEXE_FONT_7", file);
+    set_variable("RAGEXE_FONT", "/nonexistent/font.ttf");
     assert(extent(7, -13, 0, 0, "Hello", 5).cx == width);
     assert(extent(7, -13, 1, 0, "Hello", 5).cx == width + 5);
     bitmap = canvas(160, 40);
@@ -291,90 +272,61 @@ static void check_override(void)
     assert(draw(bitmap, 7, -13, 1, 4, 4, "Hello", 5, NULL) > plain);
     dc_bitmap_destroy(bitmap);
     assert(extent(8, 12, 0, 0, "Hello", 5).cx > 0);
-    unsetenv("RAGEXE_FONT_7");
-    setenv("RAGEXE_FONT", (const char *)file, 1);
+    set_variable("RAGEXE_FONT_7", "");
+    set_variable("RAGEXE_FONT", file);
     assert(extent(9, -13, 0, 0, "Hello", 5).cx == width);
-    unsetenv("RAGEXE_FONT");
-    FcFontSetDestroy(fonts);
-    FcPatternDestroy(pattern);
+    set_variable("RAGEXE_FONT", "");
 }
 
+/* The overlay's fixed-pitch font: Lucida Console where it is installed, otherwise a fixed-pitch
+   stand-in. */
 static void check_monospace(void)
 {
-    FontHandle font = font_cache_get_family(&g_fontCache, "monospace", -12);
+    FontHandle font = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
     uint16_t wide[] = {'W', 'W'}, thin[] = {'i', 'i'};
     SIZE a, b;
-    assert(font && font == font_cache_get_family(&g_fontCache, "monospace", -12));
+    assert(font && font == font_cache_get_fixed(&g_fontCache, "Lucida Console", -12));
     font_text_extent(font, wide, 2, 0, &a);
     font_text_extent(font, thin, 2, 0, &b);
     assert(a.cx == b.cx && a.cx > 0);
 }
 
-static void check_triangle(void)
+/* The plain text of the serial number: the selected face alone, measured as drawn. */
+static void check_plain(void)
 {
-    static const char *const expected[] = {
-        ".............#",
-        "............##",
-        "...........###",
-        "...........###",
-        "..........####",
-        ".........#####",
-        "........######",
-        ".........#####",
-        "..........####",
-        "...........###",
-        "...........###",
-        "............##",
-        ".............#",
-    };
-    struct DcBitmap *bitmap = canvas(20, 30);
-    POINT points[3] = {{8, 0x12}, {0xe, 0xa}, {0xe, 0x1a}};
-    POINT clipped[3] = {{-5, -5}, {40, 10}, {-5, 40}};
-    int x, y;
-    dc_bitmap_fill_triangle(bitmap, points, INK);
-    assert(bitmap->changed == 1);
+    struct DcBitmap *bitmap = canvas(200, 40);
+    struct TextDC dc;
+    SIZE plain, runs;
+    int x, y, inked = 0;
+    text_dc_construct(&dc, bitmap);
+    text_dc_select_font(&dc, 0, 12, 0, 0);
+    text_dc_text_extent_plain(&dc, "XX-XX", 5, &plain);
+    text_dc_text_extent(&dc, "XX-XX", 5, &runs);
+    assert(plain.cx == runs.cx && plain.cy == runs.cy && plain.cx > 0);
+    text_dc_set_text_color(&dc, INK);
+    text_dc_text_out_plain(&dc, 1, 1, "XX-XX", 5);
+    text_dc_text_out_plain(&dc, 1, 1, NULL, 5);
+    text_dc_destruct(&dc);
     for (y = 0; y < bitmap->height; ++y)
-        for (x = 0; x < bitmap->width; ++x) {
-            int row = y - 12, want = row >= 0 && row < 13 && x < 14 && expected[row][x] == '#';
-            assert((bitmap->bits[y * bitmap->width + x] == INK_PIXEL) == want);
-            assert(want || bitmap->bits[y * bitmap->width + x] == BACKGROUND);
-        }
-    dc_bitmap_fill_triangle(bitmap, clipped, INK);
-    assert(bitmap->bits[0] == INK_PIXEL && bitmap->bits[19] == BACKGROUND);
+        for (x = 0; x < bitmap->width; ++x)
+            inked += bitmap->bits[y * bitmap->width + x] == INK_PIXEL;
+    assert(inked > 10);
     dc_bitmap_destroy(bitmap);
-}
-
-static void print_match(const char *pattern_text)
-{
-    FcPattern *pattern = FcNameParse((const FcChar8 *)pattern_text), *match;
-    FcResult result;
-    FcChar8 *file = NULL;
-    FcConfigSubstitute(NULL, pattern, FcMatchPattern);
-    FcDefaultSubstitute(pattern);
-    match = FcFontMatch(NULL, pattern, &result);
-    if (match && FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch)
-        fprintf(stderr, "%s -> %s\n", pattern_text, (const char *)file);
-    if (match)
-        FcPatternDestroy(match);
-    FcPatternDestroy(pattern);
 }
 
 int main(void)
 {
-    print_match("Arial");
-    print_match("Gulim:lang=ko");
     fonts_init();
     check_latin();
     check_korean();
     check_opaque();
     check_runs();
     check_italic();
-    check_surface();
     check_override();
     check_monospace();
-    check_triangle();
+    check_plain();
     fonts_shutdown();
-    FcFini();
-    puts("FreeType text: extents, glyph placement, Korean, opaque cells, script runs, surfaces, overrides and triangles passed.");
+    puts("FreeType text on the system's fonts: extents, glyph placement, Korean, opaque cells, script runs, "
+         "overrides, the fixed-pitch font and plain text passed.");
     return 0;
 }

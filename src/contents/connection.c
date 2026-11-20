@@ -204,7 +204,7 @@ char connection_flush(struct Connection *self)
         if (ready == 0)
             break;
         sent = platform_socket_send(self->socket, channel, queue->data + queue->read_pos,
-                                    queue->write_pos - queue->read_pos);
+                                    byte_queue_size(queue));
         if (sent >= 0) {
             byte_queue_skip(queue, sent);
             continue;
@@ -334,7 +334,7 @@ void connection_set_hold_sends(struct Connection *self, char hold)
     self->hold_sends = hold;
     if (hold || byte_queue_size(&self->held) == 0)
         return;
-    while ((count = self->held.write_pos - self->held.read_pos) != 0) {
+    while ((count = byte_queue_size(&self->held)) != 0) {
         connection_queue_send(self, PLATFORM_CHANNEL_WORLD, count, self->held.data + self->held.read_pos);
         byte_queue_skip(&self->held, count);
         connection_flush(self);

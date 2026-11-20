@@ -9,7 +9,7 @@ struct GameMode;
    request sent (the server logs every request with its number and tick), the last move's and
    the last intent's, and the cell and state of the player's character. Shown when the
    environment has RAGEXE_NET_OVERVIEW set to anything but 0, so that a recording of the screen
-   carries it. Drawn after the scene, over everything. */
+   carries it. Drawn over everything else the frame holds, the mouse cursor included. */
 void game_mode_draw_net_overview(struct GameMode *self);
 
 #endif

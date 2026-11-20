@@ -108,10 +108,10 @@ static void ef_respawn(int aid, int type, int on)
         ef_spawn(aid, type);
 }
 
-static void ef_wave(const char *name, const struct GameActor *at, const struct GameActor *player)
+static void ef_wave(const char *name, const struct GameActor *player)
 {
     if (player)
-        sound_play_wave(name, at->pos.x - player->pos.x, 0.0f, at->pos.z - player->pos.z, 250, 40, 1.0f);
+        sound_play_wave(name, 1.0f);
 }
 
 static struct GameActor *ef_actor(struct GameActor *self, struct GameMode *mode)
@@ -224,7 +224,7 @@ static void ef_blind(struct GameActor *self, int level)
 
         if (!able_to_make_effect_is_effect_exist(self, id)) {
             ef_launch(self, 0x1e7);
-            sound_play_wave(blind_wave, 0.0f, -100.0f, 0.0f, 250, 40, 1.0f);
+            sound_play_wave(blind_wave, 1.0f);
         }
         for (other = 0x1db, n = 10; n != 0; other++, n--) {
             if (able_to_make_effect_is_effect_exist(self, other) == 1)
@@ -402,7 +402,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
     case 0x86: {
         struct GameActor *player = (struct GameActor *)game_current_player();
 
-        ef_wave("effect\\T_벽튕김.wav", self, player);
+        ef_wave("effect\\T_벽튕김.wav", player);
         ef_launch(self, 0x1aa);
         if (able_to_make_effect_is_effect_exist(self, 0x1ba))
             render_object_send(self, NULL, 0x6d, 0x1ba, 0, 0, 0);
@@ -531,7 +531,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
     case 0x1a6:
         ef_remove(self, 0x337);
         if (on) {
-            sound_play_wave(manhole_wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+            sound_play_wave(manhole_wave, 1.0f);
             if (!job_is_monster(game_actor_get_job(self)))
                 ef_launch(self, 0x337);
         }
@@ -777,7 +777,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
         if (!on)
             break;
         player = (struct GameActor *)game_current_player();
-        ef_wave(state == 0x41a ? "effect\\t_캐스팅.wav" : "effect\\t_바람방출.wav", self, player);
+        ef_wave(state == 0x41a ? "effect\\t_캐스팅.wav" : "effect\\t_바람방출.wav", player);
         break;
     }
 
@@ -786,7 +786,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
             if (effect_mgr_find_effect(g_effectMgr, self->aid, 0x552))
                 break;
             ef_spawn(self->aid, 0x552);
-            sound_play_wave("effect\\s포이즌버스터.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+            sound_play_wave("effect\\s포이즌버스터.wav", 1.0f);
         } else {
             ef_end(self->aid, 0x552);
         }

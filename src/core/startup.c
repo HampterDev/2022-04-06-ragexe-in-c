@@ -13,7 +13,6 @@
 #include "platform/language.h"
 #include "world/world_imports.h"
 #include "session/session_state.h"
-#include "ui/render/graphic_setting.h"
 #include "contents/sound.h"
 #include "platform/window.h"
 
@@ -41,16 +40,11 @@ void app_activate(int active)
     }
 }
 
+/* custom: the device takes the window's client size, windowed or fullscreen (app_create_window put
+   the window in its mode); it never changes the display's mode. */
 int app_init_3d(void)
 {
-    struct SurfaceDesc mode;
-    int flags = g_fullscreenMode ? 7 : 6;
-
-    mode.refreshRate = 0;
-    mode.width = g_displayWidth;
-    mode.height = g_displayHeight;
-    mode.bitCount = g_bitsPerPixel;
-    if (c3d_device_init(&g_3dDevice, g_hMainWnd, &g_driverGuid, &g_deviceGuid, &mode, flags) < 0) {
+    if (c3d_device_init(&g_3dDevice, g_hMainWnd) < 0) {
         error_msg("Cannot init d3d OR grf file has problem.", 0);
         return 0;
     }

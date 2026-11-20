@@ -111,7 +111,6 @@ static void render_layer(struct Ez2StrParticle *self, struct StrLayer *layer, co
         color = (color << 8) + (unsigned char)(int)s->color[0];
         color = (color << 8) + (unsigned char)(int)s->color[1];
         color = (color << 8) + (unsigned char)(int)s->color[2];
-        q[i].specular = 0xffffffff;
         q[i].z = 3.102121991105378e-05f;
         q[i].diffuse = color;
         q[i].rhw = rhw - depth;

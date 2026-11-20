@@ -28,6 +28,12 @@ int64_t platform_perf_frequency(void)
     return frequency.QuadPart;
 }
 
+int64_t platform_stopwatch_ns(void)
+{
+    int64_t counter = platform_perf_counter(), frequency = platform_perf_frequency();
+    return counter / frequency * 1000000000 + counter % frequency * 1000000000 / frequency;
+}
+
 unsigned platform_timer_period_begin(void)
 {
     TIMECAPS caps;

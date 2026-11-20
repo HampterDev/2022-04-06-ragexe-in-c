@@ -302,7 +302,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
     case 0x21: say(text, 0x28c); break;
     case 0xb6:
         if (own)
-            sound_play_wave("lava_golem_move.wav", 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+            sound_play_wave("lava_golem_move.wav", 1.0f);
         no_line(text);
         break;
     case 0xf1: case 0x10f: say(text, 0x4cf); break;
@@ -451,8 +451,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
         break;
     case 0x465:
         spawn(aid, 0x552);
-        sound_play_wave("effect\\s포이즌버스터.wav", 0.0f, 0.0f,
-                        0.0f, 0xfa, 0x28, 1.0f);
+        sound_play_wave("effect\\s포이즌버스터.wav", 1.0f);
         break;
     default:
         if (change_begins_without_line(index))

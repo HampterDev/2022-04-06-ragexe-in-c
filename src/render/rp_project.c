@@ -89,8 +89,6 @@ float sprite_ground_squash(const float *up, const float *pos)
 
 void renderer_world_view(const struct Renderer *self, const float *view, struct GfxWorldView *out)
 {
-    float range = g_fogFar - g_fogNear;
-
     memcpy(out->view, view, sizeof out->view);
     out->proj[0] = self->proj[0];
     out->proj[1] = self->proj[1];
@@ -98,247 +96,47 @@ void renderer_world_view(const struct Renderer *self, const float *view, struct 
     out->centre[1] = (float)self->centreY;
     out->nearZ = RENDER_NEAR_Z;
     out->depthScale = RENDER_DEPTH_SCALE;
-    /* rp_vertex_fog_alpha: 1 - ((vz - 10) / 1490 - near) / (far - near), or without the second
-       step when far equals near */
-    if (range != 0.0f) {
-        out->fogStart = g_fogNear * 1490.0f + 10.0f;
-        out->fogEnd = g_fogFar * 1490.0f + 10.0f;
-    } else {
-        out->fogStart = 10.0f;
-        out->fogEnd = 1500.0f;
-    }
 }
 
-/* custom: the cascades of the models' shadow maps (render/gfx.h). The models that receive shadow
-   lie in a band from SHADOW_ABOVE units above the camera's focus to SHADOW_BELOW below it (+y is
-   down), so the view is cut into GFX_SHADOW_CASCADES slices of view depth between where its four
-   corner rays enter and leave that band, no further than four times the camera's distance and the
-   view's far plane (a cap of 8,000 left the band out of reach, and the frame without shadows,
-   when the camera looked down steeply from beyond about 8,000). The slices grow with the depth
-   (SHADOW_SPLIT between even and geometric steps). Each cascade's map
-   covers its slice's part of the band as the light sees it: the light map is orthographic, so a
-   caster that shades something in the slice lands on the same place of the map, however far off
-   screen it stands; SHADOW_DEPTH either way along the light is kept. A cascade's square is rounded
-   up and its centre kept to whole texels so that its texels stay put while the camera moves and
-   shadow edges do not crawl. */
-#define SHADOW_ABOVE 300.0f
-#define SHADOW_BELOW 60.0f
-#define SHADOW_DEPTH 3000.0f
-#define SHADOW_SPLIT 0.7f
-/* a pixel stays lit up to SHADOW_BIAS units behind the nearest caster, and is looked up from a
-   point moved SHADOW_OFFSET texels off its surface towards the light (times the sine of the angle
-   between them), which keeps a surface at a slant to the light from shadowing itself. Models lay
-   decorations a unit or two over their surfaces (Prontera's flower beds put the flowers over the
-   grass); at 1 unit those shaded the surface under them. Where a model lies that close over the
-   ground, the ground keeps its baked shadow instead (render/gfx.h): Prontera's flower beds lay
-   their grass 0.3 units and their flowers 0.2 to 2.4 units over the plaza, which the editor baked
-   in shadow, and the shadow maps lit the plaza between the flowers, in bands where the
-   comparison changed from texel to texel. The bias grows by a texel's width times the tangent of
-   the surface's slant to the light, what the depth of one texel spans over it. */
-#define SHADOW_BIAS 4.0f
-#define SHADOW_OFFSET 1.5f
-/* shadow edges fade over twice SHADOW_SOFTNESS units, about as far as the one coarse shadow map
-   first drawn here blurred them (0.8 units a texel at the default zoom); at 1.5 the edges spread
-   over three units and the shadows of thin casters, such as a lamp post's, faded away */
-#define SHADOW_SOFTNESS 0.5f
-
-static int invert_4x3(const float *m, float *out)
+/* custom: the frame's shadows (render/gfx.h): the constants the device fits the cascades to the
+   frame's receivers with (render/shadow_fit.h), from the camera's view and the map's light; and
+   where a caster can shade the view (renderer_shadow_reach). None without lightmaps (the shadow
+   maps take the place of the lightmaps' shadows, and without them the original's ground has none),
+   where the map's shadows take nothing away (its editor baked none), where the device draws no
+   shadows, or where nothing can be fitted. The box everything that receives and casts lies in
+   comes later in the frame (renderer_shadow_bounds), once the static world has posed its models. */
+void renderer_shadow_frame(struct Renderer *self, const float *view, float distance)
 {
-    float det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6])
-                + m[2] * (m[3] * m[7] - m[4] * m[6]);
-    float inv;
+    struct ShadowFitCamera camera;
     int i;
 
-    if (!(det > 1e-12f || det < -1e-12f))
-        return 0;
-    inv = 1.0f / det;
-    out[0] = (m[4] * m[8] - m[5] * m[7]) * inv;
-    out[1] = (m[2] * m[7] - m[1] * m[8]) * inv;
-    out[2] = (m[1] * m[5] - m[2] * m[4]) * inv;
-    out[3] = (m[5] * m[6] - m[3] * m[8]) * inv;
-    out[4] = (m[0] * m[8] - m[2] * m[6]) * inv;
-    out[5] = (m[2] * m[3] - m[0] * m[5]) * inv;
-    out[6] = (m[3] * m[7] - m[4] * m[6]) * inv;
-    out[7] = (m[1] * m[6] - m[0] * m[7]) * inv;
-    out[8] = (m[0] * m[4] - m[1] * m[3]) * inv;
+    self->shadowSet = 0;
+    if (!g_lightmap || !self->lightSet || !(self->shadowDarkness < 1.0f) || !gfx_shadows_supported())
+        return;
+    memcpy(camera.view, view, sizeof camera.view);
+    camera.proj[0] = self->proj[0];
+    camera.proj[1] = self->proj[1];
+    camera.centre[0] = (float)self->centreX;
+    camera.centre[1] = (float)self->centreY;
+    camera.width = self->width;
+    camera.height = self->height;
+    camera.nearZ = RENDER_NEAR_Z;
+    camera.farZ = RENDER_FAR_Z;
+    camera.distance = distance;
+    if (!shadow_fit_frame(&self->shadow.fit, &camera, self->lightDir))
+        return;
+    shadow_fit_reach(&self->shadowReach, &self->shadow.fit);
+    self->shadow.darkness = self->shadowDarkness;
     for (i = 0; i < 3; i++)
-        out[9 + i] = -(m[9] * out[i] + m[10] * out[3 + i] + m[11] * out[6 + i]);
-    return 1;
+        self->shadow.ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f
+                                                                                                  : self->lightAmbient[i];
+    self->shadowSet = 1;
 }
 
-static float dot3(const float *a, const float *b)
+void renderer_shadow_bounds(struct Renderer *self, const struct ShadowFitBox *bounds)
 {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance)
-{
-    struct GfxShadow *shadow = &self->shadow;
-    float inv[12], f[3], up[3] = {0, 0, 0}, r[3], u[3], eye[3], ray[4][3], enter[4], leave[4];
-    float top = focus[1] - SHADOW_ABOVE, bottom = focus[1] + SHADOW_BELOW, len, nearest, farthest, maxDepth;
-    float split[GFX_SHADOW_CASCADES + 1];
-    int i, j, k, c, any = 0;
-
-    self->shadowPending = 0;
-    /* the shadow maps take the place of the lightmaps' shadows: without lightmaps the ground has
-       none, as in the original, and nothing casts */
-    if (!g_lightmap || !self->lightSet || !(self->shadowDarkness < 1.0f) || !gfx_shadows_supported()
-        || !invert_4x3(view, inv))
-        return;
-    len = sqrtf(dot3(self->lightDir, self->lightDir));
-    if (!(len > 0.0f))
-        return;
-    /* the map's light vector points the way the light travels: Prontera's is (0.5, 0.707, 0.5),
-       down (+y) onto the map; taken the other way, the shadow map looked up from under it. The
-       shadows then fall where the map's editor baked them into the lightmaps: on the ground of
-       yuno_fild01's south gate and two Prontera scenes, the baked and the drawn shadows overlap
-       0.49, 0.72 and 0.37 (shared over either), against 0.09 to 0.35 with x, z or both mirrored. */
-    for (i = 0; i < 3; i++)
-        f[i] = self->lightDir[i] / len;
-    k = fabsf(f[0]) <= fabsf(f[1]) ? (fabsf(f[0]) <= fabsf(f[2]) ? 0 : 2) : (fabsf(f[1]) <= fabsf(f[2]) ? 1 : 2);
-    up[k] = 1.0f;
-    r[0] = up[1] * f[2] - up[2] * f[1];
-    r[1] = up[2] * f[0] - up[0] * f[2];
-    r[2] = up[0] * f[1] - up[1] * f[0];
-    len = sqrtf(dot3(r, r));
-    for (i = 0; i < 3; i++)
-        r[i] /= len;
-    u[0] = f[1] * r[2] - f[2] * r[1];
-    u[1] = f[2] * r[0] - f[0] * r[2];
-    u[2] = f[0] * r[1] - f[1] * r[0];
-
-    /* the view's four corner rays in the world, per unit of view depth, and where they cross the band */
-    maxDepth = distance * 4.0f + 400.0f;
-    maxDepth = maxDepth < RENDER_FAR_Z ? maxDepth : RENDER_FAR_Z;
-    for (i = 0; i < 3; i++)
-        eye[i] = inv[9 + i];
-    nearest = maxDepth;
-    farthest = RENDER_NEAR_Z;
-    for (k = 0; k < 4; k++) {
-        float dx = ((k & 1 ? (float)self->width : 0.0f) - (float)self->centreX) / self->proj[0];
-        float dy = ((k & 2 ? (float)self->height : 0.0f) - (float)self->centreY) / self->proj[1];
-
-        for (i = 0; i < 3; i++)
-            ray[k][i] = dx * inv[i] + dy * inv[3 + i] + inv[6 + i];
-        enter[k] = RENDER_NEAR_Z;
-        leave[k] = maxDepth;
-        if (ray[k][1] != 0.0f) {
-            float a = (top - eye[1]) / ray[k][1], b = (bottom - eye[1]) / ray[k][1];
-            if ((a < b ? a : b) > enter[k])
-                enter[k] = a < b ? a : b;
-            if ((a > b ? a : b) < leave[k])
-                leave[k] = a > b ? a : b;
-        } else if (eye[1] < top || eye[1] > bottom) {
-            leave[k] = enter[k];
-        }
-        if (enter[k] < leave[k]) {
-            nearest = enter[k] < nearest ? enter[k] : nearest;
-            farthest = leave[k] > farthest ? leave[k] : farthest;
-            any = 1;
-        }
-    }
-    if (!any)
-        return;
-    for (c = 0; c <= GFX_SHADOW_CASCADES; c++) {
-        float t = (float)c / GFX_SHADOW_CASCADES;
-        split[c] = SHADOW_SPLIT * nearest * powf(farthest / nearest, t) + (1.0f - SHADOW_SPLIT) * (nearest + (farthest - nearest) * t);
-    }
-    split[0] = nearest;
-    split[GFX_SHADOW_CASCADES] = farthest;
-
-    shadow->cascades = GFX_SHADOW_CASCADES;
-    for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
-        float lo[2] = {1e30f, 1e30f}, hi[2] = {-1e30f, -1e30f}, centre[2], radius = 0.0f, texel, depth, w[4][4];
-        int points = 0;
-
-        /* the slice's part of each corner ray inside the band, or the whole slice where none is */
-        for (j = 0; j < 2; j++)
-            for (k = 0; k < 4; k++) {
-                float a = split[c] > enter[k] ? split[c] : enter[k];
-                float b = split[c + 1] < leave[k] ? split[c + 1] : leave[k];
-                float t = j ? b : a, p[3], x, y;
-
-                if (a > b)
-                    continue;
-                for (i = 0; i < 3; i++)
-                    p[i] = eye[i] + ray[k][i] * t;
-                x = dot3(p, r);
-                y = dot3(p, u);
-                lo[0] = x < lo[0] ? x : lo[0];
-                hi[0] = x > hi[0] ? x : hi[0];
-                lo[1] = y < lo[1] ? y : lo[1];
-                hi[1] = y > hi[1] ? y : hi[1];
-                points++;
-            }
-        if (!points)
-            for (j = 0; j < 2; j++)
-                for (k = 0; k < 4; k++) {
-                    float p[3], x, y;
-                    for (i = 0; i < 3; i++)
-                        p[i] = eye[i] + ray[k][i] * split[c + j];
-                    x = dot3(p, r);
-                    y = dot3(p, u);
-                    lo[0] = x < lo[0] ? x : lo[0];
-                    hi[0] = x > hi[0] ? x : hi[0];
-                    lo[1] = y < lo[1] ? y : lo[1];
-                    hi[1] = y > hi[1] ? y : hi[1];
-                }
-        centre[0] = (lo[0] + hi[0]) * 0.5f;
-        centre[1] = (lo[1] + hi[1]) * 0.5f;
-        radius = (hi[0] - lo[0] > hi[1] - lo[1] ? hi[0] - lo[0] : hi[1] - lo[1]) * 0.5f;
-        /* a margin for the soft edge and the offset, then up to a multiple of 8 units */
-        radius = ceilf((radius * 1.05f + 4.0f + SHADOW_SOFTNESS) / 8.0f) * 8.0f;
-        texel = 2.0f * radius / GFX_SHADOW_SIZE;
-        centre[0] = floorf(centre[0] / texel + 0.5f) * texel;
-        centre[1] = floorf(centre[1] / texel + 0.5f) * texel;
-        depth = dot3(focus, f);
-        for (i = 0; i < 2; i++) {
-            self->shadowReach.lo[c][i] = centre[i] - radius;
-            self->shadowReach.hi[c][i] = centre[i] + radius;
-        }
-        self->shadowReach.depth[0] = depth - SHADOW_DEPTH;
-        self->shadowReach.depth[1] = depth + SHADOW_DEPTH;
-        for (i = 0; i < 3; i++) {
-            w[i][0] = r[i] / radius;
-            w[i][1] = u[i] / radius;
-            w[i][2] = f[i] / (2.0f * SHADOW_DEPTH);
-            w[i][3] = 0.0f;
-        }
-        w[3][0] = -centre[0] / radius;
-        w[3][1] = -centre[1] / radius;
-        w[3][2] = 0.5f - depth / (2.0f * SHADOW_DEPTH);
-        w[3][3] = 1.0f;
-        /* view to world (the inverse view, a 4x4 with the last column 0 0 0 1), then to light */
-        for (i = 0; i < 4; i++)
-            for (j = 0; j < 4; j++) {
-                float sum = i == 3 ? w[3][j] : 0.0f;
-                for (k = 0; k < 3; k++)
-                    sum += inv[i * 3 + k] * w[k][j];
-                shadow->fromView[c][i * 4 + j] = sum;
-            }
-        shadow->farDepth[c] = split[c + 1];
-        shadow->offset[c] = SHADOW_OFFSET * texel;
-        shadow->slant[c] = (SHADOW_SOFTNESS + texel) / (2.0f * SHADOW_DEPTH);
-        shadow->blur[c] = SHADOW_SOFTNESS / (2.0f * radius);
-    }
-    for (i = 0; i < 3; i++) {
-        self->shadowReach.axis[0][i] = r[i];
-        self->shadowReach.axis[1][i] = u[i];
-        self->shadowReach.axis[2][i] = f[i];
-    }
-    /* towards the light in view space */
-    for (i = 0; i < 3; i++)
-        shadow->lightView[i] = -(f[0] * view[i] + f[1] * view[3 + i] + f[2] * view[6 + i]);
-    len = sqrtf(dot3(shadow->lightView, shadow->lightView));
-    if (len > 0.0f)
-        for (i = 0; i < 3; i++)
-            shadow->lightView[i] /= len;
-    shadow->bias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
-    shadow->darkness = self->shadowDarkness;
-    for (i = 0; i < 3; i++)
-        shadow->ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f
-                                                                                             : self->lightAmbient[i];
-    self->shadowPending = 1;
+    if (self->shadowSet && !shadow_fit_bounds(&self->shadow.fit, bounds, 1))
+        self->shadowSet = 0;
 }
 
 void renderer_set_camera(struct Renderer *self, const float *view)
@@ -347,37 +145,21 @@ void renderer_set_camera(struct Renderer *self, const float *view)
     self->cameraSet = 1;
 }
 
-int renderer_world_quads(const struct Renderer *self, const float *view)
+int renderer_shadow_reach(const struct Renderer *self, struct SwFrustum *out)
 {
-    return self->cameraSet && !memcmp(self->cameraView, view, sizeof self->cameraView);
-}
+    struct SwCascade reach;
 
-/* the box's extent along each of the light's axes against a cascade's square and the depth kept:
-   a caster casts into a cascade wherever it lies along the light, the map being orthographic */
-int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3])
-{
-    static const float world[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    const struct ShadowReach *reach = &self->shadowReach;
-    float mid[3], ext[3];
-    int a, b, c;
-
-    if (!self->shadowPending)
+    if (!self->shadowSet)
         return 0;
-    if (!axes)
-        axes = world;
-    for (a = 0; a < 3; a++) {
-        mid[a] = dot3(centre, reach->axis[a]);
-        ext[a] = 0.0f;
-        for (b = 0; b < 3; b++)
-            ext[a] += half[b] * fabsf(dot3(axes[b], reach->axis[a]));
-    }
-    if (mid[2] + ext[2] < reach->depth[0] || mid[2] - ext[2] > reach->depth[1])
-        return 0;
-    for (c = 0; c < self->shadow.cascades; c++)
-        if (mid[0] + ext[0] >= reach->lo[c][0] && mid[0] - ext[0] <= reach->hi[c][0]
-            && mid[1] + ext[1] >= reach->lo[c][1] && mid[1] - ext[1] <= reach->hi[c][1])
-            return 1;
-    return 0;
+    memcpy(reach.axis, self->shadow.fit.axis, sizeof reach.axis);
+    memcpy(reach.lo, self->shadowReach.lo, sizeof reach.lo);
+    memcpy(reach.hi, self->shadowReach.hi, sizeof reach.hi);
+    /* a caster shades what lies beyond it along the light, so none beyond the view's farthest
+       point along it shades the view; before it, the box everything casts from ends the maps */
+    reach.depth[0] = -HUGE_VALF;
+    reach.depth[1] = self->shadowReach.farthest;
+    sw_cascade_planes(&reach, out);
+    return 1;
 }
 
 float renderer_project_depth(float rhw)
@@ -385,9 +167,14 @@ float renderer_project_depth(float rhw)
     return (1.0f / rhw - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * rhw;
 }
 
+static float view_z(const Vec3 *v, const float *m)
+{
+    return m[2] * v->x + m[5] * v->y + m[8] * v->z + m[11];
+}
+
 static float depth_rhw(const Vec3 *v, const float *m)
 {
-    return 1.0f / (m[2] * v->x + m[5] * v->y + m[8] * v->z + m[11]);
+    return 1.0f / view_z(v, m);
 }
 
 static float view_x(const Vec3 *v, const float *m)
@@ -449,14 +236,16 @@ void renderer_project_vertex(struct Renderer *self, const Vec3 *v, const float *
     out->y = point.y;
 }
 
-void renderer_project_multitex_vertex(struct Renderer *self, const Vec3 *v,
-                                      const float *m, struct RPTwoTexVertex *out)
+float renderer_project_rhw(const Vec3 *v, const float *m)
 {
-    struct ScreenPoint point = project_vertex(self, v, m);
-    out->rhw = point.rhw;
-    out->x = point.x;
-    out->z = point.z;
-    out->y = point.y;
+    return depth_rhw(v, m);
+}
+
+void renderer_project_view(const Vec3 *v, const float *m, float *out)
+{
+    out[0] = view_x(v, m);
+    out[1] = view_y(v, m);
+    out[2] = view_z(v, m);
 }
 
 void renderer_cursor_ray(struct Renderer *self, int x, int y, const Vec3 *eye, const float *m,

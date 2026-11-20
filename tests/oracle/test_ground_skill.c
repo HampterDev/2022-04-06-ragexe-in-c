@@ -96,8 +96,8 @@ unsigned long long game_mode_launch_dummy_effect(struct GameMode *mode, const Ve
 { (void)mode; (void)at; (void)value; event("dummy %x for %d", effect_id, frames); return 0; }
 struct Effect *effect_mgr_spawn(struct EffectMgr *self, int aid, int type, Vec3 pos, int target_aid, int level, unsigned char reuse, int instance_key)
 { (void)self; (void)aid; (void)pos; (void)target_aid; (void)reuse; (void)instance_key; event("spawn %x level %d", type, level); return NULL; }
-void sound_play_wave(const char *name, float x, float y, float z, int max_distance, int full_distance, float volume)
-{ (void)x; (void)y; (void)z; (void)max_distance; (void)full_distance; (void)volume; event("wave %s", name); }
+void sound_play_wave(const char *name, float volume)
+{ (void)volume; event("wave %s", name); }
 struct RagEffect *game_actor_launch_effect(struct GameActor *self, int effect_id, Vec3 offset, float rotation)
 { (void)self; (void)offset; (void)rotation; event("launch %x", effect_id); return NULL; }
 void render_object_play_motion_range(struct RenderObject *self, unsigned char action, unsigned char motion, unsigned char last,

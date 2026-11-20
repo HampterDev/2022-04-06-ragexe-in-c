@@ -55,6 +55,9 @@ static HINSTANCE test_open_url(HWND window, const char *operation, const char *f
 #define malloc checked_malloc
 #include "platform/win_utf8.h"
 #define win_utf8_shell_execute test_open_url
+/* The shell's messages belong to the client's window: the HWND of its SDL window. */
+#define SDL_GetWindowProperties test_window_properties
+#define SDL_GetPointerProperty test_pointer_property
 #include "../src/ui/controls/url_link.c"
 #include "../src/platform/desktop_win32.c"
 #include "../src/ui/quests/tag_text_viewer.c"
@@ -63,6 +66,8 @@ static struct String *reference_button_get_line(struct UITextButton *link, struc
 #include "tag_text_viewer_reference.c"
 #endif
 #undef win_utf8_shell_execute
+#undef SDL_GetWindowProperties
+#undef SDL_GetPointerProperty
 #undef free
 #undef malloc
 #undef realloc
@@ -186,12 +191,25 @@ struct CreateLineInfo *create_line_info_construct(struct CreateLineInfo *out,
 void create_line_info_destruct(struct CreateLineInfo *out)
 { checked_free(out->windows); memset(out, 0, sizeof *out); }
 
-HWND g_hMainWnd;
+#define TEST_MAIN_WINDOW ((PlatformWindow)(uintptr_t)0x5678)
+#define TEST_HWND ((HWND)(uintptr_t)0x1234)
+PlatformWindow g_hMainWnd = TEST_MAIN_WINDOW;
+SDL_PropertiesID test_window_properties(SDL_Window *window)
+{
+    assert(window == TEST_MAIN_WINDOW);
+    return 7;
+}
+void *test_pointer_property(SDL_PropertiesID properties, const char *name, void *fallback)
+{
+    (void)fallback;
+    assert(properties == 7 && !strcmp(name, SDL_PROP_WINDOW_WIN32_HWND_POINTER));
+    return TEST_HWND;
+}
 struct NaviManager g_navi;
 static HINSTANCE test_open_url(HWND window, const char *operation, const char *file,
                                const char *parameters, const char *directory, int show)
 {
-    assert(window == g_hMainWnd && !strcmp(operation, "open") && !parameters && !directory && show == SW_SHOWNORMAL);
+    assert(window == TEST_HWND && !strcmp(operation, "open") && !parameters && !directory && show == SW_SHOWNORMAL);
     string_assign_cstr(&action_text, file); record(EV_ACTION, 0x1ad, 0, 0, 0);
     return (HINSTANCE)33;
 }

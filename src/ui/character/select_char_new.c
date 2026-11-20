@@ -1030,7 +1030,7 @@ static void on_start(struct UINewSelectCharWnd *self)
         self->busy = 0;
         return;
     }
-    sound_play_wave(SOUND_BUTTON, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+    sound_play_wave(SOUND_BUTTON, 1.0f);
     mode_send_message(client_current_mode(), MODE_MSG_UI_COMMAND, LOGIN_CMD_START, 0, 0, 0);
     if (self->start_button) {
         ui_bitmap_button_set_bitmap(&self->start_button->bmp, SELECT_DIR "bt_gameStart_on.bmp", 0, 0);

@@ -47,7 +47,7 @@ void game_mode_on_item_fall_entry5(struct GameMode *self, const struct PacketIte
     if (item == 0) {
         item = item_create();
         if (!item) return;
-        list_push_back(&self->world->gameObjects, &item, sizeof item);
+        world_add_object(self->world, item);
         list_push_back(&self->world->items, &item, sizeof item);
     }
     item_place(item, self, &info);

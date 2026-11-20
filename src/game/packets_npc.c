@@ -565,22 +565,15 @@ SIZE_ASSERT(PACKET_ZC_SOUND, 0x23);
 void game_mode_zc_sound(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_SOUND *packet = (const struct PACKET_ZC_SOUND *)pkt;
-    const char *name = packet->name;
+    char name[sizeof packet->name + 1];
     unsigned char action = packet->action;
     DWORD interval = packet->interval;
     unsigned npc_aid = packet->npc_aid;
 
+    memcpy(name, packet->name, sizeof packet->name);
+    name[sizeof packet->name] = 0;
     if (action == SOUND_ONCE) {
-        struct GameActor *npc = world_get_game_actor_by_aid(self->world, npc_aid);
-
-        if (npc) {
-            struct Player *player = self->world->player;
-
-            sound_play_wave(name, player->pos.x - npc->pos.x, 0.0f, player->pos.z - npc->pos.z,
-                     0xfa, 0x28, 1.0f);
-        } else {
-            sound_play_wave(name, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
-        }
+        sound_play_wave(name, 1.0f);
     } else if (action == SOUND_REPEAT) {
         struct LoopSound sound, copy;
 
@@ -594,7 +587,7 @@ void game_mode_zc_sound(struct GameMode *self, const unsigned char *pkt)
         copy.interval = sound.interval;
         copy.next_tick = sound.next_tick;
         vec_push(&self->loop_sounds, &copy, sizeof copy);
-        sound_play_wave(name, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+        sound_play_wave(name, 1.0f);
         string_free(&sound.name);
     } else if (action == SOUND_STOP) {
         struct LoopSound *sound = (struct LoopSound *)self->loop_sounds.first;

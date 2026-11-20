@@ -47,8 +47,8 @@ def load(root, symbols, communal=False):
         for s, kind in obj.defs.items():
             if kind == 'communal' and not communal:
                 continue
-            d['defs'][objsyms.plain(s)] = kind
-        d['refs'] |= {objsyms.plain(s) for s in obj.refs}
+            d['defs'][s] = kind
+        d['refs'] |= obj.refs
     return files
 
 

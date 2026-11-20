@@ -43,10 +43,10 @@ unsigned char rag_process_800(struct RagEffect *self)
     case 807:
         if (self->frame == 0) {
             rag_follow_master(self);
-            rag_play_wave_here(self, "effect\\EF_Bash.wav");
+            effect_play_wave("effect\\EF_Bash.wav");
         }
         if (self->frame == 35)
-            rag_play_wave_here(self, "effect\\rog_intimidate.wav");
+            effect_play_wave("effect\\rog_intimidate.wav");
         for (i = 0; i < 20; i++)
             rag_intimidate(self, 3);
         break;
@@ -58,7 +58,7 @@ unsigned char rag_process_800(struct RagEffect *self)
         rag_cloaking_fade(self); break;
     case 810:
         if (self->frame == 25)
-            rag_play_wave_here(self, "effect\\triangle.wav");
+            effect_play_wave("effect\\triangle.wav");
         for (i = 0; i < 10; i++)
             rag_intimidate(self, 4);
         break;
@@ -688,7 +688,7 @@ unsigned char rag_process_800(struct RagEffect *self)
     case 1418:
         rag_follow_master(self);
         if (self->frame == 0) {
-            rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+            effect_play_wave("effect\\EF_BeginSpell.wav");
             rag_casting_circle(self, 45, "effect\\new_comet\\new_comet_cast_ring\\ring_rainbow.tga", 20);
         }
         break;

@@ -10,7 +10,9 @@ REM Both fail on a use the table does not allow and on an exception that matches
 REM It also runs tools\check_body_copy.py and tools\check_delivery_copy.py: the body core under
 REM src\body and the delivery piece under src\delivery are the server's; and
 REM tools\check_one_world.py: only src\world\predicted.c runs a world of the body core.
-REM tests\build.bat runs this; build.bat check runs it on the objects of the variant it built.
+REM build.bat check runs it on the objects of the variant it built. The test suite runs the include
+REM check and the other three as its tests library_includes, body_copy, delivery_copy and one_world
+REM (tests\CMakeLists.txt).
 setlocal
 for %%i in ("%~dp0..") do set "ROOT=%%~fi"
 python "%ROOT%\tools\depmap\check_includes.py" --strict

@@ -1,6 +1,5 @@
-#include "platform/win_types.h"
-#ifndef PLATFORM_RAD_DLLS
 #include "resources/granny_sdk.h"
+#include "render/skin_layout.h"
 #include "fileio/file_api.h"
 #include "platform/clock.h"
 #include "platform/system.h"
@@ -114,19 +113,13 @@ struct granny_model_instance {
     granny_control *controls;
 };
 
+/* a rigid mesh's binding to the skeleton: the bone it lies on */
 struct granny_mesh_binding {
-    int count;
-    int bones[];
+    int bone;
 };
 
-struct granny_mesh_deformer {
-    int deformation;
-};
-
-static const int g_vertexTypeTag, g_pixelLayoutTag, g_sourceVertexTag;
+static const int g_pixelLayoutTag;
 const granny_pixel_layout *GrannyRGBA8888PixelFormat = (const granny_pixel_layout *)&g_pixelLayoutTag;
-const granny_data_type_definition *GrannyPNT332VertexType = (const granny_data_type_definition *)&g_vertexTypeTag;
-static struct granny_mesh_deformer g_deformer;
 
 /* ---- the clock ---- */
 
@@ -385,8 +378,10 @@ static int load_mesh(struct GltfMesh *out, cgltf_mesh *mesh, cgltf_data *g, stru
             cgltf_accessor_read_float(weights, i, v->w, 4);
         else
             v->w[0] = 1.0f;
+        /* a joint the skeleton does not have is bone 0; compared unsigned, so that one past
+           INT_MAX does not turn negative */
         for (k = 0; k < 4; k++)
-            v->j[k] = (int)j[k] < f->skeleton.BoneCount ? (int)j[k] : 0;
+            v->j[k] = f->skeleton.BoneCount > 0 && j[k] < (cgltf_uint)f->skeleton.BoneCount ? (int)j[k] : 0;
     }
     out->rigid_bone = out->vertex_count ? out->verts[0].j[0] : 0;
     for (i = 0; i < mesh->primitives_count; i++) {
@@ -574,12 +569,6 @@ granny_file_info *_GrannyGetFileInfo(granny_file *file)
     return file ? &file->info : NULL;
 }
 
-void _GrannyFreeFileSection(granny_file *file, int section)
-{
-    (void)file;
-    (void)section;
-}
-
 void _GrannyFreeFile(granny_file *file)
 {
     if (!file)
@@ -725,18 +714,6 @@ float _GrannyGetControlDurationLeft(granny_control *control)
         return LOOP_FOREVER_LEFT;
     left = control->start + control->animation->duration * (float)control->loops - control->instance->clock;
     return left > 0.0f ? left : 0.0f;
-}
-
-void _GrannyFreeCompletedModelControls(granny_model_instance *instance)
-{
-    granny_control *control, *next;
-    if (!instance)
-        return;
-    for (control = instance->controls; control; control = next) {
-        next = control->next;
-        if (control->loops > 0 && !(_GrannyGetControlDurationLeft(control) > 0.0f))
-            _GrannyFreeControl(control);
-    }
 }
 
 void _GrannySetModelClock(granny_model_instance *instance, float t)
@@ -931,11 +908,6 @@ float *_GrannyGetWorldPoseComposite4x4Array(granny_world_pose *worldPose)
     return worldPose ? worldPose->composite : NULL;
 }
 
-float *_GrannyGetWorldPoseComposite4x4(granny_world_pose *worldPose, int bone)
-{
-    return worldPose && bone >= 0 && bone < worldPose->bones ? worldPose->composite + bone * 16 : NULL;
-}
-
 /* ---- meshes ---- */
 
 static struct GltfMesh *gltf_mesh(granny_mesh *mesh)
@@ -943,20 +915,20 @@ static struct GltfMesh *gltf_mesh(granny_mesh *mesh)
     return (struct GltfMesh *)mesh;
 }
 
+/* The client binds rigid meshes alone (resources/granny_res.c), to read the bone each lies on; a
+   skinned mesh's vertices name their bones themselves (_GrannyCopyMeshSkinVertices) and have no
+   binding here. */
 granny_mesh_binding *_GrannyNewMeshBinding(granny_mesh *mesh, granny_skeleton *from, granny_skeleton *to)
 {
     struct GltfMesh *m = gltf_mesh(mesh);
-    int count = m->rigid ? 1 : to->BoneCount, i;
-    granny_mesh_binding *binding = calloc(1, sizeof *binding + sizeof binding->bones[0] * (size_t)(count + 1));
+    granny_mesh_binding *binding;
     (void)from;
-    if (!binding)
+    (void)to;
+    if (!m || !m->rigid)
         return NULL;
-    binding->count = count;
-    if (m->rigid)
-        binding->bones[0] = m->rigid_bone;
-    else
-        for (i = 0; i < count; i++)
-            binding->bones[i] = i;
+    binding = malloc(sizeof *binding);
+    if (binding)
+        binding->bone = m->rigid_bone;
     return binding;
 }
 
@@ -967,7 +939,7 @@ void _GrannyFreeMeshBinding(granny_mesh_binding *binding)
 
 int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *binding)
 {
-    return binding ? binding->bones : NULL;
+    return binding ? &binding->bone : NULL;
 }
 
 int _GrannyGetMeshIndexCount(granny_mesh *mesh)
@@ -997,87 +969,23 @@ BYTE _GrannyMeshIsRigid(granny_mesh *mesh)
     return mesh && gltf_mesh(mesh)->rigid;
 }
 
-void _GrannyCopyMeshVertices(granny_mesh *mesh, const granny_data_type_definition *type, void *out)
+void _GrannyCopyMeshSkinVertices(granny_mesh *mesh, int first, int count, struct SkinSource *out)
 {
     struct GltfMesh *m = gltf_mesh(mesh);
-    float *o = out;
     int i;
-    (void)type;
-    for (i = 0; i < m->vertex_count; i++, o += 8) {
-        memcpy(o, m->verts[i].p, sizeof(float) * 3);
-        memcpy(o + 3, m->verts[i].n, sizeof(float) * 3);
-        memcpy(o + 6, m->verts[i].uv, sizeof(float) * 2);
+    for (i = first < 0 ? 0 : first; i < m->vertex_count && i - first < count; i++, out++) {
+        const struct GltfVertex *v = &m->verts[i];
+        memcpy(out->position, v->p, sizeof out->position);
+        memcpy(out->normal, v->n, sizeof out->normal);
+        memcpy(out->uv, v->uv, sizeof out->uv);
+        memcpy(out->weights, v->w, sizeof out->weights);
+        memcpy(out->bones, v->j, sizeof out->bones);
     }
-}
-
-const granny_data_type_definition *_GrannyGetMeshVertexType(granny_mesh *mesh)
-{
-    (void)mesh;
-    return (const granny_data_type_definition *)&g_sourceVertexTag;
-}
-
-granny_mesh_deformer *_GrannyNewMeshDeformer(const granny_data_type_definition *from,
-                                             const granny_data_type_definition *to, int deformation)
-{
-    (void)from;
-    (void)to;
-    g_deformer.deformation = deformation;
-    return &g_deformer;
-}
-
-void _GrannyFreeMeshDeformer(granny_mesh_deformer *deformer)
-{
-    (void)deformer;
 }
 
 int *_GrannyGetMeshTriangleGroups(granny_mesh *mesh)
 {
     return mesh ? gltf_mesh(mesh)->groups : NULL;
-}
-
-void *_GrannyGetMeshVertices(granny_mesh *mesh)
-{
-    return mesh ? gltf_mesh(mesh)->verts : NULL;
-}
-
-/* Position and normal skinned by up to four composite bone matrices; texture coordinates copied. */
-void _GrannyDeformVertices(granny_mesh_deformer *deformer, const int *bones, const float *composite, int count,
-                           const void *from, void *to)
-{
-    const struct GltfVertex *v = from;
-    float *o = to;
-    int i, k;
-    (void)deformer;
-    for (i = 0; i < count; i++, v++, o += 8) {
-        float p[3] = {0, 0, 0}, n[3] = {0, 0, 0};
-        for (k = 0; k < 4; k++) {
-            const float *m;
-            float w = v->w[k];
-            if (w == 0.0f)
-                continue;
-            m = composite + bones[v->j[k]] * 16;
-            p[0] += w * (v->p[0] * m[0] + v->p[1] * m[4] + v->p[2] * m[8] + m[12]);
-            p[1] += w * (v->p[0] * m[1] + v->p[1] * m[5] + v->p[2] * m[9] + m[13]);
-            p[2] += w * (v->p[0] * m[2] + v->p[1] * m[6] + v->p[2] * m[10] + m[14]);
-            n[0] += w * (v->n[0] * m[0] + v->n[1] * m[4] + v->n[2] * m[8]);
-            n[1] += w * (v->n[0] * m[1] + v->n[1] * m[5] + v->n[2] * m[9]);
-            n[2] += w * (v->n[0] * m[2] + v->n[1] * m[6] + v->n[2] * m[10]);
-        }
-        memcpy(o, p, sizeof p);
-        memcpy(o + 3, n, sizeof n);
-        memcpy(o + 6, v->uv, sizeof v->uv);
-    }
-}
-
-int _GrannyGetMeshBytesPerIndex(granny_mesh *mesh)
-{
-    (void)mesh;
-    return 2;
-}
-
-void *_GrannyGetMeshIndices(granny_mesh *mesh)
-{
-    return mesh ? gltf_mesh(mesh)->indices : NULL;
 }
 
 /* ---- materials and textures ---- */
@@ -1106,4 +1014,3 @@ void _GrannyCopyTextureImage(granny_texture *texture, int image, int mip, const 
     for (y = 0; y < height; y++)
         memcpy((unsigned char *)pixels + (size_t)y * stride, t->rgba + (size_t)y * width * 4, (size_t)width * 4);
 }
-#endif

@@ -44,13 +44,16 @@ struct gfx_surface { unsigned pixels; };
 static struct ResMgr manager;
 static int manager_live = 1, fail_upload, missing_bitmap, recurse;
 static int resource_delay;
-static unsigned live_textures, live_handles, loads, releases, purges;
+static unsigned live_textures, live_handles, loads, releases;
 static char loaded_names[8192][256];
 static struct BitmapRes bitmap;
 static DWORD pixels[256];
 static struct TexCache *recursive_cache;
 struct C3dDevice g_3dDevice;
 unsigned g_resPurgeAgeMs = 15;
+/* the static world's copies of the textures, made again after a reload (render/gfx.h) */
+static unsigned world_clears;
+void gfx_world_clear(void) { ++world_clears; }
 
 struct ResMgr *g_resMgr(void) { assert(manager_live); return &manager; }
 void res_mgr_purge_stale(struct ResMgr *unused) { (void)unused; abort(); }
@@ -105,7 +108,6 @@ struct Texture *texture_create(int w, int h, int format)
     ++live_textures;
     return texture;
 }
-void gfx_evict_managed_textures(struct C3dDevice *device) { assert(device == &g_3dDevice); ++purges; }
 
 static void empty(struct TexCache *cache)
 {
@@ -167,8 +169,9 @@ static void lookup_reload_and_recursion(void)
     for (i = 0; i < 5; ++i) textures[i] = texture_cache_get(&cache, names[i], 0, 1);
     assert(textures[1] != textures[3]);
     start = loads; pixels[0] = 99;
+    world_clears = 0;
     texcache_reload_all(&cache);
-    assert(loads == start + 5);
+    assert(loads == start + 5 && world_clears == 1);
     for (i = start + 1; i < loads; ++i) assert(strcmp(loaded_names[i-1], loaded_names[i]) < 0);
     for (i = 0; i < 5; ++i) assert(textures[i]->base.surface->pixels == 99);
     old = textures[0]->base.surface;
@@ -239,7 +242,7 @@ int main(void)
     manager.lock = platform_mutex_create();
     bitmap.width = bitmap.height = 16; bitmap.pixels = pixels; pixels[0] = 7;
     ownership_and_failures(); lookup_reload_and_recursion(); time_and_missing_textures();
-    parallel_lookup(); assert(!write_depth && cache_stat[S_TEX_PURGES] == purges);
+    parallel_lookup(); assert(!write_depth);
     assert(texture_cache_get(&final_cache, "shutdown.bmp", 0, 1) != &g_whiteTexture);
     platform_mutex_destroy(manager.lock); manager_live = 0;
     tex_cache_destruct(&final_cache); tex_cache_destruct(&final_cache);

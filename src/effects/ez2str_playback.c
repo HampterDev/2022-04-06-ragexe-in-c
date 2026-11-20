@@ -54,7 +54,6 @@ unsigned char ez2_str_particle_process(struct Ez2StrParticle *self, Vec3 offset)
     pos = self->base.pos;
     if (game_copy_view_matrix(view)) {
         memset(&projected, 0, sizeof(projected));
-        projected.specular = 0xff000000;
         renderer_project_vertex(g_renderer, &pos, view, &projected);
         self->screen_pos.x = projected.x + offset.x;
         self->screen_pos.y = projected.y + offset.y;

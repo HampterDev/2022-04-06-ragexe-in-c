@@ -6,7 +6,6 @@ struct String;
 
 struct String *game_mode_get_map_name(struct GameMode *self, struct String *out);
 
-void game_mode_add_world_object(struct GameMode *self, void *object);
 
 char game_mode_has_resurrection_token(struct GameMode *self);
 

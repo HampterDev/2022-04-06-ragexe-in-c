@@ -5,17 +5,19 @@
 #include "base.h"
 #include "ui/controls/controls.h"
 #include "render/render_options.h"
+#include "render/display_options.h"
 
 struct UIGraphicSettingWnd {
     struct UIFrameWnd frame;
-    struct Vec device_names;
+    /* custom: the resolution picker (render/display_options.h); the sizes its list was opened with,
+       and as text; the size it shows, the window's until one is picked (picked), which Apply
+       sets; and the window's mode and size as the dialog last showed them */
+    struct DisplayPicker picker;
+    struct DisplayPicker listed;
     struct Vec mode_names;
-    struct Vec modes;
-    int device;
-    int mode;
-    struct String device_name;
-    GUID device_guid;
-    GUID adapter_guid;
+    int pick_width, pick_height;
+    int picked;
+    int seen_fullscreen, seen_width, seen_height;
     struct WindowInfo *info;
     int tab;
     struct UITabControl *tabs;
@@ -41,7 +43,6 @@ struct UIGraphicSettingWnd {
     struct UICheckBox *box_zoom;
     struct UICheckBox *box_emblem_frame;
     struct UICheckBox *box_extend_damage;
-    struct UINoneVisibleButton *device_box;
     struct UINoneVisibleButton *mode_box;
     int sprite_mode;
     struct UIScrollBar *sprite_bar;

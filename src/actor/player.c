@@ -26,6 +26,7 @@
 #include "game/input.h"
 #include "game/net_clock.h"
 #include "platform/clock.h"
+#include "effects/skills/msg_effect.h"
 
 void player_process_costume_body(struct Player *self, unsigned char show);
 
@@ -86,11 +87,8 @@ unsigned char player_on_process(struct GameObject *object)
     result = actor_process_state(self);
     render_object_process_sound((struct RenderObject *)self);
     if (self->wave_pending) {
-        struct GameActor *player = (struct GameActor *)game_current_player();
-
-        if (player)
-            sound_play_wave((const char *)self->wave_name, self->pos.x - player->pos.x, 0.0f,
-                            self->pos.z - player->pos.z, 0xfa, 0x28, 1.0f);
+        if (game_current_player())
+            sound_play_wave((const char *)self->wave_name, 1.0f);
         self->wave_pending = 0;
     }
     player_process_costume_body(self, game_actor_get_transform_job(actor) > 0);
@@ -371,7 +369,7 @@ void player_process_costume_body(struct Player *self, unsigned char show)
             struct GameObject *obj = game_mode_make_msg_effect(game_current_mode(), 0x2c, &self->pos,
                                                  self->aid, 1);
 
-            list_push_back(&self->attached, &obj, sizeof obj);
+            msg_effect_attach((struct MsgEffect *)obj, &self->attached);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
             self->costume_body_obj = obj;
         }

@@ -80,7 +80,7 @@ intptr_t ui_window_send_msg_base(struct UIWindow *window, struct UIWindow *sende
         const struct ItemInfo *item = (const struct ItemInfo *)a;
         item_type = item->type; strcpy(item_name, string_cstr(&item->id_text)); a = item_type;
     } else assert(sender);
-    event(6, message, a, b, c, d); return 0;
+    event(6, message, (int)a, (int)b, (int)c, (int)d); return 0;
 }
 void ui_window_on_mouse_hover_base(struct UIWindow *window, int x, int y)
 { assert(window == &parent); event(7, x, y, 0, 0, 0); }

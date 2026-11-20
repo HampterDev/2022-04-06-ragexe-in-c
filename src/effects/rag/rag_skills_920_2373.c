@@ -111,7 +111,7 @@ void rag_water_ball_rings(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    sound_play_wave("effect\\wizard_waterball_chulung.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave("effect\\wizard_waterball_chulung.wav", 1.0f);
     p = water_disc(self, 12, 30, 1.75f);
     if (!p)
         return;
@@ -338,7 +338,7 @@ void rag_music_rings_173(struct RagEffect *self,
     self->base.pos = self->master->pos;
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "effect\\EF_BeginSpell.wav", -100.0f);
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     if (self->duration < 120)
         self->duration = 120;
     p = launch(self, 173);
@@ -582,9 +582,9 @@ void rag_cloud_dash_2(struct RagEffect *self)
         }
     }
     if (self->frame == 10)
-        rag_play_wave_here(self, "effect\\EF_hit2.wav");
+        effect_play_wave("effect\\EF_hit2.wav");
     if (self->frame == 20)
-        rag_play_wave_here(self, "effect\\EF_hit4.wav");
+        effect_play_wave("effect\\EF_hit4.wav");
 }
 
 void rag_hallu_walk(struct RagEffect *self)

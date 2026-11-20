@@ -2,11 +2,7 @@
 #define RENDER_FRAME_CAPTURE_H
 
 #include "render/renderer.h"
-struct BitmapRes;
-struct Surface;
 
-void pixel16_to_bgr(WORD pixel, BYTE *out);
-int renderer_lock_target(struct Renderer *renderer);
 char renderer_screenshot(struct Renderer *renderer, struct String filename);
 
 #endif

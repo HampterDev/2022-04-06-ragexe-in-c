@@ -9,5 +9,6 @@ if(APPLE)
 endif()
 if(BUILD_TESTING)
     add_test(NAME platform_probe COMMAND platform_probe --smoke)
-    set_tests_properties(platform_probe PROPERTIES TIMEOUT 20)
+    # The probe shows a real window (a Metal view on macOS): leave it out with -LE interactive.
+    set_tests_properties(platform_probe PROPERTIES TIMEOUT 20 LABELS interactive ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
 endif()

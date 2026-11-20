@@ -7,15 +7,28 @@
 #include "core/window_state.h"
 #include "ui/render/graphic_setting.h"
 #include "game/camera.h"
-#include "platform/window.h"
+#include "render/display_options.h"
 
 #define OPT_INT(name, value)    session_write_option_int(self, &out, (name), (value))
+
+struct OptionFile {
+    struct Session *session;
+    struct File *file;
+};
+
+static void option_int(void *context, const char *name, int value)
+{
+    struct OptionFile *to = context;
+    session_write_option_int(to->session, to->file, name, value);
+}
 
 void session_save_options(struct Session *self)
 {
     struct String path;
     struct File in, out;
-    RECT window;
+    struct OptionFile to = { self, &out };
+    struct DisplayOptions display = { g_fullscreenMode, g_windowMaximized, g_displayWidth, g_displayHeight,
+                                      g_windowX, g_windowY, g_displayWidth, g_displayHeight };
     char *text;
     int size;
 
@@ -45,22 +58,12 @@ void session_save_options(struct Session *self)
             session_write_option_float(self, &out, "Indoor_ViewDistance", g_fixedViewDistance);
             session_write_option_string(self, &out, "SkinName", skin_mgr_get_current_name(&g_skinMgr));
             OPT_INT("ChannelCopID", self->channelCopId);
-            platform_window_rect(g_hMainWnd, &window);
-            OPT_INT("Window_XPos", window.left);
-            OPT_INT("Window_YPos", window.top);
             OPT_INT("Simplicity_SkillList", self->simpleSkillWnd);
             OPT_INT("Show_SkillDescript", self->showSkillDescript);
             OPT_INT("ChangeChatMode", g_windowMgr.chat_bar_toggleable);
             OPT_INT("LockMouse", self->lockMouse);
             OPT_INT("MouseExclusive", g_session1.mouseExclusiveOption);
-            write_display_options(self, &out, "ISFULLSCREENMODE", g_fullscreenMode);
-            OPT_INT("WIDTH", g_displayWidth);
-            OPT_INT("HEIGHT", g_displayHeight);
-            OPT_INT("OLD_WIDTH", g_displayWidth);
-            OPT_INT("OLD_HEIGHT", g_displayHeight);
-            OPT_INT("BITPERPIXEL", g_bitsPerPixel);
-            OPT_INT("DEVICECNT", g_displayDeviceIndex);
-            OPT_INT("MODECNT", g_displayModeIndex);
+            display_options_write(&display, option_int, &to);
             OPT_INT("SPRITEMODE", g_spriteMode);
             OPT_INT("TEXTUREMODE", g_textureMode);
             OPT_INT("bLockItemDropFromItemWnd", self->itemDropLock);

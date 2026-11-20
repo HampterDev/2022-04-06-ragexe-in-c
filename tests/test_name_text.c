@@ -70,7 +70,7 @@ struct UIWindow *ui_window_open(int id)
     assert(id == 2 || id == 0xc || id == 0x4e);
     return &test_window;
 }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     (void)window; (void)sender; (void)message; (void)a; (void)b; (void)c; (void)d;
     return 0;

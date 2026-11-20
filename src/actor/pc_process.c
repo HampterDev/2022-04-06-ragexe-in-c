@@ -30,6 +30,8 @@
 #include "platform/clock.h"
 #include "world/move_track.h"
 #include <string.h>
+#include "effects/skills/msg_effect.h"
+#include "world/world.h"
 
 unsigned char pc_on_process(struct GameObject *object)
 {
@@ -56,11 +58,8 @@ unsigned char pc_on_process(struct GameObject *object)
     result = actor_process_state(self);
     render_object_process_sound((struct RenderObject *)self);
     if (self->wave_pending) {
-        struct GameActor *player = (struct GameActor *)game_current_player();
-
-        if (player)
-            sound_play_wave((const char *)self->wave_name, self->pos.x - player->pos.x, 0.0f,
-                            self->pos.z - player->pos.z, 0xfa, 0x28, 1.0f);
+        if (game_current_player())
+            sound_play_wave((const char *)self->wave_name, 1.0f);
         self->wave_pending = 0;
     }
     show = game_actor_get_transform_job(actor) > 0;
@@ -71,7 +70,7 @@ unsigned char pc_on_process(struct GameObject *object)
             struct GameObject *obj = game_mode_make_msg_effect(game_current_mode(), 0x2c, &self->pos,
                                                  self->aid, 1);
 
-            list_push_back(&self->attached, &obj, sizeof obj);
+            msg_effect_attach((struct MsgEffect *)obj, &self->attached);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
             self->costume_body_obj = obj;
         }
@@ -133,7 +132,7 @@ static void pc_stand_look(struct Pc *self, struct ActorEntryInfo *entry, int twi
 static void pc_walk_look(struct Pc *self, struct ActorMoveEntryInfo *entry, int twin)
 {
     struct ActorLook look;
-    self->aid = entry->aid;
+    world_set_actor_aid(game_current_world(), (struct GameActor *)self, entry->aid);
     self->walk_speed = entry->speed;
     self->head_dir = 0;
     entry->job = game_actor_state_job(entry->job, entry->effect_state);
@@ -193,7 +192,7 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
         actor_set_state(self, pc_packet_state(entry->state));
         return;
     case 4:
-        self->aid = entry->aid;
+        world_set_actor_aid(game_current_world(), (struct GameActor *)self, entry->aid);
         pc_stand_place(self, game_current_mode(), entry);
         self->walk_speed = entry->speed;
         pc_stand_look(self, entry, 0);
@@ -203,7 +202,7 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
         return;
     case 0x79:
         self->body_style = entry->body;
-        self->aid = entry->aid;
+        world_set_actor_aid(game_current_world(), (struct GameActor *)self, entry->aid);
         pc_stand_place(self, game_current_mode(), entry);
         self->walk_speed = entry->speed;
         pc_stand_look(self, entry, 1);

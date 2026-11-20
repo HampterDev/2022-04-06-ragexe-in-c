@@ -19,6 +19,9 @@ uint32_t platform_ticks_ms(void);
 uint32_t platform_coarse_ticks_ms(void);
 int64_t platform_perf_counter(void);
 int64_t platform_perf_frequency(void);
+/* custom: nanoseconds from an arbitrary start, for timing the client's own work (diag/perf.h).
+   The scene harness runs the clocks above on its frames but leaves this one real. */
+int64_t platform_stopwatch_ns(void);
 unsigned platform_timer_period_begin(void);
 void platform_timer_period_end(unsigned period);
 

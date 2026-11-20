@@ -336,7 +336,6 @@ void talk_cmd_volume(struct GameMode *self, const struct String *args, int effec
     (void)self;
     if (!effects) {
         sound_set_effect_volume(volume);
-        sound_set_effect_volume_3d(volume);
     } else {
         sound_set_bgm_volume(volume);
         sound_set_bgm_fade_target(sound_bgm_volume());
@@ -385,7 +384,6 @@ void game_mode_apply_fog(struct GameMode *self, int on)
     g_fogNear = (float)atof(string_cstr(&((struct String *)params->first)[0]));
     g_fogFar = (float)atof(string_cstr(&((struct String *)params->first)[1]));
     g_fogColor = hex_after_prefix_value(string_cstr(&((struct String *)params->first)[2]));
-    g_fogDensity = (float)atof(string_cstr(&((struct String *)params->first)[3]));
     renderer_enable_fog(g_renderer, 1);
 }
 

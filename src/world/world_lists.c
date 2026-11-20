@@ -5,6 +5,7 @@
 #include "world/world.h"
 #include "core/fatal.h"
 #include "world/mode.h"
+#include "world/world_gpu.h"
 
 #include <string.h>
 #include "actor/types.h"
@@ -12,14 +13,12 @@
 struct World *world_construct(struct World *self)
 {
     list_init(&self->gameObjects);
-    actor_list_generation++;
-    list_init(&self->actors);
     list_init(&self->items);
-    list_init(&self->skills);
+    world_init_aid_lists(self);
     memset(&self->models, 0, sizeof self->models);
     self->modelLoader = NULL;
+    self->gpu = NULL;
     scene_graph_node_construct(&self->root);
-    list_init(&self->pendingSkills);
     tree_init(&self->idsByCell);
     list_init(&self->idsNowhere);
     self->prebuilt = NULL;
@@ -39,6 +38,7 @@ struct World *world_construct(struct World *self)
 void world_clear_map(struct World *self)
 {
     world_models_wait(self);
+    world_gpu_free(self);
     world_free_scene_graph(self);
     world_clear_objects(self);
     world_models_clear(self);

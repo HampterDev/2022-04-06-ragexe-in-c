@@ -197,7 +197,7 @@ static void trace_card(const struct ActorNameCard *card)
     note(card->group_id);
     note(card->complete);
     for (i = 0; i < sizeof fields / sizeof fields[0]; ++i) {
-        note(fields[i]->size);
+        note((unsigned)fields[i]->size);
         for (j = 0; j < fields[i]->size; ++j)
             note((unsigned char)string_cstr(fields[i])[j]);
     }

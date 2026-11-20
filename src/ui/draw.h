@@ -19,8 +19,6 @@ struct BitmapRes;
 
 void ui_window_draw_outline(struct UIWindow *self, int x, int y, int width, int height,
                            COLORREF colour);
-void ui_window_fill_triangle(struct UIWindow *self, int x1, int y1, int x2, int y2,
-                                      int x3, int y3, COLORREF colour);
 
 void ui_window_draw_actor_sprite(struct UIWindow *self, void *spr, void *act, int x,
                                          int y, int width, int height, int period, char scale_down, void *backdrop);

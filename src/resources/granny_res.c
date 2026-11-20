@@ -12,6 +12,7 @@
 #include "render/renderer.h"
 #include "render/math3d.h"
 #include "resources/granny_res.h"
+#include "render/gfx.h"
 #include "platform/error_message.h"
 #include "std/string.h"
 #include "resources/resource_ops.h"
@@ -38,16 +39,9 @@ struct Res *granny_model_resource_create(void)
 void granny_model_resource_clear(struct C3dGrannyModelRes *self)
 {
     int i;
+    gfx_skin_release(self->skin);
+    self->skin = NULL;
     if (self->model) {
-        if (self->model->meshes) {
-            for (i = 0; i < self->model->meshCount; i++) {
-                struct GrannyResMesh *mesh = &self->model->meshes[i];
-                if (mesh->deformer) _GrannyFreeMeshDeformer(mesh->deformer);
-                free(mesh->textures);
-                free(mesh->indices);
-                free(mesh->rigidVerts);
-            }
-        }
         free(self->model->meshes);
         free(self->model);
     }
@@ -106,10 +100,12 @@ static int c3d_granny_model_res_create_texture(struct GrannyResTexture *out, gra
     return out->texture != NULL;
 }
 
+/* custom: a mesh draws with its first triangle group's material's texture, as the original took it
+   each frame, and a rigid one moves with the one bone its binding names */
 static int c3d_granny_model_res_create_model(struct C3dGrannyModelRes *self, granny_model *source)
 {
     struct GrannyResModel *model;
-    int i, j, k;
+    int i, k;
     if (source->MeshBindingCount < 0 || (source->MeshBindingCount && !source->MeshBindings) ||
         (size_t)source->MeshBindingCount > SIZE_MAX / sizeof(struct GrannyResMesh))
         return 0;
@@ -126,53 +122,34 @@ static int c3d_granny_model_res_create_model(struct C3dGrannyModelRes *self, gra
     for (i = 0; i < model->meshCount; i++) {
         struct GrannyResMesh *out = &model->meshes[i];
         granny_mesh *mesh = source->MeshBindings[i].Mesh;
+        const int *groups;
         int indices, vertices;
         if (!mesh)
             return 0;
         out->mesh = mesh;
+        out->rigidBone = -1;
         indices = _GrannyGetMeshIndexCount(mesh);
         vertices = _GrannyGetMeshVertexCount(mesh);
         if (indices < 0 || vertices < 0 || (indices && !vertices) ||
-            (size_t)indices > SIZE_MAX / sizeof *out->indices ||
-            (size_t)vertices > SIZE_MAX / sizeof *out->rigidVerts ||
-            mesh->MaterialBindingCount < 0 || (mesh->MaterialBindingCount && !mesh->MaterialBindings) ||
-            (size_t)mesh->MaterialBindingCount > SIZE_MAX / sizeof *out->textures)
+            mesh->MaterialBindingCount < 0 || (mesh->MaterialBindingCount && !mesh->MaterialBindings))
             return 0;
-        if (indices) {
-            out->indices = malloc((size_t)indices * sizeof *out->indices);
-            if (!out->indices)
-                return 0;
-            _GrannyCopyMeshIndices(mesh, 2, out->indices);
-            for (j = 0; j < indices; j++)
-                if (out->indices[j] >= vertices)
-                    return 0;
-        }
-        if (vertices && _GrannyMeshIsRigid(mesh)) {
-            out->rigidVerts = malloc((size_t)vertices * sizeof *out->rigidVerts);
-            if (!out->rigidVerts)
-                return 0;
-            _GrannyCopyMeshVertices(mesh, GrannyPNT332VertexType, out->rigidVerts);
-        } else if (vertices) {
-            out->deformer = _GrannyNewMeshDeformer(_GrannyGetMeshVertexType(mesh), GrannyPNT332VertexType,
-                                                 GRANNY_DEFORM_POSITION_NORMAL);
-            if (!out->deformer)
-                error_msg("Granny didn't find a matching deformer for the vertex format used by mesh", 0);
-        }
-        out->materialCount = mesh->MaterialBindingCount;
-        if (out->materialCount) {
-            out->textures = calloc((size_t)out->materialCount, sizeof *out->textures);
-            if (!out->textures)
-                return 0;
-        }
-        for (j = 0; j < out->materialCount; j++) {
-            granny_material *material = mesh->MaterialBindings[j].Material;
+        groups = _GrannyGetMeshTriangleGroups(mesh);
+        if (groups && groups[0] >= 0 && groups[0] < mesh->MaterialBindingCount) {
+            granny_material *material = mesh->MaterialBindings[groups[0]].Material;
             granny_texture *texture = material ? _GrannyGetMaterialTextureByType(material, GRANNY_DIFFUSE_COLOR_TEXTURE) : NULL;
             if (texture && texture->FromFileName)
                 for (k = 0; k < self->textureCount; k++)
                     if (!strcmp(self->textures[k].name, texture->FromFileName)) {
-                        out->textures[j] = &self->textures[k];
+                        out->texture = self->textures[k].texture;
                         break;
                     }
+        }
+        if (vertices && _GrannyMeshIsRigid(mesh)) {
+            granny_mesh_binding *binding = _GrannyNewMeshBinding(mesh, source->Skeleton, source->Skeleton);
+            if (!binding)
+                return 0;
+            out->rigidBone = _GrannyGetMeshBindingToBoneIndices(binding)[0];
+            _GrannyFreeMeshBinding(binding);
         }
         if (indices / 3 > 10000)
             error_msg("too many vertex granny model!", 0);
@@ -240,6 +217,8 @@ BYTE c3d_granny_model_res_load(struct C3dGrannyModelRes *self, const char *name)
     next.skeleton = next.grannyModel->Skeleton;
     next.boneRes = &g_grannyBoneRes;
     next.bounds.half_width = next.bounds.half_height = 10.0f;
+    if (!granny_model_res_skin(&next))
+        goto fail;
     granny_model_resource_clear(self);
     next.res = self->res;
     *self = next;
@@ -263,6 +242,7 @@ void granny_animation_cache_clear(struct C3dGrannyBoneRes *self)
             if (entry->file) _GrannyFreeFile(entry->file);
             entry->file = NULL;
             entry->animation = NULL;
+            entry->unavailable = 0;
         }
 }
 
@@ -313,6 +293,8 @@ static granny_animation *bone_animation(struct C3dGrannyBoneRes *bones, int job,
     entry = &bones->entries[job][part];
     if (entry->animation)
         return entry->animation;
+    if (entry->unavailable)
+        return NULL;
     if (part == 0) {
         const char *model = g_grannyJobModelName ? g_grannyJobModelName(g_grannyBoneJobIds[job]) : NULL;
         if (!model)
@@ -321,9 +303,12 @@ static granny_animation *bone_animation(struct C3dGrannyBoneRes *bones, int job,
     } else {
         length = snprintf(name, sizeof name, "model\\3dmob_bone\\%d_%s.gr2", job, g_grannyBonePartNames[part]);
     }
-    if (length <= 0 || (size_t)length >= sizeof name || !file_make_file_name(name, 0))
+    if (length <= 0 || (size_t)length >= sizeof name)
         return NULL;
-    granny_animation_cache_load(bones, name, job, part);
+    if (!file_make_file_name(name, 0) || !granny_animation_cache_load(bones, name, job, part)) {
+        entry->unavailable = 1;
+        return NULL;
+    }
     return entry->animation;
 }
 

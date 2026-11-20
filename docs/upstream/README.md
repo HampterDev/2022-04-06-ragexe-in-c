@@ -235,6 +235,14 @@ the way and the validation are in
 | [bf6670583a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bf6670583ad3f988402e0b0c61ed56bb6b07cf77) | [037c1658e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/037c1658e345478fa62e89f452147e42b9552e27) (adapted) | Cut the Star Gladiator notice's job name to its packet field |
 | [34bd3bd2f9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/34bd3bd2f954c42af315de392a6940558e2fe865) | [8c02cc7c66](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c02cc7c6659d766422bf8a9f6a371dc8fa1bf29) | Whip effects: draw the joints' shimmer every frame, as the original does |
 
+The WAV pick (`8e895acb`) handed a PCM WAV to Miles as it was, without the client's chunk check.
+Since 2026-11-11 `custom` decodes every sound file when it loads, with SDL's WAV loader
+(`platform/audio_sdl.c`; `docs/custom-review.md`, "Sound without a position"), which walks the
+chunks within the file itself: of the pick's sloppy headers, a RIFF size that counts the whole file
+or is 0xFFFFFFFF and a data chunk longer than the file still play (`tests/test_audio.c`), an empty
+data chunk plays nothing, and a file that does not decode loads without a sound and plays nothing.
+`main` keeps the fix.
+
 ## Foundation fixes from the WARP port, 2026-11-06
 
 Found while porting WARP patches to `main` on the `warp-patches` branch, fixed on `main` and
@@ -250,6 +258,12 @@ picked onto `purist` with `git cherry-pick -x`.
 | [bbf0be8ec1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbf0be8ec1d94d292b48d519a8d0248e447277e4) | [f6a797f63a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f6a797f63ac74b9fa64222dce59f0a42d18eef69) (adapted) | Item description: a second right-click on the same item closes it |
 | [875ce6c0b4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/875ce6c0b4a9f0250e0236cc7a7c9b789dfc3a5b) | Not needed on purist, code removed (purist starts with defaults already) | Start with the setup defaults when the setup keys are missing |
 | [9448917b02](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9448917b02b986a9f27731526bb3d49c0d94ed06) | [98eb46a8d0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/98eb46a8d0985dd98ad8119e1a6065441df4b323) | Skip UI quads when a window has no canvas |
+
+The `cps.dll` pick (`f9808810`) applied only to the 32-bit client, which `custom` no longer builds
+since 2026-11-11 (`docs/custom-review.md`, "One 64-bit Windows client"): no build links `cps.dll`,
+the client inflates through its bundled zlib, and `tests/build_cps_imports.bat` went with the
+32-bit link. A `cps.dll` that does more than zlib, such as GRF Editor's for the GRFs it encrypts,
+has no effect on `custom` (`docs/portability.md`, *Windows client*). `main` keeps the fix.
 
 ## Foundation fixes ported from `main`, 2026-11-08
 
@@ -368,29 +382,58 @@ reduces -90 to 270.
 | [8aef09d5f4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8aef09d5f4d76c507e952dc12b40717f356497cf) | Not ported: docs/changes.md | docs: negative angles are no longer a change from the original |
 | [bbec17c670](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbec17c670b3756642f4a2ef625035984bf32bda) | Not ported: tests ea40abe7, which custom does not have | test_math3d: the cosine and radian lookups at -90 |
 
+## Foundation fix from the sound review, 2026-11-11
+
+A review of the sound change on `gpu-audio` found `game_mode_zc_sound` reading the 24-byte name of
+`ZC_SOUND` as a C string. The original reads it the same way, so it was bounded on `main` under its
+rule for data from outside, with a check in `main`'s packet-handler oracle, and picked with
+`git cherry-pick -x`. `custom` has neither that oracle nor `docs/changes.md`.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [82531e269b](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/82531e269bc99a2864870be60f39092b511dc665) | [38a9093e27](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/38a9093e274dd606f98de2ce97bc6d6143b6dbff) | Read ZC_SOUND's sound name within its 24 bytes |
+
+## Renderer fixes after the switch to SDL's GPU API, 2026-11-12
+
+`custom` draws through `render/gfx_gpu.c` on every platform and no longer has the Direct3D 9
+backend (`render/gfx_d3d9.c`) `main` draws with, nor its GDI text (`render/text_gdi.c`,
+`render/fonts.c`): `custom` draws text with FreeType alone. A fix `main` makes inside them has
+nowhere to land here; it goes below as not needed, with what `custom` does in its place. Fixes
+above `render/gfx.h` pick as before, except that the render states `main`'s lists are drawn with
+(`render/crenderer.c`) are `custom`'s draw modes (`render/draw_modes.c`): a fix to them lands as a
+change of the modes.
+
 ## Foundation fixes from the canvas lock review, 2026-11-12
 
 `CDCBitmap`'s scaled texel draw (`0x4d0fb0`) locks its texture with a surface description it
 never sizes. DirectDraw accepts that for the client's managed textures, so the original draws
 there. The lift took the lock for one that fails and drew nothing: the monster in the monster
 info window, and in the navigation window the map picture, the target view's hint and the
-monster and NPC sprites. The fix was made on `main`, which had not been pushed yet, and picked
-with `git cherry-pick -x`. On `custom` the GL renderer, the FreeType text, the scene driver and
-their tests also lose `gfx_lock`'s flags, and `tests/scenes/scripts/canvas_pictures.lua` shows
-the five pictures.
+monster and NPC sprites. On `main` the fix removes the refusal from `gfx_d3d9.c`'s lock. Here it
+is removed from `gfx_gpu.c`'s, whose texture locks read the CPU copy every texture keeps. It was
+made on `main`, which had not been pushed yet, and picked with `git cherry-pick -x` twice: onto
+`custom` while it still drew through Direct3D 9 and OpenGL, where the GL renderer, the FreeType
+text, the scene driver and their tests also lost `gfx_lock`'s flags, and onto the line that
+moved the renderer to SDL's GPU API, which brought `custom` the GPU renderer. Both picks carry
+`tests/scenes/scripts/canvas_pictures.lua`, which shows the five pictures; the first one's
+changes to the Direct3D 9 and OpenGL backends went with those backends.
 
 | Foundation commit | Custom | Change |
 | --- | --- | --- |
-| [9775c52229](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9775c52229cd3d735d3eb83b3e89e85d25c90717) | [239d464715](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/239d464715d3b874c8ca106d587a54804a7db4da) (adapted) | The canvas's scaled draw locks its texture as the original does |
+| [9775c52229](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9775c52229cd3d735d3eb83b3e89e85d25c90717) | [239d464715](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/239d464715d3b874c8ca106d587a54804a7db4da) before the GPU renderer, [90a4d88745](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/90a4d887452bdd9be53f438a169f5264d6469f3d) on `gfx_gpu.c` (both adapted) | The canvas's scaled draw locks its texture as the original does |
 
 ## Foundation fixes from the GPU water work, 2026-11-12
 
 The water quad (`0x6583c0`) truncates its wave angle to whole degrees with `cvttss2si`, which
 gives INT_MIN for every angle beyond the int range. `ground_water_height` wrapped such an angle
 into one turn with `fmod` instead. It was found while the water's waves moved into a vertex
-shader for the GPU renderer. The fix was made on `main`, which had not been pushed yet, and
-picked with `git cherry-pick -x`. `custom`'s sine lookup still adds a full turn to a negative
-angle (ea40abe7 above), so INT_MIN degrees read its table at 232, where the original reads 233.
+shader for the GPU renderer, which must give the heights `world/ground_water.c` gives. The fix
+was made on `main`, which had not been pushed yet, and picked with `git cherry-pick -x`. The GPU
+renderer's line made the same change on its own (608d8222, with the static world), testing for
+an angle that is no number by name where the pick's comparison fails for one; both give INT_MIN
+for every such angle, and `custom` keeps that form. `custom`'s sine lookup still adds a full turn
+to a negative angle (ea40abe7 above), so INT_MIN degrees read its table at 232, where the
+original reads 233.
 
 | Foundation commit | Custom | Change |
 | --- | --- | --- |

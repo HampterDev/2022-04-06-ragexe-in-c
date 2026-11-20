@@ -139,7 +139,7 @@ int main(void)
     dump_status = CRASH_DUMP_SAVED;
     assert(filter(&exception) == EXCEPTION_EXECUTE_HANDLER);
     assert(dialogs == 1 && callbacks == 1 && !other_callbacks);
-    assert(strstr(shown, "access violation") && strstr(shown, "writing 00012345"));
+    assert(strstr(shown, "access violation") && strstr(shown, "writing 0000000000012345"));
     assert(strstr(shown, "Swordsman") && strstr(shown, "prontera  cell 20 30"));
     assert(strstr(shown, "1000001F") && strstr(shown, "game.c 42"));
     assert(strstr(shown, "fixture.dmp"));

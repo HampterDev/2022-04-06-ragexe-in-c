@@ -3,32 +3,16 @@
 
 #include "resources/granny_res.h"
 #include "resources/granny_playback.h"
-#include "actor/granny_projection.h"
 
-struct GrannyMeshState {
-    struct GrannyProjection *projection;
-    struct GrannyVertexBuffer *vertices;
-    granny_mesh_binding *binding;
-    struct Texture *texture;
-    unsigned short *indices;
-    int triangles;
-    float matrix[12];
-};
-
+/* An actor's model: the resource it shows, held while it does, its animations' playback, and its
+   bounds (custom: the meshes' draws are the resource's, render/gfx.h, gfx_draw_skin). */
 struct GrannyModelState {
     struct C3dGrannyModelRes *resource;
-    struct C3dGrannyModelRes *base_resource;
     struct GrannyPlayback *playback;
-    int mesh_count;
     struct GrannyBounds bounds;
-    struct GrannyMeshState meshes[];
 };
 
-struct GrannyModelState *granny_model_state_create(struct C3dGrannyModelRes *resource,
-                                                   struct C3dGrannyModelRes *base);
+struct GrannyModelState *granny_model_state_create(struct C3dGrannyModelRes *resource);
 void granny_model_state_destroy(struct GrannyModelState *model);
-const struct GrannyMeshVertex *granny_model_prepare_mesh(struct GrannyModelState *model, int mesh,
-                                                        granny_world_pose *pose,
-                                                        struct GrannyHairPivot *hair);
 
 #endif

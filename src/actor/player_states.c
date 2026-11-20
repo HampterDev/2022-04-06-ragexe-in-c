@@ -81,11 +81,6 @@ static void ps_spawn_once(struct Player *self, int type)
         ps_spawn(self, type);
 }
 
-static void ps_play_wave(const char *name, float y)
-{
-    sound_play_wave(name, 0.0f, y, 0.0f, 250, 40, 1.0f);
-}
-
 static void ps_blind(struct Player *self)
 {
     struct SkillInfo skill;
@@ -99,7 +94,7 @@ static void ps_blind(struct Player *self)
         effect = level + 0x1da;
         if (!able_to_make_effect_is_effect_exist(self, effect)) {
             ps_launch(self, 0x1e7);
-            ps_play_wave("effect\\_blind.wav", -100.0f);
+            sound_play_wave("effect\\_blind.wav", 1.0f);
         }
         for (type = 0x1db, i = 10; i; type++, i--) {
             if (able_to_make_effect_is_effect_exist(self, type) == 1)
@@ -243,7 +238,7 @@ void player_refresh_status_effects(struct Player *self)
             break;
         case 0x18a:                 ps_launch(self, 0x329); break;
         case 0x1a6:
-            ps_play_wave("effect\\manhole.wav", 0.0f);
+            sound_play_wave("effect\\manhole.wav", 1.0f);
             ps_launch(self, 0x337);
             break;
         case 0x1b5:                 ps_launch(self, 0x3ac); break;
@@ -316,11 +311,11 @@ void player_refresh_status_effects(struct Player *self)
         case 0x413:                 ps_replace(self, 0x4c0); break;
         case 0x41a:
             ps_replace(self, 0x4b1);
-            ps_play_wave("effect\\t_캐스팅.wav", 0.0f);
+            sound_play_wave("effect\\t_캐스팅.wav", 1.0f);
             break;
         case 0x41f:
             ps_replace(self, 0x4c6);
-            ps_play_wave("effect\\t_바람방출.wav", 0.0f);
+            sound_play_wave("effect\\t_바람방출.wav", 1.0f);
             break;
         case 0x466:                 ps_respawn(self, 0x66c); break;
         case 0x47e:                 ps_spawn_once(self, 0x6cd); break;

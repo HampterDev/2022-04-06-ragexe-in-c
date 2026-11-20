@@ -9,15 +9,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
-#include <math.h>
 #include "platform/clock.h"
-#include "platform/window.h"
-
-static const char unsupported_caption[] = "notsuppot";
-
-#ifdef _WIN32
-#pragma comment(lib, "winmm.lib")
-#endif
+#include "platform/thread.h"
 
 static WORD pixel16(const struct C3dDevice *dev, DWORD r, DWORD g, DWORD b)
 {
@@ -86,7 +79,7 @@ void surface_stretch_to_target(struct Surface *self, int unused1, int unused2, i
     r.top = 0;
     r.right = w;
     r.bottom = h;
-    gfx_blit(g_3dDevice.target, &r, self->surface, NULL, GFX_BLT_WAIT);
+    gfx_blit(g_3dDevice.target, &r, self->surface, NULL);
     (void)unused1;
     (void)unused2;
 }
@@ -150,6 +143,7 @@ int surface_fill_pixels(struct Surface *self, int x, int y, int w, int h, const 
             }
         }
     }
+    perf_count_shared(&g_perf.textureBytes, (unsigned)w * h * (lk.bpp / 8));
     return gfx_unlock(self->surface) >= 0;
 }
 
@@ -165,7 +159,7 @@ int surface_wallpaper_fill_pixels(struct Surface *self, int unused1, int unused2
     if (!tmp.surface)
         return 0;
     uploaded = surface_fill_pixels(&tmp, 0, 0, w, h, bits, 0, pitch)
-        && gfx_blit(self->surface, NULL, tmp.surface, NULL, GFX_BLT_WAIT) >= 0;
+        && gfx_blit(self->surface, NULL, tmp.surface, NULL) >= 0;
     surface_reset(&tmp);
     return uploaded;
 }
@@ -202,24 +196,40 @@ struct Texture *texture_create(int width, int height, int format)
     return texture;
 }
 
+/* An empty texture with the next serial, the order the render queues sort textures in; the model
+   loader's thread makes textures too. */
+static void texture_start(struct Texture *self)
+{
+    static volatile int32_t serial;
+    memset(self, 0, sizeof *self);
+    self->serial = (unsigned)platform_atomic_increment(&serial);
+    self->base.ops = &texture_surface_ops;
+}
+
 struct Texture *texture_init(struct Texture *self, int width, int height, int format)
 {
-    static unsigned serial;
-    memset(self, 0, sizeof *self);
-    self->serial = ++serial;
-    self->base.ops = &texture_surface_ops;
-    if (format == GFX_FMT_BUMP)
-        texture_create_bump(self, width, height);
-    else
-        texture_recreate(self, width, height, format);
+    texture_start(self);
+    texture_recreate(self, width, height, format);
     return self;
 }
 
-int texture_copy_rect_from(struct Texture *self, gfx_surface *src, RECT *r)
+struct Texture *texture_create_target(int width, int height)
 {
-    if (!self->base.surface)
-        return 0;
-    return gfx_blit(self->base.surface, r, src, r, GFX_BLT_WAIT) >= 0;
+    struct Texture *texture;
+    gfx_surface *target = gfx_create_render_target(width, height);
+    if (!target)
+        return NULL;
+    texture = calloc(1, sizeof *texture);
+    if (!texture) {
+        gfx_release(target);
+        return NULL;
+    }
+    texture_start(texture);
+    texture->base.surface = target;
+    texture->base.width = texture->reqWidth = width;
+    texture->base.height = texture->reqHeight = height;
+    texture->format = GFX_FMT_8888;
+    return texture;
 }
 
 int texture_blit_rect(struct Texture *self, struct Surface *src, int sx, int sy, int sw, int sh,
@@ -236,27 +246,26 @@ int texture_blit_rect(struct Texture *self, struct Surface *src, int sx, int sy,
     dstRect.top = dy;
     dstRect.right = dx + dw;
     dstRect.bottom = dy + dh;
-    if (gfx_blit(self->base.surface, &dstRect, src->surface, &srcRect, GFX_BLT_WAIT) != 0)
+    if (gfx_blit(self->base.surface, &dstRect, src->surface, &srcRect) != 0)
         return 0;
     whole(&all, &self->base);
     return texture_update_mip_chain(self, &all);
 }
 
-int texture_recreate(struct Texture *self, int width, int height, int format)
+static int recreate(struct Texture *self, int width, int height, int format, int layered)
 {
     unsigned actual_width, actual_height;
     gfx_surface *handle;
     if (width <= 0 || height <= 0)
         return 0;
-    if (format == GFX_FMT_BUMP)
-        return texture_create_bump(self, width, height);
     actual_width = width;
     actual_height = height;
     c3d_device_clamp_texture_size(&g_3dDevice, &actual_width, &actual_height);
     if (!actual_width || !actual_height || actual_width > INT_MAX || actual_height > INT_MAX)
         return 0;
     ensure_format(format);
-    handle = gfx_create_texture(actual_width, actual_height, format);
+    handle = layered ? gfx_create_layer_texture(actual_width, actual_height, format)
+                     : gfx_create_texture(actual_width, actual_height, format);
     if (!handle)
         return 0;
     surface_reset(&self->base);
@@ -269,67 +278,25 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
     return 1;
 }
 
-static void bump_caps_check(void)
+int texture_recreate(struct Texture *self, int width, int height, int format)
 {
-    if (!g_gfxCaps.bumpEnv)
-        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
-    if (!g_gfxCaps.bumpEnvLuminance)
-        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
+    return recreate(self, width, height, format, 0);
 }
 
-int texture_create_bump(struct Texture *self, int width, int height)
+struct Texture *texture_create_layer(int width, int height, int format)
 {
-    struct gfx_lock lk;
-    gfx_surface *s;
-    unsigned x, y, actual_width, actual_height;
+    struct Texture *texture;
     if (width <= 0 || height <= 0)
-        return 0;
-    actual_width = width;
-    actual_height = height;
-    c3d_device_clamp_texture_size(&g_3dDevice, &actual_width, &actual_height);
-    if (!actual_width || !actual_height || actual_width > INT_MAX || actual_height > INT_MAX)
-        return 0;
-    bump_caps_check();
-    s = gfx_create_texture(actual_width, actual_height, GFX_FMT_BUMP);
-    if (!s)
-        return 0;
-    if (gfx_lock(s, NULL, &lk) < 0) {
-        gfx_release(s);
-        return 0;
+        return NULL;
+    texture = calloc(1, sizeof *texture);
+    if (!texture)
+        return NULL;
+    texture_start(texture);
+    if (!recreate(texture, width, height, format, 1)) {
+        free(texture);
+        return NULL;
     }
-    for (y = 0; y < lk.height; y++) {
-        BYTE *row = (BYTE *)lk.bits + y * lk.pitch;
-        for (x = 0; x < lk.width; x++) {
-            float fy = (float)y / (float)lk.height - 0.5f;
-            float r = (float)sqrt((double)(fy * fy + 0.0f));
-            float e = (float)exp((double)(r * -5.0f));
-            float a = r * 300.0f;
-            float c1 = (float)cos((double)a) * 32.0f * e;
-            float s1 = (float)sin((double)a) * 32.0f * e;
-            float b = (fy + 0.0f) * 300.0f * 0.5f;
-            float c = (0.0f - fy) * 280.0f * 0.5f;
-            BYTE du = (BYTE)(int)c1, dv = (BYTE)(int)s1;
-            du = (BYTE)(du + (BYTE)(int)((float)cos((double)b) * 16.0f));
-            dv = (BYTE)(dv + (BYTE)(int)((float)sin((double)b) * 16.0f));
-            du = (BYTE)(du + (BYTE)(int)((float)cos((double)c) * 7.0f));
-            dv = (BYTE)(dv + (BYTE)(int)((float)sin((double)c) * 7.0f));
-            row[x * 2] = du;
-            row[x * 2 + 1] = dv;
-        }
-    }
-    if (gfx_unlock(s) < 0) {
-        gfx_release(s);
-        return 0;
-    }
-    surface_reset(&self->base);
-    self->base.surface = s;
-    self->base.width = actual_width;
-    self->base.height = actual_height;
-    self->format = GFX_FMT_BUMP;
-    fit(width, self->base.width, &self->reqWidth);
-    fit(height, self->base.height, &self->reqHeight);
-    memcpy(self->name, "WATERBUMPMAP", sizeof "WATERBUMPMAP");
-    return 1;
+    return texture;
 }
 
 void texture_lock(struct Texture *self)
@@ -347,18 +314,6 @@ int texture_update_mip_chain(struct Texture *self, const RECT *r)
 {
     return gfx_refresh_mips(self->base.surface, r) >= 0;
 }
-
-struct build_record {
-    struct Texture *tex;
-    gfx_surface *surface;
-    unsigned version;
-    DWORD hash[4];
-    int x, y, w, h, pitch;
-    BYTE colorKeyed;
-};
-#define BUILD_SLOTS 8192
-#define BUILD_PROBES 8
-static struct build_record build_records[BUILD_SLOTS];
 
 static void build_hash(const DWORD *src, int rows, int cols, size_t stride, DWORD out[4])
 {
@@ -378,26 +333,16 @@ static void build_hash(const DWORD *src, int rows, int cols, size_t stride, DWOR
     out[0] = a; out[1] = b; out[2] = c; out[3] = d;
 }
 
-static struct build_record *build_slot(struct Texture *tex)
-{
-    unsigned h = ((unsigned)(ULONG_PTR)tex >> 4) * 2654435761u, i;
-    struct build_record *first_free = NULL;
-    for (i = 0; i < BUILD_PROBES; i++) {
-        struct build_record *e = &build_records[(h + i) & (BUILD_SLOTS - 1)];
-        if (e->tex == tex)
-            return e;
-        if (!e->tex && !first_free)
-            first_free = e;
-    }
-    return first_free;
-}
-
+/* custom: an upload of the same pixels into the same surface as the texture's last, the surface
+   unchanged since, is skipped; the texture keeps its last upload (struct Texture, lastUpload), where
+   main keeps them in a table of 8,192 slots keyed by the texture's address, so that which uploads it
+   skips hangs on where the heap puts the textures */
 int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, const DWORD *bits, int colorKeyed, int pitch)
 {
     struct gfx_lock lk;
     RECT r, all;
     int sx = 1, sy = 1, x0, y0, w0, h0, row, texW, texH, req_width, req_height;
-    struct build_record *rec = NULL;
+    struct TextureUpload *rec;
     unsigned version;
     DWORD hash[4];
     if (pitch == 0)
@@ -422,19 +367,19 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
     fit(w, self->base.width, &req_width);
     fit(h, self->base.height, &req_height);
     version = gfx_content_version(self->base.surface);
+    rec = &self->lastUpload;
     if (version) {
         build_hash(bits, h0, w0 * sx, (size_t)pitch * sy, hash);
-        rec = build_slot(self);
-        if (rec && rec->tex == self && rec->surface == self->base.surface && rec->version == version
+        if (rec->surface == self->base.surface && rec->version == version
             && rec->x == x && rec->y == y && rec->w == w && rec->h == h && rec->pitch == pitch
             && rec->colorKeyed == (BYTE)colorKeyed && memcmp(rec->hash, hash, sizeof(hash)) == 0) {
-            g_perf.buildsSkipped++;
+            perf_count_shared(&g_perf.buildsSkipped, 1);
             self->reqWidth = req_width; self->reqHeight = req_height;
             self->colorKeyed = (BYTE)colorKeyed;
             return 1;
         }
     }
-    g_perf.builds++;
+    perf_count_shared(&g_perf.builds, 1);
     r.left = x0;
     r.top = y0;
     r.right = x0 + w0;
@@ -504,6 +449,7 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
             break;
         }
     }
+    perf_count_shared(&g_perf.textureBytes, (unsigned)w0 * h0 * (self->format == GFX_FMT_8888 ? 4 : 2));
     if (gfx_unlock(self->base.surface) < 0)
         return 0;
     whole(&all, &self->base);
@@ -511,8 +457,7 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
         return 0;
     self->reqWidth = req_width; self->reqHeight = req_height;
     self->colorKeyed = (BYTE)colorKeyed;
-    if (version && rec) {
-        rec->tex = self;
+    if (version) {
         rec->surface = self->base.surface;
         rec->version = gfx_content_version(self->base.surface);
         memcpy(rec->hash, hash, sizeof(hash));
@@ -529,19 +474,26 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
     RECT r;
     BYTE *dst;
     const BYTE *src;
-    int row = 0, run = 0;
+    int row = 0, run = 0, ok;
+    /* custom: timed for the counters (diag/perf.h) */
+    int64_t start = platform_stopwatch_ns();
     if (!self || !self->base.surface || !spr || !spr->pixels || !palette
         || spr->width <= 0 || spr->height <= 0 || w < spr->width || h < spr->height
         || x < 0 || y < 0 || x > self->base.width || y > self->base.height
         || w > self->base.width - x || h > self->base.height - y)
         return 0;
-    if (gfx_lock(self->base.surface, NULL, &lk) < 0)
+    /* custom: the cell alone, so that the device sends up what was written and not the page */
+    r.left = x;
+    r.top = y;
+    r.right = x + w;
+    r.bottom = y + h;
+    if (gfx_lock(self->base.surface, &r, &lk) < 0)
         return 0;
     if (lk.bpp != 16) {
         gfx_unlock(self->base.surface);
         return 0;
     }
-    dst = (BYTE *)lk.bits + y * lk.pitch + x * 2;
+    dst = (BYTE *)lk.bits;
     src = spr->pixels;
     for (row = 0; row < spr->height; row++) {
         int col = 0;
@@ -569,13 +521,12 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
         memset(dst, 0, w * 2);
         dst += lk.pitch;
     }
+    perf_count_shared(&g_perf.textureBytes, (unsigned)w * h * 2);
     if (gfx_unlock(self->base.surface) < 0)
         return 0;
-    r.left = x;
-    r.top = y;
-    r.right = x + w;
-    r.bottom = y + h;
-    return texture_update_mip_chain(self, &r);
+    ok = texture_update_mip_chain(self, &r);
+    g_perf.atlasNs += platform_stopwatch_ns() - start;
+    return ok;
 }
 
 struct Surface *c3d_device_new_wallpaper_surface(struct C3dDevice *self, unsigned w, unsigned h)

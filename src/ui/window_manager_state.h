@@ -11,6 +11,7 @@
 
 struct UIWindow;
 struct Surface;
+struct DcBitmap;
 
 enum { ITEM_STORE_SUB_WNDS = 8 };
 
@@ -178,6 +179,8 @@ struct UIWindowMgr {
     int mouse_y_last;
     int modal_result;
     struct Surface *backdrop;
+    struct DcBitmap *serial_number;  /* custom: the login screen's serial number, drawn once, */
+    int serial_number_width;         /* and its width as measured for its place; -1: not to be made */
     int screen_width;
     int screen_height;
     struct String wallpaper_name;

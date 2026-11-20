@@ -39,7 +39,7 @@ struct Sent {
     int what;
     void *to;
     long long par2;
-    int value[5];
+    intptr_t value[5];
     char text[32];
     struct ActorAttack attack;
     struct ActorSkillUse use;
@@ -774,7 +774,7 @@ static void threats(void)
     assert(sent_count == 3 && sent[0].what == SENT_SWING_BEGIN && sent[0].to == &monster);
     assert(sent[0].value[0] == OWN_AID && sent[0].value[1] == 600 && sent[0].value[2] <= 450 && sent[0].value[2] >= 350);
     assert(sent[1].what == SENT_SPEED && sent[1].value[0] == 600);
-    assert(hit_shows(&monster, sent[0].value[2]));
+    assert(hit_shows(&monster, (int)sent[0].value[2]));
     assert(mode.open_swing_count == 1 && mode.tracks.count == 0);
     /* The server takes it back (the character got away): told at once. */
     monster.state = 2;
@@ -858,7 +858,7 @@ static void threats(void)
     send_act(OWN_AID, own - 150, 1, MONSTER_AID, 300);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 3 && sent[0].what == SENT_SWING_BEGIN && sent[0].to == &player && sent[0].value[1] == 300);
-    assert(sent[0].value[2] <= 150 && sent[0].value[2] >= 50 && hit_shows(&player, sent[0].value[2]));
+    assert(sent[0].value[2] <= 150 && sent[0].value[2] >= 50 && hit_shows(&player, (int)sent[0].value[2]));
 
     /* Until the server's clock is known the own clock is the render clock: a swing at the own
        character waits for its tick and is played as it is (tracks, above). */

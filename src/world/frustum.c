@@ -20,47 +20,32 @@ static void copy_normal(struct ViewFrustum *f, int i)
     f->normal[i][2] = f->plane[i][2];
 }
 
-void view_frustum_build(struct ViewFrustum *self, float tanX, float tanY,
+/* custom: plane i is a * (view x or y, by axis) + b * (view depth) + c >= 0 in world coordinates;
+   the view's x, y and depth are the columns 0, 1 and 2 of the view matrix (rows of three). */
+static void view_plane(struct ViewFrustum *f, int i, const float *m, int axis, float a, float b, float c)
+{
+    int k;
+
+    for (k = 0; k < 4; k++)
+        f->plane[i][k] = a * m[k * 3 + axis] + b * m[k * 3 + 2];
+    f->plane[i][3] += c;
+    copy_normal(f, i);
+}
+
+/* custom: the original built the four sides from one tangent each way, the screen's half size over
+   its scale. Its centre is the half size rounded down, so on a screen of odd width or height the
+   right or bottom side stopped a pixel short of the edge and culled what showed only there; the
+   window could not take such a size in the original, and can since it resizes. The sides are
+   where the projection puts the screen's edges. */
+void view_frustum_build(struct ViewFrustum *self, const struct FrustumScreen *s,
                                    const float *m, struct SceneGraphNode *root)
 {
-    const float z = 0.0f;
-    float nx = -tanX, ny = -tanY;
-
-    self->plane[0][0] = m[0] * nx + m[1] * z + m[2];
-    self->plane[0][1] = nx * m[3] + m[4] * z + m[5];
-    self->plane[0][2] = m[6] * nx + m[7] * z + m[8];
-    self->plane[0][3] = m[9] * nx + m[10] * z + m[11] + z;
-    copy_normal(self, 0);
-
-    self->plane[1][0] = m[0] * tanX + m[1] * z + m[2];
-    self->plane[1][1] = tanX * m[3] + m[4] * z + m[5];
-    self->plane[1][2] = m[6] * tanX + m[7] * z + m[8];
-    self->plane[1][3] = m[9] * tanX + m[10] * z + m[11] + z;
-    copy_normal(self, 1);
-
-    self->plane[2][0] = m[1] * ny + m[0] * z + m[2];
-    self->plane[2][1] = ny * m[4] + m[3] * z + m[5];
-    self->plane[2][2] = m[7] * ny + m[6] * z + m[8];
-    self->plane[2][3] = m[10] * ny + m[9] * z + m[11] + z;
-    copy_normal(self, 2);
-
-    self->plane[3][0] = m[1] * tanY + m[0] * z + m[2];
-    self->plane[3][1] = tanY * m[4] + m[3] * z + m[5];
-    self->plane[3][2] = m[7] * tanY + m[6] * z + m[8];
-    self->plane[3][3] = m[10] * tanY + m[9] * z + m[11] + z;
-    copy_normal(self, 3);
-
-    self->plane[4][0] = m[1] * z + m[0] * z + m[2];
-    self->plane[4][1] = m[4] * z + m[3] * z + m[5];
-    self->plane[4][2] = m[7] * z + m[6] * z + m[8];
-    self->plane[4][3] = m[10] * z + m[9] * z + m[11] - RENDER_NEAR_Z;
-    copy_normal(self, 4);
-
-    self->plane[5][0] = m[1] * z + m[0] * z - m[2] * 1.0f;
-    self->plane[5][1] = m[4] * z + m[3] * z - m[5] * 1.0f;
-    self->plane[5][2] = m[7] * z + m[6] * z - m[8] * 1.0f;
-    self->plane[5][3] = m[10] * z + m[9] * z - m[11] * 1.0f + RENDER_FAR_Z;
-    copy_normal(self, 5);
+    view_plane(self, 0, m, 0, s->proj[0], s->centre[0], 0.0f);
+    view_plane(self, 1, m, 0, -s->proj[0], s->size[0] - s->centre[0], 0.0f);
+    view_plane(self, 2, m, 1, s->proj[1], s->centre[1], 0.0f);
+    view_plane(self, 3, m, 1, -s->proj[1], s->size[1] - s->centre[1], 0.0f);
+    view_plane(self, 4, m, 0, 0.0f, 1.0f, -RENDER_NEAR_Z);
+    view_plane(self, 5, m, 0, 0.0f, -1.0f, RENDER_FAR_Z);
 
     view_frustum_clear(self);
     if (root)

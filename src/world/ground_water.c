@@ -1,5 +1,6 @@
 #include "render/texture_cache.h"
 #include "world/ground.h"
+#include "world/ground_api.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
@@ -98,7 +99,12 @@ float ground_water_height(const struct GndWater *water, int64_t diagonal)
     if (water->waveHeight == 0.0f)
         return water->level;
     angle = (float)diagonal * water->wavePitch + water->phase;
-    degrees = (double)angle >= INT_MIN && (double)angle <= INT_MAX ? (int)angle : INT_MIN;
+    /* an angle outside the int range, or no number, is INT_MIN degrees, as x86's conversion makes
+       it (and the water's vertex shader, render/shaders/water.hlsli) */
+    if (isfinite(angle) && (double)angle >= INT_MIN && (double)angle <= INT_MAX)
+        degrees = (int)angle;
+    else
+        degrees = INT_MIN;
     return get_sin_deg(degrees) * water->waveHeight + water->level;
 }
 
@@ -121,4 +127,69 @@ int c3d_ground15_get_block_index(struct C3dGround15 *self, int x, int y)
         by = self->blocksY - 1;
     index = (int64_t)by * self->blocksX + bx;
     return index <= INT_MAX ? (int)index : -1;
+}
+
+/* custom: the water of the static world (world/ground.h, world/ground_draw.c) */
+
+int c3d_ground15_water_block(struct C3dGround15 *self, int x, int y)
+{
+    int block;
+
+    if (!self->waters)
+        return -1;
+    block = self->waterPerBlock ? c3d_ground15_get_block_index(self, x, y) : 0;
+    return block < 0 || (size_t)block >= self->waterCount ? -1 : block;
+}
+
+/* the x and z of a cell's corner */
+static void corner_xz(const struct C3dGround15 *self, int x, int y, float *out)
+{
+    float p[3];
+
+    c3d_ground15_corner(self, x, y, 0.0f, p);
+    out[0] = p[0];
+    out[1] = p[2];
+}
+
+size_t c3d_ground15_water_cells(struct C3dGround15 *self, struct GfxWaterCell *out)
+{
+    size_t n = 0;
+    int x, y, k;
+
+    for (y = 0; y < self->height; y++)
+        for (x = 0; x < self->width; x++) {
+            struct GndCell *cell = GND_CELL(self, x, y);
+            const struct GndWater *w;
+            float top = -INFINITY, lowest;
+            int block = c3d_ground15_water_block(self, x, y);
+
+            if (out)
+                cell->water = -1;
+            if (!cell->top || block < 0)
+                continue;
+            w = &self->waters[block];
+            for (k = 0; k < 4; k++)
+                if (cell->top->v[k].pos[1] > top)
+                    top = cell->top->v[k].pos[1];
+            /* the wave never stands higher than its level less its height (a sine at most 1 by
+               magnitude): a top at or above that, with room for rounding, never shows water */
+            lowest = w->level - fabsf(w->waveHeight);
+            if (!(top > lowest - 1.0f - fabsf(lowest) * 1e-5f))
+                continue;
+            if (out) {
+                struct GfxWaterCell *c = &out[n];
+
+                c->x = x;
+                c->y = y;
+                c->block = block;
+                c->top = top;
+                corner_xz(self, x, y, c->corners[0]);
+                corner_xz(self, x + 1, y, c->corners[1]);
+                corner_xz(self, x, y + 1, c->corners[2]);
+                corner_xz(self, x + 1, y + 1, c->corners[3]);
+                cell->water = (int)n;
+            }
+            n++;
+        }
+    return n;
 }

@@ -627,13 +627,13 @@ void heal_effect_after_init(struct Effect *effect)
 {
     switch (effect->type) {
     case HEAL_TYPE_FD:
-        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "effect\\흡기.wav", 0, 0.0f);
+        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "effect\\흡기.wav", 0);
         break;
     case HEAL_TYPE_HEAL:
     case HEAL_TYPE_HEAL2:
     case HEAL_TYPE_HEAL3:
     case HEAL_TYPE_HEAL4:
-        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "_heal_effect.wav", 0, 0.0f);
+        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "_heal_effect.wav", 0);
         break;
     default:
         break;

@@ -42,7 +42,7 @@ static void sprite_with_wave(struct EffectPrim *prim, const char *spr, const cha
 {
     prim->motion_period = 4;
     sprite_action0(prim, spr, act);
-    sound_play_wave(wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave(wave, 1.0f);
 }
 
 static void monster_sprite(struct EffectPrim *prim, const char *spr, const char *act, int action_base)
@@ -130,7 +130,7 @@ void rag_msg_sprite(struct RagEffect *self, char number)
         sprite(prim, FX "캐슬링.spr", FX "캐슬링.act");
         break;
     case 1:
-        rag_play_wave_here(self, "effect\\h_blood_lust.wav");
+        effect_play_wave("effect\\h_blood_lust.wav");
         sprite(prim, FX "블러드러스트.spr",
                FX "블러드러스트.act");
         break;
@@ -140,7 +140,7 @@ void rag_msg_sprite(struct RagEffect *self, char number)
     case 5:  sprite(prim, FX "item_zzz.spr", FX "item_zzz.act"); break;
     case 6:  sprite(prim, FX "item_rain.spr", FX "item_rain.act"); break;
     case 7:
-        rag_play_wave_here(self, "effect\\ef_firehit.wav");
+        effect_play_wave("effect\\ef_firehit.wav");
         prim->motion_period = 3;
         prim->pattern = 0;
         prim->alpha = 220.0f;

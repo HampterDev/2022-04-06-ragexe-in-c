@@ -71,12 +71,39 @@ Checks run with a hidden window and no sound. Never start the client fullscreen.
 
 ## Building and testing
 
-While working, run the tests for the code you changed and `build.bat check`. Run `build.bat
-check` and the whole suite, `tests\build.bat`, once before committing, for everything going into
-the commit. A commit that changes only documentation needs neither.
+While working, run the tests the change reaches and `build.bat check`. Run `build.bat check` and
+the whole suite, `tests\build.bat`, once before committing, for everything going into the
+commit. A commit that changes only documentation needs neither.
 
 From a shell that sets `NoDefaultCurrentDirectoryInExePath` (agent shells do), clear it first, or
-`cmd` will not find `build.bat` or the test programs in the current directory.
+`cmd` will not find `build.bat` in the current directory.
+
+Every test is declared once in `tests/CMakeLists.txt` (`rage_test`; the helpers at its top say
+what each keyword does), in the section of the platforms it runs on. `tests\build.bat` configures
+`build\tests` with Ninja the first time, builds only what changed since the last run and runs the
+tests with CTest on every core; then the 32-bit oracle tests in `build\oracle`. These need the
+original executable, which `ORACLE_EXE` names (by default
+`..\client-files\2022-04-06_Ragexe_1648707856.exe` beside the checkout); without it they are
+skipped and the suite still passes, so set it for a run that has to cover them. Each client file
+is compiled once, into one static library per library of `tools/libraries.txt`, so a change
+recompiles the files it touches and relinks only the tests that link their library. Arguments go
+to CTest:
+
+- While working, run the tests the change reaches: `tests\build.bat -R <regex>` (tests by name,
+  `ctest --test-dir build\tests -N` lists them) or `tests\build.bat -L <library>` (every test that
+  compiles, links or includes a `.c` file of that library, for example `-L render`; for a header,
+  the libraries whose files include it).
+- Before committing, the whole suite once: `tests\build.bat`. Unchanged tests are not rebuilt.
+- A change to docs only needs no suite.
+
+Every test runs headless and silent: CTest gives it SDL's dummy video and audio drivers (`audio`
+the `disk` driver, which writes files), and on Windows the message boxes of the client code
+under test go to stderr (`tests/headless.h` for `platform_message_box`). A test that needs a real
+window is labelled `interactive` and left out by `tests\build.bat`; tests that need the game
+folder beside the checkout are labelled `client-files`. Keep new tests that way.
+
+The netcode is checked against the real server with the playground (`tests/playground/README.md`):
+the client and the server in lockstep on one virtual clock, with a hidden window and no sound.
 
 ## Commits
 

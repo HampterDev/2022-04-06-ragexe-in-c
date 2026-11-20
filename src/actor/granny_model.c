@@ -7,7 +7,7 @@
 void granny_corpse3d_load_model(struct GrannyCorpse3d *self)
 {
     struct C3dGrannyModelRes *resource = res_mgr_get(g_resMgr(), self->name);
-    struct GrannyModelState *model = granny_model_state_create(resource, NULL);
+    struct GrannyModelState *model = granny_model_state_create(resource);
 
     if (!model)
         return;
@@ -30,7 +30,7 @@ void c3d_granny_game_actor_set_job_model(struct GameActor * base_actor, int job,
     struct C3dGrannyGameActor * self = (struct C3dGrannyGameActor *)base_actor;
 
     struct C3dGrannyModelRes *resource = res_mgr_get(g_resMgr(), self->name);
-    struct GrannyModelState *model = granny_model_state_create(resource, NULL);
+    struct GrannyModelState *model = granny_model_state_create(resource);
 
     if (!model)
         return;

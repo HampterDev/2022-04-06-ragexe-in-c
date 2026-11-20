@@ -163,7 +163,7 @@ int main(void)
     test_invalid((int64_t)INT_MAX * 3, -1);
     test_invalid(INT64_MAX, -1);
     test_invalid(0, INT_MAX);
-    test_invalid((int64_t)SIZE_MAX / sizeof(struct CharPreview), -1);
+    test_invalid((int64_t)(SIZE_MAX / sizeof(struct CharPreview)), -1);
     puts("Character previews: shared strings, fixed controls, page boundaries and guarded C arrays passed.");
     return 0;
 }

@@ -1,12 +1,6 @@
 #ifndef PLATFORM_WIN_TYPES_H
 #define PLATFORM_WIN_TYPES_H
 
-/* The 32-bit Windows client links RAD's granny2.dll and mss32.dll. Every other build implements
-   the parts of their APIs the client uses: resources/granny_gltf.c and platform/miles_sdl.c. */
-#if defined(_WIN32) && !defined(_WIN64)
-#define PLATFORM_RAD_DLLS 1
-#endif
-
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -36,18 +30,9 @@ typedef uintptr_t UINT_PTR;
 typedef intptr_t LONG_PTR;
 typedef uintptr_t ULONG_PTR;
 typedef uintptr_t DWORD_PTR;
-typedef uintptr_t WPARAM;
-typedef intptr_t LPARAM;
-typedef intptr_t LRESULT;
 typedef DWORD COLORREF;
 
 typedef void *HANDLE;
-typedef struct PlatformWindowHandle *HWND;
-typedef struct PlatformModuleHandle *HINSTANCE;
-typedef struct PlatformDcHandle *HDC;
-typedef struct PlatformGdiObject *HGDIOBJ;
-typedef struct PlatformBitmapHandle *HBITMAP;
-typedef struct PlatformFontHandle *HFONT;
 
 typedef struct _GUID {
     DWORD Data1;
@@ -78,9 +63,6 @@ typedef struct tagSIZE {
 #define MAX_PATH 260
 
 #define WINAPI
-#define CALLBACK
-#define __stdcall
-#define __cdecl
 
 #define LOBYTE(w) ((BYTE)((DWORD_PTR)(w) & 0xff))
 #define HIBYTE(w) ((BYTE)(((DWORD_PTR)(w) >> 8) & 0xff))

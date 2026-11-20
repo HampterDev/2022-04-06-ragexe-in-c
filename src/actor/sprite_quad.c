@@ -1,5 +1,6 @@
 #include "actor/render_ops.h"
 #include "render/math3d.h"
+#include "render/projection.h"
 #include "render/rp_pool.h"
 #include "render/sprite_atlas.h"
 #include "render/texture_types.h"
@@ -183,6 +184,14 @@ unsigned char render_object_clip_to_quad(struct RenderObject *self, int index, i
     return 1;
 }
 
+/* custom: the quad as an instance whose vertices the device's vertex shader makes as this function
+   made them on the CPU (render/gfx.h, GFX_QUAD_SPRITE): (x0, top), (x1, top), (x0, bottom) and
+   (x1, bottom) moved by half a pixel, or turned by the angle about the quad's centre moved by x and
+   y; the rows' z from their rhw (renderer_project_depth), computed here, since the depth test
+   between a figure's layers decides by their bits; every corner with the top row's rhw, which
+   the original's first corner carried and the lists sort by, so a shadow still draws before the
+   figure standing on it; the GPU interpolates the texture by rhw, so a top and bottom rhw that
+   differed (more so the steeper the camera tilts) would warp the flat sprite. */
 void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *quad,
                                              const void *palette, int flags, float x, float y)
 {
@@ -192,8 +201,7 @@ void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *qua
     struct SprImg *img = quad->image;
     struct Texture *tex = img->texture;
     struct TexDrawPrim *prim;
-    struct TexDrawVertex *v;
-    float z_a, z_b, last_y;
+    struct GfxQuad *q;
     int list;
 
     if (!tex) {
@@ -206,67 +214,31 @@ void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *qua
     }
     if (!tex)
         return;
-    z_a = renderer_project_depth(quad->depth_a);
-    z_b = renderer_project_depth(quad->depth_b);
-    prim = renderer_new_prim(g_renderer);
+    prim = renderer_new_prim_instance(g_renderer);
     prim->base.texture = tex;
-    v = prim->base.verts;
-    if (quad->angle != 0.0f) {
-        float c = get_cos_deg((int)quad->angle);
-        float s = get_sin_deg((int)quad->angle);
-        float hy = (quad->bottom - quad->top) * 0.5f;
-        float hx = (quad->x1 - quad->x0) * 0.5f;
-        float cy = quad->top + hy + y;
-        float cx = quad->x0 + hx + x;
-        float hy_s = hy * s, hx_c = hx * c, hx_s = hx * s, hy_c = hy * c;
-
-        v[0].x = -hx_c - -hy_s + cx + 0.5f;
-        v[1].y = -hy_c + hx_s + cy + 0.5f;
-        v[0].y = -hy_c + -hx_s + cy + 0.5f;
-        v[2].x = -hx_c - hy_s + cx + 0.5f;
-        v[1].x = hx_c - -hy_s + cx + 0.5f;
-        v[3].x = hx_c - hy_s + cx + 0.5f;
-        v[2].y = hy_c + -hx_s + cy + 0.5f;
-        last_y = hy_c + hx_s + cy;
-    } else {
-        v[0].x = quad->x0 + 0.5f;
-        v[0].y = quad->top + 0.5f;
-        v[1].x = quad->x1 + 0.5f;
-        v[1].y = quad->top + 0.5f;
-        v[2].x = quad->x0 + 0.5f;
-        v[2].y = quad->bottom + 0.5f;
-        v[3].x = quad->x1 + 0.5f;
-        last_y = quad->bottom;
-    }
-    v[3].y = last_y + 0.5f;
+    q = &prim->instance;
+    q->kind = GFX_QUAD_SPRITE;
+    q->sprite.x0 = quad->x0;
+    q->sprite.x1 = quad->x1;
+    q->sprite.top = quad->top;
+    q->sprite.bottom = quad->bottom;
+    q->sprite.rhwBottom = quad->depth_a;
+    q->sprite.rhwTop = quad->depth_b;
+    q->sprite.zBottom = renderer_project_depth(quad->depth_a);
+    q->sprite.zTop = renderer_project_depth(quad->depth_b);
+    q->sprite.turned = quad->angle != 0.0f;
+    q->sprite.cosine = q->sprite.turned ? get_cos_deg((int)quad->angle) : 1.0f;
+    q->sprite.sine = q->sprite.turned ? get_sin_deg((int)quad->angle) : 0.0f;
+    q->sprite.offsetX = x;
+    q->sprite.offsetY = y;
     if (*(const int *)palette == 0xd77b)
         uv.u1 = uv.u1 - 0.002f;
-
-    /* custom: the rows keep their own depth (z) for the depth test, but all four corners share
-       the top row's rhw. The GPU interpolates the texture by rhw, so a top and bottom rhw that
-       differ (more so the steeper the camera tilts) warp the flat sprite. The top row's rhw is
-       what the original's first corner carried, and the draw queues sort by it, so a shadow still
-       draws before the figure standing on it. */
-    v[0].rhw = quad->depth_b;
-    v[0].z = z_b;
-    v[0].u = uv.u;
-    v[0].v = uv.v;
-    v[0].diffuse = quad->color;
-    v[1].rhw = quad->depth_b;
-    v[1].z = z_b;
-    v[1].u = uv.u1;
-    v[1].v = uv.v;
-    v[1].diffuse = quad->color;
-    v[2].rhw = quad->depth_b;
-    v[2].z = z_a;
-    v[2].u = uv.u;
-    v[2].v = uv.v1;
-    v[2].diffuse = quad->color;
-    v[3].rhw = quad->depth_b;
-    v[3].z = z_a;
-    v[3].u = uv.u1;
-    v[3].v = uv.v1;
-    v[3].diffuse = quad->color;
+    q->sprite.u0 = uv.u;
+    q->sprite.v0 = uv.v;
+    q->sprite.u1 = uv.u1;
+    q->sprite.v1 = uv.v1;
+    q->sprite.colour = quad->color;
+    prim->base.rhw[0] = prim->base.rhw[1] = quad->depth_b;
 
     prim->base.srcBlend = 5;
     prim->base.destBlend = (flags != 5) * 4 + 2;

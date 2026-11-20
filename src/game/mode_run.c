@@ -45,6 +45,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "world/world.h"
 #include "platform/clock.h"
+#include "diag/perf.h"
 
 int g_followActorGid;
 DWORD g_firstFrameTick;
@@ -72,11 +73,7 @@ int game_mode_on_run(struct Mode *mode)
         }
 
         game_mode_on_update(mode);
-        /* Drawing nothing (inactive in exclusive fullscreen), nothing waits for the display. */
-        if (g_windowActive == 0 && g_3dDevice.fullscreen != 0)
-            platform_thread_sleep(1);
-        else
-            platform_thread_yield();
+        platform_thread_yield();
     }
     mode_run_fade_out(&self->base, 0);
 
@@ -150,23 +147,13 @@ static void follow_pointed_actor(struct GameMode *self)
 static void play_loop_sounds(struct GameMode *self)
 {
     struct LoopSound *sound;
-    struct GameActor *npc;
-    struct Player *player;
 
     for (sound = self->loop_sounds.first; sound != (struct LoopSound *)self->loop_sounds.last; sound++) {
         platform_ticks_ms();
         if (platform_ticks_ms() < sound->next_tick)
             continue;
-        if (sound->npc_aid != 0) {
-            npc = world_get_game_actor_by_aid(self->world, sound->npc_aid);
-            if (npc != 0) {
-                player = self->world->player;
-                sound_play_wave(string_cstr(&sound->name), player->pos.x - npc->pos.x, 0.0f,
-                                player->pos.z - npc->pos.z, 0xfa, 0x28, 1.0f);
-            }
-        } else {
-            sound_play_wave(string_cstr(&sound->name), 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
-        }
+        if (sound->npc_aid == 0 || world_get_game_actor_by_aid(self->world, sound->npc_aid))
+            sound_play_wave(string_cstr(&sound->name), 1.0f);
         sound->next_tick = platform_ticks_ms() + sound->interval;
     }
 }
@@ -186,6 +173,21 @@ static void restart_bgm(struct GameMode *self)
     string_free(&rsw);
 }
 
+/* custom: the effects' and the world's objects' steps, timed for the counters (diag/perf.h) */
+static void process_effects(void)
+{
+    int64_t start = platform_stopwatch_ns();
+    effect_mgr_process(g_effectMgr);
+    g_perf.effectsNs += platform_stopwatch_ns() - start;
+}
+
+static void process_actors(struct World *world)
+{
+    int64_t start = platform_stopwatch_ns();
+    world_process_actors(world);
+    g_perf.actorsNs += platform_stopwatch_ns() - start;
+}
+
 static void run_logic_steps(struct GameMode *self)
 {
     int steps, n;
@@ -203,25 +205,29 @@ static void run_logic_steps(struct GameMode *self)
     res_mgr_call_residents(g_resMgr());
     if (steps > 0) {
         for (n = steps; n != 0; n--) {
-            effect_mgr_process(g_effectMgr);
-            world_process_actors(self->world);
+            process_effects();
+            process_actors(self->world);
             c3d_ground15_update_water(self->world->ground);
             view_on_calc_view_info(self->view);
         }
     } else if (steps == 0) {
-        world_process_actors(self->world);
+        process_actors(self->world);
         view_on_calc_view_info(self->view);
     }
 }
 
 static void render_frame(struct GameMode *self)
 {
+    int64_t start;
     renderer_clear_scene(g_renderer);
     actor_pick_node_clear(&g_actorPickNode);
     view_on_render(self->view);
     game_mode_draw_minimap(self);
+    /* custom: timed for the counters (diag/perf.h) */
+    start = platform_stopwatch_ns();
     ui_window_mgr_render(&g_windowMgr);
     ui_window_mgr_render_windows(&g_windowMgr);
+    g_perf.uiNs += platform_stopwatch_ns() - start;
     if (self->world->is_pvp != 0 || g_session1.map_rule_flags[3] != 0) {
         game_mode_draw_pk_ranking(self);
         game_mode_draw_ranking_time_attack(self);
@@ -231,10 +237,9 @@ static void render_frame(struct GameMode *self)
     mode_draw_mouse_cursor(&self->base);
     game_mode_draw_skill_level_at_cursor(self);
     mode_process_fade_in(&self->base);
-    if (renderer_draw_scene(g_renderer)) {
+    game_mode_draw_net_overview(self);
+    if (renderer_draw_scene(g_renderer))
         renderer_draw_frame_extras(g_renderer);
-        game_mode_draw_net_overview(self);
-    }
     renderer_flip(g_renderer, 1);
 }
 
@@ -259,13 +264,17 @@ static void send_stat_raises(struct GameMode *self)
 void game_mode_on_update(struct Mode *mode)
 {
     struct GameMode *self = (struct GameMode *)mode;
+    int64_t start;
     if (once_begin(&g_firstFrameTickGuard)) {
         g_firstFrameTick = platform_ticks_ms();
         once_complete(&g_firstFrameTickGuard);
     }
     adventurer_agency_tick(g_adventurerAgency);
     check_system_message();
+    /* custom: timed for the counters (diag/perf.h) */
+    start = platform_stopwatch_ns();
     game_mode_poll_network_msg(self);
+    g_perf.packetsNs += platform_stopwatch_ns() - start;
     if (self->base.loop_cond != 0) {
         time_scheduler_tick(g_timeScheduler);
         player_names_update();
@@ -279,12 +288,9 @@ void game_mode_on_update(struct Mode *mode)
     }
     if (g_activatedNow != 0) {
         g_activatedNow = 0;
-        c3d_device_restore_surfaces(&g_3dDevice);
         ui_window_mgr_invalidate_all(&g_windowMgr);
     }
     weather_process(&g_weather);
-    if (g_windowActive == 0 && g_3dDevice.fullscreen != 0)
-        return;
     render_frame(self);
     mode_screen_shot(&self->base);
     send_stat_raises(self);

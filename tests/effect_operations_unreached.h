@@ -3,7 +3,7 @@ void particle_render_with(struct Particle *self, const struct ParticleRenderArgs
 void particle_set_color(struct Particle *self, short r, short g, short b) { abort(); }
 unsigned char is_effect_state_cloaking(unsigned long state) { abort(); }
 float deg_to_rad(int deg) { abort(); }
-void effect_play_wave_at(const char *wave, const Vec3 *position, float height) { abort(); }
+void effect_play_wave(const char *wave) { abort(); }
 Vec3 *effect_player_position(Vec3 *out) { abort(); }
 __declspec(noreturn) void fatal_error(const char *message) { abort(); }
 struct EffectMgr *g_effectMgr = {0};
@@ -25,4 +25,5 @@ void particle_slots_add(struct ParticleSlots *s, struct Particle *p) { abort(); 
 void particle_slots_clear(struct ParticleSlots *s) { abort(); }
 void particle_slots_construct(struct ParticleSlots *s) { abort(); }
 void particle_slots_destroy(struct ParticleSlots *s) { abort(); }
+void particle_slots_release(struct ParticleSlots *s, struct Particle *p) { abort(); }
 void particle_slots_use_all(struct ParticleSlots *s) { abort(); }

@@ -25,6 +25,7 @@
 #include "actor/actor_common.h"
 #include "actor/game_actor.h"
 #include "world/world.h"
+#include "world/world_gpu.h"
 
 #define UNIT_JOB 0x7e
 #define NEW_FRAMES 36000
@@ -107,16 +108,13 @@ static void skill_reset(struct Skill *self)
     self->creator_aid = 0;
     self->range = 0;
     self->launched = 0;
-    self->cells.last = self->cells.first;
 }
 
 struct Skill *skill_construct(struct Skill *self, int unit_aid)
 {
     game_actor_construct(&self->base);
     self->base.ops = &skill_ops.base.base;
-    self->cells.first = 0;
-    self->cells.last = 0;
-    self->cells.end = 0;
+    self->unit_node = NULL;
     self->unit_aid = unit_aid;
     skill_reset(self);
     return self;
@@ -131,6 +129,8 @@ void skill_release_model(struct Skill *self)
     list = game_current_scene_root();
     if (list)
         scene_graph_node_remove(list, self->model, 0);
+    /* custom: its records leave the static world (world/world_gpu.c) */
+    world_gpu_forget(game_current_world(), self->model);
     if (self->model)
         self->model->ops->destroy(self->model);
     self->model = 0;
@@ -145,29 +145,17 @@ void skill_release_model(struct Skill *self)
 
 static void skill_release(struct Skill *self)
 {
-    struct RenderObject *me = (struct RenderObject *)&self->base;
-    struct SkillCell *cell;
-
     if (self->base.balloon_wnd) {
         ui_window_mgr_post_quit2(&g_windowMgr, self->base.balloon_wnd);
         self->base.balloon_wnd = 0;
     }
     skill_release_model(self);
-    for (cell = self->cells.first; cell != self->cells.last; cell++) {
-        struct World *world = game_current_world();
-        int x = cell->x, y = cell->y;
-        if (!world)
-            break;
-        world_send_msg_to_object(world, me, x, y, MSG_CELL_GONE, 0, 0, 0, 0);
-    }
-    self->cells.last = self->cells.first;
 }
 
 void skill_destruct(struct Skill *self)
 {
     self->base.ops = &skill_ops.base.base;
     skill_release(self);
-    vec_free(&self->cells);
     game_actor_dc_game_actor(&self->base);
 }
 
@@ -251,7 +239,6 @@ void skill_load_model(struct Skill *self, const char *name)
         skill_release_model(self); return;
     }
     self->model->ops->animate(self->model, 3.0);
-    self->model->pickable = 0;
     self->model->animType = 0;
     self->model->ops->light(self->model, colors[0], colors[1], colors[2]);
     if (scene != game_current_scene_root()) {
@@ -310,7 +297,7 @@ static int due(struct Skill *self, int period)
 
 static void unit_sound(const char *wave)
 {
-    sound_play_wave(wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave(wave, 1.0f);
 }
 
 void skill_launch_area_effect(struct Skill *self, int effect_id, int period)
@@ -468,18 +455,10 @@ void skill_render_body(struct RenderObject *object, const struct ScreenBounds *r
     struct RenderObject *me = (struct RenderObject *)&self->base;
 
     if (me->pickable) {
-        struct PickInfo *pick;
+        struct PickInfo box, *pick = &box;
         int least, w, h;
 
-        pick = mem_alloc(sizeof *pick);
-        if (pick) {
-            pick->left = 0.0f;
-            pick->top = 0.0f;
-            pick->near_z = 0.0f;
-            pick->right = 0.0f;
-            pick->bottom = 0.0f;
-            pick->far_z = 0.0f;
-        }
+        memset(pick, 0, sizeof *pick);
         pick->left = rect->left < rect->right ? rect->left : rect->right;
         pick->top = rect->top;
         pick->near_z = rect->z + 350.0f;

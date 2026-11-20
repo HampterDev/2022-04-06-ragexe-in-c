@@ -2,104 +2,103 @@
 #include <stdlib.h>
 #include <string.h>
 #include "resources/granny_res.h"
-#include "render/math3d.h"
+#include "render/gfx.h"
+#include "render/skin_layout.h"
 
-struct GrannyVertexBuffer *granny_vertex_buffer_create(const struct C3dGrannyModelRes *model, int mesh)
+/* custom: the meshes that draw triangles, one behind the other: each mesh's vertices packed for its
+   skeleton, its triangles' indices (whole triangles, as the original drew them) with its first
+   vertex added, so that a draw may run on from one mesh into the next */
+int granny_model_res_skin(struct C3dGrannyModelRes *self)
 {
-    struct GrannyVertexBuffer *buffer;
-    int count;
+    struct SkinSource *sources = NULL;
+    struct SkinVertex *vertices = NULL;
+    uint32_t *indices = NULL;
+    uint16_t *meshIndices = NULL;
+    size_t vertexCount = 0, indexCount = 0, most = 0;
+    int bones, i, ok = 0;
 
-    if (!model || !model->model || mesh < 0 || mesh >= model->model->meshCount)
-        return NULL;
-    count = _GrannyGetMeshVertexCount(model->model->meshes[mesh].mesh);
-    if (count <= 0 || (size_t)count > (SIZE_MAX - sizeof *buffer) / sizeof buffer->vertices[0])
-        return NULL;
-    buffer = calloc(1, sizeof *buffer + (size_t)count * sizeof buffer->vertices[0]);
-    if (buffer)
-        buffer->count = (size_t)count;
-    return buffer;
-}
+    if (!self->model || !self->skeleton)
+        return 1;
+    bones = self->skeleton->BoneCount;
+    if (bones < 0 || bones > SKIN_BONES_MAX)
+        return 1;
+    for (i = 0; i < self->model->meshCount; i++) {
+        struct GrannyResMesh *m = &self->model->meshes[i];
+        size_t v = (size_t)_GrannyGetMeshVertexCount(m->mesh), all = (size_t)_GrannyGetMeshIndexCount(m->mesh);
+        size_t n = all / 3 * 3;
 
-void granny_vertex_buffer_destroy(struct GrannyVertexBuffer *buffer)
-{
-    free(buffer);
-}
-
-int granny_mesh_vertex_position(const struct C3dGrannyModelRes *model, int mesh,
-                               const struct GrannyMeshVertex *vertices, int vertex, Vec3 *out)
-{
-    if (!model || !model->model || mesh < 0 || mesh >= model->model->meshCount ||
-        !vertices || !out || vertex < 0 ||
-        vertex >= _GrannyGetMeshVertexCount(model->model->meshes[mesh].mesh))
+        if (!n)
+            continue;
+        if (vertexCount > 0xffffffffu - v || indexCount > 0xffffffffu - n)
+            return 1;
+        vertexCount += v;
+        indexCount += n;
+        if (v > most)
+            most = v;
+        if (all > most)
+            most = all;
+    }
+    if (!indexCount)
+        return 1;
+    if (vertexCount > SIZE_MAX / sizeof *vertices || indexCount > SIZE_MAX / sizeof *indices
+        || most > SIZE_MAX / sizeof *sources)
         return 0;
-    *out = vertices[vertex].pos;
+    vertices = malloc(vertexCount * sizeof *vertices);
+    indices = malloc(indexCount * sizeof *indices);
+    sources = malloc(most * sizeof *sources);
+    meshIndices = malloc(most * sizeof *meshIndices);
+    if (!vertices || !indices || !sources || !meshIndices)
+        goto done;
+    vertexCount = indexCount = 0;
+    for (i = 0; i < self->model->meshCount; i++) {
+        struct GrannyResMesh *m = &self->model->meshes[i];
+        int v = _GrannyGetMeshVertexCount(m->mesh), n = _GrannyGetMeshIndexCount(m->mesh), k;
+
+        if (n < 3)
+            continue;
+        _GrannyCopyMeshSkinVertices(m->mesh, 0, v, sources);
+        for (k = 0; k < v; k++)
+            skin_pack_vertex(&sources[k], m->rigidBone, bones, &vertices[vertexCount + (size_t)k]);
+        _GrannyCopyMeshIndices(m->mesh, 2, meshIndices);
+        if (!skin_pack_indices(meshIndices, (uint32_t)(n / 3 * 3), (uint32_t)v, (uint32_t)vertexCount,
+                               indices + indexCount))
+            goto done;
+        m->firstIndex = (uint32_t)indexCount;
+        m->indexCount = (uint32_t)(n / 3 * 3);
+        vertexCount += (size_t)v;
+        indexCount += m->indexCount;
+    }
+    self->skin = gfx_create_skin(vertices, (uint32_t)vertexCount, indices, (uint32_t)indexCount);
+    ok = self->skin != NULL;
+done:
+    free(vertices);
+    free(indices);
+    free(sources);
+    free(meshIndices);
+    return ok;
+}
+
+int granny_mesh_vertex_position(const struct C3dGrannyModelRes *model, int mesh, granny_world_pose *pose,
+                               int vertex, Vec3 *out)
+{
+    const struct GrannyResMesh *m;
+    struct SkinSource source;
+    struct SkinVertex v;
+    float at[3];
+    int bones;
+
+    if (!model || !model->model || !model->skeleton || !pose || mesh < 0 || mesh >= model->model->meshCount
+        || vertex < 0 || !out)
+        return 0;
+    m = &model->model->meshes[mesh];
+    bones = model->skeleton->BoneCount;
+    if (vertex >= _GrannyGetMeshVertexCount(m->mesh) || bones < 0 || bones > SKIN_BONES_MAX)
+        return 0;
+    _GrannyCopyMeshSkinVertices(m->mesh, vertex, 1, &source);
+    skin_pack_vertex(&source, m->rigidBone, bones, &v);
+    skin_vertex_position(&v, _GrannyGetWorldPoseComposite4x4Array(pose), (uint32_t)bones, at);
+    out->x = at[0];
+    out->y = at[1];
+    out->z = at[2];
     return 1;
-}
-
-static const struct GrannyMeshVertex *render_mesh(struct GrannyResModel *model, int mesh,
-                         struct Texture **tex, unsigned short **indices, int *tris, float *matrix,
-                         const struct GrannyMeshPose *pose, struct GrannyVertexBuffer *buffer)
-{
-    struct GrannyResMesh *m;
-    const float *composite;
-    const int *bones, *groups;
-    int count, material;
-    struct GrannyResTexture *t = NULL;
-
-    *tex = NULL;
-    *indices = NULL;
-    *tris = 0;
-    if (!model || mesh < 0 || mesh >= model->meshCount ||
-        !pose || !pose->world || !pose->binding)
-        return NULL;
-    m = &model->meshes[mesh];
-    count = _GrannyGetMeshVertexCount(m->mesh);
-    if (count <= 0)
-        return NULL;
-    groups = _GrannyGetMeshTriangleGroups(m->mesh);
-    if (groups) {
-        material = groups[0];
-        if (material >= 0 && material < m->materialCount && m->textures)
-            t = m->textures[material];
-    }
-    composite = _GrannyGetWorldPoseComposite4x4Array(pose->world);
-    bones = _GrannyGetMeshBindingToBoneIndices(pose->binding);
-    if (_GrannyMeshIsRigid(m->mesh)) {
-        const float *c = _GrannyGetWorldPoseComposite4x4(pose->world, bones[0]);
-        const struct GrannyMeshVertex *verts;
-        int row;
-
-        for (row = 0; row < 4; row++) {
-            matrix[row * 3] = c[row * 4];
-            matrix[row * 3 + 1] = c[row * 4 + 1];
-            matrix[row * 3 + 2] = c[row * 4 + 2];
-        }
-        verts = m->rigidVerts;
-        if (!verts)
-            return NULL;
-        *tex = t ? t->texture : NULL;
-        *indices = m->indices;
-        *tris = _GrannyGetMeshIndexCount(m->mesh) / 3;
-        if (m->mesh->Name && strstr(m->mesh->Name, "hair_pivot") && pose->hair)
-            memcpy(pose->hair->matrix, matrix, sizeof pose->hair->matrix);
-        return verts;
-    }
-    if (!m->deformer || !buffer || buffer->count < (size_t)count)
-        return NULL;
-    _GrannyDeformVertices(m->deformer, bones, composite, count, _GrannyGetMeshVertices(m->mesh), buffer->vertices);
-    _GrannyGetMeshBytesPerIndex(m->mesh);
-    _GrannyGetMeshIndices(m->mesh);
-    *indices = m->indices;
-    *tris = _GrannyGetMeshIndexCount(m->mesh) / 3;
-    *tex = t ? t->texture : NULL;
-    memcpy(matrix, &g_identityMatrix, sizeof g_identityMatrix.m);
-    return buffer->vertices;
-}
-
-const struct GrannyMeshVertex *c3d_granny_model_res_mesh_to_draw(struct C3dGrannyModelRes *self, int mesh,
-                                              struct Texture **tex, unsigned short **indices, int *tris,
-                                              float *matrix, const struct GrannyMeshPose *pose,
-                                              struct GrannyVertexBuffer *buffer)
-{
-    return render_mesh(self ? self->model : NULL, mesh, tex, indices, tris, matrix, pose, buffer);
 }

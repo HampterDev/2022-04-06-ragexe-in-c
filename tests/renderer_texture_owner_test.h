@@ -38,6 +38,9 @@ gfx_surface *gfx_create_texture(int width, int height, int format)
     return surface;
 }
 int gfx_texture_format_ok(int format) { (void)format; return 1; }
+void gfx_world_clear(void) {}
+gfx_surface *gfx_create_layer_texture(int width, int height, int format)
+{ (void)width; (void)height; (void)format; abort(); }
 int gfx_get_size(gfx_surface *surface, int *width, int *height)
 { assert(surface && surface->refs); *width = surface->width; *height = surface->height; return 0; }
 int gfx_lock(gfx_surface *surface, const RECT *rect, struct gfx_lock *out)
@@ -56,7 +59,6 @@ int gfx_unlock(gfx_surface *surface) { assert(surface && surface->refs); return 
 int gfx_refresh_mips(gfx_surface *surface, const RECT *rect)
 { assert(surface && surface->refs && rect); return 0; }
 unsigned gfx_content_version(gfx_surface *surface) { assert(surface); return 0; }
-void gfx_evict_managed_textures(struct C3dDevice *device) { assert(device == &g_3dDevice); }
 void c3d_device_clamp_texture_size(struct C3dDevice *device, unsigned *width, unsigned *height)
 { assert(device == &g_3dDevice); assert(*width <= 16 && *height <= 16); }
 
@@ -123,10 +125,13 @@ static void queued_sprite_replacement(struct Renderer *renderer)
     original = sprite->images[SPR_RGBA_IMAGES].items[0].texture->base.surface;
     original_id = original->id; original_pixel = original->pixels[0];
     queue_texture(renderer, sprite->images[SPR_RGBA_IMAGES].items[0].texture, 0x201);
-    assert(original->refs == 2);
+    /* the owner's reference and the queues' hold */
+    assert(original->refs == 2 && original->held && live_surfaces == 1);
     sprite_fixture(0x90); upload_failure = 1;
     assert(!resource_load(resource, "queued.spr")); upload_failure = 0;
+    /* the failed load's surface, which no draw names, goes at once */
     assert(sprite->images[SPR_RGBA_IMAGES].items[0].texture->base.surface == original && original->refs == 2);
+    assert(live_surfaces == 1);
     assert(resource_load(resource, "queued.spr"));
     replacement = sprite->images[SPR_RGBA_IMAGES].items[0].texture->base.surface;
     replacement_id = replacement->id; replacement_pixel = replacement->pixels[0];
@@ -156,6 +161,7 @@ static void queued_cache_replacement(struct Renderer *renderer)
     bitmap_pixels[0] = 0xff902030; upload_failure = 1;
     texcache_reload_all(&cache); upload_failure = 0;
     assert(texture->base.surface == original && original->refs == 2 && original->pixels[0] == original_pixel);
+    assert(live_surfaces == 1); /* the failed reload's surface, which no draw names, went at once */
     texcache_reload_all(&cache);
     replacement = texture->base.surface; replacement_id = replacement->id; replacement_pixel = replacement->pixels[0];
     assert(replacement != original && original->refs == 1 && original_pixel != replacement_pixel);
@@ -179,9 +185,9 @@ static void queued_all_routes(struct Renderer *renderer)
     struct Texture *texture = texture_create(1, 1, GFX_FMT_8888);
     gfx_surface *surface = texture->base.surface;
     struct TexDrawPrim *quad = renderer_new_prim(renderer);
-    struct RPTwoTexQuad *pair = renderer_new_two_tex_quad(renderer);
+    struct TexDrawPrim *pair = renderer_new_multi_tex_quad(renderer);
     struct PrimTriangle triangle = {0};
-    struct RPMeshDraw draw;
+    struct RPWorldDraw draw;
     unsigned flags, mode, i, submissions = 0;
     quad->base.texture = texture;
     for (i = 0; i < 4; ++i) quad->quad[i].rhw = 0.00125f;
@@ -189,33 +195,30 @@ static void queued_all_routes(struct Renderer *renderer)
         quad->base.alpha_mode = (BYTE)mode;
         for (flags = 0; flags < 65536; ++flags) { renderer_add_prim(renderer, &quad->base, flags); ++submissions; }
     }
-    pair->prim.tex0 = pair->prim.tex1 = texture;
-    for (i = 0; i < 4; ++i) pair->quad[i].rhw = 0.00125f;
-    renderer_add_multi_tex_batch(renderer, &pair->prim);
+    pair->base.texture = texture;
+    pair->instance.kind = GFX_QUAD_WORLD;
+    pair->instance.world.stage2 = 1;
+    renderer_add_multi_tex_batch(renderer, &pair->base, texture);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
     memset(&draw, 0, sizeof draw);
-    draw.mesh = (struct gfx_mesh *)&mesh_token;
-    memcpy(draw.view, mesh_view, sizeof draw.view);
-    draw.draw.count = 3;
-    renderer_add_mesh_draw(renderer, RENDER_GROUND_MESH, &draw, texture, texture, 0.0f);
-    renderer_add_mesh_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, NULL, 0.0f);
-    draw.cull = GFX_CULL_CW;
-    renderer_add_mesh_draw(renderer, renderer_mesh_pass(0x21), &draw, texture, NULL, 0.00125f);
-    assert(surface->refs == 1 + submissions + 2 + 1 + 4);
+    draw.kind = RP_WORLD_WATER;
+    renderer_add_world_draw(renderer, RENDER_ALPHA_CLAMP, &draw, texture, 0.00125f);
+    /* the owner's reference and one hold for all the draws that name the surface */
+    assert(submissions && surface->refs == 2 && surface->held);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;
         assert(renderer->queues[i].count);
         for (n = 0; n < renderer->queues[i].count; ++n) {
-            const struct RenderTexture *retained = renderer->queues[i].items[n].textures;
-            assert(retained[0].surface == surface && retained[0].sort_key == texture->serial);
+            const struct RenderTexture *named = renderer->queues[i].items[n].textures;
+            assert(named[0].surface == surface && named[0].sort_key == texture->serial);
         }
     }
-    texture_destroy(texture); assert(live_surfaces == 1);
+    texture_destroy(texture); assert(live_surfaces == 1 && surface->refs == 1);
     for (i = 0; i < 4; ++i) {
         renderer->twoPassAlpha = (BYTE)(i & 1);
         g_lightmap = (int)(i >> 1);
         renderer_draw_lists(renderer);
-        assert(live_surfaces == 1 && surface->refs == submissions + 2 + 1 + 4);
+        assert(live_surfaces == 1 && surface->refs == 1);
     }
     g_lightmap = 0;
     renderer_destroy_all_rp_list(renderer); renderer_destroy_all_rp_list(renderer); assert(!live_surfaces);

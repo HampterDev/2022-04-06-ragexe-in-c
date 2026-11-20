@@ -262,7 +262,7 @@ The first four operations are at lines 133-139.
 | START-068 | Screenshot capture drew the local date, weekday and time into the bottom-left of the image. `mode_screen_shot` in `src/world/mode_mgr.c`. | Remove the visible timestamp for an unobstructed image; files retain ordinary filesystem timestamps. | Remove, approved 2026-11-01 | Removed date/time generation, weekday table, text buffer and all five drawing calls. Changed-unit release rebuild/relink and JPEG capture tests passed. |
 | START-069 | Screenshot capture composites `scr_logo.bmp` into the bottom-right, treating magenta as transparent. It also required that resource before capturing. `src/render/frame_capture.c`. | Remove the screenshot logo overlay and its resource dependency from purist. | Remove, approved 2026-11-01 | Removed lookup, compositor and bitmap-specific include. Capture and save-notification regression tests and release relink passed. Foundation patch preserves optional logo rendering and fixes failed-save reporting. |
 | START-070 | An unchecked-by-default trade-window checkbox requests a screenshot when Exchange is clicked, before sending the trade commit request. `src/ui/shops/trade.c`. | Remove this optional automatic screenshot behavior and checkbox; retain manual screenshots and ordinary trading. | Remove, approved 2026-11-01 | Removed checkbox, label, state and automatic request; removed the now-unused custom screenshot prefix and base destructor. Full release build, manual screenshot tests, mode lifecycle tests and trade-command source audit passed. |
-| START-071 | Startup detects graphics adapters and available display modes, populates graphics-setting choices and finds the selected adapter's monitor coordinates. `src/render/render_clients.c`, `gfx_d3d9.c`, `display_devices.c`. | Keep this shared graphics support. | Keep, approved 2026-11-01 | Retained unchanged; used by graphics settings and coordinate conversion for the selected monitor. |
+| START-071 | Startup detects graphics adapters and available display modes, populates graphics-setting choices and finds the selected adapter's monitor coordinates. `src/render/render_clients.c`, `gfx_d3d9.c`, `display_devices.c`. | Keep this shared graphics support. | Keep, approved 2026-11-01; removed 2026-11-11 | Removed with exclusive fullscreen and the display-mode changes (*Windowed with resizing, and fullscreen at the display's own resolution*): the display is the window's, Direct3D 9 always uses the primary display's adapter, and the resolution picker offers common sizes that fit the window's display. |
 | START-072 | Startup creates `savedata` if it is missing. The directory holds local options, chat layouts, quest-tracker selections, party-panel records and local account/character preferences. `src/core/winmain.c` and the individual settings writers. | Keep this shared storage setup; review individual saved features separately. | Keep, approved 2026-11-01 | Retained unchanged. Several retained systems use this directory. |
 | START-073 | Startup calls `_controlfp(0x20000, 0x30000)`, selecting 24-bit x87 floating-point precision in this 32-bit client. `src/core/winmain.c`. | Keep the existing numerical environment; review any math modernization separately. | Keep, approved 2026-11-01 | Retained unchanged. This is a CPU arithmetic setting, not a visual effect or data format. |
 | START-074 | Startup requests finer Windows timer resolution with `timeBeginPeriod`, aiming for 1 ms within supported limits; normal shutdown calls `timeEndPeriod`. `src/core/winmain.c`. | Keep while the client uses `timeGetTime` for logic, animation and timeouts; review timing modernization separately. | Keep, approved 2026-11-01 | Retained unchanged. This improves timing granularity, not the configured update rate. |
@@ -13555,7 +13555,7 @@ one that did.
 
 Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build of the commit before from
 the same saved options: the 20 captures of the scene set above are identical with lightmaps on and
-with lightmaps off. `build.bat check` and the full `testsuild.bat` pass.
+with lightmaps off. `build.bat check` and the full `tests\build.bat` pass.
 
 ## The camera eases by real time (2026-11-09)
 
@@ -13585,7 +13585,7 @@ started (`motion_update.c`), so they were even; the camera was what jerked.
   (`c3d_ground15_update_water`) still advance once per tick; they move little of the view.
 
 Validation: the scene set's captures are identical to the commit before (the harness's frames
-take 16 ms each). `build.bat check` and the full `testsuild.bat` pass.
+take 16 ms each). `build.bat check` and the full `tests\build.bat` pass.
 
 ## A 24-bit depth buffer (2026-11-09)
 
@@ -13611,7 +13611,7 @@ before from the same saved options: the far captures differ by 29,149, 64,990 an
 at 1,500, 3,000 and 6,000 (the beds, the fountain, models' feet); the 20 captures of the scene
 set by 267 to 17,368, in rows of pixels where models meet the ground (curbs, planters, the beds'
 edges, walls), the depth ties now resolved at 24 bits; sprites, their shadows and effects are
-unchanged. `build.bat check` and the full `testsuild.bat` pass.
+unchanged. `build.bat check` and the full `tests\build.bat` pass.
 
 ## Shadows at the furthest zoom (2026-11-09)
 
@@ -13634,7 +13634,7 @@ shadows; tilting up brought the bottom of the view nearer than 8,000. Captures f
 Validation, in `client-files` with `RAGEXE_MSAA=1`: from 10,000 at -60 and -70 degrees the town
 now has its shadows (18,832 and 20,343 pixels differ from the capture without shadows); the 20
 captures of the scene set are identical to the commit before. `build.bat check` and the full
-`testsuild.bat` pass.
+`tests\build.bat` pass.
 
 ## The server times a player's swing (2026-11-09)
 
@@ -15722,3 +15722,4137 @@ cells was taken at once too.
   follows, its predicted world's, as every other actor against the server's; the predicted body
   off the server's body is reported apart, with how far and how long. A hit the server rolls is
   an outcome the predicted body learns only with the server's next word, and is that column's.
+
+## Shadows from a flat camera far off (2026-11-11)
+
+Patrick saw no shadows on Prontera's south gate, seen from outside the walls with the camera
+tilted almost level. `renderer_shadow_frame` fitted the cascades to the view's four corner rays
+alone: the band's depth range was where those rays crossed it, and each cascade covered its
+slice's part of each ray inside the band. RO's view is 15 degrees high, so at the flattest tilt
+(-5) the upper rays climb 2.5 degrees. From 2,500 units the eye is 218 above the focus, the upper
+rays leave the band (300 above the focus) at a depth of 1,866, the lower ones (12.5 degrees down)
+reach its floor (60 below) at 1,273, and the focus lies at 2,500: the cascades ended before the
+middle of the screen, which had no shadows. A little steeper, the upper rays meet the band only
+beyond the depth kept (four times the distance), and a slice that the lower rays crossed only near
+its front covered only that part, leaving the middle of the slice off its map. Over tilts from -5
+to -85 degrees, half a degree apart, and distances from 100 to 10,000, 50 apart, the focus lay
+outside the cascade the shaders pick for it in 1,553 of 32,039 views, all at tilts from -5 to -21
+and distances of 1,050 or more: beyond the last cascade at -5 to -9 degrees from distances of
+2,300 to 6,100 on, and otherwise off a cascade's map. Captures from 2,500 and 4,000 at -5 degrees
+showed shadows only along the bottom edge.
+
+- **The change.** `band_corners` finds the corners of the part of a slice of the view that lies in
+  the band: that part is convex, so they are the slice's own corners in the band and the points
+  where its twelve edges (the four corner rays and the edges of its near and far rectangles)
+  cross the band's two planes. The view's depth range in the band is that of its corners between
+  the near plane and the deepest depth kept, and each cascade covers its slice's corners as the
+  light sees them; where rounding leaves a slice none, it covers the whole slice, as before. Over
+  the same 32,039 views the focus now always lies on the map of the cascade picked for it.
+- **What it changes elsewhere.** Where the corner rays already held the band's extremes the depth
+  range is the same, and a cascade's square grows only by the points where its slice's rectangles
+  cross the band, so its texels may move. In the scene set only the two captures of
+  `camera_level_view` (a level camera) change, in the far trees' shading at the top of the screen
+  (91 and 47 pixels by more than 16).
+- **Test.** `test_projection` looks at the origin from tilts of -5, -8, -15, -35, -55 and -85
+  degrees and distances of 150 to 6,000 and checks that the focus lies in the cascade the shaders
+  pick for its depth, inside its map. With the old fit it lay beyond the last cascade from -5
+  degrees at 2,500 and 6,000 and from -8 at 6,000, and off the map from -8 at 2,500.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: from 2,500 at -5 degrees the gate, its trees
+and the town behind it now have their shadows; from 10,000 at -70 degrees the shadows remain
+(21,852 pixels differ from the capture without shadows, 21,731 before); the scene set's other 11
+captures are identical. `build.bat check` and the full `tests\build.bat` pass.
+
+## Shadows fitted to the ground and the models (2026-11-11)
+
+The two fixes before this one fitted the cascades better to a guess: that the meshes that receive
+shadows lie in a band from 300 units above the camera's focus to 60 below it, out to four times the
+camera's distance. It fails wherever ground or models lie outside that band. On 63 of the 926
+grounds in the client's GRFs the heights spread over more than the band's 360 units (up to 804, on
+`mjolnir_04_1`; `manuk` 736, `ve_fild05` 670, `hu_fild01` 577). A pixel outside every cascade
+counts as lit, and on the ground the shadow maps take the place of the lightmap's baked shadows, so
+there the baked shadow was taken away as well. Patrick asked for the structural fix; the cascades
+are now fitted to where the ground and the models are.
+
+- **The boxes.** `world_build_scene_graph` gives each leaf of the scene graph (32 by 32 over the
+  ground) the box around its cells' surfaces, walls included (`groundMin`, `groundMax`): a wall
+  rises from its cell's edge to the neighbour's height, which may lie in the next leaf, so the
+  cells' tops alone left cliffs' faces out. Each frame `view_shadow_boxes` widens each leaf's box
+  by the models in it (`bboxMin`, `bboxMax`, the leaves the scene graph already keeps them in,
+  streamed models and skills' models included) and hands the 1,024 boxes to
+  `renderer_shadow_frame`. Boxes that are empty or not finite are left out.
+- **The fit.** For the view from the near plane to four times the camera's distance, and then for
+  each cascade's slice of it, `fit_box` finds the corners of each box's part inside the slice:
+  both are convex, so they are the box's corners inside the slice, the slice's inside the box,
+  and the ends of each edge's part inside the other. A box wholly inside a slice gives its
+  extremes along the view's depth and the light's two axes directly (its centre plus or minus
+  half its size along each); a box within the slice's four sides needs only its own edges. The
+  cascades' depths run from the nearest to the farthest point found, the last a unit beyond (the
+  shaders take the first cascade whose far depth lies beyond a pixel), and each cascade's square
+  covers its slice's points as the light sees them. A slice with nothing in it, as between the
+  top of a cliff and its foot, takes no casters.
+- **Along the light** the maps keep every box, 8 units beyond (`SHADOW_MARGIN`), in place of 3,000
+  units either way from the focus; the bias and the slant scale with that range as they did with
+  the 6,000 before. The camera's focus is no longer needed and `renderer_shadow_frame` drops it.
+- **Cost.** With 1,024 boxes over a 2,000-unit map of random heights, the fit takes 0.11 ms a frame
+  from the default camera (488 at -55 degrees), 0.29 ms from 2,500 at -5 degrees and 0.46 ms from
+  6,000 at -70 degrees with the whole map in view (`renderer_shadow_frame` in a loop, /O2). Most of
+  it is testing every box against five slices; keeping the boxes in view after the first would cut
+  that.
+- **Tests.** `test_projection` looks from tilts of -5 to -85 degrees and distances of 150 to 6,000
+  at flat ground with a hill rising 600 units and a pit 400 deep, both outside the old band, and
+  checks that every point on the boxes' faces that the view sees within the shadows' reach lies in
+  the cascade the shaders pick for it, inside its map, and that a view that sees none of the boxes
+  draws no shadows. `test_scene_ground_box` checks a leaf's ground box: the wall up to the next
+  leaf's raised cell, the cells clamped to the ground, an empty leaf and a height that is not
+  finite.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the commit before. On the hilliest
+spots of `manuk`, `hu_fild01`, `ve_fild05` and `man_fild03`, from 800 at -40, 1,500 at -20 and
+2,500 at -10 degrees, the pixels the shadow maps draw lighter than without them (a baked shadow
+taken away) fall in 11 of the 12 captures (from 800 on `hu_fild01` from 29,454 to 14,150: the old
+fit drew lit a slope that the editor baked in a ridge's shadow, and the new one shades it), and
+rise by 4 in the twelfth. Prontera's south gate from 2,500 at -5 degrees keeps its shadows. The 13
+captures of the scene set change by a texel along shadow edges (105 to 316 pixels by more than 16
+each, none in `iz_int03_enter`). `build.bat check` and the full `tests\build.bat` pass.
+
+## The renderer's counters without the overlay (2026-11-11)
+
+Phase 0 of `plans/gpu-renderer.md` asks for the renderer's work to be measurable without the
+overlay, per scene capture, and for a baseline the later phases are measured against. `g_perf`
+(`diag/perf.h`) counted draws, states and texture binds whether the overlay was on or not, but
+only the overlay read them, and only the overlay timed anything. Its timer is
+`platform_perf_counter`, which the scene harness runs on its frame clock, so within a scene frame
+no time passes. The two devices did not count alike either: GL counted render states it changed but
+no stage or sampler states and nothing skipped, and counted its blits drawn as quads as draws;
+Direct3D 9 counted each sampler state it set, two for a texture address or an anisotropic filter.
+
+- **What is counted** (`diag/perf.h` says exactly): the device's draws after batching (shadow maps
+  included) and their primitives, the `gfx_draw` and `gfx_draw_mesh` calls, state changes sent and
+  states set to the value they had, texture binds, the bytes of vertices and indices the device is
+  given for draws and for a mesh when it fills the mesh's buffers (`vertexBytes`), the texels
+  written by `texture_upload_pixels`, `surface_fill_pixels` and the sprite atlas
+  (`texture_draw_sprite_frame`, `textureBytes`), and the time spent in `renderer_draw_scene` and
+  `view_on_render` (`drawSceneNs`, `viewRenderNs`). The texels and the times are counted above
+  `render/gfx.h`; the rest in each device, the same way: one count per `gfx_set_render_state` or
+  `gfx_set_stage_state` call (`perf_count_state`), blits as blits only. GL now ignores the texture
+  perspective and colour-key states as Direct3D 9 does; it never used them and
+  `gfx_get_render_state` already answered `TRUE` for both.
+- **The clock.** `platform_stopwatch_ns` (`platform/clock.h`) gives real nanoseconds on every
+  platform, and the scene harness's `scene_clock.c` leaves it real while its other clocks follow
+  the frames. Each timed call reads it twice; the overlay keeps its own timer.
+- **Threads.** The model loader's thread (`world/models.c`) creates and builds textures while
+  frames are drawn, so `texCreated`, `locks`, `builds`, `buildsSkipped` and `textureBytes` go up
+  atomically (`perf_count_shared`, through the new `platform_atomic_add`), and a texture the loader
+  builds counts in the frame during which it does. `resGets` and `resHits` already went up under
+  the resource manager's lock. The overlay's own timing of texture locks (`PERF_TEXLOCK`) still
+  races with the loader; it is the overlay's alone. Scene runs have no loader thread.
+- **The harness.** `drive_state_frame_shown` keeps the counters of the frame being shown and
+  starts them again, and `scene.capture` writes `<name>.counters.json` beside each capture: the
+  counters of the frame it shows, with the two times in milliseconds
+  (`tests/scenes/README.md`). The times are one frame's and are not averaged; they differ by about
+  a fifth between runs, so compare several.
+
+Baseline, Direct3D 9 in `client-files` with `RAGEXE_MSAA=1` (the counts are the same in every
+run; the times are one run's):
+
+| capture | draws | calls | primitives | states sent / skipped | binds | vertex bytes | texel bytes | scene ms | view ms |
+|---|---|---|---|---|---|---|---|---|---|
+| `camera_level_view` | 3,345 | 3,631 | 201,876 | 706 / 287 | 2,646 | 43,120 | 0 | 4.37 | 0.72 |
+| `camera_level_view_moving` | 3,318 | 3,623 | 201,444 | 706 / 287 | 2,617 | 45,920 | 0 | 4.34 | 0.70 |
+| `granny_dead` | 1,140 | 1,179 | 88,945 | 144 / 164 | 1,014 | 301,522 | 0 | 1.19 | 0.54 |
+| `granny_dying` | 1,140 | 1,179 | 88,945 | 144 / 164 | 1,014 | 301,522 | 0 | 1.21 | 0.58 |
+| `granny_models` | 1,147 | 1,186 | 89,277 | 144 / 164 | 1,021 | 335,066 | 0 | 1.48 | 0.68 |
+| `guild_flags` | 1,129 | 1,170 | 86,638 | 144 / 164 | 1,003 | 66,208 | 0 | 1.35 | 0.38 |
+| `guild_flags_later` | 1,129 | 1,170 | 86,638 | 144 / 164 | 1,003 | 66,208 | 0 | 1.16 | 0.38 |
+| `hunter_traps` | 1,198 | 1,237 | 87,303 | 169 / 179 | 1,056 | 9,660 | 0 | 1.22 | 0.31 |
+| `iz_int03_enter` | 262 | 265 | 11,358 | 82 / 89 | 209 | 3,080 | 0 | 0.34 | 0.24 |
+| `keyboard` | 266 | 269 | 11,366 | 82 / 89 | 213 | 3,640 | 0 | 0.33 | 0.23 |
+| `prontera_crowd` | 1,174 | 1,954 | 88,015 | 154 / 1,667 | 1,031 | 113,336 | 0 | 1.23 | 0.45 |
+| `windows_open` | 274 | 277 | 11,382 | 82 / 89 | 221 | 4,760 | 32,768 | 0.35 | 0.26 |
+
+Over six runs `camera_level_view` took 4.4 to 5.7 ms in `renderer_draw_scene` and 0.69 to 1.02
+in `view_on_render`, `prontera_crowd` 1.23 to 1.53 and 0.45 to 0.64. A frame that builds textures
+counts them: in Prontera, the frame after two actors appear writes 111,792 texel bytes and the
+frame after one speaks 57,662.
+
+Validation: the 12 captures of the scene set are identical to the commit before (Direct3D 9;
+the GL side was neither built nor run here). `build.bat check`
+and the full `tests\build.bat` pass.
+
+## One 64-bit Windows client (2026-11-11)
+
+Phase 0 of `plans/gpu-renderer.md`, decided with Patrick on 2026-11-11: there is no 32-bit client
+any more, and SDL is built with its video and GPU API for the phases that use them. Until now
+`build.bat` built a 32-bit client by default and a 64-bit one with `x64`. The 32-bit one linked
+the three DLLs of the original that exist only for 32-bit Windows (RAD's `mss32.dll` and
+`granny2.dll`, and `cps.dll`); the 64-bit one already did without them, as every other platform
+does.
+
+- **What went.** The x86 path of `build.bat` (its link line with `lib\cps.lib`, `granny2.lib`,
+  `mss32.lib` and `msvcp140.lib`, `/SAFESEH`, `/LARGEADDRESSAWARE`) and the `x64` word and `ARCH`
+  switching there, in `tests\scenes\build.bat` and in `vendor\build_vendor.bat`; `lib\cps.lib`,
+  `mss32.lib` and `msvcp140.lib`, which only the 32-bit links of `build.bat` and
+  `tests\scenes\build.bat` used, and `lib\vcruntime140.lib`, which no link line has named since the
+  tree's first commit (`granny2.lib` stays for `tools\granny_export`); `PLATFORM_RAD_DLLS`,
+  `GRANNY_IMPORT` and `MSS_IMPORT` with the guards that left `resources/granny_gltf.c` and
+  `platform/miles_sdl.c` empty on 32-bit Windows, which now compile everywhere; `__stdcall` on the
+  Granny and Miles declarations, on `miles_sdl.c`'s definitions and on the tests' stubs, since no
+  DLL is called through them any more, and with it `#define __stdcall` and `#define __cdecl` in
+  `platform/win_types.h`, which nothing built off Windows uses now (`platform/thread_win32.c` and
+  three Windows-only tests keep MSVC's own `__stdcall` for `_beginthreadex`);
+  `_GrannyFreeFileSection` and `_GrannyFreeCompletedModelControls`, which the client never called,
+  with their test stubs;
+  `tests/scenes/scene_granny_win.c`, which pointed `granny2.dll`'s clock imports at the scene
+  clock; and `tests/build_cps_imports.bat`, which checked that the 32-bit exe took `compress` and
+  `uncompress` from `cps.dll` (`f9808810`; `docs/upstream/README.md` says why it no longer
+  applies).
+- **Names.** `build\ragexe.exe` (with `dbg`: `ragexe_dbg.exe`, `freetype`: `ragexe_ft.exe`, `libs`:
+  `ragexe_libs.exe`), objects in `build\obj` (`obj_dbg`, `obj_ft`), vendor libraries in
+  `build\vendor` (was `build\vendor_x64`, which nothing reads now), the scene harness
+  `build\ragexe_scenes.exe` (`ragexe_scenes_ft.exe`). `tests\scenes\build.bat` links every object
+  in its folder, so it now deletes them before it compiles: the old 32-bit `scene_granny_win.obj`
+  stopped the link.
+- **The C runtime.** The client and its variants, the scene harness, every library
+  `vendor\build_vendor.bat` builds and the unit tests are compiled with `/MT`, and the client's and
+  the harness's links name `libcmt.lib`, `libcpmt.lib`, `libvcruntime.lib` and `libucrt.lib` where
+  they named `msvcrt.lib`, `msvcprt.lib`, `vcruntime.lib` and `ucrt.lib`. CMake builds SDL3 and
+  FreeType with `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` (FreeType with policy CMP0091 switched
+  on, since its CMake files predate it). `vendor\build_vendor.bat` kept its compiler options in
+  `CFLAGS`, which CMake also read as the C flags of SDL3 and FreeType; they are `CLOPTS` now.
+  `dumpbin /dependents` of `ragexe.exe`, `ragexe_dbg.exe`, `ragexe_ft.exe`, `ragexe_libs.exe`,
+  `ragexe_scenes.exe` and `ragexe_scenes_ft.exe` lists no `vcruntime*.dll`, `msvcp*.dll` or
+  `api-ms-win-crt-*` set; until now the 64-bit client imported `VCRUNTIME140.dll`,
+  `VCRUNTIME140_1.dll` and eleven `api-ms-win-crt-*` sets. `build\ragexe.exe` is 7,110,144 bytes
+  (6,719,488 before, with the DLL runtime and SDL's OpenGL). The oracle tests and
+  `tools\granny_export` keep the DLL runtime; they link no `build\vendor` library.
+- **Old libraries.** `build\vendor` still held the 32-bit libraries in a checkout that had built
+  the 32-bit client, and nothing checked what they were: `build.bat freetype`, or the suite run
+  before `build.bat`, linked them into 64-bit programs (LNK1112). `vendor\build_vendor.bat` now
+  writes `build\vendor\kind.txt` ("x64 /MT, SDL without OpenGL") once all its libraries but
+  FreeType are built, and when that file is missing or names anything else it removes
+  `build\vendor` and builds everything again, SDL's download included. `tests\build.bat`,
+  `build_effect_data.bat`, `build_effect_launch_duration.bat`, `build_effect_trace.bat` and
+  `build_jpeg.bat`, which built the libraries only when `yyjson.lib` or `jpeg.lib` was missing,
+  call it with the new word `ifneeded`, which returns at once when the file matches.
+- **What the player notices.**
+  - Players of the 32-bit client, the default until now, hear sound through
+    `platform/miles_sdl.c` on SDL3 instead of RAD's Miles. It leaves out speaker types, room types
+    and reverb, none of which reached them before: a 32-bit probe of the game's `mss32.dll` found
+    "Miles Fast 2D Positional Audio", the provider `contents/sound.c` asks for, answering -1 for its
+    speaker type, so the client never applied the `SPEAKERTYPE` setting, and the client only ever
+    sets room type 0 and gives every 3D sample an effects (reverb) level of 0. What changes is the
+    mixing: `miles_sdl.c`'s distance falloff and left/right balance in place of the provider's,
+    SDL's resampling and output device, and `dr_mp3` in place of `mp3dec.asi` for the music. They
+    have not been compared with Miles by ear or sample by sample. `mss32.dll`, `mssfast.m3d` and
+    `mp3dec.asi` in the game folder are no longer loaded.
+  - Granny models (the emperium, the guardians, the guild flag, the treasure box) come only from
+    the glTF files `tools\granny_export` writes once per game folder. Without them each model load
+    shows "Unable to load file .gr2 (C3dGrannyModelRes :: Load)" and the model is not drawn; the
+    first also writes the missing file's name to the debug output, which on Windows is
+    `OutputDebugString` and seen only with a debugger attached. With them the models look as the
+    table below shows.
+  - GRF tables and files and guild emblems inflate, and the emblem cache deflates, through the
+    bundled zlib, never through `cps.dll`. A `cps.dll` that does more than zlib (GRF Editor's, for
+    the GRFs it encrypts) has no effect: a GRF whose file table needs it does not open
+    (`fileio/grf_pak.c:207`), so the client goes without that GRF's files, and a file that needs it
+    inflates partly or not at all and reads as truncated data padded with zeros (`grf_pak.c:305`,
+    whose result is not checked). Captcha images, which used zlib too, went on 2026-11-02.
+  - The client needs no Visual C++ runtime. The game folder's 32-bit `vcruntime140.dll` and
+    `msvcp140.dll` served the 32-bit client; a 64-bit program skips them (on this Windows 10 22H2 a
+    `/MD` probe copied into a game folder loaded `System32\VCRUNTIME140.dll`), so the 64-bit client
+    with the DLL runtime started only where the x64 redistributable was installed.
+    `build\ragexe.exe` copied into a copy of `client-files` starts and opens its window.
+- **SDL.** `build_vendor.bat` configures SDL 3 at the pinned commit with `-DSDL_VIDEO=ON
+  -DSDL_GPU=ON -DSDL_VULKAN=ON -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF` besides audio (render, camera,
+  joystick, haptic, HIDAPI, sensor, power, dialog and tray stay off), which gives the video
+  drivers `windows`, `offscreen` and `dummy`, the GPU drivers `d3d12` and `vulkan` and the audio
+  drivers `wasapi`, `dsound`, `disk` and `dummy`. The plan uses Vulkan on Windows and no OpenGL, so
+  SDL's OpenGL, OpenGL ES and EGL support, on by default, is off: `SDL_windowsopengl.c`,
+  `SDL_windowsopengles.c` and `SDL_egl.c` are compiled without their GL code and are not in the
+  map. SDL has no option
+  for its Direct3D 12 GPU driver: its `CMakeLists.txt` builds `src/gpu/d3d12` whenever
+  `check_include_file(dxgi1_6.h)` succeeds, and the same result gives the Windows video driver the
+  displays' HDR properties (`SDL_windowsmodes.c`), so the driver stays. `SDL_DIRECTX` stays on for
+  DirectSound. `dumpbin /linkermember:1 build\vendor\SDL3-static.lib` lists `SDL_CreateGPUDevice`,
+  `SDL_ClaimWindowForGPUDevice`, `SDL_CreateWindow`, `SDL_Vulkan_CreateSurface`, `VulkanDriver` and
+  `D3D12Driver`. The client calls only audio, but SDL's dynamic API table, on in its static Windows
+  build, refers to every function, so the exe links the video and GPU code too (`VulkanDriver` and
+  `D3D12Driver` are in the map) and imports `setupapi.dll` and `version.dll` for it, which the
+  audio-only 64-bit client of 2026-11-08 did not. `build.bat` already linked both libraries.
+- **Who builds 32-bit.** `tools\find_vcvars.bat` gives `vcvars64.bat`, and with `x86` the
+  `vcvars32.bat` beside it, for the two scripts whose programs load 32-bit code of the original:
+  `tests\oracle` (the original executable; its link now names `/MACHINE:X86`, so a 64-bit
+  environment fails at the link instead of building 64-bit tests) and `tools\granny_export`
+  (`granny2.dll`; it now compiles zlib in instead of linking `build\vendor\imglibs.lib`). The CMake
+  `-A Win32` configuration still builds; its `lua_chunk` is the one that writes
+  `tests/fixtures/lua51_win32.lub` with the `.lub` files' 4-byte sizes. `tools\utf8-data`'s
+  `luadump` is 64-bit like the client: the vendored Lua reads the `.lub` files' 4-byte sizes on a
+  64-bit host, and its dumps of the 23 `.lub` files in `client-files\System` are byte for byte
+  those of a 32-bit build. The chunks the tool's tests compile with it now have 8-byte sizes, so
+  `Win32ChunkTest` reads that fixture for the 4-byte form: a byte-identical read and write, a
+  rewritten constant with a 4-byte length, and `luadump` loading the result. The 45 tests pass.
+- **The link check.** `tools/depmap/objsyms.py` gave the link check and the dependency map every
+  symbol through `plain()`, which stripped a leading underscore and cut at `@`, for x86's
+  decorations. On x64 that renamed real names such as `_AIL_startup` and `_GrannyGetFileInfo`. The
+  readers now keep the names of dumpbin and ELF listings and strip the underscore only from a
+  Mach-O listing (one whose external symbols all start with it), for the macOS `library_links`
+  CTest; `plain()` is gone.
+
+The suite builds 64-bit now; 45 of its steps failed at first. What x64 showed:
+
+- **A bound.** `select_char_init_storage` bounded the character pages by `SIZE_MAX`, which on
+  32-bit also kept `per_page * page_count` within an `int`. On x64 a slot count near `INT_MAX`
+  passed and the product overflowed. The client never passes one: the counts are three BYTE fields
+  of the character list header and the highest slot is a BYTE (`login/char_list.c:103-105`,
+  `login/char_info.h`), so there are at most 765 slots; only a direct call, as
+  `test_character_preview` makes, reached it. The pages are now bounded by `INT_MAX` as well.
+  `main` is 32-bit and does not need it.
+- **Narrowing in what the tests compile at `/W3 /WX`.** On x64 MSVC warns where a `size_t` becomes
+  an `int` (C4267) and where a window message's `intptr_t` value does (C4244); the client builds
+  at `/W1` and never showed them. In the 14 files concerned they are explicit casts now; none of
+  the values was a pointer. `text_to_wide` (`core/text_util.c`) leaves a string over `INT_MAX`
+  bytes empty instead of handing the conversion a negative length.
+- **Stubs.** Thirteen test files defined `mode_send_message`, `ui_window_send`,
+  `game_send_message`, `ui_window_mgr_send_msg_`, a window's `send_msg` or `std_sort` with the
+  `int` parameters that 32-bit let pass for `intptr_t` and `size_t`; they take the real types now.
+  Two of them cut pointers on x64: the effect trace's `game_send_message` read the quake's three
+  float pointers through `int`s, and the window lists' generated `ui_window_mgr_send_msg_` (from
+  before the message values were widened) recorded the chat text's address as a number. The crash
+  dialog's fixture now replaces `GetWindowLongPtrA`, a function of its own on x64.
+- **32-bit facts.** Sizes and widths the tests asserted are the x64 ones (`JobHitSounds` 24 bytes,
+  `ChatTabs` 16 and `ChatTabSettings` 56, the crash report's 16-digit addresses, the effect
+  primitives' 8-byte texture slots), and the frozen path finder's 32-bit layout asserts are gone.
+  Cases that only a 32-bit `size_t` rejected (an `INT_MAX` Granny vertex or mesh count,
+  `INT_MAX / 3` triangles, a 65,536-square Granny texture, an `INT_MAX`-wide texture upload)
+  reach the allocator or the copy on x64 and are gone, or moved to the `int` bounds that still
+  reject them. `test_object_type` compared `object_as_type` with the runtime's `__RTDynamicCast`
+  on the original's RTTI in its 32-bit form; it now copies that RTTI into the 64-bit form
+  (image-relative offsets, signature 1) first and still makes 2,717 comparisons with 205 casts
+  accepted. `test_ez2str_manager` records string sizes as four bytes and keeps its digest. Three
+  traces take new digests after a 32-bit build of the same test was run beside the 64-bit one:
+  `test_game_mode_layout`'s differs only in the sizes of 384 allocations holding pointers,
+  `test_window_lists`'s only in the field offsets of 358 lines, and `test_effect_trace`'s 6,707,631
+  lines are the same once the objects' sizes, the hashes of their bytes and the offsets and counts
+  of their changed words are left out. CMake builds `test_crash_dump` with every MSVC, since it
+  passes on x64.
+
+Validation: `build.bat check` (no warnings; the link check passes over 1,151 objects with 29,919
+uses of client symbols, 128 of them exceptions), `build.bat dbg`, `freetype` and `libs`,
+`tests\scenes\build.bat` and `tests\scenes\build.bat freetype` build, and none of those six
+executables imports a C runtime DLL. The full `tests\build.bat` passes, its oracle tests 32-bit
+against the original executable (629,006 calls, no mismatch, no fault). The CMake builds of
+`docs/portability.md` with `-A x64` and `-A Win32` build and pass their 23 tests each, and the
+Win32 `lua_chunk` writes `tests/fixtures/lua51_win32.lub` again byte for byte. `build\ragexe.exe`
+copied into a copy of `client-files` (hard links and junctions, with the 32-bit
+`vcruntime140.dll`) starts and opens its window; it was closed by its process ID.
+
+In `client-files` with `RAGEXE_MSAA=1` and `RAGEXE_VSYNC=0`, the 64-bit harness captures the seven
+captures of the scene set without Granny models bit for bit like the last 32-bit build
+(`6b176290`), with the same counts (only the two CPU times differ). `client-files` has no
+converted Granny models, so there the other five show none, with 13 "Unable to load file .gr2"
+boxes in all. In the copy of
+it, with the 21 files `tools\granny_export` wrote into it, against the 32-bit build drawing with
+`granny2.dll`:
+
+| capture | pixels differing at all | by more than 1 | by more than 16 |
+|---|---|---|---|
+| `granny_dead` | 4 | 0 | 0 |
+| `granny_dying` | 3,349 | 292 | 16 |
+| `granny_models` | 12,619 | 7,058 | 365 |
+| `guild_flags` | 136 | 0 | 0 |
+| `guild_flags_later` | 230 | 2 | 2 |
+
+In `granny_models` the emperium, a guardian and the treasure box differ over their surfaces by a
+few steps of shading and by more along edges inside them; in `granny_dying` along the edges of a
+guardian and the treasure box; in `guild_flags_later` in two pixels of the flag's tassel. The
+static runtime and SDL's new options change no pixel: in the copy, the harness built with them
+captures all 12 captures of the set exactly as the 64-bit harness built before them, with the same
+counts.
+
+## Windows on the SDL window (2026-11-11)
+
+Phase 1 of `plans/gpu-renderer.md`: the Windows client runs on `core/app_sdl.c` and
+`platform/window_sdl.c`, the SDL window, input, text input and IME that Linux, macOS and Android
+already ran on, and Direct3D 9 draws into the SDL window's `HWND`
+(`SDL_PROP_WINDOW_WIN32_HWND_POINTER`). The renderer does not change. Every platform now has one
+window, one input path and one IME path.
+
+- **What went.** `core/app_win32.c` (the window class and window, the message pump and the
+  client's own caption drag), `core/wndproc.c` (the window procedure), `platform/window_win32.c`
+  (the Win32 window services) and `platform/language_win32.c` (`WM_IME_*`: the composition, its
+  cursor and the result read from the input context, and the candidate list placed with
+  `CFS_CANDIDATEPOS` and `CFS_EXCLUDE`). `platform/language_posix.c` is folded into
+  `platform/language.c`, which both sides now share. With them went `window_proc`; `g_hInstance`
+  and the instance argument of `app_create_window` and `client_run`, which nothing read;
+  `g_windowDragging`, `g_windowDragRect`, `g_windowDragCursor` and `g_windowDragHwnd`;
+  `language_on_ime_message`, `language_read_composition`, `language_read_cursor_pos` and
+  `language_insert_result`; `win_utf8_message_box` (`platform/win_utf8.c` keeps the registry and
+  the shell); `platform_show_cursor` with its calls in `core/winmain.c` and `render/resize.c` (see
+  the cursor below); `platform_keyboard_language`, which had no caller on either side; the result
+  of `input_key`, which only the window procedure read; `window_client_rect_on_monitor`,
+  `g_monitorRect`, `platform_monitor_rect` and `platform_client_screen_rect`, which only fed
+  `C3dDevice.rcClient`, which nothing read and which went too, and with them the monitor argument of
+  `gfx_enum_adapter` and of the adapter enumeration's callback; `utf16_feed`
+  and `Language.pending_unit`, which paired the UTF-16 surrogates `WM_CHAR` delivered one at a time
+  (SDL hands over text as UTF-8, so `language_on_char` now takes Backspace and printable ASCII, and
+  other text arrives through `language_commit`); the `_WIN32` conditions around `app_sdl.c`,
+  `window_sdl.c` and the IME declarations of `platform/language.h`; the Windows half of
+  `platform/window_handle.h` (`PlatformWindow` is SDL's window and `PlatformDisplay` SDL's display
+  id everywhere); `HWND`, `HINSTANCE`, `WPARAM`, `LPARAM`, `LRESULT` and `CALLBACK` in the half of
+  `platform/win_types.h` that stands in for `windows.h` off Windows, which only the declarations
+  above used there; `core/wndproc.c` in `tools/posix_excluded.txt`; and
+  `tests/scenes/scene_input_win.c`.
+- **What stays Windows-only, and why.** `render/gfx_d3d9.c` draws until phase 2: it takes the
+  `HWND` for `CreateDevice` and `hDeviceWindow` from the SDL window, and `gfx_adapter_monitor` gives
+  the SDL display id of the adapter's monitor, found by its
+  `SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER`. `gfx_enum_adapter` takes an adapter's ordinal from
+  its GUID (`adapter_ordinal`) where it matched monitors, which gave the same ordinal. GDI text (`render/text_gdi.c`, `render/fonts.c`) stays
+  until phase 3. The file, clock, thread, socket, settings, code page, display depth, SHA-256,
+  memory and desktop modules have nothing to do with the window (the desktop's `ShellExecuteW`
+  now gets the SDL window's `HWND` as owner). The crash dump, crash report and crash dialog run in
+  the exception handler, where SDL has no business. `WinMain` stays, with `/SUBSYSTEM:WINDOWS` and
+  `_controlfp`; SDL needs no `SDL_main` on Windows.
+
+What the Win32 window did, and what does it now:
+
+- **Class, title, icon.** The window class keeps the name `Ragnarok` (`SDL_RegisterApp`, with SDL's
+  own class style) and the window the icon 0x77 of the resources
+  (`SDL_HINT_WINDOWS_INTRESOURCE_ICON`; SDL would take the first icon group, 0x72). The title is
+  `Ragnarok` as before.
+- **Style.** The Win32 window had a caption and a minimise box but no system menu
+  (`0x02C20000`), so it showed no caption buttons. SDL's window has the system menu, a minimise and
+  a close button and a disabled maximise button; neither window can be resized by its frame. The
+  close button and Alt+F4 ask the client to close (`window_events_close`), as on the other
+  platforms. The system menu runs Windows' menu loop, in which the game stands still; SDL's Windows
+  message hook sees the loop start and end, and the game counts as inactive meanwhile
+  (`app_activate`), as the Win32 window procedure had it for `WM_ENTERMENULOOP` and
+  `WM_ENTERSIZEMOVE`. SDL drops `SC_KEYMENU`, so Alt+Space opens nothing (the Win32 window let it
+  through, without a menu to show).
+- **Position and size.** The window is created hidden at the game's resolution, placed and shown.
+  `Window_XPos` and `Window_YPos` are the frame's corner (`platform_window_rect`, which
+  `session_save_options` writes), but the SDL path put the client area there, so a window moved by
+  its frame every time the client started, and `platform_window_place_windowed` did the same and
+  centred and clamped the client area instead of the frame. Both now place the frame's corner, as
+  `CreateWindowEx` and `SetWindowPos` did, wherever SDL knows the frame. X11 knows it only once the
+  window manager has framed the shown window, so `app_create_window` moves the window by it after
+  showing it (not tried on X11). Restarted, the client opens exactly where it closed,
+  where the reference client opens too; a test program placed a window's frame at a given corner
+  and centred it in the work area, as `GetWindowRect` saw it.
+- **The game's resolution and fullscreen.** The graphics settings went through
+  `set_display` with the SDL window: 1600x900 to 1360x768 windowed, to borderless fullscreen at the
+  desktop's 5120x1440, to exclusive fullscreen at 1360x768 (a display mode switch on the SDL
+  window, made borderless by `platform_window_place_frameless`) and back to a centred 1360x768
+  window, each drawn at once (with the build before the frame placement above and the click below).
+  The client also started in borderless fullscreen. Starting in exclusive mode put the device on
+  SDL's own fullscreen window (`platform_window_fullscreen`), which SDL then handles as a window of
+  its own fullscreen while Direct3D 9 owns the display mode; on Windows it now gets the frameless
+  window at the monitor's corner as large as the mode that `set_display` gives a switch at run time
+  (`c3d_device_init`). Started that way once from a script, the client came up at 1360x768 and went
+  out and back with Alt+Tab; Patrick tries it by hand.
+- **Activation and minimising.** SDL's focus events call `window_events_activate`, `app_activate`
+  and `frame_timer_reset` and set `g_activatedNow` as `WM_ACTIVATE` and `WM_NCACTIVATE` did, and
+  frames are still skipped only while the client is inactive in exclusive fullscreen. On losing
+  focus in exclusive fullscreen the Win32 window minimised itself and maximised itself on return;
+  now Direct3D 9's own handling of its focus window does it: Alt+Tab out of 1360x768 exclusive
+  restored the desktop's mode with the window minimised, and Alt+Tab back restored the mode and the
+  drawing.
+- **Moving.** On Windows a window moved while it is not active shows its last frame again at once
+  (`SDL_EVENT_WINDOW_MOVED`, as `WM_MOVE`); elsewhere a window manager may move an unfocused window
+  at any time, and showing a frame advances the scene harness's clock. Dragged by its caption, a Windows window is moved by a
+  loop of Windows' own, in which the game would stand still; as the Win32 client did, the client
+  moves it itself: SDL's message hook takes the press on the caption and every pump moves the
+  window as far as the pointer has gone until the left button is up. Two screenshots 0.7 s apart
+  with the caption held differ: the game draws on.
+- **The cursor.** The game draws its own cursor. The Win32 window set no cursor over its client
+  area (`WM_SETCURSOR`) and hid the system's in exclusive fullscreen (`ShowCursor`); the SDL
+  window now hides the system cursor over its client area in every mode (`SDL_HideCursor`), which
+  also stops Linux and macOS windows from showing it over the client's, and `platform_show_cursor`
+  has no job left. Over the frame the Win32 window moved the client's cursor out of the scene;
+  `SDL_EVENT_WINDOW_MOUSE_LEAVE` does that now on every platform, also when the pointer leaves for
+  another window.
+- **Mouse.** `SDL_CaptureMouse` replaces `SetCapture` while the left button is down, and the wheel
+  is SDL's notches times 120. SDL drops the click that activates a window unless
+  `SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH` is set, which the client sets on Windows: the Win32 window
+  passed that click on.
+- **Keys.** SDL's key events become the client's keys as on Linux. The key state the game asks for
+  (`platform_key_state`, `platform_async_key_state`) is now what the window's key events said,
+  where `GetKeyState` and `GetAsyncKeyState` read the system's: a key held down while the window
+  gets the focus counts once it is pressed again, and a toggle such as Scroll Lock starts off.
+  Letters and digits follow the keyboard layout as before; the punctuation keys get the virtual
+  keys of their US positions, where Windows gave the layout's `VK_OEM_*`, so a hotkey bound to one
+  with the Win32 client on another layout may now sit on another key, and the AZERTY `,` key, in
+  the US `M` position, gives `M` too. The ISO `<>` key, Apps and the Hangul and Hanja keys give no
+  virtual key and are not passed on. The keypad with NumLock off gives Home, End, the arrows, Page
+  Up and Down, Insert, Delete and Clear again, as Windows named it; the SDL path gave only its
+  digits, on every platform.
+- **AltGr.** Windows reports AltGr as a left Ctrl and a right Alt, so the Win32 client saw Ctrl and
+  Alt held and the keys typed with it without Alt, and edit boxes took them as characters
+  (`altgr_down`, `ui/wndmgr/key_down.c`). SDL leaves out that left Ctrl and reports a right Alt, so
+  German AltGr+Q (`@`) and AltGr+E (`€`) and French AltGr+0 (`@`) went the Alt hotkey way in game,
+  the window manager stopped taking keys as text, and the character was dropped; X11 and Wayland
+  report AltGr as `SDLK_MODE`, which the client took as a right Alt without Ctrl, with the same
+  result there. Now SDL's Windows message hook reads the left Ctrl's state as a right Alt's message
+  arrives, and a right Alt that came with it, or an `SDLK_MODE`, gives Ctrl and Alt held and no Alt
+  on the keys pressed with it.
+- **Keys the IME takes.** In Hangul or kana mode Windows reports a key the IME takes as
+  `VK_PROCESSKEY`, which SDL leaves out; the client maps it back to a letter by its scan code for the
+  hotkeys (`ui_window_mgr_classify_key`). The message hook queues such a key as an SDL event, so it
+  reaches the client in order with the scan code, Alt and repeat count of its message, and the IME
+  still gets it.
+- **Text and the IME.** Typed text comes as SDL's UTF-8 text; Backspace is also given as a
+  character, as `WM_CHAR` gave it. SDL handles `WM_IME_*` with
+  `SDL_HINT_IME_IMPLEMENTED_UI=composition`, so the IME shows no composition window of its own and
+  the client draws the composition, from `SDL_EVENT_TEXT_EDITING`, as before. SDL places the
+  candidate list with `CFS_EXCLUDE` around the text input area (`SDL_SetTextInputArea`, set from
+  `language_place_candidates`); the Win32 code also set `CFS_CANDIDATEPOS`, for IMEs that read only
+  that. SDL counts the composition's cursor in UTF-16 units, the same as characters for Hangul.
+  The password box still switches the IME to alphanumeric input (`platform_ime_alphanumeric`,
+  through the input context of the SDL window's `HWND`), and cancelling clears the composition
+  through `SDL_ClearComposition`. Korean composition has not been typed on Windows; Patrick tests
+  it by hand.
+- **Clipboard and message boxes.** SDL's, which use `CF_UNICODETEXT` and the W calls on Windows;
+  `language_copy` and `language_paste` were tried with Korean text. A message box is SDL's own
+  dialog (the executable's manifest asks for no Common Controls 6, so SDL does not use
+  `TaskDialogIndirect`) with the icon the caller asked for, and the other flags are ignored:
+  `MB_TASKMODAL`, which only the chat layout's save error passes, no longer disables the game
+  window while it shows.
+- **Closing.** SDL follows the last window's close request with a quit event, and both called
+  `window_events_close`, so the user data was saved twice and the agency cancel could be sent
+  twice; so it had been off Windows since the SDL layer came. The client now closes once
+  (`g_quitRequested`).
+- **DPI.** The executable's manifest declares it system-DPI-aware, which SDL's request for
+  per-monitor awareness cannot change, so the window is as DPI-aware as the Win32 one
+  (`GetWindowDpiAwarenessContext`: system, 96 dpi here).
+- **Timers, screen saver, instances, command line.** The client still asks for a 1 ms timer
+  period itself and SDL asks for the same. SDL keeps the screen saver off and the display on while
+  the client runs; the Win32 window kept the screen saver off but let the display power down in a
+  window. Neither path checked for another instance or read the command line.
+
+The scene harness on Windows now uses `platform/window_sdl.c` like the CMake scene target: the key
+and cursor state the script sets through `core/user_input.h` is the platform layer's own.
+`tests/scenes/scene_window_win.c` only writes message boxes to stdout (it includes `window_sdl.c`
+with SDL's message box dialog replaced by a line on stdout; `granny_models`, run in a folder without
+converted models, wrote its box that way and ran on). `tests/scenes/scene_app_win.c` includes
+`core/app_sdl.c` with `SDL_ShowWindow` replaced by a no-op, so the window is never shown and
+Direct3D 9 draws into it hidden. Until now the window showed and took the keyboard focus while
+the client started, as the Win32 window did, and `scene_driver.c` hid it on the first frame; that
+hiding is gone. SDL does not raise a hidden window, and it captures and clips the mouse
+only for the window with the keyboard focus, which a never-shown window does not get. A run of the
+twelve scenes, watched every 20 ms, saw no harness window visible or in the foreground, the cursor
+clip rectangle unchanged and no jump in the cursor's track (it moved only with the owner's hand);
+the captures stayed identical and the counters, timings aside, unchanged. The
+tests that linked `platform/window_win32.c` link `window_sdl.c` with the static SDL
+(`tests/window_sdl.bat` gives the words), `test_language_input` checks SDL's composition and
+commits, ASCII typing and the clipboard through stand-ins for SDL's clipboard and composition
+calls, `test_mouse` takes the pointer from `platform_note_cursor` and counts `SDL_CaptureMouse`,
+`test_com_lifecycle` extracts `app_last_pump` from `app_sdl.c`, `test_url_link` and
+`test_tag_text_viewer` check that the shell gets the SDL window's `HWND`, and `test_win_utf8` and
+`test_utf8` lose the message box and `utf16_feed` cases. No link library was added: SDL's dynamic
+API table already linked its video code, and `build.bat` already named every library it needs;
+the client imports the same DLLs as before.
+
+Validation: `build.bat check` (the include check over 1,817 files and the link check over 1,146
+objects pass), `build.bat dbg`, `freetype` and `libs`, `tests\scenes\build.bat` and
+`tests\scenes\build.bat freetype` build. The full `tests\build.bat` passes. The CMake `-A x64`
+configuration builds and passes its 23 tests; it compiles none of the window code. GCC in WSL,
+with the SDL and FreeType headers `vendor\build_vendor.bat` unpacked, compiles the 1,141 client
+files CMake builds off Windows (syntax only), and the changed shared ones (`app_sdl.c`,
+`window_sdl.c`, `language.c`, `winmain.c`, `resize.c`, the scene driver, `test_platform_window.c`)
+without a warning at `-Wall -Wextra`; neither Linux, macOS nor Android was built or run. In the copy of `client-files` with converted
+Granny models, `RAGEXE_MSAA=1` and `RAGEXE_VSYNC=0`, the 12 captures of the scene set are identical
+to the reference's goldens (`build/ref`, `02fc9e5e`), with the same counts. A throwaway program
+that includes `app_sdl.c` and the real `user_input.c` gave them the events SDL and Windows give for
+German AltGr+Q (as Windows reports it and as `SDLK_MODE`), a right Alt+E on a US layout, a
+`VK_PROCESSKEY` with the scan code of E, the keypad with NumLock off and on, and a close request
+followed by SDL's quit, and checked what reached the window manager: Ctrl and Alt and a plain `Q`
+for AltGr, Alt+E as a system key, `VK_PROCESSKEY` with `lParam` 0x00120001 (which
+`key_from_scan_code` maps to `E`), the navigation keys and then `VK_NUMPAD4`, and one close; another
+showed that SDL sends both the close request and the quit for one `WM_CLOSE`. AltGr, the IME's keys
+and the keypad were not typed on the desktop, where Patrick was working. `build\ragexe.exe`,
+run in a folder that reads the game data through links and keeps its own `savedata`, opened at its
+saved place, went through the service and login screens and into the game on a local server,
+took typing, Backspace, Shift+Home, Ctrl+C and Ctrl+V in the login ID box, was moved by its
+caption and by `SetWindowPos`, minimised and restored, left and re-entered with Alt+Tab windowed,
+borderless and in exclusive fullscreen, took a click that activated it, opened and closed its
+system menu, and closed by its close button and by Alt+F4. Once, during the first Alt+Tab out of
+borderless fullscreen, it saved a screenshot, the action of Print Screen or Scroll Lock; neither
+later Alt+Tab, three more round trips out of borderless fullscreen included, did so again, and the
+cause is not known (Discord's overlay was hooked into the process at the time).
+
+## Sound without a position (2026-11-11)
+
+Positional audio goes and the audio layer becomes as simple as it can be: sounds have no position
+and no distance test, and each plays at its channel's volume (the one exception, map ambient
+sources, is below). Until now
+`contents/sound.c` and `resources/wave.c` called the subset of the Miles Sound System API the
+original calls (45 `_AIL_*` functions, `platform/miles_api.h`), which `platform/miles_sdl.c` (1,095
+lines) implemented on SDL 3 with a mixer of its own, a 3D provider and its own ADPCM decoders.
+
+- **The module.** `platform/audio.h`, implemented once for every platform in `platform/audio_sdl.c`
+  (254 lines), with no SDL type in the header. `audio_open(mono)` opens SDL's default playback
+  device with SDL's default format and `audio_close` closes it; SDL mixes every stream bound to the
+  device itself, converting each to the device's format and rate and applying its gain.
+  `audio_sound_decode` decodes a sound file held in memory (`audio_sound_free` frees the result);
+  `audio_voice_play(sound, gain)` plays it once on a stream of its own holding a copy of the
+  samples, `audio_voice_playing` asks SDL whether that stream still has output and
+  `audio_voice_stop` destroys it; `audio_music_play(path, loop_count, gain)` streams an MP3 file
+  `loop_count` times (0 for ever), with `audio_music_set_gain`, `audio_music_done` and
+  `audio_music_stop`. No new library: SDL at the pinned commit (3.4.18) and `dr_mp3` 0.7.3 were
+  linked already.
+- **Decoding.** A RIFF WAVE goes to SDL's own loader, `SDL_LoadWAV_IO` on the bytes in memory
+  (PCM, Microsoft and IMA ADPCM and SDL's other WAV formats); anything that starts with an ID3 tag
+  or an MPEG frame sync, which is how Miles' `AIL_file_type` told MP3 apart, goes to `dr_mp3`.
+  Everything is read from the file in memory and nothing past it. Two details came out of the
+  comparison and the damaged-file test below: SDL drops an ADPCM file's last block when the file
+  cuts it short, which four IMA files of `data.grf` do (31 to 46 ms of quiet tail), so
+  `SDL_HINT_WAVE_TRUNCATION` is set to `dropframe`, which keeps that block's whole frames as
+  `miles_sdl.c`'s decoder did, once and with override priority, so an `SDL_WAVE_TRUNCATION`
+  environment variable cannot change it; and SDL takes a PCM file's block size from its header, so a
+  header whose block size is not a whole frame gave samples SDL's streams refuse
+  (`SDL_PutAudioStreamData` takes whole frames only): the result is cut to whole frames. A sound
+  must also be 1,000 to 384,000 Hz and at most five minutes long, seven times the longest WAV of
+  `data.grf` (40 s, `effect\가스펠.wav`): a damaged header with a rate of 1 Hz decoded and would
+  have held a voice for hours. The game's files are 8,000 to 48,000 Hz.
+- **The music.** The file is read into memory as before and `dr_mp3` decodes it on the device's
+  thread, in the stream's get callback, as the device asks for more; at the end of the file it
+  seeks to the start until it has played `loop_count` times, and stops at once on a file that
+  decodes nothing, as `miles_sdl.c` did. `contents/sound.c` keeps the rest: a track already open
+  under the same name is not restarted, `sound_play_bgm` remembers the map's track, and the fade
+  thread steps the music volume by 1 every 10 ms.
+- **`contents/sound.c`** (452 lines, now 326) keeps 48 voice slots in place of 48 2D and 48 3D
+  sample handles. `sound_play_wave(name, volume)` loads the wave through the resource manager as
+  before (nothing with sound mode 0 or effects off), plays only in sound modes 1 and 2 as before
+  (any other mode plays music but no effects), and starts it in the first slot whose voice has
+  finished, at the effect volume times `volume`; with all 48 playing the effect is dropped, as when
+  no sample handle was free. The product is clamped to 0..127 before it becomes an integer, so a
+  map sound source's RSW volume of NaN or 1e30 gives silence or full volume where the conversion was
+  undefined.
+- **`resources/wave.c`** (162 lines, now 51) decodes the file from its buffer when it loads and
+  keeps the result in the resource cache. A file that cannot be read, or is shorter than 12 bytes,
+  fails to load as before; one that reads but does not decode loads without a sound and plays
+  nothing. Before, an ADPCM or MP3 file that did not decode failed to load, with the "Resource File
+  Loading fail" chat lines and another try at each play, while a PCM or unknown file loaded and
+  Miles refused it silently at each play. The chunk checks that kept Miles' parser inside the file
+  (`wave_riff_valid`, `wave_info_valid`) went with it.
+
+**No distance.** Patrick's word goes further than the position: nothing on the way from the game to
+the device measures distance any more, with one exception below. Gone from `contents/sound.c`: the
+2D path's range check, under which an effect at or beyond its maximum distance (250 for every
+caller but a map's sound sources, which pass their range) did not play in sound mode 1, and its
+falloff (the volume times 40 over the distance beyond 40), the 3D path of sound mode 2, the
+default (provider, listener, positions, orientations and distances; `miles_sdl.c` gave it
+inverse-distance falloff, silence beyond the maximum distance and a left/right balance),
+`sound_set_listener_angle` (called from `game/mode_initialize.c` and `game/mouse_camera.c`),
+`sound_set_room_type`, `sound_set_effect_volume_3d` (always called beside `sound_set_effect_volume`
+with the same value), and `g_sound_speaker_type` with the `SPEAKERTYPE` setting it was read from.
+Gone with them, as they only carried a position on: the position and distances of all 61 calls of
+`sound_play_wave`; `effect_play_wave_at`'s position and height (now `effect_play_wave`, 145 calls),
+which took the place of `rag_play_wave` and `rag_play_wave_here`; the effect argument of
+`rag_play_two_waves`; the height of `follow_wave` and of `effect_add_sound_cue` with
+`struct SoundCue`'s field; `gs_wave`, `ps_play_wave`, `sot_wave`, `play_skill_wave_at` and
+`play_at_unit`, which passed one on; the effect data's wave `Height` (14 operations in
+`data/effects/effects.json`, `struct RagStrOp`'s field; the loader now rejects the key as unknown);
+and what was looked up only for a position: `ZC_SOUND`'s NPC for a sound played once (it played
+either way), the player in the hit sound (`actor/actor_sendmsg.c`), the stone curse wave
+(`game/skill_use_basic.c`) and the ranking packet (`game/packets_entry.c`), and the zero vectors of
+`game/shops.c` and `session/skill_effect.c`. The effect trace is the same but for its 2,638 wave
+lines, which lose the position and the distances. Heard now and never before: `number_change.wav`
+(a PvP rank change, whose call passed the player's absolute position, so only a player within
+250 of the map's centre, the world's origin, heard it) and the Star Gladiator's `T_피링.wav`
+(placed 250 from the player, exactly its maximum distance). Everything beyond 40 of the player
+was quieter before and is not now.
+
+The exception is a map's own sound sources (the RSW's sound objects, `SoundMaker`): their own test
+in `sound_maker_on_process` (`actor/small_actors.c:641-673`) starts a source's sound only while the
+player is within 130 of the source's range plus its area's diagonal, from its position, and within
+75 of its range from the edge of its area towards the player. Patrick decided it stays ("only start
+ambient sounds when near like before"): without it every source of the map would start on every
+one of its cycles. `data.grf` has 22,650 sources in 481 of its 938 maps (110 in Izlude, 25 in
+Prontera, 66 in Payon, 87 in `1@mjo1`), and 14,702 of them have a sound longer than their cycle;
+started on every cycle, the ambient sounds alone would hold more than 48 voices on average on 118
+maps (about 94 in Izlude, 340 in `iz_dun02`) and drop the effects of what the player sees. Counted
+by walking each RSW's object list as `resources/world_res.c` reads it, which leaves exactly the
+65,520 bytes of the map's quadtree after the list in 936 of the 938 maps (the other two end with
+it), and for the voices by summing each source's sound length over its cycle, at most 1. A first
+count, which searched each file for a type 3 followed 84 bytes later by a `.wav` name, found
+43,489: the editor left uninitialised memory in the records' name fields, copies of names and
+small integers among it, and that matched too. Within that reach a source now plays at its full
+RSW volume: before, it faded beyond a sixth of its range and fell silent at the range itself,
+which `sound_play_wave`'s check was given, so it is now heard up to 75 further. The four sources of
+`moc_fild16` whose cycle is 0 restart on every frame within reach, as before, now at full volume.
+
+Conditions that still keep a sound from playing, none about distance, all as they were:
+
+- no current player: `effects/effect_sound.c:7` (`effect_play_wave`, every RagEffect, skill and
+  STR wave but the effect data's operations marked `AtPlayer`, which
+  `effects/rag/rag_str_bindings.c` plays with `sound_play_wave`), `actor/motion.c:28` (a motion's
+  sound event), `actor/pc_process.c:56` and `actor/player.c:80` (an actor's pending wave),
+  `actor/actor_efst.c:113` (`ef_wave`), `actor/attr_state.c:27,101,103` (status sounds), and the
+  sound sources' `actor/small_actors.c:643`;
+- an NPC loop sound (`ZC_SOUND` repeat) whose NPC the client does not have in its actor list, which
+  is the server's view range (`game/mode_run.c:156`);
+- the 48 voices (`contents/sound.c:259`), sound mode 0 or effects off (`:254`), a mode other than 1
+  or 2 for effects (`:257`), music off (`contents/sound.c:212`, `login/mode.c:109`,
+  `game/packets_npc.c:541`), and a wave that is missing or does not decode (`:257`);
+- a sound source's cycle, its empty wave name and a zero area width (`actor/small_actors.c:641,
+  674, 676`), and its RSW volume, which scales its sound.
+
+What else the player hears differently:
+
+- SDL mixes at the output device's rate (it asks the device for at least 44,100 Hz) instead of
+  `miles_sdl.c`'s 22,050 Hz mix, so the music keeps the frequencies above 11 kHz that mix cut,
+  and each sound is resampled once instead of twice.
+- In sound mode 2 the nine stereo WAVs of `data.grf` play in stereo; a 3D sample took them mixed
+  down to mono. Sound mode 1, for which the client opened a mono Miles driver, still plays mono:
+  a post-mix callback averages the first two channels, as SDL averaged the music into that driver.
+- An ADPCM or MP3 file that does not decode is silent without a chat line (above).
+
+Decoding, compared over all of the game's WAV files: the 2,974 in `data.grf` (read with
+`fileio/grf_pak.c`, so `worm_tail_damage.wav`, whose zlib data is cut, reads as the client reads it)
+and the 2 loose ones under `data\wav`, through `resources/wave.c` and `miles_sdl.c` of `9aaa4146`
+(the sample a 3D sample would play) and through `audio_sound_decode`: all 2,976 play both ways, with
+the same channels, sample size, rate and bytes. Of the 2,973 whose data is whole, 2,967 are PCM
+(8- and 16-bit, mono and stereo, 8,000 to 48,000 Hz), five IMA ADPCM and one Microsoft ADPCM; the
+loose two are PCM. With SDL's default truncation four IMA files (`welcome.wav`, `charge.wav`,
+`she_bop.wav`, `horn.wav`) were 2,722 to 4,034 bytes short, the rest identical. `data.grf` has no
+MP3 data named `.wav` and no MPEG Layer 3 inside RIFF (format 0x55), which `miles_sdl.c` did not
+decode either and still does not decode.
+
+Tests:
+
+- `test_audio` (new; `tests\build_audio.bat` in the suite, and off Windows CTest's `audio` in place
+  of `miles_sdl`): the four ADPCM fixtures decode to their reference decodes byte for byte, PCM
+  WAVs (16-bit with a LIST chunk, 8-bit) to their data, the MP3 fixture to its 440 Hz tone, with
+  and without its ID3 tag; every prefix of each of them, ending where readable memory ends on
+  Windows, and 1,500 damaged copies of each WAV and 400 of the MP3 (bytes flipped, 32-bit fields
+  set to 0, 1, 2, 3, 0x7fffffff, 0x80000000, 0xffffffff, 0xfffffff8 or 0x10000, cut short) decode
+  or are refused without a fault, 14,440 decoded and 7,336 refused, and what decodes converts
+  through an `SDL_AudioStream`. Rates of 1, 999, 384,001 and 0xFFFFFFFF Hz and 300,001 frames at
+  1,000 Hz are refused, 1,000 and 384,000 Hz and five minutes play. The pick's sloppy headers
+  (`docs/upstream/README.md`) are pinned: a RIFF size that counts the whole file or is 0xFFFFFFFF
+  and a data chunk longer than the file play, an empty data chunk, format 0x55 and no channels do
+  not. Mixing through SDL's disk driver
+  into files: a voice plays its sound once and its sounding stretch is as long as the sound's
+  (within 300 frames), the music plays the MP3 twice with loop count 2 and `audio_music_done`
+  answers after it, a stereo tone keeps its channels at gain 1 and halves at 0.5, and with mono
+  both channels carry half. With `client-files` beside the checkout (`AUDIO_GAME_DIR`) it decodes
+  `plasma_damage.wav` (PCM), `dying.wav` (8-bit), `CHUNITHM_std.wav` (stereo, 48 kHz),
+  `welcome.wav` and `glass.wav` (IMA, mono and stereo) and `se_frog02.wav` (Microsoft) from
+  `data.grf` and `BGM\01.mp3`, then plays `welcome.wav` and `plasma_damage.wav` over the music at
+  half volume: in the suite's run the voices ended after their 2.27 s (2,306 ms), and the output
+  is as long, not silent and carries the mix (peak at the limit, RMS 5,821).
+- `test_sound_manager` stubs the new module instead of Miles: modes, effects at the effect volume
+  times their own with the clamp, the 48 voices and their reuse, the music's retry, loops and
+  volumes, rollback, the fades on a real thread and the joined shutdown.
+- `test_wave_palette` and `test_resource_lifecycle` hand the decoder the file's own bytes and own
+  what it returns; `test_effect_sound` plays a wave with any player and none without;
+  `test_effect_data` rejects `Height`; `test_startup_settings` no longer reads `SPEAKERTYPE`; the
+  effect trace takes digest `356d458afcc7debb` (above); the oracle tests record a wave by its name
+  on both sides, and a sound cue without its height. `test_miles_sdl` is gone; its fixtures stay
+  for `test_audio`.
+
+Validation: `build.bat check` (no warnings; the include check passes over 1,822 files with
+11,137 includes, 267 of them exceptions, the link check over 1,151 objects with 29,871 uses of
+client symbols, 128 of them exceptions), `build.bat dbg`, `freetype` and `libs` and
+`tests\scenes\build.bat` build. The full `tests\build.bat` passes, its oracle tests against the
+original executable (629,006 calls, no mismatch, no fault). The CMake build of `docs/portability.md`
+with `-A x64` builds and passes its 23 tests. Off Windows, where `test_audio` joins CTest, GCC under
+WSL with `-Wall -Wextra` gives the changed C files the same 77 warnings as their versions at
+`9aaa4146` and `test_audio.c` none; CTest itself was not run there. A review then had the bounds on
+rate and length, the hint's priority, the stream bound after its data, `as_play_wave_at_player`'s
+unused parameter and `effect_sound.c`'s include changed; `build.bat check` and the suite were run
+again after them, the client below was not. `build\ragexe.exe`, copied into a mirror of
+`client-files` and started with `SDL_AUDIO_DRIVER=disk`, wrote 44,100 Hz 16-bit stereo in real
+time (2,768,896 bytes in 16 s) but silence, since the game folder's options have `/bgm` off; in a second mirror with a
+copy of `savedata` whose options turn it on, the login music played from within the first two
+seconds (RMS 3,063 to 4,998 in each two seconds after them). On SDL's dummy driver, as the scene
+harness runs it, it opens its window too. Each run was closed by its process ID.
+
+## One test suite in CMake (2026-11-11)
+
+Decided with Patrick on 2026-11-11: one test definition for every platform, in CMake, built with
+Ninja and run with CTest on every core, and every test headless and silent. Until now
+`tests\build.bat` walked 161 batch files, one per test, and `tests\oracle\build.bat`: 328 `cl`
+calls that compiled 1,665 files per run, 744 of them distinct, the client's own files 1,167 times
+for 361 distinct files (`std/string.c` 79 times), one after another on one core, with nothing kept
+between runs. A run took 514 s (570 s when its library check first had to build the client's
+objects). The CMake build declared 23 more tests for Linux, macOS and Windows, which
+`tests\build.bat` never ran.
+
+- **One declaration.** `tests/CMakeLists.txt` declares every test once: `rage_test` builds
+  `test_<name>` and runs it as the test `<name>`, `rage_test_run` adds a run of a program,
+  `rage_test_objects` compiles sources with options of their own, `rage_test_generate` copies
+  production code out of `src` at build time; the helpers at the top of the file say what each
+  keyword does. The root `CMakeLists.txt` only adds the directory. A one-off generator wrote the
+  Windows tests from the batch files: they were run once with command echo on, which records
+  every command after its variables are expanded, the directory it ran in and the exit code of
+  every program; the generator turned that trace into declarations, which were checked by hand,
+  and was deleted.
+- **Compiled once.** A client file a test names with `CLIENT` is compiled once, into one static
+  library per library of `tools/libraries.txt` (`rage_client_<library>`, the table read through
+  `tools/depmap/libtable.py --cmake`), and a test links the libraries of its files, highest first,
+  taking from them only the objects it uses: the objects its batch file listed, since every client
+  symbol has one definition. Each file keeps the highest warning level a test compiled it at
+  (`/W3`; 36 files `/W1`, 21 `/W4`; `platform/net_win32.c` `/W1`, since only the portable platform
+  tests linked it, at the default level). Before choosing the options, every distinct compile of the
+  old suite outside the oracle (1,067 pairs of file and options) was compiled with its old options
+  and with the new ones and the objects compared (`/Brepro`): all were identical but 52, which
+  differed only by `/std:c11`, now on every target (`CMAKE_C_STANDARD`), and only in the order of
+  their sections: section for section they hold the same code and data. Extra
+  include directories and yyjson's depth defines never changed a client object, so those files
+  are shared; a file compiled with a test's fixture (`/FI`), its own defines or `/Oy- /GS /Gd`
+  stays the test's own copy, among its sources or in one of the 39 object libraries (four of
+  them hold files that several tests compile alike). A cold build makes
+  870 compiles (the vendor libraries and the oracle included); the client's files are compiled
+  442 times for 366 files, `std/string.c` 8 times (once shared, seven fixture copies).
+- **What the batch files did around the compiler.** The 30 extraction scripts are custom
+  commands that run again when the files they read change (found by running each with an audit
+  hook on the files it opens; two read a whole directory, which is globbed). The effect data is
+  embedded by `cmake/EffectData.cmake`, as for the Linux client. The six copies of the Lua
+  runtime that batch files compiled, and `build\vendor`'s `lua514.lib`, `yyjson.lib`,
+  `imglibs.lib`, `jpeg.lib` and `crijndael.lib`, are `vendor/CMakeLists.txt`'s libraries, so the
+  tests no longer need `vendor\build_vendor.bat`, whose `ifneeded` word is gone with its last user.
+  `renderer_storage`'s two runs that must end with exit code 3 go through `tests/expect_exit.cmake`.
+  Every test runs in a directory of its own (`work/<name>`), so parallel tests share no files.
+- **The oracle tests** are a configuration of their own: `-DRAGE_ORACLE=ON` from a 32-bit MSVC
+  environment, which `tests\build.bat` builds in `build\oracle` (the same options, `/MD`, linked at
+  `0x10000000`). A CMake preset cannot set up the compiler's environment, which Ninja needs, so the
+  batch file does. They read `ORACLE_EXE` when they run (`tests/oracle/run.cmake`) and report
+  themselves skipped without the original. The old `tests\build.bat` ignored their result: its
+  `if not "%errorlevel%"=="0" exit /b 1` sat inside the parenthesized `if exist` block, where
+  `%errorlevel%` is expanded before the call runs. Their results are the same as before (629,006
+  calls, no mismatch, no fault).
+- **What runs now.** The same tests with the same results, under CTest's names (`test_x.exe` is
+  `x`), and these differences:
+
+  | before | now | why |
+  |---|---|---|
+  | `test_texture_cache_owner_1`, `_0` | `texture_cache_owner` | the two builds have been identical since the tree's first commit: the loop variable only named the program |
+  | `test_renderer_storage` with `growth_failure`, `queue_failure` | `renderer_storage_growth_failure`, `renderer_storage_queue_failure` | one test per run |
+  | not run | `com_lifecycle`, `emote_timing`, `headgear_names`, `pet_accessory`, `pet_portrait`, `skill_tree_hints` | their batch files existed, nothing called them; they pass |
+  | CMake only | `source_encoding`, `literal_bytes`, `frame_timer`, `platform_clock`, `platform_filesystem`, `platform_thread`, `platform_net`, `platform_code_page`, `platform_sha256`, `code_page_iconv`, `lua_port` | the CMake tests are the suite |
+  | `tools\check_libraries.bat` | `library_includes`; the link check in `build.bat check` | the link check needs the client's objects, and building them in every suite run would undo the incremental build |
+  | `build_agency_server.bat <Hercules>` | `agency_server`, `agency_server_reply` with `-DRAGE_HERCULES_DIR` (label `hercules`) | not run here: no patched Hercules |
+
+  The batch files' manual words are gone (`build_json.bat asan`, the trace arguments of
+  `build_effect_trace.bat`, `build_window_lists.bat`, `build_packet_dispatch.bat` and
+  `build_broadcast_packets.bat`, another source
+  tree for `build_com_lifecycle.bat` and `build_item_restrictions.bat`); the built programs take
+  the same arguments.
+- **Headless and silent.** Every test gets `SDL_VIDEO_DRIVER=dummy` and `SDL_AUDIO_DRIVER=dummy`
+  (`RAGE_TEST_ENVIRONMENT`). Which tests could show anything: no Windows test opens a window or an
+  audio device; `sound_manager` replaces Miles with stubs; 13 tests stub the message boxes
+  themselves (`achievement_owner`, `chat_layout_save`, `com_lifecycle`, `headgear_names`,
+  `item_definitions`, `item_restrictions`, `lua_boundaries`, `lua_calls`, `lua_data_managers`,
+  `pet_accessory`, `startup_order`, `town_info`, `win_utf8`) and `crash_dialog` its dialog; the
+  tests that link `platform/window_sdl.c` could reach `platform_message_box` (none did in a
+  passing run). SDL shows no box with the dummy video driver; in the client libraries
+  `window_sdl.c` is also compiled with `tests/headless.h`, which writes the box to stderr, so that
+  a test program run by hand stays without one too, and `platform/net_win32.c`, whose two boxes
+  for a ws2_32.dll without send or recv call `MessageBoxA` themselves, with
+  `tests/headless_win32.h`. `audio` plays to SDL's `disk` driver, into files in its own directory,
+  `platform_window` gets the offscreen video driver for the clipboard, `gfx_gl` keeps the
+  platform's video driver for its OpenGL context, in a hidden window, and `platform_probe`, whose
+  window shows, is labelled `interactive`, which `tests\build.bat` leaves out. No test starts the
+  client. The scene captures are outside the suite: `tests/scenes/run.py` gives the client
+  `SDL_AUDIO_DRIVER=dummy` unless a driver is set, and on Windows the harness never shows the
+  client's window (`tests/scenes/scene_app_win.c`).
+- **Phase 1 and the sound change.** Merged after them, the suite takes over their test changes:
+  the tests that linked `platform/window_win32.c` (`ai_context`, `game_mode_layout`,
+  `item_definitions`, `link_buttons`, `local_account`, `lua_boundaries`, `lua_calls`,
+  `message_tables`, `multiline_draw`, `navigation_objects`, `renderer_storage`,
+  `surface_lifecycle`, and `mouse` through its fixture's own copy) link `platform/window_sdl.c`
+  with `platform/code_page_win32.c` instead, `language_input` links SDL in place of
+  `platform/win_utf8.c`, `tag_text_viewer` and `url_link` get SDL's headers, `com_lifecycle`
+  extracts its startup tail from `core/app_sdl.c`, and `audio` (`tests/test_audio.c`, in place of
+  `miles_sdl`) runs on every platform with SDL, labelled `client-files` (as the scene test is; a
+  `game` label would also have selected the libraries `game-state` and the rest under `-L`): with
+  `client-files` beside the checkout (`RAGE_AUDIO_GAME_DIR`) it decodes and mixes the game's own
+  sounds. SDL comes from `cmake/SDL3.cmake` on Windows too, built with
+  `vendor\build_vendor.bat`'s options and unpacked into the tests' build from the archive that
+  script downloaded into `build\vendor` when it is there (the same pinned, hash-checked archive),
+  so that `build_vendor.bat` rebuilding `build\vendor` from clean leaves the tests' copy alone.
+  It compiles with its own options, since its `/utf-8` contradicts the client's character sets.
+  `dr_mp3` is a CMake library on Windows as well.
+- **Every configuration.** The tests' directory drops `NDEBUG` (assertions stay on, in the tests
+  and the client files they link) and compiles with `/Gy /Gw /GF` and links with `/OPT:REF` in
+  every configuration, as the batch files' optimized builds did. The `-A x64` Debug configuration
+  now builds the whole suite; three tests held only optimized: `shorten_text` compared the address
+  of `""` literals from two files (pooled by `/GF`), and `character_model` and `effect_operations`
+  reached functions their stubs lacked (two stubs added). `effect_trace` called
+  `_controlfp(_PC_24, _MCW_PC)` as the client did (START-073); x64 has no x87 precision control,
+  its C runtime ignores the request and its debug runtime asserts, so the test made the call on
+  32-bit x86 only, until the next entry removed it from the client and the test.
+- **The tests a change reaches.** Each test is labelled with the libraries of `tools/libraries.txt`
+  whose `.c` files it compiles, links or includes (through the files under `tests` it includes),
+  so `tests\build.bat -L render` builds what changed and runs the tests the render library
+  reaches; `-R <regex>` picks tests by name.
+
+Validation, on this machine (24 cores, with other agents at work on it):
+`tests\build.bat` from a clean `build\tests` and `build\oracle` took 62 s before the merge and
+75 s after it, which brought SDL into the tests' build; again without a change 20 s (CTest 16 s,
+of which `library_includes` alone takes 15 s), after touching `src/std/string.c` 23 s (13
+compiles: the shared object, seven fixture copies and five tests that include the file; 171
+relinks) and after touching `src/render/rp_project.c` 21 s (2 compiles, 29 relinks). The old
+suite took 514 s and rebuilt everything every time. Before the merge all 311 tests and the 6
+oracle tests passed, and every line the old suite's tests printed came out the same (363 lines,
+effect and trace digests included; the other 13 lines come from the tests the old suite did not
+run). After it 64-bit Windows declares 312 tests (`audio` in place of nothing: `miles_sdl` was
+POSIX-only), and all of them and the 6 oracle tests pass; of the 385 lines `gpu-world`'s old suite
+printed, 381 come out the same, and the other four are a batch file's own echo, an extraction
+script's, and two timings. `build.bat check` passes. The CMake `-A x64` (312 tests) and `-A Win32`
+(24) Debug configurations build and pass. Linux, macOS and Android were not built here; off
+Windows the tests now link the client libraries, every one of them compiled with
+`_POSIX_C_SOURCE` (and `_DARWIN_C_SOURCE` on Apple), which `rage_platform` gave only the platform
+files and which only adds declarations, instead of compiling the files themselves. Android
+configures with `-DBUILD_TESTING=OFF`.
+
+## The x87 precision setting goes (START-073, 2026-11-11)
+
+START-073 kept `_controlfp(0x20000, 0x30000)` at startup (`_PC_24` under `_MCW_PC`, 24-bit
+precision for the x87 unit) when the client was 32-bit. Since `02fc9e5e` it is 64-bit only, and
+x64 has no x87 precision control: the C runtime ignores the request, and its debug runtime asserts
+on it (the effect trace test failed for that in a Debug build, *One test suite in CMake*). The
+64-bit client has therefore never had the original's 24-bit precision. Its floating-point math
+runs in SSE, each operation at its own type's precision: `float` arithmetic is rounded to single
+precision at every step, as the original's 24-bit setting rounded every x87 result (but without
+the x87 registers' wider exponent range), and `double` arithmetic keeps its full 53-bit precision,
+where the original computed doubles at 24 bits. The call is removed from `src/core/winmain.c`
+with its `<float.h>`, and from `tests/test_effect_trace.c`, whose digest is unchanged: the call
+did nothing on x64 there either. Nothing that the client draws or sends changes.
+
+Also: `tests/captcha_window_test_boundaries.h` and `tests/name_card_owner_support.c`, which nothing
+in the tree refers to (no batch file compiled them either), are removed, and `tests\build.bat`
+says when Ninja is missing. It finds Visual Studio's own: `vcvars64.bat` puts the CMake tools'
+`ninja.exe` on `PATH` (checked here with nothing else on it), which the Windows CI job relies on.
+
+## Windowed with resizing, and fullscreen at the display's own resolution (START-071, 2026-11-11)
+
+Decided with Patrick on 2026-11-11: the game is windowed or fullscreen, on every platform and with
+either backend, and always draws at its window's size in pixels. Windowed, the player resizes the
+window by its border and maximises it. Fullscreen is a borderless window over the display the
+window is on, at that display's own mode, and nothing changes the display's mode any more. This
+takes the fullscreen of `plans/gpu-renderer.md` (phase 3) ahead, except that the game is drawn at
+the display's size rather than drawn at its own resolution and scaled. It also ends what START-071
+kept: the adapters and display modes the client gathered at startup for the graphics settings.
+
+- **The window and the device.** The window is created with `SDL_WINDOW_HIGH_PIXEL_DENSITY` and,
+  off Android, `SDL_WINDOW_RESIZABLE`. Its minimum client size is 1024 by 664 pixels
+  (`DISPLAY_MIN_WIDTH`, `DISPLAY_MIN_HEIGHT`; 664 rows are the fewest the original's resolution
+  list had, and the interface fits at that size, as the scene `window_resize` shows), in window
+  coordinates rounded up so that it never holds fewer pixels (`platform_window_minimum`), and set
+  again whenever the window's display or pixel density changes (`SDL_EVENT_WINDOW_DISPLAY_CHANGED`,
+  `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`). All conversions of pixels to window coordinates go through
+  `platform_window_units` and `display_units`. The device takes the window's client size in pixels
+  (`platform_client_rect`, now `SDL_GetWindowSizeInPixels`) when it is created, and once a pump
+  `display_follow_window` (`render/resize.c`) gives it the window's size whenever that changed,
+  through `gfx_resize` (a Reset with the new back buffer size on Direct3D 9, new targets on GL), with
+  the projection and the UI windows as before; dragging the border, maximising, restoring, the
+  settings, SDL and the system all go that one way. When the device does not take a size, it tries
+  again once the window's size changes, or, if the device was lost then (`gfx_device_lost`, a
+  Direct3D 9 device that cannot be reset until the system gives it back), once it is no longer
+  lost, asked every 250 ms (`platform_ticks_ms`); a size refused for another reason is not tried
+  again until the window's size changes. Until the device has the window's size, Direct3D 9
+  presents the picture where `present_fit` puts it, as the GL backend does, so that the pointer,
+  which `present_point` (`render/present_fit.h`) maps from SDL's window coordinates (points on
+  macOS and scaled Wayland) to the device's pixels through the same fit, lands where the picture
+  shows it. The 3D view keeps its vertical field of view (`renderer_set_projection` takes the same
+  focal length for both axes from the height), so a wider window shows more of the world sideways;
+  UI windows keep their distance to the nearer edge, or stay centred, and are kept on the screen.
+  The IME's candidate area is sent again when the window or the scene changes size, not only when
+  the composition moves. The executable's manifest (`res/app.res`, resource `RT_MANIFEST` 1)
+  declared system DPI awareness (`dpiAware` `true`), under which Windows stretches the window on a
+  display whose scale is not the system's; its `dpiAware` element is now `true/pm` with
+  `dpiAwareness` `PerMonitorV2` beside it, so SDL's window coordinates are the display's pixels on
+  every display. The resource file is otherwise unchanged: its other 22 resources are the same
+  bytes.
+- **Fullscreen.** SDL's fullscreen desktop: `platform_window_fullscreen` sets the window's
+  fullscreen mode to none (`SDL_SetWindowFullscreenMode(window, NULL)`) and calls
+  `SDL_SetWindowFullscreen`. SDL does this on every platform the client runs on: it makes the
+  window cover the display it is on (on Windows a borderless window over the monitor, without
+  Windows 11's rounded corners), gives the window its frame back when it leaves, does not minimise
+  it when it loses the focus (it does that only for an exclusive mode), and makes a fullscreen
+  window moved to another display cover that one. When the display's own resolution changes, SDL
+  leaves the window as it was, so the client makes it fullscreen again
+  (`SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED`; not on Android, whose window SDL keeps at the screen).
+  Direct3D 9 needs nothing from it: its device is windowed in both modes (`Windowed`, a
+  `D3DFMT_UNKNOWN` back buffer, a copy swap into the window's `HWND`) and never owns the display.
+  It is always the default adapter's, the primary display's, wherever the window is; a window on a
+  display of another graphics card gets the frames copied across adapters. A client started in
+  fullscreen goes fullscreen, before its window is first shown, on the display its saved windowed
+  position is on, or on the primary display when no display holds that point or none was saved.
+- **The settings follow the window.** `set_display` puts the window in the mode the graphics
+  settings ask for and keeps the maximised state asked for, also when the window goes fullscreen,
+  so that it comes out of fullscreen as asked. Once a pump the display options follow what the
+  window is (`display_options_track`): whether it is fullscreen, so that a window the system takes
+  out of fullscreen (macOS, a window manager) stays out of it and the settings' Fullscreen box
+  follows unless the player has changed it; when it is not, whether it is maximised; and when it is
+  neither, its frame's corner (`g_windowX`, `g_windowY`) and its client size (`WIDTH`, `HEIGHT`). A
+  minimised window changes nothing, so a window minimised from maximised comes back maximised. A
+  window opens at the saved size and place, and is restored to them, with the size made to fit the
+  room the display has for a client area, but no smaller than the minimum (`display_fit`).
+- **What went.** Direct3D 9's exclusive mode: the fullscreen present parameters, the dialog-box mode
+  `gfx_flip_to_gdi` set for it, the mode `Reset`s of `change_mode`, `switch_adapter` (the device
+  made again on another adapter, also forced by `RAGEXE_SWITCH_DEVICE`) with `same_gpu`,
+  `recreate_device`'s retry in windowed mode, the adapter table and its GUIDs, `monitor_display`,
+  the adapter field and `IID_IDirect3DHALDevice`; `gfx_set_mode`, `gfx_can_set_mode_live`,
+  `gfx_adapter_monitor`, `gfx_enum_adapter`, `gfx_ddraw_enumerate`, `GfxAdapterCallback`,
+  `gfx_flip_to_gdi` and `GFX_E_DISPLAY_MODE` in both backends (the GL backend's mode list with
+  them); the adapter of `gfx_open`, the mode of `gfx_create_screen`, the device of `gfx_create_3d`
+  and the unused `whole` of `gfx_present`; `render/display_devices.c` and `.h` with
+  `render_enum_adapters`, its "d3denum init" box and `tests/test_display_devices.c`;
+  `render/stale_guid.c`, which cleared a saved `GUIDDRIVER` with a "Display device reset" box;
+  `platform/display_depth*`; `struct SurfaceDesc`, `C3dDevice.primaryDesc`, `desktopBpp`,
+  `fullscreen` and `bltToClient`, which nothing read, and the adapter, device and mode arguments of
+  `c3d_device_init`, whose screen creation is now the file's own `create_screen`; the error box's
+  display hook (`g_errorMsgPrepareDisplay`, `device_flip_to_gdi`), which handed an exclusive
+  display back to GDI; `init_adapter`, `borderless_setting`, `borderless_rect`; in
+  `render/resize.c` the windowed, exclusive and borderless kinds, the frameless placement, the
+  live-or-restart test and the Borderless check box with its `settings_*` helpers and
+  `read_display_options`/`write_display_options`; `platform_window_place_frameless`,
+  `platform_window_frameless`, `platform_window_has_caption`, the display argument of
+  `platform_window_place_windowed` and, outside the platform layer, `platform_monitor_rects`;
+  `g_bitsPerPixel`, `g_displayDeviceIndex`, `g_displayModeIndex`, `g_deviceName`, `g_deviceGuid`,
+  `g_driverGuid` and `g_screenWidth`/`g_screenHeight` (the windowed size, which
+  `g_displayWidth`/`g_displayHeight` hold); the GL backend's `is_main_target`, which nothing
+  called. From the link lines of `build.bat` and `tests\scenes\build.bat` go the libraries the
+  linker reports unused (`/VERBOSE:UNUSEDLIBS`): `ddraw.lib`, `dxguid.lib`, `netapi32.lib`,
+  `oleaut32.lib`, `cfgmgr32.lib`, `libcpmt.lib` and `legacy_stdio_definitions.lib`.
+- **What follows from it.** The game draws while it is inactive in fullscreen. The frame loop drew
+  nothing and slept a millisecond while inactive in exclusive fullscreen (`game/mode_run.c`,
+  `login/mode.c`); a fullscreen window now stays on the screen, a second display's beside other work
+  included, so it goes on drawing as a window does. The window's other exclusive-only cases go too:
+  an inactive window that is moved shows its last frame again, the client's cursor leaves the scene
+  when the pointer leaves the window, and a press on a caption starts the client's own drag, in
+  either mode, except that a maximised window is left to Windows to drag (dragging restores it).
+  Two places took the resolution option for the screen's size, which it no longer is: the frame
+  windows' drag guard (`ui/controls/frame_wnd.c`) and the hotkey bars' tooltip placement
+  (`ui/hotkeys/hotkey_bar_common.c`) read the window manager's screen size. On Android, whose window
+  always covers the screen, the game draws at the window's size, which SDL gives in the screen's
+  pixels, so the interface is small on a dense screen until it is scaled; on a Retina display the
+  game draws at the display's pixels too. While the player drags the border on Windows, Windows
+  runs its own sizing loop and the game does not draw; it draws at the new size once the drag ends.
+  SDL sends an expose event from within that loop that a watcher could draw from, but the client's
+  frame code (`game_mode_on_update`, the login mode, the map loader) pumps the events itself
+  (`check_system_message`), and drawing a frame from inside SDL's pump would enter that pump again.
+- **The graphics settings.** The resolution picker (`render/display_options.c`,
+  `display_picker_build`, in the `display-options` library with the rest of the display modes' pure
+  logic) is disabled in fullscreen and shows the size of the display the window covers, in grey and
+  without the list's arrow. Windowed, it shows the window's size (maximised, dragged or picked) and
+  offers, smallest first, those of 26 common sizes (4:3, 5:4, 16:9, 16:10 and 21:9, from 1024x768
+  to 5120x2880) and the window's own size that fit the room the window's display has for a client
+  area (its work area less the window's frame, `platform_window_room`, in pixels), and that room
+  itself, the largest window that fits, all within the sizes the options keep; with nothing to
+  offer it is disabled too. The entries read `1600 x 900`. A size picked there restores a
+  maximised window and is set when the player presses Apply and confirms "Set to these values?",
+  which Apply asks for every change. The Graphic Device row goes: the display is the window's and
+  the device the default adapter's, so there is nothing to choose; the rows below it move up one.
+- **Saved settings.** `OptionInfo.lua` keeps `ISFULLSCREENMODE`, the new `ISMAXIMIZED`, `WIDTH`,
+  `HEIGHT`, `Window_XPos`, `Window_YPos`, `OLD_WIDTH` and `OLD_HEIGHT` (`display_options_read` and
+  `display_options_write`). A nonzero `ISFULLSCREENMODE` is fullscreen, whether `ISBORDERLESS` made
+  it exclusive (0) or borderless (1, also when missing); a nonzero `ISMAXIMIZED` is maximised, and a
+  file without it is not. `WIDTH` and `HEIGHT` are the windowed size, the one a maximised window is
+  restored to, also when they held an exclusive mode or, in borderless fullscreen, the resolution
+  picked; outside 1024 to 8,192 by 664 to 4,096 they give 1024x768 (the original only gave
+  1024x768 for a height below 664, compared unsigned, so a negative height went through).
+  `Window_XPos` and `Window_YPos` are where the frame last was when the window was neither
+  maximised nor fullscreen, where they used to be wherever the frame was when the client closed
+  (a maximised or fullscreen window's corner); without both no position is known, and none is
+  written. `ISBORDERLESS`, `BITPERPIXEL`, `DEVICECNT` and `MODECNT` are no longer read or written,
+  so the next save leaves them out. The registry's `DEVICENAME`, `GUIDDEVICE` and `GUIDDRIVER` are
+  no longer read; this client only ever wrote a zero `GUIDDRIVER` (`stale_guid`), and a
+  `GUIDDRIVER` from the original's setup tool, a DirectDraw device GUID, matched no adapter, so the
+  device was the default adapter's in any case. START-071's row in the startup table is updated.
+
+Tests: `tests/test_display_options.c` reads the option files the client wrote with exclusive,
+borderless, windowed and maximised windows and the original's file without `ISBORDERLESS`, with
+and without a position, checks that the dropped options are never asked for, that sizes out of
+range give 1024x768 and that what is written reads back the same; follows a window that is dragged
+and moved, maximised, minimised, made fullscreen, taken out of fullscreen by the system and
+restored, and one at sizes the options do not keep, keeping its last normal size and place; fits
+sizes to rooms larger and smaller than the minimum; checks that the minimum rounded up holds at
+least 1024 by 664 pixels, and is the fewest window coordinates that do, at densities from 1 to 3
+including 1.25, where rounding to the nearest gave 1023 by 663; and builds the picker in fullscreen
+and windowed on a 1920x1080 display with a taskbar, a 5120x1440 one, 1366x768 and 1280x800 laptops
+where only the room fits, and displays too small for any size, with the window's size among the
+offered ones, between them, past them, maximised and too large to be offered.
+`tests/test_present_fit.c` maps the pointer at one, two and one and a half pixels a point, in a
+covered window and in one of another aspect. `tests/test_startup_settings.c` reads
+`TRILINEARFILTER` and `SOUNDMODE` only. `tests/test_gfx_gl.c` calls the GL backend with the new
+signatures. The scene harness gains `scene.resize(w, h)`, and the scene `window_resize` resizes the
+hidden window to 1280 by 720, below the minimum (it stays at 1024 by 664) and to 1920 by 900, and
+captures each.
+
+Validation: `build.bat check` passes (the include check over 1,813 files in 23 libraries, the link
+check over 1,143 objects), and `build.bat freetype` links without the libraries removed from its
+link line too; the whole `tests\build.bat` passes (313 tests, and the 6 oracle tests). GCC in WSL,
+with SDL's headers from `build\vendor`, compiles every client file CMake builds off Windows and the
+tests above (syntax only) without an error, and the changed ones without a warning at `-Wall
+-Wextra`. `tests\scenes\build.bat` builds, and with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's
+dummy audio driver the 12 captures of the scene set are identical to the reference's goldens
+(`build/ref`), with the same counters; the four of `window_resize` are at the sizes asked for
+(1280x720, 1024x664 when 800x600 was asked for, 1920x900), with the 3D view as high as before and
+wider or narrower, and the UI windows on the screen. A scene run in the hidden harness window opened
+the graphics settings, picked 1440 x 900 and applied it after the question: the frame became
+1440x900 and the windows at the right edge moved with it. Not run: fullscreen and maximising (the
+harness never shows its window, and SDL makes a hidden window fullscreen or maximised only once it
+is shown), dragging the border, a second display, a display of another scale, a lost Direct3D 9
+device, and Linux, macOS, Wayland and Android, which were not built or run; they are to be tried by
+hand.
+
+## One renderer on SDL's GPU API (2026-11-12)
+
+Phase 2 of `plans/gpu-renderer.md`: `render/gfx_gpu.c` implements `render/gfx.h` on SDL 3's GPU API
+on every platform, Vulkan with SPIR-V on Windows, Linux and Android, Metal with MSL on macOS, and
+replaces the Direct3D 9 backend (`render/gfx_d3d9.c`) and the OpenGL one (`render/gfx_gl.c`), which
+are deleted with `tests/test_gfx_gl.c`, `d3d9.lib` on the link lines, the loading of
+`d3dcompiler_47.dll` (inside the Direct3D 9 backend), the window's OpenGL flag and context
+attributes, the `RAGE_GLES` option and the bump-map texture nothing made (`texture_create_bump`,
+`bump_caps_check`, `GFX_FMT_BUMP`, the caps' `bumpEnv` and `bumpEnvLuminance`, and the backends'
+bump stage operations). `gfx_world_supported` goes too: a device that exists draws the world, and
+one that cannot be made stops the client at `app_init_3d` with the original's message and SDL's
+reason in the log. `gfx_gl_set_cover`, through which Android's window tells the device what covers
+it, is `gfx_set_cover`. The Android app asks for Vulkan 1.0 instead of OpenGL ES 3.0. The overlay
+names the driver, Vulkan or Metal.
+
+What was left of Direct3D's device model goes with the backends, since a GPU device has no use for
+it: the lost device (`gfx_is_lost`, `gfx_restore`, `gfx_restore_all`, `gfx_device_lost`,
+`GFX_E_SURFACELOST`, the device's `surfacesLost` with `c3d_device_check_lost`,
+`c3d_device_on_surfaces_lost` and `c3d_device_restore_surfaces`, which `renderer_flip` and the login
+and game modes called, and `render/resize.c`'s polling of a lost device, which now tries a size the
+device had no memory for again when the window's size changes); GDI drawing into the frame
+(`gfx_get_dc`, `gfx_release_dc`, `text_dc_from_surface`, the text DCs' surface and their locking of
+it, `renderer_text_out` and `renderer_get_text_extent`); the transform and light calls
+(`gfx_set_transform`, `gfx_set_light`, `struct GfxMatrix`, `GFX_TS_*` and `mat4_perspective_lh`,
+which only fed them, and `renderer_set_light`'s diffuse colour); the managed pool's eviction
+(`gfx_evict_managed_textures`); and the colour-key and texture-perspective states
+(`GFX_RS_COLORKEYENABLE`, `GFX_RS_TEXTUREPERSPECTIVE`), which no device had. The fixed shader does
+the stage operations and arguments `render/gfx.h` names and no others (the texture factor, the
+specular argument and nine operations nothing used are gone). The alpha test takes the comparisons
+`render/gfx.h` names, and `GFX_LOCK_RETRY` and `GFX_E_VIEWPORT`, which nothing used, go too.
+
+- **Shaders.** HLSL in `src/render/shaders` (`fixed.hlsl`, `mesh.hlsl`, `caster.hlsl`, sharing
+  `records.hlsli`), compiled offline by `tools/shaders` (C: the Vulkan SDK's `dxc` to SPIR-V for
+  Vulkan 1.0, `spirv-val`, then SPIRV-Cross's C API to MSL 2.1 with the resource indices SDL's Metal
+  driver binds, failing when a resource is not where SDL's binding rules put it) into committed
+  headers with the resource counts, the compilers' versions and three hashes: of the source with
+  its includes, of the tool's own source (its flags and binding rules) and of the arrays.
+  `tools/shaders/check.py` fails when any of them differs, in `build.bat check` and as the test
+  `shader_sources`, so a changed source or tool whose headers were not made again, and a header
+  edited by hand, fail the check. No build needs a shader compiler.
+- **A recorded frame.** Each draw becomes a record (`struct GpuDraw`: the two texture stages, the
+  alpha test, the fog, the target's size, a mesh's colour and texture transform) in a list of render
+  passes, one per target or shadow cascade, with a pipeline from a cache keyed by blending, depth,
+  culling, topology, vertex layout, target format, sample count and alpha to coverage. The shaders
+  read the records from storage buffers through an instance-rate attribute that holds the draw's
+  index, its first instance. Vertices, indices, records and the texels of textures that changed go
+  into one staging area; presenting (or a lock on a target) copies it through one transfer buffer in
+  one copy pass and replays the passes in one command buffer, then presents fitted to the window
+  (`present_fit`) or downloads the target and waits. Fans become triangle lists. Surfaces and meshes
+  a recorded draw uses stay alive until it is drawn. A fence on each frame keeps the CPU at most two
+  frames ahead of the GPU, also in the scene harness's hidden window, where no swapchain image paces
+  it. A flush that fails before its command buffer reaches the GPU stages its textures, mipmaps and
+  meshes again for the next, and forgets the copies into textures it recorded, whose CPU pixels stay
+  the textures'; a mesh is pinned with its upload, so that one destroyed in the frame stays until it
+  is made. A frame shown without vsync (`renderer_flip(..., 0)`, the map loading screen's up to 100
+  a load) never waits for the window: SDL's acquire of a picture waits for the presentation engine
+  even when told not to block, so such a frame asks for one only once a refresh of the window's
+  display (60 Hz where its mode does not say) has passed since the last, and otherwise is drawn but
+  not shown, as Direct3D 9's `D3DPRESENT_DONOTWAIT` left a frame the screen had no room for. The
+  device turns off the Vulkan features SDL asks for by default that it does not use (depth clamping,
+  clip distances, indirect draws from a first instance), so GPUs without them, older Android ones
+  among them, run it.
+- **Textures.** A texture keeps its pixels on the CPU in the client's format, so the model loader's
+  thread creates, locks and fills it without calling SDL; the main thread widens them to B8G8R8A8
+  when a draw first uses them after a change, through the library `texel-convert`
+  (`render/texel_convert.c`, with the formats in `render/gfx_format.h`: bit replication, the system
+  surfaces' magenta key as alpha). One changed after a draw used it in the same frame goes up in a
+  copy pass between the render passes, so the earlier draw keeps its old texels. Mipmaps are made on
+  the GPU whenever a texture that has them goes up. A copy from a target into a texture stays on the
+  GPU until the texture is locked; a stretched one, which SDL draws, makes the texture a colour
+  target first. Rectangles that are empty or reach outside their surfaces copy nothing on every
+  path, as the copies between surfaces in memory did. Locking a target downloads the locked
+  rectangle alone; pixels the lock changed go back where the frame has got to, and into the
+  multisampled screen as well. Meshes keep 32-bit indices, since a draw may start at any index and
+  Metal takes an index buffer's offset in multiples of 4 bytes.
+- **Direct3D 9's pixels.** Every vertex lands where Direct3D 9 put it. Every pass's viewport is its
+  target moved by half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall
+  on the target's. A viewport must lie within its texture (SDL's GPU API checks it in its debug
+  mode, Metal requires it), so a target's textures (the screen, its multisampled picture and depth,
+  its copy, render targets, the shadow maps and their depth) are a pixel wider and taller than the
+  target (`MARGIN`): a stage that samples a target scales its texture coordinates to match and, when
+  it clamps, keeps them off the margin (no further than the centre of the target's last texel), the
+  shadow lookups read the maps by texel, the one point sampling picked, with the maps' size in the
+  shadow record, and the picture is presented filtered only where it shrinks. The meshes, world
+  vertices and shadow casters take Direct3D 9's own matrices, computed in floats as the Direct3D 9
+  client computed them and multiplied in the order `fxc` compiled its shaders to (`mad` is a fused
+  multiply-add in both), and the GPU divides and moves their points as Direct3D 9's did.
+  Pre-transformed vertices are snapped in the vertex shader to the 1/256 of a pixel Direct3D 9's
+  rasterizer snapped them to, rounding to even, and handed over a 1/1024 of a pixel further on: the
+  GPU's own viewport transform lands within a few ten-thousandths of a pixel of that point and snaps
+  it to the same place whether it rounds or truncates (`records.hlsli`, `snapped_ndc`). Their `w`
+  stays 1, and the shader interpolates perspective-correct itself with the rhw. The mesh and shadow
+  shaders are the Direct3D 9 ones ported, with the alpha test and fog of Direct3D 9's fixed function
+  applied to their output; the four cascades are layers of one R32F array texture. The viewport,
+  like Direct3D 9's own, leaves out the left half of the first column and the top half of the first
+  row: a GPU that clips to it (Mesa's lavapipe does, NVIDIA's does not) covers only those pixels'
+  other samples when multisampling, as it would have under Direct3D 9.
+- **Multisampling** (`RAGEXE_MSAA`: 2, 4 or 8 samples, the most SDL's GPU API offers, 4 when
+  unset, 1 for none; a count the GPU does not take for the target and depth formats falls to the
+  next lower one it does) resolves the screen at the end of each pass on it. Direct3D 9 drew flat
+  draws (one rhw for every vertex: the UI, sprites) without multisampling, which SDL's GPU API
+  cannot switch off per draw; in a multisampled pass a flat draw's vertices move onto the pixel
+  boundaries that keep the pixels Direct3D 9 covered (`ceil` of the coordinate snapped to 1/256,
+  less half a pixel, on either side under the top-left rule) and take the values their triangle's
+  plane has there, so text boxes and bars whose edges run through pixel centres keep their edges,
+  and texels stay where the centres read them. Alpha-tested draws without blending use alpha to
+  coverage, as the plan chose instead of the drivers' transparency anti-aliasing (`SSAA`, `ATOC`).
+- **The login screen's serial number** was measured and drawn five times into the frame through a
+  DC, each a lock of the frame: a submit, a wait, a download of the whole target and an upload of
+  it. It is drawn once, as plain text in the font the DC draws plain text with (GDI's default font,
+  FreeType's face 0, as before), into a bitmap one pixel larger all round than it, outlined in
+  black, kept with the window manager (`UIWindowMgr.serial_number`; a bitmap that cannot be made is
+  not tried again), and shown each frame as a quad at the end of the frame's last list, over the
+  mouse cursor as the original drew it, at the pixels the original drew it at (its left edge 0x64
+  pixels plus its width measured in face 0 at size 12 from the right edge).
+- **Counters.** `present_ms` (`diag/perf.h`: `presentNs`, timed in `c3d_device_show_frame`, before
+  the harness counts the frame as shown) joins the scene captures' counters, since the GPU backend
+  submits a frame's work when it presents.
+- **The scene harness on macOS** keeps the client's window, hidden, as on Windows
+  (`tests/scenes/scene_app_hidden.c`, which `scene_app_win.c` was), since SDL's Metal driver draws
+  for a window's view and the offscreen video driver has none; Linux keeps the offscreen driver.
+
+Verification, on Windows (NVIDIA, Vulkan). `tests/test_gfx_gpu.c` (the tests `gfx_gpu` and
+`gfx_gpu_msaa`) draws through `render/gfx.h` without and with multisampling and reads the pixels
+back: clears, Direct3D 9's pixel centres and top-left rule, flat quads between pixel centres,
+every texture format, texel centres, culling, textures changed and released within a frame, the
+alpha test, the vertex fog, blending, mipmaps, render targets, system-surface blits, copies between
+targets and into textures (stretched into a texture drawn from earlier in the frame, and
+rectangles outside their surfaces), pixels written into a locked target and into a locked
+rectangle of it, world vertices, meshes (drawn from an odd index too) and a resize. It passes under
+the Vulkan validation layer with synchronization validation and with SDL's own debug checks
+(`RAGEXE_GPU_DEBUG=1`), which refuse a viewport that reaches past its target.
+`tests/test_texel_convert.c` widens and packs back every 16-bit texel of each format.
+`tools/shaders/check.py` fails on a byte of a header changed by hand and on a changed tool.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio against `build/ref` (the
+Direct3D 9 client of `02fc9e5e`), at tolerance 3: all 12 of the scene set pass, `iz_int03_enter`,
+`keyboard` and `windows_open` identical and the other nine within one step per channel. Of the 16
+shadow views (`build/ref/extra`), 11 pass, three of them identical. `manuk` at 1,500 and 2,500,
+`hu_fild01` at 1,500, `ve_fild05` at 2,500 and `man_fild03` at 2,500 differ in 16, 5, 1, 2 and 1
+pixels by 4 to 20, in their shading only: in `manuk` at 1,500 the 16 lie on a straight line across
+the ground, one a row, two pixels apart, along a shadow's edge. That is the pattern of a shadow
+lookup reading the texel beside the one Direct3D 9's read: the line is where the lookups' point in a
+shadow map crosses from one texel to the next, so lookup coordinates a last bit apart, as Direct3D
+9's and Vulkan's interpolation across a triangle can leave them on the same GPU, fall into
+neighbouring texels there, and one of a pixel's 16 lookups changing moves its lit share by a
+sixteenth. The rest of those views is within tolerance. `window_resize` captures at 1280x720, at
+1024x664 when 800x600 is asked for, and at 1920x900, with the 3D view and the UI windows drawn at
+each size.
+
+With multisampling on (`RAGEXE_MSAA=4`), against the reference captured with it, the captures
+differ inside the 3D view: about 290,000 of the 1,440,000 pixels outdoors and 4,000 to 6,300
+indoors, by up to 233, along model edges and across the textures of the ground and the models.
+Direct3D 9 had NVIDIA's transparency supersampling there (`SSAA`), which shades every sample of an
+alpha-tested draw without blending, and the ground and the models are alpha-tested (0xcf), so their
+textures were read at each sample; alpha to coverage, which the plan chose, reads them once a pixel.
+Direct3D 9 used alpha to coverage too where the driver offered no `SSAA` (`ATOC`, or `A2M1` on
+AMD): against the reference with `RAGEXE_MSAA_ALPHA=atoc`, 17,800 to 35,800 pixels differ outdoors
+and 3,700 to 5,700 indoors, along the edges of alpha-tested texels (leaves, railings, the
+colour-keyed borders of model textures), where each driver dithers coverage in its own pattern.
+The UI matches: flat draws move onto Direct3D 9's pixel boundaries, so the edges of bars and text
+boxes that run through pixel centres keep their pixels.
+
+Counters, against the Direct3D 9 client of this tree just before the switch (one run) and the GPU
+client (the median of three runs): every count is the same (draws, calls, primitives, states, binds,
+vertex and texel bytes), and recording the scene (`draw_scene_ms`) costs about a tenth of what
+handing it to Direct3D 9 did. `present_ms` copies the frame's data, records its passes and submits
+them, and then waits for the frame two before it to finish on the GPU: in the scene harness,
+whose frames follow each other as fast as the CPU makes them, that wait is most of it. Timed in
+`flush`, recording and submitting take 0.1 to 0.5 ms of a frame and the wait the rest, 0.2 to
+1.7 ms, on a GTX 970 at full clock and 2 % load.
+
+| capture | Direct3D 9 scene + present ms | GPU scene + present ms |
+|---|---|---|
+| `camera_level_view` | 3.89 + 0.08 | 0.45 + 2.10 |
+| `camera_level_view_moving` | 4.57 + 0.07 | 0.46 + 1.43 |
+| `granny_models` | 1.28 + 0.04 | 0.16 + 1.66 |
+| `prontera_crowd` | 1.24 + 0.06 | 0.18 + 1.77 |
+| `keyboard` | 0.41 + 0.07 | 0.04 + 0.95 |
+| `windows_open` | 0.30 + 0.04 | 0.06 + 0.38 |
+
+Linux, in WSL (Ubuntu 24.04, GCC 13) with Mesa's lavapipe as the Vulkan driver: the CMake client
+(`RAGE_CLIENT=ON`, SDL built for the console, `SDL_UNIX_CONSOLE_BUILD`, since the harness draws with
+the offscreen video driver) builds, `test_gfx_gpu` passes with and without multisampling, and the
+scene harness draws the whole scene set and `window_resize`: the ground, the models, the Granny
+actors, the shadows, the sprites and the UI as on Windows, at the offscreen display's 1024x768
+instead of 1600x900 and with FreeType's text, so the captures were looked at, not compared by
+tolerance.
+
+`build.bat check` passes (the include and link checks, and the shaders' check), and so does the
+whole suite (`tests\build.bat`: 317 tests, and the 6 oracle tests). Not run: Android (Vulkan)
+and macOS (Metal), which were not built, so the macOS harness change has not been compiled either;
+the MSL, which no Metal compiler has seen; fullscreen; the login screen's serial number, which no
+scene shows; a flush that fails; and a game played by hand.
+
+## Pipelines instead of render states (2026-11-12)
+
+Phase 3 of `plans/gpu-renderer.md`: the client draws in a fixed set of draw modes instead of setting
+Direct3D 9's render and texture stage states, the fog is computed on the GPU, and all text is
+FreeType's.
+
+- **Draw modes.** `render/draw_modes.c` (the library `draw-modes`, data and two pure functions)
+  names the 28 ways the client draws: 21 for the lists of `renderer_draw_lists` (the ground with and
+  without its lightmap, both halves of two-pass alpha, three effect lists), and one each for the
+  interface's composited windows, the frame-time overlay, the texel probe, blits and three kinds of
+  clear. A mode is one combination of the stages' combination (`enum DrawCombine`: what the two
+  texture stages make of the textures and the vertex colour), blending (D3DBLEND factors),
+  depth test and write, alpha test and reference, fog, each stage's addressing and stage 0's
+  filtering, and the targets it draws into (the screen, its copy, a render target's texture, and
+  meshes). The values are the states the Direct3D 9 client set before each list, which
+  `test_draw_modes` checks by replaying its `renderer_draw_lists` (02fc9e5e) as a list of state
+  changes, with and without two-pass alpha; the probe's against the states the device started
+  with, and the blits' and clears', which were no draws under Direct3D 9, for what they copy and
+  write. The effect presets that the client never names are numbers, which the quad shader's
+  cases evaluate (`draw_modes.h` lists what each makes). `render/gfx.h` lost `GFX_RS_*`, `GFX_TSS_*`,
+  `GFX_TOP_*`, `GFX_TA_*`, `GFX_CMP_*`, `GFX_ADDRESS_*`, `GFX_FILTER_*`, `GFX_MIPFILTER_*`,
+  `GFX_FOG_NONE`, `gfx_set_render_state`, `gfx_get_render_state`, `gfx_set_stage_state` and
+  `gfx_default_states`, and gained `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog`; the blend
+  factors' names are `DRAW_BLEND_*`, which `effects/rag/effect_prim_draw.c`'s own copies of four of
+  them gave way to. `render/crenderer.c` sets a mode before each list in place of its 78
+  render-state and 127 stage-state calls, its `HRS`, `HTSS` and `get_rs`, and
+  `renderer_set_blend_stages`. The other callers set theirs: the composited windows
+  (`render/render_clients.c`) the mode the frame's last list left, without depth and fog; the
+  frame-time overlay (`diag/perf.c`) its texture as it is, blended; the texel probe
+  (`render/c3ddevice.c`) its pattern times the vertex colour, which finds the half-texel offset the
+  client had (the states the device started with left stage 1 adding white, so the probe found
+  nothing and kept its default of the same offset). Quads are never culled, as every quad list drew
+  them; a mesh's draw says its cull mode (`GfxMeshDraw.cull`, which `RPMeshDraw.cull` was).
+- **The effect lists.** The three lists of blended effect quads take each quad's D3DBLEND factors
+  and texture-stage preset from its effect file, as the Direct3D 9 client set them per quad
+  (`gfx_set_effect`); a preset that is none keeps the one before it, and 2 is drawn as 1, whose
+  states it set alike (`draw_effect_combine`); `gfx_set_effect` given a number that is no
+  combination keeps the one before and still takes the factors, as the Direct3D 9 client's stage
+  states stayed while its blend states changed. The factors are taken whole: a number whose low
+  byte is a factor, such as 0x105, is no factor and blends as ONE, as the device drew a number it
+  did not know, and ends a batch as any other change of number did (the device had kept only the
+  low byte). The 16 presets are combinations in the quad shader,
+  chosen by the draw's record; `test_gfx_gpu` draws each and compares its colour and alpha with
+  Direct3D 9's fixed function evaluating the states `renderer_set_blend_stages` set for it, within a
+  step. A blend's factors are taken as Direct3D 9 took them (`draw_blend_factors`): a source factor
+  of BOTHSRCALPHA or BOTHINVSRCALPHA sets the destination's too, BLENDFACTOR is ONE and
+  INVBLENDFACTOR ZERO (the blend factor being white), and on the screen, whose alpha is 1 as an
+  X8R8G8B8 target's was, DESTALPHA is ONE, INVDESTALPHA and SRCALPHASAT ZERO. The GPU backend had
+  left the destination factor of BOTHSRCALPHA as given and blended BLENDFACTOR and INVBLENDFACTOR as
+  ONE; effect files that use them now blend as under Direct3D 9. Presets 5 to 15 read the second
+  texture at the first texture's coordinates, the effect quads having one set; under Direct3D 9
+  their stage 1 read coordinate set 1, which those vertices lack. Whether Direct3D 9 read (0, 0)
+  there could not be settled with a capture: no effect file of the game's data uses those
+  presets (the 2,694 STR files of `data.grf` and the 183 of `revel.grf` use presets 0 and 1 only).
+- **Pipelines made once.** The device makes every mode's pipelines when it has the screen's
+  samples and depth (`gfx_create_zbuffer`): each mode for each kind of target it draws into, flat
+  and not (alpha to coverage stays for alpha-tested draws without blending that are not flat), its
+  meshes in each cull mode, and for the effect modes one pipeline for each pair of the eight blend
+  factors the screen tells apart, tested depth or none; the clears that write depth draw into the
+  screen alone, the one target with depth. Modes that differ in nothing a pipeline holds share one:
+  147 pipelines, 148 with multisampling, made in about 3 ms on the GTX 970 (with the driver's
+  shader cache filled). Whether a draw smooths its alpha test's edges by alpha to coverage is one
+  rule (`alpha_to_coverage`), for its pipeline and its record alike. The samplers are made once as
+  well (six: wrapped or clamped, filtered with mipmaps, linearly or by the nearest texel). The
+  pipeline cache keyed by the render states is gone, and so are the points, lines and fans of
+  `gfx_draw`, which nothing drew: every quad is a triangle list in one vertex layout, and one quad
+  shader (`quad.hlsl`, which `fixed.hlsl` was) no longer evaluates Direct3D 9's stage operations
+  and arguments.
+- **The same draws.** Quads are batched until what they are drawn with changes: the mode's
+  values, the effect's factors as given and its preset, and the fog, so two lists drawn alike batch
+  together as their identical states did under Direct3D 9, and a state that changed and changed back
+  between two lists still ends the batch. Every count of the scene captures is as before. A strip
+  becomes a triangle list in one order wherever it is drawn (`batch_strip_list`): the odd triangles
+  as (t + 1, t, t + 2), the order a GPU draws a strip in and the one the batched strips had; the
+  strips the device drew itself (blits, clears, a strip too long for the batch) had (t, t + 1,
+  t + 2), whose interpolation can differ in the last bit. A mesh draw counts in `draws` and `prims`
+  once it is recorded, not before.
+- **Fog in the shaders.** The fog is the frame's (`gfx_set_fog`: on, colour, start and end as
+  shares of the view depths 10 to 1,500), computed in the vertex shaders and interpolated across
+  the triangle as Direct3D 9 interpolated the vertex fog. For the meshes it is the Direct3D 9
+  client's mesh shader's, from the view depth. For the quads it is, to the bit, the step in 1/255
+  rounded down that the client computed on the CPU for every queued vertex from its rhw
+  (`rp_vertex_fog_alpha`, gone) and put in its specular alpha. A shader cannot repeat that
+  computation exactly (Vulkan lets a division be 2.5 units in the last place off, and compilers
+  fuse), so the device makes, once a frame for each fog, the table of the rhw at which each step
+  begins (`render/vertex_fog.c`, the library `vertex-fog`, a binary search per step over the float
+  bit patterns of the CPU's own formula), and the quad shader finds a vertex's step with eight
+  comparisons, which are exact. A vertex in world coordinates (water, Granny models) takes the rhw
+  the CPU's projection gave it, as the original did, not the GPU's depth. `test_vertex_fog` checks
+  the table against the original's function, word for word, for 12 million rhw (every step's
+  first and its neighbours, every power of two, a sweep of the views' depths and a million
+  random, for seven fogs); `test_gfx_gpu` draws white quads into black fog at every step's first
+  rhw and the one before it, pre-transformed and in world coordinates, for two fogs, and reads the
+  original's step back from each. The specular colour, which only carried the fog, is gone from
+  the vertices (`TexDrawVertex`, `RPTwoTexVertex`, the cooldown pie's
+  `PieVertex`): `GFX_VTX_TEX1` is 28 bytes, `GFX_VTX_TEX2` 36. `GfxWorldView` lost its fog, the
+  device's caps `vertexFog`, the renderer `fogVertexCaps` and `fogDirty`, and `g_fogDensity`,
+  `g_fogVertexMode` and `g_fogUseRange`, which only fed Direct3D 9's fog states, went with
+  `renderer_do_fog_`; the fog table's density (`fogParameterTable.txt`), which only fed
+  `g_fogDensity` and which linear vertex fog never used, is no longer read. The unused `struct
+  SkyBox` (`resources/flare.h`), whose size asserts held `TexDrawVertex` at 32 bytes, went too.
+- **FreeType on every platform, as GDI chose and sized.** The Windows client draws its text with
+  FreeType, as the other platforms do. `render/text_gdi.c`, `render/fonts.c`, `TEXT_BACKEND_GDI`,
+  the GDI+ helper library `vendor/font_backend` that only `render/fonts.c` used (with
+  `render/font_family.h`, `gdiplus.lib` and the tests `font_cache`, `font_cache_system`,
+  `font_family` and `font_family_system`), the POSIX stand-ins for GDI's handle types and the
+  `freetype` switch of `build.bat` and `tests\scenes\build.bat` are gone; `vendor\build_vendor.bat`
+  always builds FreeType. With one backend left, its interface went too: `render/text_backend.h`
+  and `render/text_freetype.c` (the text DC is `render/textdc.c`'s, which draws with the fonts
+  directly; a bitmap's pixels are `render/cdc.c`'s), the placeholder `struct TextBitmapState`, the
+  wrappers around the font functions and around the plain-text calls, and
+  `dc_bitmap_fill_triangle` with `ui_window_fill_triangle`, which nothing called. The rule for the
+  text: on Windows, draw what the GDI client drew on the same machine with the same fonts.
+  - The fonts are GDI's: the font finder (the library `font-finder`, `render/font_match_scan.c`)
+    reads those the registry lists for the machine and for the user (`SOFTWARE\Microsoft\Windows
+    NT\CurrentVersion\Fonts` under `HKEY_LOCAL_MACHINE` and `HKEY_CURRENT_USER`). It had scanned
+    `%WINDIR%\Fonts` alone, so a font installed for the user, where Windows 10 1809 and later put a
+    font installed by double-click (a player's own `gulim.ttc`), was not found. A face answers to
+    its family name in English and in the display language (the name table's name 1, which GDI
+    matches; the library `font-faces` holds these rules as pure functions), and a face is asked
+    for by its display-language name first, then its English one, as GDI's font cache asked: the
+    finder had asked for the English name alone, so on a Japanese Windows face 2 was the
+    fixed-pitch MS Gothic where GDI drew the proportional MS PGothic. A script's fallback is the
+    first of its Windows fonts that is installed, whatever it covers, as GDI's cache took it; the
+    first that covered the script's language had been taken, so Han on a Windows without Gulim fell
+    to Malgun Gothic where GDI drew it in MS Gothic.
+  - The sizes are GDI's: a positive height is the cell, sized by the face's own metrics, through
+    its VDMX table where it has a group for the Windows ANSI subset (the first size that tall, or
+    the size before the first taller; a group made for all glyphs, as Tahoma's, GDI leaves unread)
+    and otherwise the largest em whose rounded Windows ascent and descent fit, with the cell's
+    ascent rounded and the descent the rest. The em is the cell only for a free font that stands in
+    for a family whose em is its cell (Gulim, MS Gothic, SimSun, MingLiU). Before, every face drawn
+    for a CJK charset or a CJK script that was not the family asked for got the cell as its em:
+    without Gulim, Hangul and symbols such as ★ were drawn in Malgun Gothic a third larger than GDI
+    drew them (a 12-pixel em where GDI's was 9); the VDMX table was read only for exact heights
+    (Verdana at 15 pixels had a 15-pixel cell where GDI's is 14) and in Tahoma's group for all
+    glyphs too (Tahoma at 16 and 20 pixels had a 12- and a 15-pixel em where GDI's are 13 and 16).
+  - The hinting is GDI's: a Windows family is hinted by its own instructions, a free font standing
+    in by FreeType's autohinter. Before, a face was hinted by its own only when FreeType's name for
+    its family was the one asked for, so Malgun Gothic and the overlay's Lucida Console (asked for
+    as the generic monospace) went through the autohinter. The overlay asks for Lucida Console at
+    an em of 12, fixed pitch, as it asked GDI; without it, for Courier New, which GDI gives that
+    request, then a fixed-pitch stand-in.
+  - Against GDI, on this machine (Windows 10 without Gulim and MingLiU, 340 faces, 57 installed
+    for the user), `test_font_system` makes 242 requests the client makes of FreeType and of GDI:
+    every face GDI found by name, at 10 to 24 pixels, the scripts' fallbacks, the overlay and the
+    embedded faces. Each is drawn in GDI's face at GDI's ppem, ascent and descent; the advance
+    widths are GDI's but for MS PGothic's kana at odd sizes (11 to 21 pixels, and 22), drawn from
+    its embedded bitmaps, which GDI advances some by the bitmap's width and some by the outline's,
+    by a rule not found (FreeType takes the bitmap's: a pixel off on some characters). A
+    full-width character of a fixed-pitch face advances two half-width ones, as GDI keeps it: MS
+    Gothic's Han at 11 pixels had advanced 11 where GDI's advance 12. A line drawn by both differs in 0 to 43 pixels in Arial, Tahoma, Verdana,
+    MS Gothic, SimSun, Malgun Gothic and Lucida Console (479 pixels in 85 of 211 lines), single
+    pixels FreeType's rasterizer sets or leaves where GDI did not, and in up to 274 in MS PGothic's
+    kana (1,329 pixels in 8 of 15 lines). The finder reads the 340 faces in 65 to 90
+    ms at startup. The scene `hangul_text` (Hangul, symbols and kana in the chat, the names and
+    what the actors say) differs from the GDI client's capture in 483 pixels, all in its two runs
+    of kana but one of "Base Lv." and one of a symbol, where the client built with FreeType
+    before differed in 9,563.
+  - Not as GDI drew it: a face GDI did not find by name was its font mapper's choice for the
+    charset (on this machine Ebrima for MingLiU's Chinese charset), which the client does not
+    imitate; it takes the first installed font that covers the charset's language. The embedded EOT
+    faces are drawn in the font GDI drew them in, Arial at a 13-pixel em, but 1-bit, where GDI
+    smoothed them as the system smooths text. The serial number was drawn in a new DC's default
+    font, GDI's System, a raster font that is not among the registry's fonts; it is drawn in face
+    0. Not checked: a Korean Windows with Gulim, a Japanese Windows (face 2 as MS PGothic), a
+    Chinese Windows.
+
+The tests that stubbed the states (`renderer_storage`, `perf_overlay`) stub the modes; the dead
+`RENDERER_BASELINE` branches of `test_renderer_storage.c`, which nothing defined, are gone, and so
+are the stubs nothing compiled in a test read (`g_gfxCaps` in `renderer_storage`, `g_fogNear` and
+`g_fogFar` in `projection`, `effect_trace` and `particle_pools`, the font stubs of
+`canvas_owner`). The frame-time overlay's `dcGets` counter ("dc"), which counted `gfx_get_dc`
+until phase 2 removed it and stayed 0 since, is gone.
+`effect_trace`'s digest is 027d7d81b571a862: the binary of the commit before gives 356d458afcc7debb,
+and its trace is this one line for line but for the 8,865 lines of new effects, whose effect is
+4,096 bytes smaller and its bytes' hash another. `cooldown_geometry` compares its fixture's 32-byte
+vertices without the specular word, which is 0 in every one. `test_gfx_gpu` culls meshes instead of
+quads; checks the fog (the quads' at every step, exactly, the end at the start, a mesh within a
+step, a mode without fog, the fog off), the effect modes' blending, the presets, two textures, the
+ground's meshes with the lightmap inside and outside its coordinates and without it, two-pass
+alpha's solid and fringe passes, an effect mode that tests depth and writes none, a composite into
+a render target's colour and alpha, a clear of colour and depth inside a pass, the overlay and
+effect overlay lists drawn as one batch, a factor taken whole, a mode that does not draw into a
+render target and the mode counters. It reads the texel centres from a texture drawn three pixels
+to a texel, on the diagonal the quad's triangles do not share: the mode it draws in filters
+anisotropically, as every mode that filters linearly does, and anisotropic filtering is the
+driver's own where a pixel covers one texel or, multisampled, lies on both triangles (Mesa's
+lavapipe mixes up to 8 % of the neighbours in there, NVIDIA's driver reads the texel alone). The
+presets stay within a step of Direct3D 9's stages evaluated exactly: the GPU's sampling and
+arithmetic are its own (preset 13's blue is 143 where the exact value is 143.56). `test_gfx_batch`
+checks the strips' order, `test_vertex_fog` the fog's table. The text has its tests on every
+platform where FreeType is built: `font_faces` (the finder's rules: languages, names in English
+and the display language, the sort, name records with broken UTF-16, registry paths),
+`font_finder` (the scan over fonts the test makes, `tests/font_fixture.c`: families, weights,
+slants, names in Japanese, fixed pitch, languages, a collection, folders and their depth, broken,
+truncated, empty and unnamed files, a collection that claims 2,000 fonts, odd names, every
+allocation failing in turn), `font_cache` (`render/fonts_ft.c` over made fonts: a face by its
+first and second name, cell and em sizes, own hints and the autohinter, the Hangul and fixed-pitch
+fallbacks, a font without metrics, every allocation failing in turn and 32 caches made and
+destroyed without an allocation left) and `text_freetype` (the system's fonts, now on Windows
+too); on Windows `font_system` compares with GDI as the text bullet above says, finds every font
+installed for the user (57 of 57 here) and makes and destroys 32 caches without a handle or an
+allocation left.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio; phase 2's scene harness and
+this one's run one after the other:
+
+- With the modes, and again with the fog in the shaders, the 12 captures of the scene set, the four
+  of `window_resize` and the 16 shadow views were identical to phase 2's, and the scene set within
+  one step of the goldens (`build/ref`) as before; the five shadow views that differed from the
+  reference along shadow edges differ in the same pixels.
+- No scene of the set and no shadow view has fog (the frozen savedata has it off; a build with fog
+  forced off captures the same pixels). A scene outside the set enters `manuk`, which the fog table
+  fogs, with the fog option on and six Porings at several distances, at camera distances 488, 800
+  and 1,500 (the fog changes 1.36 million of their 1.44 million pixels): its fog is phase 2's to the
+  pixel, and within one step of the Direct3D 9 reference (2, 9 and 0 pixels differ by one), the
+  fog's table giving the same pixels as the division it replaced.
+- With FreeType's text, the scene set, `window_resize`, the 16 shadow views and the fog scene differ
+  from phase 2's in their text alone (the counts below), and the client after the text's fixes
+  captures them to the pixel as before them: their text is Arial's, which was chosen and sized as
+  GDI did already. Against the Direct3D 9 client of 02fc9e5e built with
+  `build.bat freetype` (`build/ref/freetype`): the scene set within one step (2 to 37 pixels
+  differ by one, `iz_int03_enter`, `keyboard` and `windows_open` identical; the reference's harness
+  cannot resize, so it has no `window_resize`), the fog scene within one, in the same pixels as
+  before. Against the GDI goldens they differ where the reference built with FreeType does, in its
+  text: 4 pixels in most scenes (one of "Base Lv." in the basic information window and three in
+  the chat window's welcome line), 3 in `iz_int03_enter`, 8 in `keyboard`, 9 in `windows_open`
+  and 16 in `prontera_crowd` (the names over the actors), by up to 255: single pixels of glyphs that
+  FreeType's hinting of the same fonts sets or leaves where GDI's did not. The 16 shadow views
+  differ from phase 2's in their 3 or 4 text pixels alone, and from the reference built with
+  FreeType in the same five views and pixels along shadow edges as phase 2 from the GDI reference.
+- `hangul_text` (Hangul, symbols and kana, which the interface's Arial lacks): against the GDI
+  client 483 pixels, all in the two runs of kana in MS PGothic but one of "Base Lv." and one of a
+  symbol; the Direct3D 9 client built with FreeType, whose text the client drew before these
+  fixes, differs from GDI in 9,563 pixels, its Hangul and symbols in Malgun Gothic a third too
+  large. Phase 2's capture
+  is the GDI reference's to the pixel.
+- With multisampling (`RAGEXE_MSAA=4`), the scene set, `window_resize` and `hangul_text` differ
+  from phase 2's in the same text pixels as without it, and the scene set and `window_resize` are
+  the client's before the text's fixes to the pixel.
+- The frame-time overlay's text is compared with GDI's by `test_font_system` (Lucida Console at a
+  12-pixel em, a line of the overlay's numbers: GDI's ppem, ascent, descent and widths, 2 pixels
+  differ); a capture of the overlay is no comparison, its numbers being timings.
+
+Counters (one run each, phase 2 and phase 3): draws, draw calls, primitives and texture binds are
+the same in every capture (`prontera_crowd` 1,174 draws of 1,954 calls, `camera_level_view` 3,345).
+`states_sent` and `states_skipped` gave way to `modes_sent` and `modes_skipped`, the
+`gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what draws are made with and
+those that did not: 15 and 6 a frame in `camera_level_view` (706 and 287 states before), 19 and 782
+in `prontera_crowd` (154 and 1,667), whose skipped calls are its effect quads'. `vertex_bytes` is 4
+bytes less a vertex (`prontera_crowd` 100,336 instead of 113,336). The CPU times were not measured
+again.
+
+Linux, in WSL with Mesa's lavapipe: the CMake client and the scene harness build, and
+`test_draw_modes`, `test_vertex_fog`, `test_font_faces`, `test_font_finder`, `test_font_cache`,
+`test_text_freetype` and `test_gfx_gpu`, with and without multisampling, pass (the fog's steps are
+read off the first row and column, of which the viewport holds half: lavapipe covers only the
+samples inside it). Before the fixes of the text, the fog's table and the strips, the Linux scene
+set and `window_resize` captured the same pixels as phase 2's Linux captures, with the same draws,
+calls, primitives and binds (Linux had FreeType's text before); they were not captured again after
+them. `test_gfx_gpu` also passes on Windows under the Vulkan validation layer with synchronization
+validation and with SDL's debug checks (`RAGEXE_GPU_DEBUG=1`), without a message.
+
+`build.bat check` passes (the include check over 1,824 files in 28 libraries, the link check over
+1,143 objects, the shaders' check), and so does the whole suite (`tests\build.bat`: 320 tests, and
+the 6 oracle tests). Not run or not checked: Android and macOS, which were not built, and the MSL,
+which no Metal compiler has seen; multisampled captures against the reference; fullscreen; the
+text on a Korean Windows with Gulim, on a Japanese Windows (face 2 as MS PGothic, by its name in
+the display language) and on a Chinese one (SimSun, MingLiU by their names in Chinese), which
+`test_font_system` would compare with GDI there; that the quads' fog test fails on the shader that
+divided (it was not run against it); and a game played by hand, in which the effects' presets and
+blend factors other than the scenes' would show.
+
+## The view's culling on odd window sizes, and floats on arm64 (2026-11-12)
+
+Two fixes found while building parts of `plans/gpu-renderer.md`'s phases 5 and 6 ahead of them.
+
+- **The view's culling covers the whole screen at any size.** `view_on_render` culled the scene
+  graph's leaves and the actors against a frustum whose four sides came from one tangent each way
+  (`view_frustum_build`, the renderer's `proj[2]` and `proj[3]`), the screen's half size rounded
+  down over its scale. The projection puts the screen's centre at that rounded half size, so on a
+  window of odd width or height the right or bottom side stopped a pixel short of the edge, and a
+  model or actor that showed only in the last column or row was not drawn (on `prontera` at
+  1025 by 769 a model showing 0.5 pixel there). The original never had an odd size; the window can
+  take one since it resizes. The sides now come from the projection itself (`struct
+  FrustumScreen`: the scale, the centre and the size, a point at view x and depth z landing on the
+  pixel x * scale / z + centre), as `render/static_world.c` builds them for phase 5, and the
+  renderer's `proj[2]` and `proj[3]`, which nothing else read, are gone. `test_frustum` checks the
+  planes and, on a screen of 5 by 3 pixels, that a box seen only in its last column or row is kept
+  and one past an edge is not. On even sizes the frustum decides as before: the scene set, the four
+  sizes of `window_resize` and the 16 shadow views capture the same pixels as phase 3's
+  (`RAGEXE_MSAA=1`, the two harnesses run one after the other, tolerance 0).
+- **arm64 builds round as the Windows client does.** MSVC rounds each multiply and add of the
+  client's float math on its own; GCC and Clang, unless told otherwise, fuse `a * b + c` into one
+  multiply-add where the CPU has it, which rounds once. On arm64 (Android phones, Apple Silicon,
+  arm64 Linux) the client's projection, sprite depth and effects therefore computed other floats
+  than on Windows. The CMake builds compile with `-ffp-contract=off` for GCC and Clang: the NDK's
+  clang emits no fused multiply-add for arm64 in `render/math3d.c`, `render/rp_project.c` and
+  `actor/sprite_quad.c` with it, and 191, 217 and 18 without it; for x86-64 it emits none either
+  way. The arm64 client was not run again after the change (its login screen had drawn the same
+  pixels as the x86_64 client's on the emulator before it, a screen with little float math).
+
+`build.bat check` and the whole suite (`tests\build.bat`: 320 tests, and the 6 oracle tests) pass.
+
+## No read-backs (2026-11-12)
+
+Phase 4 of `plans/gpu-renderer.md`: nothing comes back from the GPU while the game is played. Each
+read-back the GPU device served by submitting the frame so far, waiting for it and downloading a
+target is gone or done on the GPU.
+
+- **The screen wobble.** The player's status 0x108 (`actor/actor_efst.c`) shakes the screen for
+  eight frames, while the amplitude climbs from 2 to 16 in steps of 2; its period, in rows, is the
+  amplitude up to 10 and 20 less it above. The original locked the finished frame and went over its
+  rows from the bottom up: a row whose number is a multiple of the period (an anchor) was kept, and
+  every other row was overwritten with the last row kept, moved right in mode 1 by
+  `(rand() % 8) << 4` bytes, 0 to 28 pixels of the frame's 32-bit pixels (X8R8G8B8 under Direct3D
+  9), the pixels left of the shift keeping the row's own; mode 0 copies in place. On the GPU device
+  each such frame submitted its draws, waited for them, downloaded the whole frame, moved the rows
+  on the CPU, uploaded the rows that changed and drew the result back into the multisampled screen.
+  Since the loop only copies rows it has not changed, each row of its result is one row of the frame
+  as it was, moved: `render/screen_wobble.c` (the library `screen-wobble`, pure) makes that table,
+  calling `rand()` once for each row that is not an anchor, from the bottom row up and in mode 0
+  too, as the original did, so that every random number the game draws after it stays the same, and
+  advances the amplitude and the frames left as before. The device's `gfx_wobble` records a copy of
+  the screen (resolved, when multisampled, at the end of the pass before) and a pass of its own
+  whose one triangle covers the whole screen and reads each pixel from the copy as the table says
+  (`src/render/shaders/rows.hlsl`; the table goes up in the frame's one upload). That pass's
+  viewport is the whole target, not the half-pixel one of the client's draws, so that every sample
+  of the first column and row is written; every sample of a pixel takes the same texel, so a
+  multisampled screen resolves to it exactly, and what is drawn after the wobble lands on it. The
+  wobble's draw is not one of the client's and counts in no counter. An amplitude whose period is 0
+  as a byte (20, 276), which the client never stores and which made the original divide by zero,
+  moves no row and draws no number. The table is computed only once the device has in place
+  everything the pass needs (`gfx_wobble` calls back for it after the copy texture, the steps, the
+  draw and its record are made): where the device cannot draw the wobble (no screen, no memory), no
+  random number is drawn and the amplitude and frames do not advance, as the original's frame drew
+  none and advanced nothing when its lock failed.
+- **Windows that composite** (the menu icon window, the party plates, the equipment preview, the
+  quest image window) were drawn into a render target made for each composite and copied into the
+  window's texture, a CPU texture whose size was the first composite's rounded up to powers of two:
+  the copy stayed on the GPU, and only a lock of the texture, which nothing made, would have read it
+  back. Now the window's texture is a render target (`texture_create_target`), cleared and drawn
+  into by each composite and read by the window's quad as any texture; nothing is copied, and a
+  composite no longer makes and frees a render target of its own. Its size is the composite's, and a
+  window whose size changes gets a target of the new size, made before the old one goes: where none
+  can be made, the window keeps the texture it had and the composite draws nothing, and an empty
+  size makes nothing. Before, a composite wider or taller than the first texture copied nothing, its
+  rectangle reaching outside the texture, and the window went on showing its older picture; no scene
+  changes a composited window's size.
+- **The texel probe** (`c3d_device_probe_texel_offset`) drew 65,536 sub-texel offsets of a 4x4
+  pattern at startup, copied the screen into a system surface and read it (one or two submits and
+  downloads of the whole screen, by its size), to find the offset at which a pixel centre reads one
+  texel alone; on Direct3D 9 and on the GPU device it is half a texel, where Direct3D 9 put pixel
+  centres and where the GPU device puts them by construction. `TEXEL_CENTRE` (`render/render_api.h`)
+  takes the place of `g_texelOffsetU` and `g_texelOffsetV` in their six users, whose arithmetic is
+  the same to the bit; `draw_list.c`'s bottom edge, which added the U offset to a V coordinate, no
+  longer names the other axis. The probe's draw mode (`DRAW_PROBE`) goes with it, and `test_gfx_gpu`
+  draws its linearly filtered checks in the interface's mode.
+- **Screenshots and scene captures** download the screen when asked (`gfx_read_frame`: the frame's
+  work is submitted with an `SDL_DownloadFromGPUTexture` of the screen, a rectangle of it or the
+  whole, and the CPU waits for both), where they locked the target, which also copied the whole
+  frame into a buffer to compare with on unlock. A screenshot (`renderer_screenshot`) of the same
+  frame is the same JPEG, byte for byte, through the lock and through the download.
+- **No swapchain without a window shown.** SDL 3.4's GPU drivers need no window: the Vulkan driver
+  needs a video driver that makes Vulkan surfaces (Windows', X11's, Wayland's, the offscreen
+  driver's), the Metal driver one that makes Metal views (Cocoa's or UIKit's, not the offscreen
+  driver's), and a swapchain exists only for a window claimed for the device
+  (`SDL_ClaimWindowForGPUDevice`). The device now claims its window at the first present while the
+  window is shown, not minimized and of a size in pixels (the client shows it before it makes the
+  device), and a claim counts only once SDL keeps the window, which SDL says by knowing the window's
+  swapchain format. SDL 3.4's Vulkan driver answers the claim of a window whose surface has no size
+  (NVIDIA's Windows driver reports one for a minimized window) with success but keeps nothing of it,
+  so that every later acquire fails as for a window never claimed; a window minimized before the
+  first frame would have stayed black for the session. A claim that fails or is not kept is tried
+  again at the next present, its failure logged once: on Android the window has no surface while the
+  app is in the background. A claimed window that is minimized or hidden later keeps its claim
+  (SDL's Vulkan driver then gives no picture to present into until it shows again). The scene
+  harness never shows its window (`tests/scenes/scene_app_hidden.c`, which Linux now uses too, so
+  that its offscreen window is no longer claimed and presented to a headless swapchain), so no scene
+  run has a swapchain; the harness keeps the window because the client reads its size and the resize
+  scene changes it.
+- **Deleted** with the read-backs: `gfx_lock` on targets with its lock buffers, the copy it compared
+  against and the write-back of what changed, the main-thread check they needed,
+  `renderer_lock_target`, `targetBits`, `targetPitch`, the renderer's `bpp` (written, never read),
+  `pixel16_to_bgr`, copies from a target into a texture with the download when such a texture was
+  locked (`gpuNewer`, `cpu_current`, the stretched copy's colour-target texture),
+  `texture_copy_rect_from`, the overlay's `targetlock` timing (`PERF_TARGETLOCK`, which timed the
+  write of `bpp` in `renderer_flip`) and its target-lock count. The save surface for the fade
+  (`mode_run_fade_out`) was a kind of its own (`K_SAVE`) with pipelines of its own (the screen's
+  copy, `DRAW_INTO_COPY`), made with the screen and resized with it: it is an ordinary render target
+  now, made by `c3d_device_save_frame` at the screen's size when first needed and again when that
+  changes, and the fade copies to and from it on the GPU as before. `gfx_lock` takes textures and
+  system surfaces, whose pixels the CPU keeps, and `gfx_blit` copies from a target only into a
+  target. The device makes 147 pipelines, 148 with multisampling, as before: the probe's were the
+  blits', the screen's copy had one of its own, and the wobble has one.
+- **Deleted** as leftovers that nothing used: the back buffer's handle (`K_TARGET`,
+  `C3dDevice.back`), which shared the screen's texture and was the device's target, and the startup
+  flag that asked for it (`c3d_device_init`'s flags, 6, of which the device read only that bit); the
+  device's target is the screen itself, and `primary`, the same surface, goes. The depth buffer's
+  handle (`K_ZBUFFER`, `C3dDevice.zbuffer`), which nothing read; `gfx_create_3d`, which only wrote
+  fields nothing read; the fields `rcWindow`, `dd`, `d3d`, `devcaps`, `zbufferCaps`, `zformat`,
+  `aShift`, `aBits`, `aMask`, `bltStretch`, `tex1024` and the `hexDigitFlags` and `hexDigitValues`
+  tables, which nothing read (`rcWindow` only as a temporary of the screen's creation), with the
+  capabilities `zbufferless` (always 0, so the branch that skipped the depth buffer never ran) and
+  `bltStretch`; `gfx_blit`'s flags, which it ignored, with the fade's retry of the same copy
+  (`GFX_BLT_ASYNC`, then `GFX_BLT_WAIT`); `gfx_lock`'s flags `GFX_LOCK_WAIT` and
+  `GFX_LOCK_WRITEONLY`, which it ignored; `#pragma comment(lib, "winmm.lib")` in `cframe.c` and
+  `csurface.c`, which call nothing of it (`build.bat` links it); and the unused parameters of
+  `gfx_get_caps`, `gfx_present` and `gfx_resize`.
+
+Tests: `test_screen_wobble` runs the original's row loop, as `render/cframe.c` had it, on frames of
+32-bit pixels in memory and applies the table to the same frames: the same pixels, the same state of
+the C runtime's `rand()` after both, the same amplitude and frames, for every amplitude the client
+passes through and those below and above it, both modes and one that moves nothing, 13 heights from
+1 to 1,441 rows, pitches wider than the row, and 400 random frames; a run of the wobble; and the
+periods of 0. `test_gfx_gpu` reads the screen with `gfx_read_frame` (a rectangle and the whole,
+rectangles outside it and a narrow pitch refused, a target refused by `gfx_lock`); records, in one
+frame as the client does, a picture of distinct pixels and a quad still batched, the wobble and a
+quad after it, reads the screen once at the end and compares every pixel with the table applied to
+the picture (the batched quad going into the picture's pass, and once into a pass of its own after
+one into another target), without and with multisampling, and the wobble again at another window
+size, its rows filled only when the device asks and not for a wobble it cannot draw; draws a 15 by 9
+target of distinct texels as a composited window's quad draws it (its place and size, texture
+coordinates from the first texel's centre) and finds every pixel its own texel, by the nearest texel
+and, as the client draws it, filtered linearly in the interface's mode (not compared on lavapipe,
+which mixes neighbours into that read, below); draws a composite's target as a texture, copied and
+blended; copies between targets and not into a texture, and the fade's save and restore through a
+render target; and checks that the hidden window is not claimed. Under SDL's offscreen video driver
+(the test `gfx_gpu_present`) it shows the window, which that driver shows nowhere, and checks that
+it is claimed and presented into, hidden again keeps its claim and frames go on being drawn and
+read; where that driver makes no swapchain (a Vulkan without `VK_EXT_headless_surface`, as NVIDIA's
+on Windows), SDL's own claim must fail too, and the test says it did not present.
+`test_surface_lifecycle` makes, numbers and frees render-target textures and fails each step, and
+runs `render_quads_to_texture`: a window's target made at its size, kept at the same size, made
+again at a new one before the old goes, kept where the device or the memory fails and for an empty
+size, the screen set back and its reference given back, nothing drawn without a screen or a target,
+the quads drawn in order with their textures. `test_c3d_device` (new) runs `c3ddevice.c` over a
+device that records what it is asked: the fade's frame kept in a target made at the first save, used
+again while the size stays, made again after a resize, none where the device makes none, a restore
+without a saved frame copying nothing; the start at the window's client size with the screen's
+channel shifts, closed again when a step fails; the frame presented only with a screen.
+`test_frame_extras` (new) runs `cframe.c`'s wobble: none without effects, frames, a mode that moves
+rows or rows to move; otherwise the rows, the random numbers drawn, the amplitude and the frames of
+`wobble_frame` from the same seed, and nothing drawn or advanced where the device cannot draw the
+wobble. `test_jpeg_capture` takes the screenshot from a downloaded frame of the screen's rectangle,
+which is 32-bit (the 16-bit frames of the lock went with it), and fails each step;
+`test_window_quad` expects half-texel coordinates, and `test_draw_modes` loses the probe.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio, phase 3's scene harness and
+this one's run one after the other. A new scene, `screen_wobble`, sends the status to the player in
+Prontera and captures the eight frames of the wobble and the one after; the composited menu icon
+window shows in every scene of the set but `keyboard`, `windows_open` and `window_resize`, where
+other windows cover its place.
+
+- The scene set, `window_resize`, `screen_wobble`, the hill scenes and the gate scene are phase 3's
+  to the pixel (26 captures and 16 shadow views), and so are all of them with `RAGEXE_MSAA=4`; the
+  counters are the same in every capture (draws, calls, primitives, modes, binds, vertex and texel
+  bytes).
+- Against the Direct3D 9 client of 02fc9e5e built with FreeType (`build/ref/freetype`), which runs
+  `screen_wobble`: the wobble's frames 2 to 8 are identical, frames 1 and 9 within one step in 2 and
+  3 pixels, and the rest of the set within one step as at phase 3 (`hangul_text` differs where that
+  client's text predates phase 3's fixes). Against the GDI client: the same text pixels as at phase
+  3 (3 to 16 a scene, 483 in `hangul_text`), and 0 to 4 pixels in each of the wobble's frames, where
+  rows moved them or moved others over them; the shadow views differ from the reference in the same
+  pixels as phase 3's.
+
+What changed in the work a frame does, by the code: a frame of the wobble submitted twice (the
+lock's flush and the present) and downloaded and uploaded most of the frame (5.8 MB each way at
+1600x900) and drew it back into the multisampled screen; it submits once now, and the GPU copies the
+frame and draws one triangle. At startup the probe's 65,536 quads, its submits and its downloads go.
+A capture or screenshot is still a submit and a download, without the copy of the frame into the
+lock's buffer and the comparison at unlock. The scene captures' `present_ms` is not comparable
+across the change: the wobble's lock had submitted and waited for the frame's work outside it.
+
+Linux, in WSL (Ubuntu 24.04) with Mesa's lavapipe: the CMake client and the scene harness build,
+`test_screen_wobble`, `test_draw_modes`, `test_vertex_fog` and `test_texel_convert` pass, and so
+does `test_gfx_gpu` without and with multisampling, under the offscreen video driver, which gives a
+shown window a headless swapchain there: the window is claimed when shown and presented into. Its
+read of a composited window's target filtered linearly is not compared there, for the reason below.
+The harness hides its window there too and runs without a swapchain. Against phase 3's Linux
+harness, run one after the other, its captures of the scene set, `window_resize` and `screen_wobble`
+have the same counters, and those that do not show the composited menu window (`keyboard`,
+`windows_open`, `window_resize`) are the same to the pixel; in the others the window differs in
+8,800 to 11,000 pixels by up to 47. Lavapipe's anisotropic filtering mixes neighbouring texels into
+a read of one texel per pixel when the coordinates are a render target's, which the device scales to
+the target's part of a texture a texel wider and taller (`MARGIN`), and not when they are a
+power-of-two texture's: a 40 by 30 target read so in the interface's mode differs from its texels in
+944 of its 1,200 pixels, by up to 32, and a 64 by 32 texture in none; NVIDIA's driver reads the
+texel alone in both. Lavapipe's window differed from the Windows captures before as well: in
+`iz_int03_enter` phase 3's in 9,285 of the window's pixels and this one's in 12,061, by up to 106.
+
+`build.bat check` passes (the include check over 1,828 files in 29 libraries, the link check over
+1,144 objects, the shaders' check), and so does the whole suite (`tests\build.bat`: 324 tests, and
+the 6 oracle tests). Not run or not checked: Android and macOS, which were not built, and the MSL of
+the new shader, which no Metal compiler has seen; the wobble, the fade and a screenshot in a game
+played by hand (the screenshot was taken by the harness, the fade not at all); fullscreen; a
+composited window resized; the claim of a window minimized before the first frame and the retry of a
+claim that failed, which no headless run can bring about (SDL's offscreen driver does not minimize,
+and on Windows with NVIDIA it makes no swapchain), and claiming and presenting into a window on
+Windows at all: the client's own window was not shown, and the claim and the present ran only on
+lavapipe's headless swapchain.
+
+## The static world on the GPU (2026-11-12)
+
+The first half of phase 5 of `plans/gpu-renderer.md`: a map's ground and models stay on the GPU and
+are drawn from draw records that a compute pass culls, and so is its water. The shadows' fit and the
+casters' choice stay the CPU's until the second half.
+
+- **What the device keeps** (`render/gfx.h`, `gfx_world_*`; `render/gfx_gpu.c`). One vertex buffer
+  (`struct GfxMeshVertex`, 48 bytes), beside it a buffer of each vertex's record, and one index
+  buffer of 32-bit indices, so that a draw may start at any index on Metal; a mesh is placed behind
+  the others (`sw_layout_place`) with its own 16-bit indices, widened as they go up, and a base
+  vertex. The buffers grow by doubling (`sw_layout_grow`), what they held copied over. The textures
+  and lightmap pages lie in texture arrays (`sw_texture_place`): one size and one number of mipmap
+  levels each (a texture made while mipmaps were off has one level, one of its size made after a
+  chain), 256 layers at most (Vulkan's least `maxImageArrayLayers`), declared by the client as it
+  opens one (`gfx_world_array`), made with as many layers as the frame that first draws it has
+  placed (on a map's first frame all of the map's but the streamed models'), and made again with the
+  power of two at or above the layers placed where more come, its layers copied over, so that an
+  array never takes more than one begun with four layers and doubled took; each layer is filled from
+  its texture's own pixels and mipmapped with linear blits level by level, as
+  `SDL_GenerateMipmapsForGPUTexture` makes a texture's mipmaps on Vulkan. The meshes and textures go
+  up through a stream of their own (`world_stream`): a transfer buffer of 32 MB, or the largest
+  texture where that is larger, filled a batch at a time, the textures' pixels widened straight from
+  their surfaces, each batch in a command buffer of its own that is waited for before the next fills
+  the buffer; a map's first frame streams its meshes as they are placed, a buffer's worth at a time,
+  and its textures before the frame's own commands. The records (`struct SwRecord`, sorted as the
+  passes draw them, packed as the shaders read them by `render/world_layout.c`, the library
+  `world-layout`), the transform slots (`struct GfxWorldSlot`: a matrix, the parent's slot and, for
+  an animated node, the frame's matrix that takes its place), and the water's cells with the table
+  of sines go up when they change; the frame (`gfx_world_frame`: the camera, the frustum, the
+  animated slots' matrices, the texture-coordinate matrices and the waves) every frame, until the
+  frame is shown. The frame's own transfer buffer, which grows with what a frame stages, is made
+  again as small as the frames need once they have needed a quarter of it at most for 120 flushes,
+  and the staging memory given back.
+- **When the device's world is made again.** Its generation (`gfx_world_generation`) moves on when
+  the client clears it (a new map, or the models given up below), when the device is made again,
+  when the textures are reloaded (`texcache_reload_all`, from the graphics settings' Texture Detail
+  and Trilinear: every cached texture gets a new surface, of a new size or mipmap levels, which the
+  arrays' copies must follow), and when the stream or the frame's world buffers cannot be made; the
+  client then builds it again. After two such failures in a row the device takes nothing more of
+  the world until the client clears it, rather than stage all of it again every frame. Every draw
+  of the world is recorded with the generation and left out where the world was made again before
+  it went up, or where what it reads is not there (`world_drawable`); a frame whose own upload fails
+  stages the records, slots and cells again with the next.
+- **What the client gives it** (`world/world_gpu.c`, in the library `gamedata`). On the map's first
+  frame: each ground block of 32 by 32 cells as one mesh (`c3d_ground15_block_mesh`), its runs of
+  one texture and one lightmap page a record each of the ground's pass, in slot 0, the camera's view
+  as it is; the water's cells (`c3d_ground15_water_cells`): those with a top surface, a block of
+  water and a corner the wave can rise above; and each model the scene graph holds, each node one
+  mesh, its runs of one texture and one two-sidedness a record of the pass `renderer_add_prim`'s
+  flags sent its quads to, culled as the node's winding and the model's mirroring say, in a
+  transform slot of its own under its parent's, up to the model's slot. A node animates where it or
+  an ancestor has more than one key in a channel, whatever the model's `animType` says when it is
+  built: a skill's trap is built still and set going when it fires (`effects/skills/skill_msg.c`).
+  Streamed models are appended as the scene graph takes them; a model of a skill (a trap,
+  `effects/skills/skill.c`) when the frame's walk first meets it, its records dead once it is given
+  up (`world_gpu_forget`: nothing of it is read again), and the world built again once the dead
+  vertices pass 2^20. A model in no leaf of the scene graph gets nothing, as nothing drew it; a part
+  that does not fit (a chain of more than 64 slots, more slots, arrays or elements than the buffers
+  take) is left out. The records built since the last are sorted among themselves and merged into
+  the live ones, the same order a sort of them all gives (`sw_record_before`), and the device gets
+  them all again: on `prontera` (3,137 records) a model given up costs 0.04 ms to send, against 0.6
+  ms to sort them all afresh, and 0.02 ms to pack for the device; on `rag_fes` (4,246 records) 0.054
+  ms against 0.83 ms, and 0.038 ms; the device then stages them all again, about 64 bytes a record.
+  A model that appears is built and sent with its frame in 0.19 ms on `prontera` and 0.9 ms on
+  `rag_fes`.
+- **Each frame.** `world_gpu_begin` builds what is new and takes the frame's view and frustum. The
+  walk of the scene graph's leaves the view reaches ticks the models as before; a model it draws
+  (`world_gpu_seen`) or whose shadow it casts (`world_gpu_cast_actor`) gives the device its pose the
+  first time in the frame: the matrices of its animated nodes and its texture-coordinate animations
+  as its first tick of the frame left them, as the CPU drew its triangles then (a model in several
+  leaves the view holds is ticked once for each, and the clock may move between). A model it draws
+  queues its alpha-blended records the view keeps, in the order of its nodes and their runs, keyed
+  by the rhw of their first corner through the node's view as the CPU projected it, to the bit. At
+  the walk's end (`world_gpu_frame`) every other model gives its pose as it stands; one that
+  animates and holds a record the view keeps (`sw_record_in_view`, the GPU's own test) is ticked
+  first, as the walk ticks a model it reaches, so that no part moves into view standing still in a
+  pose the frame did not tick (a model whose moving part leaves its box, which places it in the
+  scene graph's leaves); and its alpha-blended records the view keeps are queued. A compute pass
+  then computes each slot's view and its place in the world as the CPU computed a node's matrix,
+  `mat_multiply(node, mat_multiply(parent, ... mat_multiply(model, view)))`, and the clip-space
+  matrix the vertex shader takes, to the bit (`world_transform.hlsl`); a second culls the records
+  against the view's frustum as `sw_record_in_view` does, to the bit, an animated record's bounds
+  moved by its slot's place: a group of 64 threads takes each run of records with one texture array,
+  lightmap array and cull mode, keeps those in view, gives each its place in the frame's index
+  buffer of them, one after the other in the records' order, and writes the run's one indexed
+  indirect draw (`world_cull.hlsl`); a third, a group of 64 threads to each 64 indices of a record
+  of those runs (`struct WlChunk`, fixed with the records), copies them to the record's place where
+  it is kept, the base vertex added, and leaves at once where it is not (`world_compact.hlsl`). The
+  renderer draws the models' opaque passes before the opaque lists' quads and the ground after them,
+  one indirect call of one command a run (`gfx_world_draw`). The vertex shader (`world.hlsl`) finds
+  its record by the number its vertex carries, since the device asks Vulkan for no
+  `drawIndirectFirstInstance`.
+- **What the CPU still does.** The leaves of the scene graph the view reaches are still walked: for
+  the models' ticks and the poses and alpha-blended records taken from them, for the shadow
+  casters, which are still chosen as before and drawn from the records (`world_gpu_cast_actor`,
+  `c3d_ground15_cast`, `gfx_world_cast`), for the actors, and for the water, whose cells in view
+  are each keyed among the sprites as their quads were, by the rhw of the first corner at the wave
+  before the cell's (`c3d_ground15_leaf`). The cells that follow one another in a list with one
+  texture and colour are drawn as one instanced draw (`gfx_world_draw_water`), and the vertex
+  shader builds each cell's quad as the CPU built it each frame, to the bit (`water.hlsli`): the
+  three waves from the table of sines by whole degree, the test of the cell's ground against the
+  wave, the corners in front of the eye, the first triangle facing the screen, and the fog by the
+  rhw of each corner. `GndCell.water`, where the CPU kept a cell's corners and heights, is the
+  cell's number among the water's cells.
+- **Order.** The records are sorted by pass, then by the order the renderer drew textures in (the
+  textures' creation order; the ground's texture, then its lightmap page), then by cull mode and
+  place in the index buffer. Within a texture the renderer's order was its unstable sort's, which
+  changed from frame to frame with the queue's order; the records' order is fixed. Faces of one
+  texture that lie in one plane and overlap therefore show the one drawn last where the frame before
+  showed the other, which is the change the captures below show. Sorting by texture array first
+  would make fewer calls but would turn round pairs of faces of two textures in one plane that the
+  renderer drew in texture order (up to 10 a map over the poses of `test_static_world_maps`). The
+  opaque passes come first in their lists and the lists' quads after them, where the renderer
+  sorted both by their textures' creation order together: a quad whose texture is older than a
+  model's (a Granny actor's cached from an earlier map) now draws after it, which shows only where
+  the two lie at one depth. The alpha-blended records are queued where the walk drew their models,
+  in their nodes' order, so that draws at one depth keep the order they had, ties included.
+- **Deleted.** `world/model_node_render.c` (the per-node meshes, their draws and casters), `struct
+  ModelGpu`, the models' `render` and `cast` operations, `c3d_ground15_render` and the ground's
+  per-block meshes, the `RENDER_GROUND_MESH` queue with `flush_ground_meshes` and `two_tex_less`,
+  `struct RPMeshDraw`, `renderer_add_mesh_draw` and `renderer_mesh_pass`, `gfx_mesh_create`,
+  `gfx_mesh_destroy`, `gfx_draw_mesh`, `gfx_set_world_view`, `GfxMeshDraw` and `GFX_CULL_*`, the
+  water's quads the CPU built for each cell in view every frame (`water_quad`), the shaders
+  `mesh.hlsl` and `caster.hlsl`, which `world.hlsl` and `world_caster.hlsl` replace, the quads'
+  view records' view and fog and the draw records' texture-coordinate rows, which no shader read.
+  The model fade went too, which never ran: a model faded while picked by the ray from the camera
+  to the player (`game_mode_cast_player_ray`, `c3d_actor_pick`) only where it was pickable, and
+  `world_model_create` and the skills' traps clear `pickable` on every model, before or after
+  `create` (the original's constructor sets it, which `test_model_load` keeps as it was); so the
+  ray cast every frame, `c3d_actor_pick`, `ray_hits_obb` and `struct OrientedBox`, the models'
+  `pickable`, `picked` and `alpha` (always 255), the fade and the `deferred` argument of
+  `world_model_create` that only ordered the clearing are gone. `sw_cull_view`'s key sort, which
+  no draw used (the alpha keys are the CPU projection's), and `sw_texture_size`, which only the
+  maps test used, left `render/static_world.c`; one function, `c3d_ground15_water_block`, gives a
+  cell's block of water where two did.
+- **The wave's degree beyond the int range.** `ground_water_height` took an angle outside the int
+  range through doubles and `fmod`, where the original's conversion (`cvttss2si`) gives INT_MIN,
+  as it does for an angle that is no number; the shader could not follow the doubles. Both now
+  give INT_MIN; only a map's absurd wave pitch reaches it. `main` has the same code.
+- **Two things a GPU does otherwise.** Vulkan leaves SPIR-V's remainder of a negative operand
+  (`OpSRem`, `OpSMod`) undefined, and NVIDIA's driver does not give C's: the water's degree of a
+  wave whose angle is negative came out wrong (71 of `comodo`'s 175,644 cells over the poses of
+  `test_static_world_maps`, which found it), so `water.hlsli` takes the remainder of the magnitude
+  and puts C's sign back. And a draw takes its texture arrays when the frame is replayed, not when
+  it is recorded, so that a draw recorded in the frame an array is made or grown reads the array as
+  the stream left it (`test_gfx_gpu` draws in such frames). Vulkan also lets a device flush
+  denormals to zero, where the C keeps them; the world's numbers are far from that range, and the
+  maps test finds no difference.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio, the scene harness of the
+commit before (with the records and the shadow fit built ahead, which draw nothing yet) and this
+one's run one after the other; this one's last build, captured again after its last change, gives
+the same 46 captures to the pixel. The scene set, `window_resize`, `hangul_text`, the 16 shadow
+views and 13 scenes of water, `izlude` and Prontera's flower beds (the steps of `tests/scenes`): 30
+of the 46 are the same to the pixel, and 16 differ, in 1 to 417 pixels, 1,296 in all (`granny_dead`
+and `granny_dying` 45, `granny_models` 43, `prontera_crowd` 1; the south gate at 700 and 2,500 329
+and 211, `manuk` at 800, 1,500 and 2,500 16, 56 and 34, `ve_fild05` at 2,500 1, the far steep view
+at 10,000 52; `beds_far_1` 24, `beds_far_2` 1, `izlude_1` 417, `v2_1` 1, `water_2` 20). Every one of
+those pixels is one where faces of one texture overlap in one plane: two builds that differ from
+this one only in the order of the records of one texture (one with them in the opposite order of
+their place in the index buffer, one with their cull modes in the opposite order) each change some
+of them, together all of them, and in each pixel one of the two shows the base's colour exactly. No
+pixel changed where an animated part the leaves left out appears: no scene shows one, and
+`test_static_world_maps` finds three, on `amatsu`. A model's pose taken at its first tick, the
+models ticked for a part in view, the alpha-blended records queued in the walk's order and the cull
+compacted by run change no pixel of these scenes (the harness's clock stands still within a frame,
+so a second tick of a frame changes no pose there). Against the Direct3D 9 reference (`build/ref`,
+within 3 a channel) the scene set and the shadow views differ where the commit before differed
+(their text, and five shadow views along shadow edges) and in the pixels above, which the reference
+drew as the commit before did: its order of such faces is the same unstable sort's.
+
+Counters (`tests/scenes`, the frame a capture shows), the commit before and this one. The counts
+are the same in every run: on Prontera's main street at the closest, flattest camera
+(`camera_level_view`) 2,943 draws where there were 3,345, 2,715 draw calls where there were 3,631,
+22 texture binds where there were 2,646, and 7,244 bytes of vertices given where there were 38,192;
+in Izlude's interior (`iz_int03_enter`) 231 draws, 221 calls and 19 binds where there were 262, 265
+and 209. The world's draws are its runs, one indirect draw each whether the view keeps anything of
+the run or not, so that they no longer follow the view: with the shadows off the main pass makes
+259 draws on that street where it made 661, and 259 where it made 134 by the castle, where the
+scenes of Granny actors, guild flags, traps and the crowd stand (`granny_models`, `guild_flags`,
+`hunter_traps`, `prontera_crowd`: 115 to 125 draws more with the shadows on); the shadow maps' draws
+are as many as before (992 in `granny_models`). On still views held for 40 frames, each run three
+times by turns with the commit before (`prontera`, `rag_fes` and `izlude` where the player enters
+them), the median `draw_scene_ms` is 0.020, 0.045 and 0.028 where it was 0.102, 0.164 and 0.157,
+and `view_render_ms` 0.26, 0.35 and 0.29 where it was 0.32, 0.44 and 0.32; `present_ms`, where the
+device submits the frame and waits while the GPU is two frames behind, is 2.67, 2.88 and 1.91 where
+it was 2.50, 2.69 and 2.05, each within the other's quartiles (another session: 3.15, 3.49 and 2.45
+against 3.05, 3.22 and 2.30). The cull and the compaction take the GPU 0.006 to 0.12 ms a view
+(`test_static_world_maps`, each map's first view, here a GTX 970: `prontera` 0.035, `rag_fes` 0.05
+to 0.06, `amatsu`, with 2,761 animated records, the most). Measured the same way, a group of 64
+threads that copies its run's kept indices itself took 0.16 ms on `prontera` and 0.33 on
+`prt_fild08`, whose ground's runs are long, and a thread for each index that finds its record by a
+binary search 0.09 on `prontera` and 0.23 on `dicastes01`, where most indices are culled; the chunks
+take neither cost. A run is one command, where a command for each record would be 3,137 on
+`prontera` and not 239: SDL draws each command with a call of its own on Metal and where Vulkan
+has no `multiDrawIndirect`.
+
+Memory: the scene harness's peak commit (private bytes) and peak working set over a map's load and
+its first 120 frames (`rag_fes`, `lighthalzen`, `prontera`), two runs each by turns with the commit
+before: 1,579, 984 and 832 MB of commit where it took 1,509, 934 and 890, and 645, 465 and 412 MB of
+working set where it took 1,045, 535 and 485. `rag_fes` takes 4.3 s for that where it took 3.6. Its
+texture arrays hold 625.7 MB with their mipmaps on the GPU, where arrays begun with four layers and
+doubled would hold 627.8 (`test_static_world_maps`, which reports each map's).
+
+Tests. `test_static_world` checks the records' numbers and the vertices' records (a vertex two runs
+share is refused), the draw runs (a run ends where the pass, an array or the cull mode changes, and
+counts its indices), the sort by cull mode and a merge of two sorted lists against a sort of them
+all, the cull against the projection and `world/frustum.c`, and the texture arrays by size and
+levels with a placement taken back. `test_world_layout` checks the packing against the fields the
+shaders read, the runs' places in the compacted index buffer, the chunks (every index of every
+record of the runs drawn indirectly in one chunk, in order, and none of the others', up to a record
+of 2^32 - 1 indices), the projection against `renderer_project_vertex`'s pixels, and the dispatches'
+groups split into rows. `test_static_world_maps` is the check against the Direct3D 9 client's code:
+it keeps that code as it was before the static world (the ground's blocks and water, the models'
+nodes, the leaves' walk, the renderer's queues and their sort) and builds each map's static world
+through the client's own `world/world_gpu.c` into a device that keeps what it is given. It keeps the
+clock itself, each tick moving it on a millisecond, and runs each pose's frame twice from the same
+start: by the client's `view_on_render`, which ticks the models as the game does, and by the
+reference, ticked as the old walk ticked them. On 10 maps (`prontera`, `prt_fild08`, `iz_int03`,
+`comodo`, `dicastes01`, `1@adv`, `rag_fes`, `amatsu`, `alberta`, `izlude`) at 12 poses each, and on
+`prontera` on a screen of 1025 by 769: every draw of the reference that the records keep has the
+same vertices, textures, lightmap, cull, matrix and pass; every slot's view is the reference's
+matrix to the bit, the pose of the model's first tick; every draw the records leave out has no area
+on screen (the records keep 3 parts of `amatsu` the reference left out that show, up to 30 pixels,
+ticked: the shadows' walk ticks their model); no record the view keeps belongs to a model that
+animates and was not ticked, and no model is ticked beyond the reference's but one that animates
+with a record in view; the casters are the reference's in its order; the 1,104 alpha-blended records
+queued are keyed to the bit as the reference keyed them and drawn in its order, ties included; and
+every water quad the reference drew is queued with its key to the bit. On the first map a trap is
+built still with its nodes with keys animated, set going and drawn in the pose of its first tick
+each frame, taken out of the scene graph and ticked all the same for its records in view, given up
+with its nodes poisoned (nothing reads them), given up 408 times more until the world is built again
+as it was; the world is built again as it was after the device made its own again, and from new
+surfaces of half the size after a texture reload. Taking any of the review's bugs back into
+`world/world_gpu.c` fails it: an animated slot only where the model animates when built, the pose
+taken at the frame's end, no tick for a part in view, a model's alpha records queued in another
+order, a model given up still posed. On the GPU (here a GTX 970) it runs the transform pass, the
+cull and the compaction and the water's quads (`tests/shaders/water_probe.hlsl`, which takes
+`water.hlsli`) over every map with the device's own packing, every output poisoned before the pass:
+414,348 slots, 85,028 draws' clip-space matrices, 19,500 runs of 400,416 records compacted (72,505
+kept) and 551,760 cells of water (461,189 drawn), all the C's to the bit; the cull and the
+compaction give the same with their dispatches split into rows of 3 and of 7 groups, as a dispatch
+of more than 65,535 groups is split (taking the rows out of either shader's numbering of its groups
+fails it, as does a compaction that skips a chunk or copies a chunk's indices from the record's
+start); it times the cull and the compaction of each map's first view; and it fails on any float
+operation in their SPIR-V without `NoContraction`. `test_gfx_gpu` draws the world through the
+device, without and with multisampling: records in each cull mode, one by one and as a pass the GPU
+culls; a frustum narrower than the screen leaving out a record on screen beyond it and keeping an
+animated record its slot moves into it; runs of two texture arrays, two layers and three cull modes
+in one pass; a record from an odd index; a model's slot, an animated node's slot under it, a
+texture-coordinate matrix; the shared buffers and an array grown in a later frame while holding what
+earlier frames put up; an array layer's mipmaps against the same texture's own; a caster with a
+texture whose alpha drops half of it, and the ground in its shadow; a world cleared after its draws
+were recorded; the ground with its lightmap from another array of another size; and the water's
+cells. `test_renderer_storage` checks the world's entries in the renderer's lists: the passes once a
+frame while the world is set, the records and water among the alpha list's quads by key, the cells
+that follow one another with one texture and colour as one draw, broken by a quad between them, and
+casters kept out of the alpha lists; `test_texture_cache_owner` that a texture reload clears the
+device's world.
+
+`build.bat check` passes, and the whole suite (`tests\build.bat` with `ORACLE_EXE`): 325 tests and
+the oracle's 6. Not checked: the Linux, macOS and Android builds (not built), the Metal shaders
+SPIRV-Cross makes (not run, and the arrays' mipmaps by blits there), the GPU's own time for a whole
+frame (`present_ms` only shows it with the CPU's), the device's failure paths beyond what
+`test_gfx_gpu` and the maps test reach (no scene makes an upload fail), and a game played by hand.
+
+## Sprites, effects and the UI as instances (2026-11-12)
+
+The first part of phase 6 of `plans/gpu-renderer.md`: every quad and triangle the client draws, the
+meshes aside, is an instance, a record of the frame's quads from which the quad shader's vertex
+shader makes the vertices the client's C code made before, to the bit. The CPU no longer builds a
+sprite's vertices, nor moves a flat draw's corners for multisampling, nor projects a particle's
+points; the device no longer takes vertices of its own kinds.
+
+- **The records** (`render/quads.c`, the library `quads`, pure, with `render/quads.h`'s `struct
+  GfxQuad` and `struct TexDrawVertex`). A record is a 16-byte header (its kind and flags, the layer
+  of the atlas array its stage 0 reads, its draw's record, a colour and a value of its kind) and
+  what its kind holds, in the frame's quads, one storage buffer that also holds, each on rows of
+  its own, the matrices and the vertices records name; an instance-rate attribute gives each
+  instance the row its record starts at, so records are as long as their kind needs. A sprite (80
+  bytes) holds the quad `render_object_clip_to_quad` makes (its columns, rows, the two rows' rhw,
+  the flipped screen's offsets, the turn's cosine and sine, the region and the colour), and the
+  shader makes `render_object_submit_spr_quad`'s four vertices of it: each corner moved by half a
+  pixel or turned about the quad's centre, the rows' z from their rhw (`renderer_project_depth`),
+  every corner the top row's rhw. A particle's quad (112 bytes, 144 with a second stage's
+  coordinates) holds its points and the shader projects them as `renderer_project_vertex` did,
+  through a matrix and projection among the frame's quads (64 bytes, once for every run of
+  instances that share it), then takes the rhw or adds to it, and takes z from it, adds to that or
+  makes it 0, as the particle kinds did on the CPU; `particle.c`'s particles, each with a matrix of
+  its own, hand over their points in view space instead (the three sums the CPU computes anyway
+  for their rhw), so that the shader divides and moves them onto the screen. Everything else, the
+  interface, STR effects, effect primitives, the cooldown pies, Granny's vertices and water, is
+  drawn from the client's own vertices, a strip of four or a list of triangles, which go among the
+  frame's quads once (28 bytes a vertex) with a 16-byte record for each quad or triangle naming
+  them; a strip that is an axis-aligned rectangle with one rhw and colour, z along each row and
+  texture coordinates by column and row, which most of the interface's are, takes a 64-byte record
+  of its own instead. Vertices in world coordinates (Granny's camera path and water, `RPQuad.world`)
+  go through the camera's view as before, Direct3D 9's matrices on the GPU, with the CPU's rhw for
+  the fog.
+- **To the bit.** The shader follows rules (`render/shaders/exact.hlsli`): `precise` on every
+  operation, assigned to a variable first; no fused multiply-add, `mul()` or dot product; division
+  through a correctly rounded helper (`div_rn`); constants given by their bits. The vertex the quad
+  shader draws is `quad_vertex` (`render/shaders/instances.hlsli`): the corner as the client made
+  it, a triangle's fourth corner its third, the colour's bytes made floats as Direct3D 9's vertex
+  unit made them. A flat draw's corners in a multisampled pass move onto the pixel boundaries that
+  keep the pixels Direct3D 9 covered, with the values their triangle's plane has there
+  (`snapped`), as `snap_flat` moved them on the CPU: a quad's triangles are (0, 1, 2) and (2, 1,
+  3), a vertex taking the plane of the first that has it unless that one has no area, the colour's
+  bytes rounded as before. The boundary is found from a coordinate's 256ths as the C code found it
+  in double: the half is compared with what lies above the floor, since 256ths plus a half may round
+  in float (a coordinate of 2^-9 - 2^-33 would move a whole pixel column otherwise); a coordinate of
+  32,768 pixels or more is its own. Whether a draw is flat is decided per primitive of the client,
+  as `gfx_draw` decided it per call: every vertex the same rhw.
+- **What the rules rest on.** An addition, subtraction or multiplication rounded to nearest, ties
+  to even: Vulkan promises correct rounding but leaves the mode to the device unless a shader
+  declares RoundingModeRTE, which shaders for Vulkan 1.0 devices cannot. The device checks it when
+  it is made (`check_rounding`, `render/shaders/rounding.hlsl`: 16 pairs whose sums, differences,
+  products and `div_rn` quotients tell the modes apart, drawn into a row of float pixels and
+  compared with the CPU's; 2.5 ms) and logs where a GPU differs, whose quads then land a pixel
+  apart from Direct3D 9's now and then; the GTX 970 rounds as the CPU does. The C code's float
+  operations must each round once, in the order written: MSVC's `/fp:precise` contracts nothing on
+  x64; GCC and Clang contract unless compiled with `-ffp-contract=off`, which the CMake builds pass.
+  On Metal SDL compiles the MSL with fast math, under which `div_rn`'s test for an infinite
+  quotient is not assured.
+- **The renderer's quads.** Sprites and sprite particles take the renderer's quads of vertices
+  (`renderer_new_prim_instance`, `struct TexDrawPrim`: four vertices or, in their place, an
+  instance) in the order they always did, and the multitexture particles a pool of their own, as
+  the original's two-texture quads. A quad keeps what the last one in its place left there: on a
+  map that draws alpha in two passes a sprite leaves `alpha_mode` 0, which sends the water, smoke
+  or interface box that takes its place in a later frame to the list drawn once after both
+  passes, and an STR layer leaves its texture-stage preset for an interface box drawn among the
+  effects. The original does the same: the function that hands out a quad batch (0x4e6ed0, which
+  the sprite's submit calls at 0x751287) gives the list element at its cursor untouched and makes
+  one with `RPQuadBatch`'s constructor (0x4e4be0) only when the list is used up, the renderer's
+  constructor makes 512 of them ahead, and `CRenderer::DestroyAllRPList` (0x4e7600) only moves the
+  cursors back to the lists' heads; of the functions that hand out the renderer's quads only the one
+  of the quads whose vertices lie elsewhere (0x4e6e00) clears a field (`nindices`). `two_pass_alpha`
+  (`1@tcamp`, which draws alpha in two passes and has water and 18 chimney smokes) shows it: with
+  the sprites' quads taken from a pool of their own, a smoke puff there draws in other passes
+  (2,702 pixels of one capture differ).
+- **The same draws, fewer of them.** Instances are batched into one draw while the mode, the
+  effect's blending and preset, the fog, the textures and the target stay the same and all are flat
+  or none, as Direct3D 9's draws were until a state changed; the textures of the draw are taken up
+  (their changed texels staged) when it is made, as the batch's were when it was flushed. The order
+  of everything drawn is the queues' as before. `gfx_set_texture` no longer ends a batch: the next
+  quad joins it while it reads the same textures. An instance whose layered texture the batch has
+  no memory to hold is not drawn.
+- **The atlas as texture arrays.** The sprite atlas's pages (`render/rp_atlas.c`: 256 by 256 in
+  1555, and pages of multiples of 256 for larger images) are layered textures
+  (`gfx_create_layer_texture`, `texture_create_layer`), which the device places, on the thread that
+  draws, when a draw first reads one, as a layer of an array of its size and mipmap levels. An
+  array holds as many pages as make 16 MB, no more than 64 (64 of 256 by 256) and no fewer than one
+  (a page of 2048 by 2048 or more is as large as it would be alone); another is made when it is
+  full, so nothing is ever copied, and an array goes with its last page. A page given up frees its
+  layer once the frame that read it is submitted; the next upload into the layer is recorded in a
+  later command buffer, which the queue runs after it. The fragment shader reads stage 0 from the
+  array where the draw's record says so (`Draw.stages.y` bit 2), at the layer the instance gives,
+  and sprites of several pages are one draw. A page's mipmaps (the Trilinear option) are made as a
+  texture's: the page goes up whole into a scratch texture of its size and levels,
+  `SDL_GenerateMipmapsForGPUTexture` makes its levels, and every level is copied into the layer. A
+  texture or array the GPU has no memory for is remembered, not tried again at every draw, and its
+  quads read white.
+- **Storage buffers.** The quad vertex shader reads four (the draw records, the views, the fog
+  tables, the frame's quads), the most every Vulkan device takes
+  (`maxPerStageDescriptorStorageBuffers`); SDL tells nothing of a device's limits, so the device
+  refuses to make a shader that reads more (`STORAGE_BUFFERS_MAX`).
+- **What stays on the CPU.** The sprites' projection and `render_object_clip_to_quad`, which
+  picking, name tags and the callers' depth tweaks need; the rhw of a particle's corners, which the
+  lists sort by and which say whether it is flat; the screen-space building of STR effects, which
+  are made on the screen around one projected anchor (`ez2str_draw.c`, `rag_str_anim.c`), not from
+  world corners, so they are drawn from their vertices; effect primitives, whose corners some modes
+  move by projected values (`quad_depth`), and Granny, whose vertices the second part of the phase
+  skins on the GPU.
+- **Deleted:** `render/gfx_batch.c` with `test_gfx_batch`, `gfx_draw` and the device's vertex
+  kinds (`GFX_VTX_TEX1`, `GFX_VTX_TEX2`, `GFX_VTX_WORLD`, their sizes, `GFX_PT_*`), the quad
+  vertex layout and its widening to two coordinate pairs, `snap_flat`, `flat_draw`,
+  `pixel_boundary`, `raw_draw` and `client_draw` in `render/gfx_gpu.c`, the frame's vertex and index
+  data for quads (the corners and triangles of a quad are uploaded once), the vertex building of
+  `render_object_submit_spr_quad`, the CPU projection of particles, sprite particles and the
+  multitexture particles, `renderer_project_multitex_vertex`, the two-texture vertices and quads
+  (`RPTwoTexVertex`, `RPTwoTex`, `RPTwoTexQuad` and their constructor; the multitexture list takes
+  instances from a pool of their own), `RPQuad.indices` and `nindices`, which no primitive ever set,
+  and the draw records' kind (`Draw.mode.x`, `KIND_*`), which no shader reads any longer.
+- **Counters.** `instance_bytes` (`diag/perf.h`, `tests/scenes/README.md`): the records of the
+  quads drawn, their offsets, the matrices and the client's vertices they name; `vertex_bytes`
+  counts the meshes' alone. `draw_calls` counts `gfx_draw_quad`, `gfx_draw_vertices` and
+  `gfx_draw_mesh`.
+
+Tests: `test_quads` checks every kind's words in place, the instances a primitive makes, flatness
+bit for bit and that a field of a rectangle a bit off makes it none. `test_quad_instances` (new)
+runs on the GPU. The SPIR-V: `tests/shaders/quad_probe.hlsl`, which runs `instances.hlsli` and
+`exact.hlsli` alone, has no operation the rules forbid, and `quad.hlsl`'s vertex shader only the 18
+phase 4's quad shader had too (`snapped_ndc`, the vertex fog, the camera's transform, the colour and
+coordinates times q), so an operation left unmarked, scalar or vector, or a division that is not
+`div_rn`'s, fails it. The operations: 17 million (every divisor from 1 to 2 under 1 and under a
+random numerator, `renderer_project_depth`, `renderer_project_vertex`). The records: 5.4 million,
+each drawn as made and as a flat draw's in a multisampled pass gets it, of every kind, realistic, at
+the edges and fuzzed: sprites made by `render_object_submit_spr_quad` itself; rectangles, strips and
+triangles flat or not, among them coordinates a hair under half a 256th of a pixel; world vertices
+for the camera's view; projected points by every rhw and z rule, in view space and not, with a
+second stage; particles made by `particle_render` and sprite particles by `sprite_particle_render`
+themselves, turned, scaled, rolled, mirrored and tinted. Each corner's x, y, z, rhw, colour and both
+stages' coordinates from `quad_vertex`, and the sprites' and particles' sort keys and flatness on
+the CPU, against the CPU code they replaced (`tests/fixtures/quad_reference.c`: the vertices
+`render_object_submit_spr_quad`, `particle_render` and `sprite_particle_render` made, and
+`snap_flat`): no difference. The pictures: 30 scenes of 1280 by 720 through `render/gfx_gpu.c`,
+sprites drawn as instances from layered textures and as the reference's vertices from plain ones,
+blended and alpha-tested, and projected quads drawn as instances and as `renderer_project_vertex`'s
+vertices, additive and alpha-tested, with and without multisampling: no pixel differs. Broken on
+purpose, it fails: `renderer_project_depth`'s division written plainly gives 27 divisions not
+`div_rn`'s and some 10,000 depths of 100,000 off; the boundary taken as `floor(scaled + 0.5)` moves
+the snapped corners of 1,210 screen vertices at the edges; a vector product left unmarked counts as
+one more operation. `test_gfx_gpu` draws layered textures and plain ones of the same texels by the
+nearest texel, filtered, magnified and shrunk, with mipmaps too, pixel for pixel, the layers of one
+array in one draw, an array full (64 pages) and the next page in a second one, a layer given up
+after the frame that read it and taken by a new texture (64 quads one draw again), five pages of
+1024 by 1024 two draws and three of 2048 by 2048 three, and lists of triangles flat and not.
+`test_renderer_storage` checks that a sprite's quad is the next of the pool of quads of vertices and
+keeps the header the last quad in its place left, and the reverse, the multitexture particles'
+instances (their points, both stages' coordinates, the nudge as z added, the textures) and their
+pool's growth and reuse; `test_surface_lifecycle` an atlas page as a layered texture;
+`test_projection` `renderer_project_rhw` and `renderer_project_view` against
+`renderer_project_vertex`.
+
+Captures with `RAGEXE_VSYNC=0` and SDL's dummy audio, phase 4's scene harness and this one's run one
+after the other. Two new scenes show what the set did not: `effects_instances` (damage numbers, STR
+effects of both kinds, a rag effect and an ez2str one, Evil Land's cells of two textures, and the
+same with the screen flipped, the player's status 0x22, which turns every sprite) and
+`two_pass_alpha`. The 30 captures of the 14 scripts are phase 4's to the pixel, with `RAGEXE_MSAA=1`
+and with `RAGEXE_MSAA=4`.
+
+Video memory, on Prontera crowded with 40 kinds of monster and 12 players, after a map change to
+Geffen, and with a crowd there again: Windows' count of the process's dedicated GPU memory, which
+moves in the driver's blocks, is 295 MB with phase 4 and 270 MB with this part throughout. The
+atlas's part, as the device makes it: at the crowd's height 130 pages of 256 by 256, which took 34
+MB as textures of their own and take 48 MB as three full arrays; after the map change, the pages
+beyond the 50 spares gone, 13 MB against one array of 16 MB; with the second crowd 34 MB against 48
+MB again. A scene of its own, not in the set; all its pages were 256 by 256.
+
+Start-up, from launching the scene harness to the login screen's first capture, the median of seven
+runs, 1.43 s with phase 4 and 1.43 s with this part, the 147 pipelines made in 4 ms and the rounding
+check in 2.5 ms from the driver's cache; with the driver's shader cache empty
+(`__GL_SHADER_DISK_CACHE_PATH` an empty folder, five runs) 1.79 s against 2.41 s: the pipelines take
+980 ms there, the large quad vertex shader (256 KB of SPIR-V) compiled for each, and the check 17
+ms.
+
+Counters, the counts the same in every run and the times the median of three, phase 4 against this
+part:
+
+| capture | draws | bytes (vertex + instance) | scene ms | view ms |
+|---|---|---|---|---|
+| `camera_level_view` | 3,345 / 3,343 | 38,192 / 39,296 | 0.40 / 0.40 | 0.65 / 0.71 |
+| `camera_level_view_moving` | 3,318 / 3,316 | 40,672 / 41,952 | 0.40 / 0.40 | 0.81 / 0.81 |
+| `prontera_crowd` | 1,174 / 1,164 | 100,336 / 93,972 | 0.18 / 0.19 | 0.52 / 0.44 |
+| `effects_instances` | 1,160 / 1,154 | 23,656 / 21,288 | 0.70 / 0.72 | 0.32 / 0.45 |
+| `hunter_traps` | 1,198 / 1,196 | 8,556 / 7,172 | 0.13 / 0.12 | 0.37 / 0.27 |
+| `granny_models` | 1,147 / 1,145 | 295,678 / 338,660 | 0.16 / 0.17 | 0.56 / 0.71 |
+| `guild_flags` | 1,129 / 1,127 | 58,448 / 64,904 | 0.12 / 0.13 | 0.36 / 0.39 |
+| `windows_open` | 274 / 272 | 4,216 / 2,360 | 0.06 / 0.04 | 0.23 / 0.21 |
+| `keyboard` | 266 / 264 | 3,224 / 1,816 | 0.04 / 0.04 | 0.21 / 0.21 |
+
+Draw calls and primitives are the same in every capture. The interface's bytes fall by about 45 %
+(its rectangles take 68 bytes where four vertices and their indices took 124), the sprites' by a
+third (84 where 124), the particles' a little (116, the matrix shared); Granny's triangles take
+104 bytes where they took 90 and water's quads 132 where 124 (a record and an offset for each
+besides its vertices, which shared generated indices before: `granny_models` 15 % more in all),
+until phase 5 makes water a mesh and the second part skins Granny on the GPU. The atlas's arrays
+take two to ten draws a frame off. The times are a single frame's and move by a fifth from run to
+run; no change stands out from that in either direction.
+
+`build.bat check` passes (the include check over 1,832 files in 30 libraries, the link check over
+1,144 objects, the shaders' check). The whole suite passes, its 326 tests and the 6 oracle tests.
+Not run or not checked: Linux (lavapipe), macOS and Android, which were not built, and the MSL of
+the new shaders, which no Metal compiler has seen; mipmaps in a capture (the scene data has
+Trilinear off; `test_gfx_gpu` compares them); a GPU that rounds otherwise (the check's report was
+seen only with an expectation made wrong on purpose); an array or texture the GPU has no memory for;
+and a game played by hand.
+
+## The instances and the static world together (2026-11-12)
+
+The first part of phase 6 (the instances) on the first half of phase 5 (the static world), which
+were built side by side. What their meeting decided:
+
+- **One set of exactness rules.** Both sides had written a `render/shaders/exact.hlsli`; there is
+  one, the union of both: the exact sum, product and division (`two_sum`, `two_product`, `div_rn`,
+  the same code on both sides), the 4x3 matrix and its products (`Matrix43`, `mat_multiply`, `m44`,
+  `multiply44`), the projection of `renderer_project_vertex` (`project_view`, `project_point`, now
+  taking a `Matrix43`) and its depth (`project_depth`), and the multisampled snap
+  (`pixel_boundary`, `plane_value`). The water's own projection of its corners (`water_project`)
+  was `project_point` summed in the same order, so the water takes `project_point`.
+- **The water draws its pixels as the quads draw theirs.** The quads' and the water's shaders share
+  `render/shaders/quad.hlsli`, whose pixels now read stage 0 from a layer of an atlas array where
+  the draw's record says so; the water's draws bind the empty array the quads bind where they read
+  no layer, and never set the flag.
+- **The water is phase 5's alone.** Phase 6 drew the water's quads, the only strips of world
+  vertices the client made, through the camera's view (`QUAD_CAMERA`); phase 5 draws the water from
+  its cells instead. `gfx_draw_vertices` and `quad_vertex_words` take world vertices only as a list
+  of triangles, Granny's, which keep that path until the second part of phase 6 skins Granny on the
+  GPU.
+- **Storage buffers.** Phase 6 kept every shader within the four storage buffers a stage every
+  Vulkan device takes and made the device refuse a shader that reads more; phase 5's shaders read
+  more: the water's vertex shader six, the world's five, each compute pass five. The ceiling
+  (`STORAGE_BUFFERS_MAX`) is six, the compute passes are held to it too, and a device that takes
+  fewer than six draws no world; the quad shader still reads four. Bringing the world's shaders to
+  four is open (`plans/gpu-renderer.md`, Risks).
+- **The CMake builds.** `test_gfx_gpu` and `test_quad_instances` link `render/static_world.c` and
+  `render/world_layout.c`, which `render/gfx_gpu.c` calls since phase 5, and `test_quad_instances`
+  the particles it draws (`effects/particle.c`, `effects/sprite_particle.c`).
+
+Checked on Windows (GTX 970). The tests either side touched pass, among them `quad_instances`
+with `RAGEXE_MSAA=1` and 4 (every vertex and pixel of 5.4 million records and 17 million exact
+operations as the CPU made them, 30 scenes drawn both ways), `static_world_maps` (the transforms,
+cull, compaction and water against the C to the bit on the game folder's maps), `gfx_gpu`,
+`gfx_gpu_msaa` and `gfx_gpu_present`. Run over every shader that includes `exact.hlsli`, both
+SPIR-V checks find no operation the rules forbid in its code; the quad and water vertex shaders
+keep the plain operations they had outside it, 18 and 11 by the stricter of the two, as before.
+
+The scene clients of the static world with phase 4 and the canvas fix, of phase 6 and of the two
+together were run one after the other on the 15 scene scripts (35 captures). Together they draw the
+static world's pictures to the pixel, with `RAGEXE_MSAA=1` (twice) and 4, with the same draw calls
+and primitives and phase 6's fewer draws (`prontera_crowd` 1,279 where 1,289, the set 40,574 where
+40,679). Against phase 6's client 19 captures differ in 72,291 pixels at `RAGEXE_MSAA=1` and 20 in
+75,479 at 4, every one of them either phase 5's own (where the static world's client differs from
+phase 4 with the canvas fix) or the canvas fix's (where phase 4 with it differs from phase 6, whose
+pictures are phase 4's otherwise). The 16 shadow views are the static world's to the pixel.
+
+`build.bat check` passes (the include check over 1,857 files in 33 libraries, the link check over
+1,147 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 331 tests and the oracle's 7, `canvas_texels` among them (56,448 calls, 7,668 drawn
+by the original, 0 mismatches). In WSL, built by CMake with GCC and run on Mesa's lavapipe,
+`test_quad_instances` passes with `RAGEXE_MSAA=1` and 4 (every vertex and pixel); `test_gfx_gpu`
+stops at `check_world_mips`, a world texture array's mipmaps, made with linear blits, more than a
+step from the same texture's own there; the static world's tree alone stops at the same check, so
+the meeting did not bring it. Not checked: macOS and Android, which were not built, and the MSL,
+which no Metal compiler has seen; a device that takes fewer than six storage buffers a stage;
+presenting into a claimed window on this machine (NVIDIA's offscreen driver makes no swapchain);
+and a game played by hand.
+
+## Shadows fitted on the GPU (2026-11-13)
+
+The second half of phase 5 of `plans/gpu-renderer.md`: the GPU fits the four shadow cascades to
+what the frame shows and culls each cascade's casters from the static world's draw records. The
+CPU no longer fits the cascades, chooses the casters or sees the matrices. Before and after, only
+the static world casts: no Granny model or sprite ever went into the casters' queue.
+
+- **What the client gives.** Each frame `renderer_shadow_frame` (`render/rp_project.c`) gives the
+  device the light's axes, the camera and the shadows' reach (four times the camera's distance and
+  400 units more, as before), and `world_gpu_frame` (`world/world_gpu.c`) the box the world's own
+  draw records lie in, through `renderer_shadow_bounds`: every static record, gathered as its mesh
+  is placed, and every animated record in the pose the frame gives it, so that the box follows the
+  models as they stream in and move. `shadow_fit_bounds` makes the light's depth range of that box
+  with a margin either side. Together with the darkness and the ambient light that is the frame's
+  `struct GfxShadow` (`render/gfx.h`). Without lightmaps, without the device's shadows
+  (`RAGEXE_SHADOWS=0`), on a map whose shadow opacity is 0 or with a box that is empty or not
+  finite it gives none, and the frame draws no shadow maps.
+- **The depth pass** (`world_depth.hlsl`). After the view's cull, a single-sample pass draws the
+  records the cull kept, every pass's, into two R32F targets of view depth at the screen's size
+  (with its margin, so that a texel is a pixel): the first takes the nearest receiver of every pass,
+  the second, written by the pipelines of the opaque passes and the ground only, the nearest one
+  that is not blended. A pixel's receivers then lie between the two, the ground behind an
+  alpha-blended face included. A texel a draw drops by its alpha is dropped here too (the opaque
+  passes' and the ground's below 0xcf, the blended passes' at 0). It has a depth target of its own:
+  the main pass is multisampled, and SDL can neither resolve a depth target nor let a compute pass
+  read a multisampled texture.
+- **The fit**, three compute passes that follow `render/shadow_fit.c`, the reference in C, step by
+  step, in groups of at most 64 threads, within the 128 every Vulkan device takes.
+  `shadow_range.hlsl` reduces the pixels' intervals within the shadows' reach to the nearest and
+  farthest depth, each group of 8 by 8 pixels in shared memory before one atomic of the group's;
+  `shadow_extents.hlsl` cuts the range kept (below) into four slices that grow geometrically, each
+  slice's far depth the same multiple of its near one (the range's ratio to the quarter powers,
+  taken by square roots, which every C library rounds exactly), and reduces each pixel's interval,
+  cut at the slices' bounds, to each slice's extent along the light's two axes across it; `shadow_cascades.hlsl` makes each cascade's square, its centre on
+  whole texels of its map, and from it the matrices from the world and from the view, the lookups'
+  offset, blur and slant, and the six planes of the cascade's box, and counts the cascades that
+  receive: 0 where nothing within reach receives, and the ground keeps its baked shadows then.
+  `render/shadow_fit_gpu.c` (the library `shadow-fit-gpu`) packs the passes' constants and reads
+  their state and result, for the device and its tests alike.
+- **Steady edges.** Snapping a square's centre to whole texels holds its shadow edges still only
+  while the square keeps its size and its slice stays, and a fit to the pixels alone moves both
+  whenever the receivers on screen change: as the nearest receiver at the bottom of the view comes
+  and goes while the camera walks, every slice moves with it and the edge slices' squares follow.
+  So both are kept from frame to frame in a buffer of the device's, set to none when the world is
+  made again (a new map, a new device), as `shadow_fit_keep` and `shadow_fit_cascades` describe:
+  - the range the slices are cut from keeps its far end while it lies from the farthest receiver
+    to a tenth beyond it, and takes it anew a hundredth beyond the farthest, or at the reach where
+    the reach lies within that tenth, as nothing lies beyond the reach; it keeps its near end while
+    the nearest receiver lies from it to a quarter beyond it, and takes a nearer one at once, as
+    receivers nearer than the near end would crowd into the first slice and grow its square frame
+    by frame;
+  - a square takes what its slice's receivers need (the wider extent's half, 5 % and 4.5 units more
+    for the soft edge and the offset) rounded up to 8 units, and the slice of the view itself
+    measured the same way (the screen's corners from the slice's near depth to its far one) is the
+    most it can need. It keeps the frame before's size while that is at least what it needs and at
+    most the larger of a fifth more and the most it can need, so receivers coming and going within
+    a slice change nothing. Taken anew, it is what the receivers need grown by a fifth where they
+    outgrew the frame before's square, the top of the band it is kept in, as receivers that spread
+    tend to spread on, and by 5 % otherwise (none kept, or one too large), rounded up to 8 units and
+    no more than the most it can need.
+  The snap is exact by construction: the nearest whole number of texels is found by a division and
+  then corrected with exact products, so that it does not depend on how a GPU rounds the division,
+  which Vulkan leaves loose; the C and the shader both do it.
+- **Shadows are optional.** A device that cannot make the fit's pipelines, its buffers or the
+  shadow maps logs it once and draws without shadows; one that cannot make the fit's targets at the
+  screen's size draws without shadows until the size changes, and does not try again every frame. A
+  frame whose depth pass, fit, casters' cull or shadow pass cannot be recorded draws its world with
+  no cascades, so the receivers keep the ground's baked shadows, and draws no shadow pass.
+- **The casters.** The cull pass culls, besides the view's runs, the casters' runs: the records
+  grouped by texture array (`wl_caster_runs`, an order of the records by array; a caster's pipeline
+  knows nothing else of a record), a group of threads to each run in each cascade, against the
+  planes of the cascade's box that the fit wrote, by `sw_record_in_view`'s test as
+  `sw_cull_cascade` does (`sw_cascade_planes` gives the planes in the shader's order and floats); the
+  compaction gives each cascade's kept records their places in a section of their own of the frame's
+  index buffer, behind the view's. A world whose records the sections cannot all hold is refused, as
+  the compaction copies every record's indices. The shadow pass draws each cascade into its layer of
+  one R32F array of four, an indirect draw a run, each vertex through its slot's place in the world
+  and the cascade's matrix (`world_caster.hlsl`), dropping a texel by its alpha as the depth pass
+  does. Every draw of the world reads the fit's result (`cascades.hlsli`), which the CPU never sees:
+  the receivers look up their cascade by its far depth, as before.
+- **Ticks.** A model out of view whose shadow can fall into it must animate there as it did when the
+  CPU walked the casters: `world_gpu_frame` ticks a model that animates where one of its records,
+  in the pose the frame gives it, lies in the view or in the box whatever can shade the view lies
+  in (`renderer_shadow_reach`: from the near plane to the shadows' reach as wide as the screen with
+  a margin across the light, and along it before the view's farthest point, `shadow_fit_reach`), by
+  the test the device's culls make of the same records.
+- **Four storage buffers a stage.** Every shader now reads at most four, the least every Vulkan
+  device takes, and `STORAGE_BUFFERS_MAX` is 4 again for render and compute shaders alike (a
+  compute pass's written buffers count with the rest). The world's draws take their record as a
+  uniform; the cull reads one buffer of words (the records' bounds, the view's runs, the casters'
+  runs, their order and the chunks, laid out by `wl_cull_layout`) and writes one (the indirect
+  commands and the kept records' places, `wl_draw_layout`), beside the slots' places and the fit's
+  result; the compaction reads the words, the draws and the indices and writes the frame's indices;
+  the water keeps its cells and the table of sines in one buffer and takes its clip matrix as a
+  uniform; the transform pass no longer writes each slot's view in every cascade, which the casters
+  take from the slot's place and the fit. The quad shader was within four already. The screen
+  wobble's pipeline takes its one vertex buffer at slot 0, where a draw binds it.
+- **Texture arrays' mipmaps.** The world's arrays made a layer's mipmaps level by level with
+  linear blits, the sprite atlas's in a texture of their own. Both take the atlas's way now: a
+  layer's pixels go up into a scratch texture of their size, SDL makes its levels
+  (`SDL_GenerateMipmapsForGPUTexture`) and each level is copied into the layer (`copy_levels`), so
+  that a layer's levels are a texture's on every backend by construction. `test_gfx_gpu`'s
+  `check_world_mips` downloads every level of a layer and of the texture it holds and compares
+  their bytes (`gfx_read_world_level`, `gfx_read_texture_level`).
+- **Counters.** The frame's draws count the depth pass and the shadow maps' draws too; the indirect
+  ones, whose primitives the GPU's cull chooses, are counted on their own (`indirect_draws`), and
+  `primitives` counts the other draws' alone, which the CPU knows (`diag/perf.h`).
+- **Deleted.** `renderer_shadow_frame`'s fit to boxes, `struct ShadowBox`, `view_shadow_boxes`,
+  `view_shadow_bounds`, the leaves' `groundMin` and `groundMax` (and `leaf_ground_box`),
+  `view_cast_shadows`, `struct ShadowReach` and `renderer_shadow_reaches`, the
+  `RENDER_SHADOW_CASTERS` queue, `RP_WORLD_CAST`, `gfx_world_cast`, `gfx_shadow_begin`,
+  `gfx_shadow_cascade`, `gfx_shadow_end`, `gfx_shadow_receive`, `world_gpu_cast_actor`,
+  `c3d_ground15_cast` with the ground's per-block caster lists (`GndGpuBlock`; `ground_gpu_free`,
+  left with nothing to free, is `ground_forget_water`, which forgets the cells' places among the
+  device's water), `C3dActor.castFrame`, `Renderer.shadowDrawn`, the device's shadow records and
+  the casters' per-cascade views, and `test_scene_ground_box`. The fit to boxes stays as a fixture
+  of `test_shadow_fit` (`tests/fixtures/shadow_box_fit.c`), which measures the new fit against it.
+  Leftovers that went with them: `gfx_gpu.c`'s `multiply`, whose last user was the shadow
+  matrices, and `rp_quad_set_vertex_pos`, whose last user was the water's CPU quads.
+
+**A bug the deletion fixes.** The CPU's choice of casters (`view_cast_shadows`, through
+`renderer_shadow_reaches`) left out a caster that shades the foot of a tree on Prontera's main
+street at the closest, flattest camera (`camera_level_view` and `camera_level_view_moving`): the
+commit before and the Direct3D 9 reference draw that spot lit. A build of the commit before whose
+`renderer_shadow_reaches` answers yes for everything draws it shaded, as the GPU's cull does (1,210
+and 1,094 pixels more than 16 steps apart); on every other capture of the scene set and on the 20
+shadow and far views that build draws exactly the commit before's pictures, so the CPU's choice
+missed nothing else there. The caster is the model at world (-140, 160), a tree whose crown stands
+118 units high, with two animated nodes: casting it alone, whatever the tests say, gives the
+shaded picture, and casting every leaf's ground or every other model the walk left out does not.
+The walk left it out on every frame: its leaf's box, from the RSW's quadtree, fails the reach test,
+and so do the model's oriented box and the bounds of its five static records, so the part that
+shades the view is one of its animated nodes, which the CPU's choice never tested where the frame
+poses them. The GPU's cull tests every record, animated ones in the frame's pose, against each
+cascade, and the light's depth range and the ticks for shadows now come from the records too, so
+nothing in use still rests on those boxes.
+
+**A binding the validation layer found.** The fit's first two passes read the depth pass's
+targets as read-only storage textures, which their shaders declared as storage images
+(`RWTexture2D`), while SDL's Vulkan driver binds a read-only storage texture as a sampled image: the
+pipelines' layouts did not match their shaders (`VUID-VkComputePipelineCreateInfo-layout-07990`).
+NVIDIA's driver drew them all the same; Mesa's lavapipe crashed in them. They read textures without
+a sampler now (`Texture2D`), and `tools/shaders` takes a read-only storage texture only so and fails
+a storage image anywhere but among a compute shader's read-write resources. With the Khronos
+validation layer, `test_shadow_fit_gpu`, `test_gfx_gpu` at 1 and 4 samples (the wobble's frame and
+the resizing among its checks), `test_quad_instances` and the scenes `camera_level_view`,
+`prontera_crowd`, `window_resize`, `effects_instances` and `screen_wobble` with the fit checked
+run without a message.
+
+Captures with `RAGEXE_VSYNC=0` and SDL's dummy audio, the commit before's scene harness and this
+one's run one after the other in the same game folder: the 15 scene scripts (35 captures) at
+`RAGEXE_MSAA=1` and 4, and the 16 shadow views and four more far views (the gate flat at -5 degrees
+from 5,000 and 10,000, Prontera steep at -70 from 2,500 and 5,000) at 1. Each was also captured
+without shadows (`RAGEXE_SHADOWS=0`) by each build, to tell the pixels the shadows touch (where
+either build's capture differs from its own without shadows by more than a step, grown by 2
+pixels) from the rest:
+
+- **Away from the shadows** the tolerance budget holds everywhere: at most 9 pixels of a capture
+  differ by more than one step (0.0006 %), each alone.
+- **In the shadows** 0.63 % of the scene set's pixels differ by more than one step at
+  `RAGEXE_MSAA=1` (0.68 % at 4), and 1.15 % of the 20 views'. Edges move by up to a texel where
+  the squares differ: of the scene set's at one sample 37,985 pixels lie in one build's shade and
+  not the other's, all but 4 of them within 3 pixels of a shade's edge; 259,745 differ in how dark
+  they are within a soft edge (the soft edges' grain follows the texels), and 11,899 elsewhere, in
+  soft edges wider than the 15 pixels the count looks across (up to 809 a capture in the dappled
+  shade on Prontera's main street). In the views 56,076 lie in one shade only, all within 3 pixels
+  of an edge, 268,681 in soft edges and 3,801 elsewhere. The largest groups are a roof's shadow on
+  the south gate's wall from 700 (2,853 pixels, its edge a texel away), the tree foot above (2,182),
+  the dappled shade through the lattice of `two_pass_alpha` (1,203) and the soft edges on the hills
+  (up to 1,007).
+
+**Against the reference** (`build/ref`, within 3 a channel: the scene set's 12 golden captures and
+the 16 shadow views) the commit before differs in 3 to 49 pixels of the golden captures and 4 to
+220 of the views (text, and a few pixels along shadow edges), this commit in 9 to 13,510 and 875 to
+28,081, 193,627 in all (0.48 % of the 28 captures' pixels), 653 of them away from the shadows, all
+of them pixels the commit before differs in too. Each pixel of the shadows that differs was held to the
+criterion the reference allows: two fits with different texels may place an edge up to a texel of
+the coarser apart, and its soft edge changes grain, so a pixel may differ within one texel of the
+coarser fit at that pixel plus the soft edge's width (one unit) of an edge both draw, projected to
+the screen at the pixel's depth (from the frame's own depth pass and both fits' cascades: a median
+of 2 to 13 pixels a view), and 1.5 pixels more; the reference's shade is the commit before's,
+whose code drew it. On the 19 frames whose depths were taken (the 16 views, `camera_level_view`,
+its moving capture and `prontera_crowd`), 144,828 of the 148,772 differing shadow pixels (97.3 %)
+lie so. Of the other 3,944, 3,508 lie inside both shades, 1,724 of them partly lit in both: on
+faces steep to the light whose soft edges stretch over several units, as on the south gate's wall
+from 700 (1,587 pixels, the largest group 186), at the foot of the tree the CPU's choice left out
+(1,005 in `camera_level_view`, 430 of them in one group) and in groups of at most 48 pixels on the
+hills; 436 lie in one shade only, 183 of them at the tree's foot and at most 87 in any other view;
+none lies outside both shades.
+
+**The fit on real frames.** With `RAGEXE_SCENE_SHADOW_FIT=1` the harness reads back the frame's
+depth targets, the fit's state and its result (`gfx_read_shadow_fit`) and runs
+`render/shadow_fit.c` on the GPU's own input: on the 90 captures (the scene set at both sample
+counts and the 20 views), on every 25th frame of the motions below and their closing captures (243
+frames) and on the 18 captures run under the validation layer, the range, the range kept, the
+extents, the squares, the sizes kept and the snapped translations are the C's to the bit, the split
+within 5 units in the last place and every matrix, lookup and far depth within 2.5e-7 of its row's
+largest element on the captures and 9.6e-7 in the motions (the turning on `manuk`).
+
+**Texels.** On 23 of those frames (the 20 views, `camera_level_view`, its moving capture and
+`prontera_crowd`; 25 million receiving pixels, each looked up in the cascade its nearest receiver
+falls in, under each fit, on the same frame) a pixel's texel is 0.904 of the fit to boxes' on
+average (geometric mean), and 18.2 % of the pixels get a coarser one. On the hills a view's mean is
+0.71 to 1.00, at the gate from 700 0.76, where the boxes reached far beyond what the screen shows;
+in `prontera_crowd` 0.98. With the camera at its closest and flattest on the main street
+(`camera_level_view`) the median pixel keeps its texel: its slices end at 85, 179 and 379 units
+where the boxes' ended at 83, 184 and 368, and its squares are 40, 56, 112 and 200 units where
+40, 56, 96 and 208: the 15.5 % of its receiving pixels that lie from 179 to 368 units get a
+coarser texel, 1.17 times as coarse (twice as coarse from 179 to 184), and its mean is 1.02 (its
+moving capture's 0.99, 17.1 % coarser, by at most 1.17). The fit to boxes cut its range with
+seven tenths of a geometric split and three of even steps, from the boxes' nearest point in view,
+which at that camera, a leaf's box reaching past the near plane, is the near plane, 10 units off;
+this fit's slices are geometric from the nearest receiver, 40 units off there. A
+view's median texel is coarser than the fit to boxes' only in the far views, by 3 to 5 %: the gate
+from 5,000 and 10,000 and Prontera steep from 2,500, 5,000 and 10,000. There both fits see the
+same receivers, and this one keeps the range's far end a hundredth beyond the farthest of them and
+takes a square 5 % larger than they need, so that both stay while the camera moves (Prontera from
+2,500: slices to 2,399, 2,481, 2,566 and 2,653 where 2,382, 2,462, 2,543 and 2,627, squares of 552,
+592, 616 and 608 where 536, 568, 592 and 592). Neither fit leaves a receiving pixel outside its
+cascades.
+
+**Stability.** The scene harness can shake the camera (`scene.quake`, the game message an
+earthquake's effect sends) and read the fit of each frame (`scene.shadow_fit`), and the scripts in
+`tests/scenes/motion` move the camera for hundreds of frames each (`tests/scenes/README.md`,
+"Motion"; `motion_stats.py` counts and compares). The commit before, with a `scene.shadow_fit` of
+its own reading its CPU fit, and this commit ran the same motions, the harness's clock moving 16 ms
+a frame; cascade size changes per 100 frames, this fit against the fit to boxes, and how far shadow
+edges can jump at them (a texel of the larger map at each change, world units per 100 frames):
+
+| Motion | frames | size changes | edge jumps |
+|---|---|---|---|
+| walking a loop on Prontera's main street (the default camera, 488.8 from the player at -55 degrees) | 500 | 0.0 / 0.40 | 0.0 / 0.04 |
+| walking around its fountain, past the flower beds and banners | 600 | 0.0 / 0.0 | 0.0 / 0.0 |
+| zooming in to the closest camera | 40 | 41.0 / 115.4 | 3.3 / 8.5 |
+| then tilting it to the flattest | 40 | 33.3 / 69.2 | 3.1 / 5.2 |
+| then walking a loop | 360 | 0.0 / 0.0 | 0.0 / 0.0 |
+| turning (a right drag of 2 pixels a frame) | 400 | 7.0 / 48.1 | 0.86 / 5.2 |
+| zooming in, then out | 400 | 4.3 / 10.8 | 0.44 / 1.0 |
+| an earthquake on the main street (6.5 s) | 420 | 0.0 / 0.0 | 0.0 / 0.0 |
+| an earthquake at Prontera's south gate (800, -40 degrees) | 420 | 0.0 / 2.4 | 0.0 / 0.48 |
+| an earthquake on `manuk`'s hilliest spot (800, -40) | 420 | 0.0 / 78.5 | 0.0 / 5.6 |
+| an earthquake on `hu_fild01`'s (800, -40) | 420 | 0.0 / 0.0 | 0.0 / 0.0 |
+| turning on `manuk`'s (1 pixel a frame) | 800 | 10.1 / 98.4 | 2.5 / 26.0 |
+| zooming in, then out on `hu_fild01`'s | 400 | 1.5 / 12.0 | 0.35 / 2.6 |
+| walking a loop of 48 cells there | 480 | 0.0 / 0.0 | 0.0 / 0.0 |
+
+This fit changes sizes no more often than the fit to boxes in any of them, and never while the
+camera walks or shakes. Between size changes every square moved by whole texels of its map in both
+(within 9.1e-5 of a texel, the logs' rounding), so edges stay where they are. `test_shadow_fit`
+measures the same on synthetic scenes against the fit to boxes, 357 frames a motion and scene:
+walking 0.0 to 5.3 changes per 100 frames where it made 2.0 to 16.8, passing a post 0.0 to 2.0
+where 2.8 to 9.0, turning 0.8 to 2.8 where 14.3 to 27.2, zooming 3.4 to 6.7 where 35.3 to 58.5,
+quaking 0.0 to 0.3 where 32.2 to 150.7.
+
+**Counters** (the frame each capture shows; the counts are the same in every run, the times the
+median of three runs by turns with the commit before). The scene set's 35 captures make 16,320
+draws where they made 40,574, of them 8,850 for the shadows where 33,104 (the draws with shadows
+less those without): the depth pass's runs and an indirect draw for each caster run in each
+cascade, where the CPU queued a draw for each caster record or ground block and drew it into all
+four maps (`prontera_crowd` 613 draws, 318 of them the shadows', where 1,279 and 984;
+`camera_level_view` 574 and 317 where 2,941 and 2,684). 15,306 of the draws are indirect; the
+others draw 20,233 primitives, where the commit before counted 5.6 million, its world's meshes
+among them. `view_on_render` takes 0.03 to 0.27 ms where it took 0.18 to 0.43 (3.2 ms over the set
+where 10.9, `prontera_crowd` 0.24 where 0.34). The frame's wait (`present_ms`), where the GPU is two
+frames behind, is 1.58 ms at the median capture where it was 0.94, and 0.24 where 0.26 without
+shadows: the GPU's shadows take about 0.6 ms more a frame on this GTX 970 at 1600 by 900, for the
+depth pass, the fit's passes over every pixel, and the cull and compaction of the casters in four
+cascades, which take 0.01 to 0.44 ms on the maps of `test_static_world_maps` (the cull alone 0.006
+to 0.23: `amatsu` 0.23 of 0.34, `rag_fes` 0.11 of 0.44; `prontera` 0.07 of 0.15, against 0.035 for
+the view's whole cull and compaction). SDL's GPU API has no timestamps, so the passes were not
+timed one by one.
+
+**The wait comes first.** A frame now waits for the frame two before it before anything of the
+frame takes a command buffer (`flush` in `render/gfx_gpu.c`), where the commit before waited after
+recording the frame, just before submitting it. SDL's Vulkan driver gives every command buffer a
+cache of descriptor sets and takes it back only once a wait, or a submit that presents, finds that
+command buffer finished, and it sets a new texture's layout in a command buffer of its own, which
+takes a cache like any other. A frame that takes its command buffer before the wait, after textures
+were made, can find no cache given back; SDL then starts an empty one, and the frame makes a
+descriptor pool for each kind of binding it binds, 28 with the GPU's shadows. The screen wobble's
+first frame makes two textures while it is recorded (the wobble's copy of the screen and a 32 by
+32 one), and with the wait last it waited 17 to 20 ms (three runs; a Vulkan API dump shows its 28
+new pools, and timers put 15 to 19 ms of it in a single binding of descriptor sets), where the
+commit before waited 1.7 to 2.0, and both 0.3 without shadows. With
+the wait first the frame takes the cache the frame it waited for gave back, and the first wobble
+frame waits 1.4 to 1.8 ms, the commit before 1.7 to 2.0 in the same runs by turns. A frame that
+makes more textures than SDL has caches to spare can still make it start a new cache, which some
+later frame fills once: SDL's driver takes a cache even for a command buffer that binds nothing,
+which only SDL can change. The first frame with shadows, whose caches are all new, still waits
+about 16 ms.
+
+Tests. `test_shadow_fit` checks the C fit: degenerate frames; the squares kept, grown 5 % or a
+fifth ahead, shrunk and left empty, where the slice of the view is little larger than the
+receivers need and where it is far larger; the range kept, its far end grown at once and taken at
+the reach, its near end taken nearer at once; the split, each slice's far depth the same multiple
+of its near one; the snap on the half-texel boundary and a few units in the last place either
+side of it; the reach for casters against the points of fuzzed frames; the conventions against
+the fit to boxes kept as a fixture (the same matrices where the squares match); a fuzz of frames
+with and without the frame before's sizes, every receiving point in its cascade; and a steady
+camera, in under a second. With `--motions` it runs five motions (walking a unit a frame, walking
+towards a post that comes into the bottom of the view and back, turning, zooming, quaking) over
+five synthetic scenes from three distances, 120 frames each, where over the three paths of each
+motion and scene the fit must change sizes no more often than the fit to boxes, and every square
+that keeps its size moves by whole texels: 34 seconds, so the suite runs it as a test of its own,
+`shadow_fit_motions`, labelled `long`, which `tests\build.bat -LE long` leaves out of a quick run.
+With `--report` it runs both and prints the texel and resize comparisons and the single paths where
+this fit resized more (two of the 75: walking from 300 over the models and over the blended
+models, 15 and 9 size changes where the fit to boxes made 8 and 2). `test_shadow_fit_gpu` runs the
+three passes on 300 frames of the synthetic scenes, from what a frame before kept, packed and read
+back by
+`render/shadow_fit_gpu.c`, and compares each pass with its step of the C given the GPU's own
+input: range, range kept, extents, squares, kept sizes and translations to the bit (392 squares on
+the half-texel boundary), the split within 4 units in the last place, every matrix within 1.9e-6
+of its rows; and frames from no history, cropped, of a single pixel and empty, the boxes' planes
+and every receiving pixel inside its cascade, front and back. `test_shadow_fit_gpu_packing`
+checks the packing itself: the shaders' layouts, a frame's constants, floats ordered as uints and
+back, the state of nothing seen and the results read back. `test_projection` checks what the
+renderer gives the device for a frame (the fit's constants to the bit, the box, the reach for
+casters) and when it gives none. `test_static_world` checks `sw_cull_cascade` against a
+reference in doubles. `test_world_layout` checks the casters' runs (every record once, by array,
+in draw order, the records past a section's room left out), the layouts and the passes' uniforms.
+`test_static_world_maps` runs the GPU's cull of four nested cascades' boxes each pose on every map
+against `sw_cull_cascade`: 8,064 runs of casters in a cascade, 300,065 records kept, every run's
+command and indices the C's, with the dispatches split into rows of 3 and 7 groups too; it checks
+that the models ticked beyond the walk's either show a moving record or keep one where it can
+shade the view, and that the light's depth range holds every record of every map (8 to 95 units
+to spare). `test_gfx_gpu` draws the frame's shadows through the device: a caster whose texture's
+alpha drops half of it shades the ground there and not where the alpha drops it, the baked shadow
+kept by a frame whose receivers lie beyond the reach and by one given no shadows, the fit's range
+and squares kept from one frame to the next and none kept once the world is made again; and an
+array layer's mipmaps downloaded level by level against its texture's own. `test_renderer_storage`
+and `test_scene_lifecycle` follow the deleted code.
+
+`build.bat check` passes (the include check over 1,862 files in 34 libraries, the link check over
+1,148 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 332 tests and the oracle's 7.
+
+In WSL (Ubuntu 24.04) CMake builds the client, the scene harness and the tests with GCC
+(`-DRAGE_CLIENT=ON`), `test_shadow_fit_gpu` among them, and its 43 tests other than the GPU ones
+(`shadow_fit_motions` among them) pass. On Mesa's lavapipe there `test_shadow_fit_gpu` gives every value of the C to the bit, the
+split and the matrices too; `test_gfx_gpu` passes with `RAGEXE_MSAA=1` and 4, the frame's shadows
+and the texture arrays' mipmaps downloaded level by level among its checks; and
+`test_quad_instances` passes at 1 and 4 samples.
+
+Not checked: macOS and Android (not built), the MSL (no Metal compiler has seen it), a GPU that
+takes no more than four storage buffers a stage or 128 threads a group (the device's own check
+holds every shader to four, and the groups are of 64), a device whose fit pipelines, buffers or
+targets cannot be made and a frame whose shadow passes fail to record (no test makes them fail),
+the GPU's time pass by pass, presenting into a window on this machine (where SDL's driver also
+takes back caches at each submit that presents), how often a frame in play still fills a new
+descriptor cache, and a game played by hand.
+
+## Granny's actors skinned on the GPU (2026-11-13)
+
+The second part of phase 6 of `plans/gpu-renderer.md`. The CPU skinned, lit and projected every
+vertex of every Granny actor (the emperium, the castle guardians, the treasure boxes, the guild
+flags) every frame and handed the device three pre-transformed corners a triangle, 28 bytes each, in
+world coordinates as well while the camera's view drew them. Now a model's meshes stay on the GPU,
+the CPU hands the device one pose an actor, and the vertex shader skins, lights and projects. With
+it the last vertices the CPU projected for drawing went to the GPU: the effect primitives' triangles
+of the world and the ground's cell tiles.
+
+- **The models on the GPU** (`render/gfx.h`'s `gfx_create_skin`, `gfx_skin_addref`,
+  `gfx_skin_release`). When a model loads, `granny_model_res_skin` (`resources/granny_mesh.c`) packs
+  its meshes one behind the other into one vertex array and one array of 32-bit indices: each vertex
+  its position, normal, texture coordinates and up to four bones of the skeleton with their weights
+  (`struct SkinVertex`, 56 bytes; a rigid mesh's vertex on the mesh's one bone, marked rigid), each
+  mesh's whole triangles with its first vertex added, so that a draw may run on from one mesh into
+  the next. A mesh without a triangle is left out; an index of a triangle past its mesh fails the
+  load, as data that cannot be drawn. The device makes the model's vertex and index buffer on the
+  drawing thread when a draw first takes the model and copies them from the model's arrays into that
+  frame's transfer buffer; it keeps the arrays, as a texture keeps its pixels, so that a device made
+  again puts them up again. One pair of buffers a model, not one buffer for all of them, because a
+  model lives as long as its resource, across maps, where the static world's buffers are made again
+  with each map; draws of different models never join, so a shared buffer would buy no draw and cost
+  an allocator of its own. The shim reads a converted file's joints as bone 0 where the skeleton has
+  no such bone, compared unsigned, so that a joint of 2^31 or more cannot turn negative and make a
+  rigid mesh skinned (`tests/test_granny_gltf.c`, a file made for it).
+- **The pose** (`render/skin_layout.c`, the library `skin-layout`, pure, with `skin_pose_rows`).
+  Each frame an actor's playback poses its bones as before, and the CPU hands the device its pose
+  among the frame's quads (`gfx_skin_pose`): a header (the bone count, the guild flag's rule that
+  rigid meshes lie as they are, the alpha, the bytes the colour adds, the light's offset), the
+  meshes' matrix into view space (the model matrix times the view, the matrix the CPU projected each
+  vertex through), the light's direction in the meshes' space and its scale, the projection
+  (`renderer_project_vertex`'s scale, centre, near plane and depth scale), then three rows a bone
+  (Granny's composite matrices), 16 bytes a row. How each kind of actor is lit (the lit model, the
+  corpse, the guild flag) is `skin_pose_kind`, which `actor/granny.c` and the tests both call. Each
+  mesh is queued as its triangles were, in the opaque list by texture (`renderer_add_skin`,
+  `struct RPSkinDraw`). A draw's instance is a 16-byte header among the quads (its pose and its
+  draw's record) and a 4-byte offset, found as the quads find theirs.
+- **The shader** (`render/shaders/skin.hlsl`, `skin.hlsli`). The vertex shader sums a vertex's
+  weighted bones as Granny's deformer did, a weight of 0 skipped (its bone not read, so that a bone
+  the file left not a number moves no vertex that does not weight it; a rigid mesh's vertex its
+  bone, its normal as it lies), takes the point into view space, lights it (the clamped cosine with
+  the light, times the scale plus the offset, cut to a whole number, plus the actor's colour bytes
+  modulo 256, as each of the three loops of `actor/granny.c` did) and projects it to the pixel and
+  depth `renderer_project_vertex` gave the CPU's corner, the fog taken from the rhw as the quads
+  take it; the fragment shader is the quads'. Unlike the quads it is plain arithmetic, not the CPU's
+  floats to the bit: the plan allowed a tolerance for it. The pose carries the CPU's own matrix into
+  view space, not a model matrix and the camera's view: a world point with coordinates in the
+  thousands taken through the camera's view loses to cancellation in the GPU's float sums what that
+  one matrix keeps.
+- **The same draws.** A draw joins the batch before it when it takes the same model, mode and
+  textures and either runs on in the model's indices in the same pose (an actor's meshes) or draws
+  the same range in another pose (one mesh of several actors, instanced); nothing else changes the
+  order of what is drawn (`skin_batch_join`). Draws, draw calls and primitives are the same as
+  before in every capture. Only the screen takes them, where the scene's lists are drawn; the shadow
+  pass draws no Granny actor, as before. The blind player's tint never touched Granny's actors and
+  does not now; both faces of a triangle are drawn, as the pre-transformed ones were; the dead and
+  dying actors' alpha is the pose's, under multisampling with alpha to coverage as the opaque list's
+  quads have it. No Granny actor is mirrored: `actor/granny.c` turns and moves its model and nothing
+  else, and with both faces drawn a mirror could not change what is drawn.
+- **The effect primitives' triangles and the ground's cell tiles.** The effect primitives
+  (`effects/rag`) projected the corners of their triangles of the world on the CPU, one
+  `renderer_project_vertex` a corner, and the ground drew its cell tiles (the cursor's cell, ground
+  skills' areas, the navigation path and its marker, `world/ground_draw.c`) from corners projected
+  likewise. Both now hand the device points in the world, which the quad shader projects as it
+  projects the particles', bit for bit (`render/shaders/instances.hlsli`). A cell tile is a
+  `GFX_QUAD_WORLD` quad, its z moved by the tile's bias (`GFX_DEPTH_ADD`). An effect primitive's
+  triangles name corners of a set (`render/quads.h`, `struct GfxCorners`, `GFX_QUAD_CORNERS`): up to
+  twelve corners (x, y, z, u, v), one colour and the rules the original applied to the projected
+  vertices (`PRIM_QUAD_DEPTH_BIAS`'s rhw plus 4.5e-5, `PRIM_QUAD_IN_FRONT`'s rhw 1 and z 1e-9,
+  `PRIM_QUAD_UPRIGHT`'s quad stood up on the screen around the primitive's point, which the shader
+  computes in plain arithmetic whose products by 0.5 and by 1 or -1 are exact), the corners the
+  triangles of one call have in common held once (`prim_add_world_triangles`: a quad's two
+  triangles, the four faces of a pyramid). The device puts a set among the frame's quads, with its
+  view matrix, when the first triangle that names it is drawn, and each triangle is a 16-byte header
+  (the set, its three corners) and a 4-byte offset: a quad's two triangles take 136 bytes where
+  their vertices took 208 (two times 84 and a header and offset each), a pyramid's four faces 336
+  where they took 416. The device keeps the last matrix of each kind it put up (a projection alone,
+  the particles'; a view and projection), so that particles and corner sets drawn in turn do not put
+  theirs up again. Each triangle is still its own entry in its list, keyed by the rhw of its first
+  two corners as its vertices were, which the CPU computes (`renderer_project_rhw`) with whether it
+  lies flat on the screen; the CPU projects no corner. Deleted with them: `effect_prim_draw.c`'s
+  `set_vertex` and `quad_depth`, `prim_kinds_090_101.c`'s `set_vertex`, `prim_set_vertex`, and the
+  tiles' vertex projection.
+- **What the CPU still projects** is a point an object needs, not a vertex it draws: an anchor
+  around which a picture is built on the screen (a sprite's and an STR effect's quad, a sprite
+  particle's, an effect's screen position (`prim_project_vertex` of its master, the screen card, the
+  beam of `cane_of_evil_eye_effect.c`), a character preview's), the effect streak's two ends
+  (`prim_streak_render`: a line a pixel wide built on the screen between them, its second corner a
+  pixel beside the first, which no point in the world gives), Granny's screen box for picking and
+  its name's anchor, and the keys the sorted lists order by (the water's cells' and the alpha
+  models' records' rhw). `gfx_draw_vertices` still draws what the client builds on the screen: the
+  interface, the STR effects' quads, the screen-space effect primitives (`prim_screen_sprites.c`,
+  the screen card, the streak), the cooldown pies and the counters overlay.
+- **A model the device does not take.** A skeleton of more than 256 bones, for which the shim
+  samples no animation, makes no device model and is not drawn (no model in the game folder has
+  one); a model whose buffers the GPU has no memory for is logged, not tried again with that device
+  and not drawn.
+- **Deleted:** the CPU's per-vertex skinning, lighting and projection: the shim's deformer
+  (`_GrannyDeformVertices` and its deformer type), its PNT332 vertices and
+  `_GrannyCopyMeshVertices`, `_GrannyGetMeshVertexType`, `_GrannyGetMeshVertices`,
+  `_GrannyGetMeshBytesPerIndex`, `_GrannyGetMeshIndices` and `_GrannyGetWorldPoseComposite4x4`,
+  which only it used; each actor's buffers of deformed vertices and its meshes' poses
+  (`GrannyMeshVertex`, `GrannyVertexBuffer`, `GrannyMeshPose`, `GrannyHairPivot`,
+  `c3d_granny_model_res_mesh_to_draw`; an actor's model state is now its resource, playback and
+  bounds); the three per-vertex loops of `actor/granny.c` with `light_term` and `world_corner`;
+  `actor/granny_projection.c` and its test; the record kind the corners took through the camera's
+  view (`QUAD_CAMERA`, the quad shader's camera branch, so that the quad shader reads three storage
+  buffers, not four), `RPQuad.world`, `renderer_world_quads` and the world flag of
+  `gfx_draw_vertices` and `quad_vertex_words`, which nothing else took; the shim's mesh binding of a
+  skinned mesh (the client binds rigid meshes alone, for their bone); and what nothing used:
+  `tex_draw_vertex_construct`, `rp_quad_set_vertex_pos`, and fields written and never read: the
+  actors' `color` and `GrannyCorpse3d.color`, and `shadow_tex` and `shadow_points`, a 35 by 35
+  texture made for every actor and a list of points filled every frame.
+- **Counters.** `instance_bytes` counts the poses, the instances' headers and offsets and the corner
+  sets; `vertex_bytes` a model's buffers when they go up; `draw_calls` counts `gfx_draw_skin`
+  (`tests/scenes/README.md`).
+
+Tests: `test_skin_layout` (new, pure) checks the vertices' and indices' packing, a pose's rows where
+the shader reads them, `skin_vertex_position` against the deformer's code to the bit, and fuzzed
+sequences of draws joined into batches against the triangles in the order given.
+`test_skin_instances` (new, on the GPU, label `client-files`) runs the vertex stage alone
+(`tests/shaders/skin_probe.hlsl`) on every corner of every model in the game folder's converted
+files, in every pose of their animations and in fuzzed poses, against the CPU code it replaced
+(`tests/fixtures/granny_reference.c`, which keeps the deformer and the three loops as they were):
+the pixel within 1/16 of the CPU's, the rhw within 1e-5 of the CPU's relative, the texture
+coordinates within 1/4096, each colour byte within one step, and a corner that is not a number where
+the CPU's is one counted wrong. The depth is held to 1e-5 of the CPU's own from twice the near plane
+on (a view depth of 20, a depth of 0.5) and to 1e-5 of the depth range nearer than that: near 0 a
+bound relative to the depth would measure the CPU's own cancellation (the view depth there is the
+small sum of large terms), and a depth buffer compares absolute depths. Every other fuzzed pose
+leaves each bone no vertex of the model weights not a number, which a weight of 0 on such a bone
+must not read (the shader without the skip fails every such corner). It then draws actors both ways
+through `render/gfx_gpu.c`, by the device from the models the client makes and as the CPU's corners
+pre-transformed, with a texture of gentle gradients, every other scene fogged, and holds the
+pictures to the captures' budget (below), in their animations' poses only, since fuzzed bones fold a
+mesh into itself where its faces z-fight. Largest differences:
+
+| run | corners | pixel | rhw | depth (nearer: of the range) | colour | weight 0 on a bone not a number | pictures: more than a step |
+|---|---|---|---|---|---|---|---|
+| `skin_instances` (1 sample, 20 fuzzed poses a model, 20 scenes) | 4,251,609 | 0.0027 | 9.0e-7 | 1.9e-7 (none nearer) | 1 step | 258,570 | 2 a scene at most, groups of 1 |
+| `skin_instances_msaa` (4 samples, 4 fuzzed poses, 20 scenes) | 3,782,889 | 0.0135 | 8.8e-7 | 1.5e-7 (6.2e-8) | 1 step | 51,714 | 8 a scene (0.0009 %), groups of 2 |
+| 300 fuzzed poses a model, 100 scenes, 1 sample (seed 31) | 12,454,209 | 0.0048 | 2.0e-6 | 2.6e-7 (4.4e-7) | 1 step | 3,878,550 | 4 a scene, groups of 2 |
+| 300 fuzzed poses a model, 100 scenes, 4 samples (seed 32) | 12,454,209 | 0.0037 | 1.8e-6 | 2.9e-7 (3.7e-6) | 1 step | 3,878,550 | 9 a scene (0.0010 %), groups of 3 |
+
+The texture coordinates came back exact in every run. The six models and their 15 animation files
+are the folder's. `test_gfx_gpu` draws skinned models through the device: an actor's meshes that run
+on as one draw, one mesh in two poses as one instanced draw, rigid meshes on their bone and lying
+still in one instanced draw, a bone a vertex weights by 0 that is not a number, the modes and
+targets that take no Granny draw, a model given up while its draw is recorded, and the fog of
+skinned squares at the first rhw of every step of both fog tables and the rhw before it, one
+instanced draw, within a step of the original's; and the effect primitives' corner sets (two
+triangles of one set one draw, the set put among the frame's quads once a frame, bytes counted, a
+corner the set does not have drawing nothing). `test_quad_instances` reads the effect primitives'
+triangles as `prim_draw_quad` makes them now, in each of its modes, and the ground's cell tiles as
+`world/ground_draw.c` makes them, on the GPU's vertex stage, against the code that projected them
+before (`tests/fixtures/quad_reference.c`): 900,000 records of each, realistic, at the edges and
+fuzzed, every corner bit for bit as made and as snapped in a multisampled pass, sort keys and
+flatness the same. `test_granny_gltf` (new) reads a file made for it whose joints are 32-bit, past
+the skeleton and of 2^31 or more. `test_granny_vertices` checks the models the client makes (meshes
+without triangles left out, a skeleton the device does not take, an index past its mesh and every
+failed allocation failing the load with nothing left behind) and the effect's vertex;
+`test_renderer_storage` the queued poses and draws, and their failures; `test_quads` the corner
+sets' words; `test_granny_model_storage`, `test_resource_lifecycle`, `test_static_world_maps`,
+`test_perf_overlay` and `test_particle_pools` follow the changes; `test_effect_trace`'s digest is
+unchanged (an effect primitive's triangle keeps its size).
+
+Captures: the merged line's scene client (5ea7b76b) and this one, run one right after the other with
+`RAGEXE_VSYNC=0` and SDL's dummy audio, over the 16 scene scripts (37 captures), with
+`RAGEXE_MSAA=1` and 4. A new scene, `granny_actions`, shows what `granny_models` does not: eight
+guardians of one model turned to the eight directions, one monster walking, two attacking the
+player, and four at the screen's edges, partly off it (one behind a roof and the minimap), captured
+twice half a second apart. The budget: pixels more than a colour step apart at most 0.05 % of the
+screen (720 of 1,600 by 900), in groups of touching pixels of at most 16. The 30 captures without a
+Granny actor are the same to the pixel, the effect primitives' triangles and the cursor's cell tile
+among them; the seven with them:
+
+| capture | 1 sample: differ, more than a step, largest group, largest difference | 4 samples |
+|---|---|---|
+| `granny_actions` | 119, 4, 1, 252 | 154, 27, 1, 63 |
+| `granny_actions_later` | 309, 6, 1, 213 | 348, 21, 1, 64 |
+| `granny_dead` | 44, 5, 1, 214 | 55, 14, 2, 56 |
+| `granny_dying` | 106, 6, 1, 255 | 133, 7, 2, 64 |
+| `granny_models` | 254, 3, 1, 5 | 274, 11, 1, 40 |
+| `guild_flags` | 8, 1, 1, 46 | 9, 3, 1, 43 |
+| `guild_flags_later` | 13, 0, 0, 1 | 17, 5, 1, 43 |
+
+Every differing pixel was looked at in a crop. The ones a step apart lie inside the actors'
+textured, lit faces, alone or in loose clusters of up to 19 within two pixels of each other, where
+texture coordinates or colour interpolated a hair apart round the other way; four of them are a
+guardian seen through the translucent minimap. The ones more than a step apart stand alone (two
+touching at most, with multisampling) and every one lies on an actor's outline against the ground or
+where its parts overlap: the toe of a boot, a sword's edge, an arm across the body, a treasure box's
+lid, the foot of each of four guild flags' cloth (the same pixel on each). There an edge a hundredth
+of a pixel from where the CPU put it covers the pixel's centre, or one of its samples, on the other
+side, and the difference is the whole contrast between the actor and the ground: up to 255 steps
+with one sample, 64 (a quarter of the samples) with four. None lies away from an actor.
+
+The effect primitives cover many effects the scene set does not show, so the effect gallery
+(`tools/effect_gallery.py`, PNG captures of frames 1, 8, 16, 32 and 64, `RAGEXE_MSAA=1`) ran with
+the merged line's scene client and this one, one right after the other, over the 575 RagEffect IDs
+whose primitives draw triangles of the world (574) or the ground's cell tiles (1, ID 513's kind
+112): the IDs whose run in `tests/test_effect_trace.c`'s trace makes a primitive of a kind whose
+render function reaches those draws. All 2,875 frames are the same to the pixel, with the same draws
+and draw calls. The gallery itself is not the same from run to run for a few IDs: two runs of the
+merged line's client over 68 IDs differed in 9 frames (IDs 31 and 838), where this client and that
+one, run one right after the other, gave the same 340 frames.
+
+Counters: the counts the same in every run, the times the median of four runs one after the other,
+before against after:
+
+| capture | draws | draw calls | bytes (vertex + instance) | scene ms | view ms |
+|---|---|---|---|---|---|
+| `granny_actions` | 1,277 / 1,277 | 1,141 / 1,141 | 1,432,796 / 36,104 | 0.26 / 0.03 | 1.11 / 0.34 |
+| `granny_actions_later` | 1,278 / 1,278 | 1,143 / 1,143 | 1,432,964 / 36,272 | 0.31 / 0.04 | 1.31 / 0.36 |
+| `granny_dead` | 1,263 / 1,263 | 1,071 / 1,071 | 304,832 / 13,264 | 0.07 / 0.03 | 0.36 / 0.26 |
+| `granny_dying` | 1,263 / 1,263 | 1,071 / 1,071 | 304,832 / 13,264 | 0.07 / 0.04 | 0.40 / 0.35 |
+| `granny_models` | 1,270 / 1,270 | 1,078 / 1,078 | 338,660 / 16,700 | 0.08 / 0.03 | 0.48 / 0.28 |
+| `guild_flags` | 1,252 / 1,252 | 1,062 / 1,062 | 64,904 / 12,588 | 0.03 / 0.05 | 0.29 / 0.30 |
+| `guild_flags_later` | 1,252 / 1,252 | 1,062 / 1,062 | 64,904 / 12,588 | 0.06 / 0.03 | 0.36 / 0.27 |
+
+The bytes of a scene with Granny actors fall by 95 to 97 % (`guild_flags`, whose two flags have few
+triangles, by 81 %). The CPU's time in `renderer_draw_scene` falls to 0.03 or 0.04 ms where there
+are Granny actors to draw (`granny_actions`, 15 of them, from 0.26 ms; the guild flags', small
+before, stay within what runs move by), and `view_on_render` gives back 0.8 to 1.0 ms a frame in
+`granny_actions` and 0.05 to 0.2 ms in the scenes with a few actors. The frame as a whole does not
+get faster on this machine: `present_ms` grows by what the view gives back (`granny_actions` from
+1.0 to 1.9 ms), and the frames of these scenes, with Granny actors or without (`prontera_crowd`,
+0.08 against 0.09 ms in the scene and 0.35 against 0.34 in the view), take 2.1 to 2.4 ms from the
+view's start to the present's end, which the GPU or the presentation sets; `granny_actions` takes
+2.28 ms where it took 2.12, within the 0.5 ms its four runs before spread over. The GPU's own time
+is not measured.
+
+The effect primitives' triangles and the ground's tiles take fewer bytes than their vertices did,
+with the same draws and draw calls (instance bytes, before / after):
+
+| capture | instance bytes |
+|---|---|
+| `effects_instances` | 21,288 / 19,848 (-6.8 %) |
+| `two_pass_alpha` | 65,052 / 60,308 (-7.3 %) |
+| `two_pass_alpha_fewer` | 64,052 / 59,308 (-7.4 %) |
+| `prontera_crowd` | 93,972 / 89,068 (-5.2 %) |
+| `camera_level_view` (the cursor's cell tile) | 2,204 / 2,188 |
+| `hunter_traps`, `effects_flipped` (no such triangle) | 7,172 / 7,172; 17,892 / 17,892 |
+| the effect gallery's 2,875 frames | 41,146,164 / 28,217,124 (-31.4 %) |
+
+Of the gallery's 575 IDs 526 take fewer bytes, 43 the same and 6 more: 788 to 790 and 940 by 24
+bytes a frame and 905 by 8, whose frames draw one quad of a rule (upright, in front) and save less
+on it (40 or 56 bytes) than the one view matrix (64 bytes) the corner sets of a frame go through.
+Effect 513 draws 128 cell tiles a frame in 2,048 bytes fewer.
+
+`build.bat check` passes (the include check over 1,860 files in 34 libraries, the link check over
+1,147 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 335 tests and the oracle's 7. Not checked: Linux (lavapipe), macOS and Android, which
+were not built, `test_skin_instances` and `test_quad_instances` in the Linux CMake build, and the
+MSL of the changed shaders, which no Metal compiler has seen; a rigid mesh in a capture (the game
+folder's two, of one model, have no material and are drawn by no actor; `test_skin_instances`
+compares their corners and draws them with its own texture, and `test_gfx_gpu` draws rigid meshes
+lying still); the effect job 0x49d's start vertex on a real model (no model in the folder has 29
+meshes); the ground skills' areas (`effects/skills/ground_scope.c`, `graffi_skill.c`) and the
+navigation path's tiles in a picture (no scene shows them; the same tile code draws effect 513's
+tiles in the gallery and the cursor's tile in `camera_level_view`, the same to the pixel, and
+`test_quad_instances` holds their corners to the bit); that the gallery's frames show an upright
+effect quad (IDs 788 to 790 and 940 save the 40 bytes a frame one upright quad's triangles save, but
+no frame was looked at for one; its corners are held to the bit); why the gallery is not the same
+from run to run for a few IDs; a device made again while playing; the GPU's time; and a game played
+by hand.
+
+## A frame's time under load: timers and load scenes (2026-11-13)
+
+Phase 7 of `plans/gpu-renderer.md` decides from measurements which of the CPU's jobs left per
+object go to the GPU. The counters timed `renderer_draw_scene`, `view_on_render` and presenting,
+and the heaviest scene of the set, `prontera_crowd`, has 11 actors, so neither said where a busy
+frame's time goes.
+
+- **The client's timers.** `g_perf` (`diag/perf.h`) times eight more parts of a frame: handling the
+  map server's packets, stepping the effects and the world's objects, the objects' and the
+  effects' parts of `view_on_render`, drawing the windows, decoding sprite frames into the sprite
+  atlas, and widening texels for an upload. `diag/perf.h` says what each times and which lie within
+  which. Each costs two stopwatch reads a call; the client only adds them up, and nothing reads
+  them to decide anything.
+- **Measuring without capturing.** A capture downloads the frame and stalls the GPU, so
+  `scene.measure(n, name)` writes the counters of each of the next `n` frames drawn and shown, a
+  JSON line each, and refuses a capture until they are done. A frame's `frame_ms` is the client's
+  alone: the harness's own work in it, the scene script's step with the packets it builds, is timed
+  apart (`script_ms`) and left out. It is 0.01 to 0.16 ms in a steady frame, and 2.8 and 6.1 ms in
+  the first frame of the two arrivals, where the script builds the whole crowd.
+- **The load scenes** (`tests/scenes/load`, `tests/scenes/README.md`): the War of Emperium in
+  Kriemhild's Emperium room and at its last choke (113 players of three guilds), Baphomet and
+  Valkyrie Randgris against parties of 19 and 23 with Earthquake every 150 frames, 30 bombers on
+  Ifrit, a wizard with a pack of 50 in the Orc Dungeon, Prontera with 180 players and 20 pets,
+  arriving in that Prontera and in that war, and Lutie's snow over 100 players. They are staged as
+  rAthena sends such play, keep fighting through the whole measured stretch, draw a 1600×900 frame
+  and stay out of the regular set. `tests/scenes/load.py` runs each several times and reports the
+  median and the worst frame of every time.
+- **The baseline.** The Direct3D 9 client is `02fc9e5e` built with FreeType, with
+  `tests/scenes/load/d3d9_baseline.patch`, which gives its harness the same calls and its frames
+  the same timers.
+
+Both clients, three runs a scene, `RAGEXE_MSAA=4`, 600 measured frames (the arrivals 300) pooled
+over the runs; `frame_ms` in ms, the worst frame with its run and its frame in the stretch; on a
+GTX 970. The GPU client measured is 5ea7b76b's renderer with these timers, before the shadows were
+fitted on the GPU and Granny's actors skinned there (the two entries above), which phase 7 measures
+again:
+
+| scene | objects | GPU median | GPU worst | Direct3D 9 median | Direct3D 9 worst |
+|---|---|---|---|---|---|
+| `woe_emperium` | 14,976 | 30.77 | 50.06 (2.264) | 27.85 | 49.17 (2.363) |
+| `woe_choke` | 11,290 | 24.74 | 38.58 (2.280) | 23.34 | 40.59 (2.334) |
+| `arrive_castle` | 7,028 | 24.80 | 274.94 (3.1) | 20.45 | 260.22 (3.1) |
+| `bombers_ifrit` | 5,559 | 15.84 | 26.86 (1.55) | 15.45 | 24.72 (1.281) |
+| `arrive_prontera` | 243 | 12.22 | 170.42 (1.1) | 12.92 | 140.03 (3.1) |
+| `town_prontera` | 243 | 11.65 | 30.36 (1.111) | 12.55 | 31.70 (3.35) |
+| `mvp_randgris` | 2,041 | 7.17 | 27.88 (1.51) | 4.24 | 8.53 (2.231) |
+| `snow_lutie` | 837 | 6.20 | 24.31 (2.87) | 7.67 | 11.24 (2.221) |
+| `mvp_baphomet` | 2,160 | 5.56 | 26.77 (1.160) | 4.79 | 19.45 (3.134) |
+| `aoe_orc_dungeon` | 731 | 2.63 | 3.98 (3.32) | 2.33 | 4.96 (2.584) |
+
+Building the world's objects' quads (`objects_render_ms`) is the largest part of every crowded
+frame on both clients: 13.75 of the GPU client's 30.77 ms in the Emperium room, 7.33 of 11.65 in
+Prontera, 5.48 of 15.84 among the bombers, where stepping the objects (`actors_ms`) takes 3.71
+more. The GPU client spends more in `renderer_draw_scene` and in presenting (7.27 and 2.05 ms in
+the Emperium room where Direct3D 9 spends 5.31 and 0.37, with 1.19 ms of widening texels) and a
+little less in `view_on_render`. The first frame of an arrival (the median of the three runs: 267
+ms on the GPU client and 209 on Direct3D 9 in the castle, 151 and 129 in Prontera) goes to
+handling the packets of the crowd that appears (98 to 108 ms in Prontera, 133 to 176 in the
+castle, over both clients' runs), stepping the castle's objects (53 to 60 ms), and on the GPU
+client 25 to 29 ms in `renderer_draw_scene` and 19 to 22 ms widening texels.
+
+Validation: the regular scene set's captures are the same to the pixel as those of the client
+before these changes, the 35 that client can make (it crashes on `broadcast` and
+`potion_pitcher`, and has no `scene.measure` for `measure_frames`). `build.bat check` passes, and
+so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 331 tests and the oracle's 7.
+
+## The shaders within a tolerance, and what the GPU phases left (2026-11-13)
+
+Phase 7 of `plans/gpu-renderer.md`. Phases 5 and 6 made the quads', the static world's and the
+water's shaders give the CPU's floats to the bit, by rules that kept the GPU from rounding otherwise
+than the CPU; on 2026-11-12 that was given up for a tolerance, which the Granny skinning of phase 6
+already had (the plan's *Decisions*). This entry removes the rules and what served them, settles
+what the phases left, measures the result against the line before it (e83fd345) and the Direct3D 9
+client, and the plan takes its next GPU phases from the numbers.
+
+- **The decision.** Every shader is plain arithmetic, and its tests hold it to the CPU code it
+  replaced: a vertex within 1/16 of a pixel, its rhw and its depth within 1e-5 relative (nearer
+  than twice the near plane, the depth within 1e-5 of the depth range), texture coordinates within
+  1/4096, colours within a step. Every capture is held to the captures' budget against the one
+  before: the pixels more than a colour step apart at most 0.05 % of the screen (720 of 1,600 by
+  900), each group of such pixels that touch at most 16, and every capture that differs looked at.
+  Exactness stays where it is cheap and decides something discrete: the C code compiled without
+  contraction, the lists' sort keys and flatness, which the CPU computes from its own floats, the
+  depths the depth test decides a figure's layers by, which the CPU computes and hands over (below),
+  and the shadow fit's squares and snapped texels (`shadow_cascades.hlsl` and
+  `shadow_fit.hlsli` keep their `precise`, which makes them their C reference's by construction,
+  and `test_shadow_fit_gpu` still holds them to the bit).
+- **Removed.** `render/shaders/exact.hlsli` (every operation `precise`, `div_rn`'s correctly rounded
+  division, exact sums and products emulated (Knuth's two-sum, Dekker's product), the C code's
+  double expressions computed exactly and rounded once, constants given by their bits) and its use
+  in the quad, water, world transform and world cull shaders; the device's check of the GPU's
+  rounding when it is made (`rounding.hlsl` and `check_rounding` in `render/gfx_gpu.c`); the checks
+  of the shaders' SPIR-V for an operation the rules forbade in `test_quad_instances` and
+  `test_static_world_maps`, and the former's test of the exact operations over every divisor; and
+  the vertex fog's table of the rhw at which each step begins (`render/vertex_fog.c`, the library
+  `vertex-fog`, `test_vertex_fog`, the frame's buffer of tables and the draw record's table base):
+  the quad, skin and water shaders compute the original's step from the rhw with the formula the CPU
+  used (`render/shaders/quad.hlsli`, `vertex_fog`), the draw record carrying the fog's start, end,
+  origin and span. The table gave the step to the bit, which the GPU's division cannot; computed,
+  the step lies within one of the original's (the tests' colour tolerance), and the table's buffer,
+  its lookup in every vertex and its library go. `records.hlsli`'s `transform()` no longer
+  multiplies in Direct3D 9's order: that order gave Direct3D 9's bits only from the CPU's exact
+  views, which the GPU no longer computes.
+- **The shaders now.** `render/shaders/projection.hlsli` holds the client's 4x3 matrices and its
+  projection of a point (`renderer_project_vertex`'s depth and rhw), which the quads, the water and
+  the world transform share; matrices multiply with `mul()`. `instances.hlsli`'s quad vertex makes
+  the four corners of a record once, in a loop, and moves a flat draw's corner onto its pixel
+  boundary with the values its triangle's plane has there, as the CPU did, but where the GPU finds
+  the triangle without area within the rounding of its corners (`no_area`: the cross product of
+  its edges no larger than the rounding of the corners and of the products may make it, or below
+  the CPU's 1e-6), where a plane computed in plain floats is noise; such a corner stays where it
+  was made. Sizes, SPIR-V and MSL bytes, before and after:
+
+  | shader | SPIR-V | MSL |
+  |---|---|---|
+  | `quad` vertex | 288,308 / 34,356 | 451,025 / 45,160 |
+  | `water` vertex | 26,064 / 11,620 | 28,311 / 11,579 |
+  | `world_transform` | 13,560 / 5,796 | 12,711 / 5,587 |
+  | `world` vertex | 12,196 / 10,720 | 8,200 / 7,486 |
+  | `skin` vertex | 10,084 / 9,696 | 7,570 / 7,504 |
+  | `world_cull` | 9,960 / 8,488 | 10,862 / 8,156 |
+  | `world_depth` vertex | 3,448 / 3,128 | 2,097 / 1,927 |
+  | `rounding` (gone) | 4,684 / 0 | 5,695 / 0 |
+  | the client's shaders | 502,944 / 218,444 | 658,378 / 219,306 |
+
+  The test probes: `quad_probe` 301,772 / 32,924 bytes of SPIR-V, `water_probe` 22,736 / 8,484. A
+  run of the scene harness that starts the client and captures the login screen took 2.67 s with
+  an empty NVIDIA shader cache (`__GL_SHADER_DISK_CACHE_PATH` a new folder each run, five runs by
+  turns, medians) and takes 2.01 s; with the cache filled 1.59 s before and after (seven runs).
+- **A texture's changed rectangles go up alone** (`render/dirty_rects.c`, the library
+  `dirty-rects`, pure). A texture kept one rectangle of changed texels, the union of every lock, so
+  that two cells written on a sprite atlas's page sent the whole 256 by 256 page, widened to 32
+  bits; and `texture_draw_sprite_frame` (`render/csurface.c`) locked the whole page to write a
+  cell. Now it locks the cell, and a texture keeps up to eight rectangles apart, each taking in the
+  kept ones it touches, and with no room left the one whose union with it wastes least; each goes
+  up alone. A texture not yet sent, whose pixels are zero but where it was written, went up whole:
+  now its GPU texture (or layer) is set to the texel a zero pixel widens to from one block of such
+  texels in the frame's upload, a band of rows at a time (`clear_texels`; zero for the formats with
+  alpha, opaque black for 565), and only the rectangles written go up over it, so that a new
+  atlas page drawn for its first cell sends that cell. A layered texture with mipmaps (the atlas's
+  pages with trilinear filtering on) made its levels from its whole top level staged into a
+  scratch texture; now the layer's top level is copied into the scratch texture on the GPU (or
+  cleared, for a texture not yet sent), the changed rectangles go up over it, and its levels are
+  made and copied into the layer as before. The widening of texels takes 0.27 ms a frame in the
+  Emperium room where the line took 1.23 (load scenes, below); the clearing of textures not yet
+  sent, measured on its own against the build before it (three rounds by turns), takes the first
+  frame of the arrival in Prontera from 21.9 ms of widening to 12.6 and in the castle from 19.0 to
+  16.4, and the steady frames' from 0.84 ms to 0.54 in the castle and from 0.27 to 0.22 in the
+  Emperium room.
+- **16-bit textures stay widened.** Uploading the atlas's 1555 and 4444 texels as
+  `B5G5R5A1`/`B4G4R4A4` would halve their bytes and skip the widening, but SDL's Metal driver takes
+  those formats only on Apple's own GPUs (`SDL_gpu_metal.m`), and the plan's floor holds Intel Macs
+  of the Mac2 family, so they would need the widening kept as a second path; with only the written
+  cells going up the widening costs 0.2 to 0.5 ms a frame in the crowds, and the first frame of
+  an arrival 13 to 16 ms (below).
+- **The per-frame path.** A mode, effect or fog call that sets what is set already returns before
+  resolving the state (most of the effect lists' calls). The copy of the frame's instances into the
+  transfer buffer when it is presented stays: its bytes are the frame's quads, most of them the
+  effect primitives' and the sprites' records, which the plan's next phase writes once into the
+  memory the GPU reads.
+- **Depths that tie stay the client's.** With every vertex in plain arithmetic, the load scenes'
+  pictures broke the budget where the scene set's had kept it: in the busy Prontera a 445-pixel
+  block of a figure showed the layer behind its cloak, and arriving there a figure was striped
+  row by row with two of its layers. A figure's sprite layers lie at depths the depth test must
+  decide by their bits (layers on the same rows tie, and the original's own rounding picks the
+  winner), and so do the particles and ground tiles drawn where it stands; the GPU's own
+  `project_depth`, a few units in the last place from the CPU's, turned whole overlaps of two
+  layers about (a whole-page upload of the atlas, tried in their place, changed nothing). The
+  client now computes those depths from the rhw it has for the lists' keys anyway
+  (`renderer_project_depth`) and hands them over: a sprite's two rows' z in its record's free
+  words (`zBottom`, `zTop`), and a projected quad's four corners' z in a row of their own
+  (`GFX_DEPTH_CORNERS`, 16 bytes more a particle, a sprite particle, a multi-texture particle and a
+  ground tile), which the shader takes as they are. The effect primitives' triangles, whose
+  corners the CPU does not project, keep the shader's depth.
+- **Found and fixed.** `test_quad_instances` wrote its pictures (`quad_<scene>_<kind>_*.bmp`) into
+  the working directory whenever a scene had a group of more than 16 differing pixels, which it
+  allows along edges, so every multisampled run left eight files; it keeps them now only for a
+  picture beyond the budget. Comments that still promised the CPU's floats to the bit
+  (`render/gfx.h`, `render/quads.h`, `render/static_world.h`, the shaders) say what holds now.
+
+Tests, against the same CPU fixtures as before, now to the tolerance. `test_quad_instances` reads
+300,000 records of each kind (realistic, at the edges and fuzzed, made by the client's own
+functions) on the GPU's vertex stage, as made and as snapped in a multisampled pass. The CPU's own
+floats are rounded, so a corner the device projects that is not within the tolerance of the CPU's
+is held to the exact value of the same arithmetic (in double) instead: within the tolerance, or
+the CPU's own distance from it, and the rounding any float computation of it may carry (for a
+point near the eye seen from a camera thousands of units away the view depth is the small sum of
+large terms, so the CPU's own corner is pixels from the exact one). A snapped corner's values come
+from its triangle's plane, which moves with the GPU's corners; where that plane is ill-conditioned
+(the longest edge squared more than 64 times the area, or a move longer than the shortest edge) or
+where the corner it moves from lies within reach of the snap's threshold, the corner is counted, not
+compared. Largest differences (pixel and texture coordinates in pixels and texels of 1, depth
+relative, nearer than twice the near plane of the depth range; seed 20261112, `RAGEXE_MSAA=1`):
+
+| kind, case | vertices | as made: pixel, rhw, depth (nearer) | held to the exact value | snapped: depth, uv, colour | held to the exact value | ill-conditioned planes | across the threshold | beyond |
+|---|---|---|---|---|---|---|---|---|
+| sprites, realistic | 1,200,000 | 0, 0, 0 (0) | 0 | 1.14e-07 (0), 5.07e-07, 0 | 0 | 19,064 | 0 | 0 |
+| sprites, edges | 1,200,000 | 0, 0, 0 (0) | 0 | 1.19e-07 (7.86e-10), 5.96e-07, 0 | 0 | 9,289 | 0 | 0 |
+| sprites, fuzz | 1,200,000 | 0, 0, 0 (0) | 0 | 2.17e-05 (4.44e-06), 4.17e-07, 0 | 5 | 4,991 | 0 | 0 |
+| screen vertices, realistic | 1,200,000 | 0, 0, 0 (0) | 0 | 6.01e-06 (4.05e-06), 2.53e-05, 1 | 0 | 134,142 | 0 | 0 |
+| screen vertices, edges | 1,200,000 | 0, 0, 0 (0) | 0 | 7.12e-06 (4.4e-06), 1.62e-05, 0 | 0 | 243,696 | 0 | 0 |
+| screen vertices, fuzz | 1,200,000 | 0, 0, 0 (0) | 0 | 1.61e-05 (3.88e-05), 1.08e-05, 0 | 38 | 42,512 | 0 | 0 |
+| projected points, realistic | 1,200,000 | 0.0338, 7.75e-06, 3.58e-06 (0) | 0 | 7.17e-05 (0), 0.0352, 0 | 0 | 11,636 | 71 | 0 |
+| projected points, edges | 1,200,000 | 2.45, 0.00143, 5.16e-05 (6.93e-05) | 116 | 0.00135 (0.00236), 0.389, 0 | 69 | 9,398 | 62 | 0 |
+| projected points, fuzz | 1,200,000 | 137, 0.00769, 0.000158 (8.74e-05) | 429 | 0.000158 (0.000355), 0.0815, 0 | 147 | 92 | 196 | 0 |
+| particles, realistic | 1,200,000 | 0.00146, 2.38e-07, 0 (0) | 0 | 0.000102 (3.02e-05), 0.00168, 0 | 4 | 54,452 | 30 | 0 |
+| particles, edges | 1,200,000 | 0.000977, 0.000601, 0 (0) | 40 | 7.55e-06 (8.64e-07), 0.00803, 0 | 35 | 143,513 | 28 | 0 |
+| particles, fuzz | 1,200,000 | 0.00146, 0.000186, 0 (0) | 3 | 1.14e-05 (3.87e-07), 0.00284, 0 | 4 | 48,804 | 30 | 0 |
+| sprite particles, realistic | 1,200,008 | 0.12, 2.26e-05, 0 (0) | 61 | 0.000112 (0.000154), 0.000835, 0 | 50 | 86,649 | 210 | 0 |
+| sprite particles, edges | 1,200,000 | 0.177, 2.16e-05, 0 (0) | 12 | 9.71e-05 (2.71e-05), 0.00554, 0 | 10 | 352,538 | 55 | 0 |
+| sprite particles, fuzz | 1,200,004 | 0.355, 0.000227, 0 (0) | 302 | 5.34e-05 (5.69e-05), 0.000764, 0 | 194 | 129,035 | 157 | 0 |
+| effect primitives' triangles, realistic | 1,200,000 | 0.931, 2.27e-05, 1.13e-05 (2.12e-05) | 308 | 3.43e-05 (1.38e-05), 0.00679, 0 | 37 | 313,649 | 293 | 0 |
+| effect primitives' triangles, edges | 1,200,000 | 0.427, 1.98e-05, 5.54e-06 (1.62e-05) | 693 | 4.51e-05 (0.000186), 0.0486, 0 | 91 | 370,837 | 365 | 0 |
+| effect primitives' triangles, fuzz | 1,200,000 | 2.06, 0.000128, 9.61e-05 (9.34e-05) | 2178 | 6.43e-05 (0.000101), 0.0156, 0 | 395 | 318,625 | 1140 | 0 |
+| ground cell tiles, realistic | 1,200,000 | 0.0306, 2.2e-05, 0 (0) | 24 | 4.79e-05 (1.79e-06), 0.00743, 0 | 4 | 82,515 | 485 | 0 |
+| ground cell tiles, edges | 1,200,000 | 0.0591, 2.19e-05, 0 (0) | 19 | 2.23e-05 (4.3e-05), 0.0166, 0 | 13 | 641,191 | 156 | 0 |
+| ground cell tiles, fuzz | 1,200,000 | 0.255, 0.000149, 0 (0) | 175 | 3.77e-05 (2.54e-05), 0.0161, 0 | 112 | 107,866 | 205 | 0 |
+
+No corner is beyond, and the rhw the lists sort by and whether a quad is flat are the CPU's to the
+bit in every record; so is the depth of every corner the client hands it over for (the sprites',
+the particles', the sprite particles' and the tiles' as made), the "projected points" being records
+the test makes with each depth rule. The corners held to the exact value are those the CPU itself
+computes imprecisely: the realistic effect primitives' worst corner lies 0.93 pixels from the CPU's
+and within its rounding of the exact one. The test's pictures through `render/gfx_gpu.c` (30 scenes
+of 1,280 by 720, textures of gentle gradients) are within the budget: the sprites' are the
+reference's to the pixel with 1 and 4 samples, and the projected quads' few groups of more than 16
+pixels a step apart lie along a quad's edge or where two quads cross in depth, as the test requires
+of such a group (with 4 samples the largest is 109 pixels along an additive quad's long edge, 1,977
+pixels differing in all, 190 by more than a step).
+
+`test_static_world_maps` runs the transform, cull and compaction passes and the water's vertices on
+its nine maps (Prontera again on a screen of 1,025 by 769) against the C: 56,445,672 vertices
+through 414,348 slots, none beyond the tolerance (pixel 0.0081, rhw 7.5e-6, depth 3.0e-6, nearer
+7.4e-6, in view space 7.0e-7 and in the world 2.0e-7 of their coordinates); every cull decision the
+C's (none within a plane's rounding); 551,760 water cells, none beyond, 238 at a boundary's rounding
+(a wave's degree, the cell's ground against the wave, a triangle's facing), the heights within
+8.5e-8 of the wave. `test_skin_instances` is as phase 6 left it (pixel 0.0027, and 0.0135 with 4
+samples). `test_gfx_gpu` draws the fog at each step's first rhw and at the float before it, for the
+maps' fog and for one that ends before it starts, 1,020 squares each: 297 of the quads' and 281 of
+the skinned squares' are a step off the original's, none more. `test_dirty_rects` (new, pure) checks
+the merging rules by case and 200,000 fuzzed sequences of writes against a map of the texels
+written: every texel written kept, at most eight rectangles, none touching, none past the box of
+what was written, and writes that never touch kept as written. `test_gfx_gpu` checks that only what
+was written goes up: a texture sent once, two cells far apart then written through locks of their
+own while texels outside them change behind the device's back, keeps those texels as they were on
+the GPU and takes the cells', plain and layered, with and without mipmaps, whose lower levels equal
+those of a plain texture made whole from the same top level; nine cells written apart, one more than
+the device keeps, all go up; and a texture not yet sent, a cell written into it and texels outside
+it changed behind the device's back, holds the cell and zero texels elsewhere, plain and layered,
+with and without mipmaps, and a 565 texture opaque black elsewhere. `test_quads` checks the records'
+new words (a sprite's rows' z, a projected quad's corners' z after its coordinates) and
+`test_renderer_storage` the multi-texture particle's corners' z.
+
+Captures: the line's scene client (e83fd345) and this one, one right after the other, with
+`RAGEXE_VSYNC=0` and SDL's dummy audio, over the 20 scene scripts (40 captures): three rounds with
+`RAGEXE_MSAA=1`, which gave the same pictures, then `RAGEXE_MSAA=4`, and both again with
+`RAGEXE_SHADOWS=0`. Every capture keeps the budget; 28 are the same to the pixel in every set, and
+the 12 that differ (pixels that differ, those more than a step apart, the largest group of those,
+the largest difference; 0 where none differs):
+
+| capture | 1 sample | 4 samples | 1 sample, no shadows | 4 samples, no shadows |
+|---|---|---|---|---|
+| `camera_level_view` | 16, 6, 2, 4 | 23, 6, 2, 4 | 10, 0, 0, 1 | 17, 0, 0, 1 |
+| `camera_level_view_moving` | 1, 0, 0, 1 | 6, 1, 1, 2 | 1, 0, 0, 1 | 5, 0, 0, 1 |
+| `canvas_navigation_monster` | 0 | 2, 0, 0, 1 | 0 | 2, 0, 0, 1 |
+| `canvas_navigation_npc` | 0 | 2, 0, 0, 1 | 0 | 2, 0, 0, 1 |
+| `canvas_navigation_target` | 0 | 1, 0, 0, 1 | 0 | 1, 0, 0, 1 |
+| `effects_flipped` | 2, 0, 0, 1 | 6, 0, 0, 1 | 2, 0, 0, 1 | 7, 0, 0, 1 |
+| `effects_instances` | 7, 0, 0, 1 | 9, 0, 0, 1 | 7, 0, 0, 1 | 9, 0, 0, 1 |
+| `hangul_text` | 3, 0, 0, 1 | 4, 1, 1, 2 | 3, 0, 0, 1 | 4, 1, 1, 2 |
+| `hunter_traps` | 2, 2, 1, 2 | 5, 2, 1, 2 | 0 | 3, 0, 0, 1 |
+| `prontera_crowd` | 0 | 10, 0, 0, 1 | 0 | 10, 0, 0, 1 |
+| `two_pass_alpha` | 128, 24, 1, 5 | 163, 38, 3, 34 | 129, 0, 0, 1 | 154, 13, 3, 32 |
+| `two_pass_alpha_fewer` | 131, 24, 1, 5 | 162, 38, 3, 34 | 132, 0, 0, 1 | 153, 13, 3, 32 |
+
+Every differing capture was looked at in crops around its pixels. They fall in three kinds:
+
+- *Single pixels a step apart*, mostly in one channel: on the static world's textured faces (the
+  ground in front of the effects, a pillar, a wall behind the Hangul text, a tiled floor), on the
+  water seen in the navigation windows' views, and down one column of a translucent effect behind
+  a figure in `prontera_crowd`, where a colour or a texture coordinate interpolated a hair from
+  where it was rounds the other way. 1 to 10 a capture, and about 130 on `two_pass_alpha`'s floor
+  of finely patterned tiles.
+- *The shadow map's texel rows.* With shadows, `two_pass_alpha`'s floor has 24 pixels 2 to 5 steps
+  apart, spread along three rows of the screen where a row of the shadow map's texels meets the
+  floor, and `camera_level_view` and `hunter_traps` 6 and 2 single ones on lit ground: a caster's
+  vertices land a hair from where they did in the shadow map, and a texel at the lit edge of a
+  shadow's soft border takes the other depth. Without shadows none of these is more than a step.
+- *Samples along seams.* With 4 samples, `two_pass_alpha`'s floor differs along its tiles' seams
+  in groups of 3 at most, up to 34 steps: one sample of four takes the neighbouring tile's colour
+  where the seam lies within the floats' rounding of a sample's position.
+
+No sprite, Granny actor, interface or text pixel differs. Before the depths were handed over
+(above), every 4-sample capture of the Prontera view also had a row of eight pixels 2 to 6 steps
+apart near the top of the screen, which the wobble copied to other rows; with the depths handed
+over it is gone, so it was such a tie.
+
+The counters: draws, indirect draws, draw calls, primitives, modes sent and skipped, texture binds,
+vertex and texture bytes the same in every capture; the instance bytes grow by the particles' and
+ground tiles' corners' z, 624,268 over the set where they were 575,788 (`prontera_crowd` 99,340
+where it was 89,068, `two_pass_alpha` 66,772 where it was 60,308). `renderer_draw_scene` takes 0.06
+ms in `effects_instances` where it took 0.61 and 0.12 in `screen_wobble_1` where it took 0.68, the
+widening of texels falling from 0.55 ms to 0.02 (the frame that first shows the effects writes atlas
+cells); elsewhere the times stay within what the rounds spread over.
+
+The load scenes (`tests/scenes/load.py`, `RAGEXE_MSAA=4`, 600 measured frames, the arrivals 300):
+this client, the line's (e83fd345) and the Direct3D 9 baseline (`02fc9e5e` with
+`tests/scenes/load/d3d9_baseline.patch`, FreeType), one run of each scene a round, three rounds by
+turns, the frames pooled over the rounds; on a GTX 970 at 1,600 by 900, with two other agents
+building and running scenes on the machine. This client is the build before the depths were
+handed over and before textures not yet sent were cleared on the GPU (both above, measured apart
+against it). `frame_ms` in ms, the worst frame with its round and
+its frame in the stretch:
+
+| scene | objects | this client | worst | the line | worst | Direct3D 9 | worst |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,975 | 31.96 | 84.3 (1.44) | 37.33 | 89.0 (1.288) | 31.94 | 306.0 (3.59) |
+| `woe_choke` | 11,290 | 25.91 | 48.1 (3.187) | 29.41 | 78.9 (1.271) | 27.89 | 682.4 (3.239) |
+| `arrive_castle` | 7,028 | 27.40 | 285.6 (3.1) | 29.94 | 260.7 (3.1) | 24.26 | 257.1 (3.1) |
+| `bombers_ifrit` | 5,559 | 18.12 | 41.3 (3.586) | 18.33 | 95.1 (1.249) | 17.55 | 186.3 (3.395) |
+| `arrive_prontera` | 243 | 12.80 | 203.6 (3.1) | 13.62 | 181.5 (1.1) | 14.92 | 279.0 (3.25) |
+| `town_prontera` | 243 | 11.80 | 30.7 (3.249) | 15.74 | 90.0 (3.180) | 15.38 | 196.5 (3.82) |
+| `mvp_randgris` | 2,041 | 6.81 | 48.5 (1.436) | 7.07 | 58.5 (3.207) | 8.50 | 81.5 (3.3) |
+| `snow_lutie` | 837 | 6.06 | 31.3 (3.223) | 7.62 | 27.6 (2.300) | 9.62 | 239.3 (3.514) |
+| `mvp_baphomet` | 2,160 | 6.53 | 45.3 (3.62) | 7.27 | 35.8 (3.2) | 6.84 | 213.7 (3.15) |
+| `aoe_orc_dungeon` | 731 | 2.98 | 33.1 (3.53) | 3.07 | 36.1 (3.138) | 2.62 | 119.4 (3.6) |
+
+The machine's other work moved whole rounds: a scene's medians of the three rounds spread by 2 to
+5 ms in the crowded scenes (the Emperium room 30.3 to 35.1 ms on this client, 33.6 to 41.1 on the
+line's), and the worst frames (the Direct3D 9 client's of 300 to 680 ms among them) fell in rounds
+where another agent was busy. The parts of the frame that this phase does not touch show how far:
+the line's objects took 17.6 ms in the Emperium room where this client's took 15.1, with the same
+code. What the phase changes is the widening of texels: 0.27 ms a frame in the Emperium room where
+the line took 1.23, 0.23 at the choke (1.20), 0.86 arriving in the castle (2.27), 0.21 arriving in
+Prontera (1.10), 0.07 in Prontera (0.56) and 0.04 in Lutie (0.55); the rest of
+`renderer_draw_scene` is the same less what the machine took (6.13 ms in the Emperium room against
+7.14, which the objects' 16 % explains).
+
+Against Direct3D 9 (the medians; the parts in ms, this client / Direct3D 9):
+
+| scene | view | objects | effects | actors | draw scene | present | texels |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 17.31 / 18.55 | 15.09 / 15.92 | 2.27 / 2.59 | 3.01 / 3.27 | 6.40 / 6.20 | 2.14 / 0.35 | 0.27 / 0.00 |
+| `woe_choke` | 13.54 / 14.66 | 11.51 / 12.04 | 1.95 / 2.33 | 2.23 / 2.48 | 5.34 / 6.45 | 1.90 / 0.72 | 0.23 / 0.00 |
+| `arrive_castle` | 13.16 / 14.18 | 11.55 / 12.06 | 1.46 / 1.74 | 2.06 / 2.10 | 6.13 / 5.19 | 2.47 / 0.34 | 0.86 / 0.00 |
+| `bombers_ifrit` | 7.56 / 7.76 | 6.83 / 6.62 | 0.68 / 0.78 | 4.04 / 4.08 | 4.42 / 3.74 | 0.86 / 0.52 | 0.21 / 0.00 |
+| `arrive_prontera` | 9.36 / 10.84 | 7.82 / 8.34 | 1.48 / 1.93 | 0.09 / 0.09 | 1.40 / 2.68 | 0.90 / 0.18 | 0.21 / 0.00 |
+| `town_prontera` | 8.96 / 10.94 | 7.58 / 8.53 | 1.36 / 1.86 | 0.08 / 0.10 | 1.02 / 2.75 | 0.85 / 0.20 | 0.07 / 0.00 |
+| `mvp_randgris` | 2.32 / 2.78 | 2.11 / 2.33 | 0.01 / 0.01 | 0.52 / 0.51 | 0.98 / 1.85 | 2.23 / 0.79 | 0.05 / 0.00 |
+| `snow_lutie` | 4.22 / 5.66 | 3.58 / 4.14 | 0.57 / 0.92 | 0.22 / 0.31 | 0.52 / 2.57 | 0.55 / 0.21 | 0.04 / 0.00 |
+| `mvp_baphomet` | 2.44 / 3.30 | 2.03 / 2.30 | 0.37 / 0.50 | 0.55 / 0.56 | 1.11 / 1.66 | 1.49 / 0.17 | 0.06 / 0.00 |
+| `aoe_orc_dungeon` | 0.35 / 0.70 | 0.32 / 0.35 | 0.01 / 0.02 | 0.07 / 0.08 | 0.17 / 1.10 | 2.32 / 0.30 | 0.00 / 0.00 |
+
+In the crowds this client's frame is Direct3D 9's within what the rounds spread over, and shorter in
+the town and in the snow (11.8 ms against 15.4, 6.1 against 9.6), where `renderer_draw_scene` takes
+1.0 and 0.5 ms against Direct3D 9's 2.8 and 2.6. Its own
+renderer costs the main thread more where the crowd is largest: `renderer_draw_scene` and
+presenting take 8.5 ms in the Emperium room where Direct3D 9's take 6.6, 8.6 arriving in the castle
+against 5.5, 5.3 among the bombers against 4.3, almost all of it in presenting (2.1 to 2.5 ms
+against 0.35), which records the frame's passes into Vulkan's command buffer, copies the frame's
+records into the transfer buffer, submits and waits for the frame two before; Direct3D 9's driver
+does that work on a thread of its own. The first frame of an arrival takes 281 ms in the castle and
+186 in Prontera against Direct3D 9's 238 and 146: 19 and 22 ms of it widening texels where
+Direct3D 9 sent its 16-bit texels as they are (12.6 and 16.4 ms with the textures not yet sent
+cleared on the GPU, above).
+
+The load scenes' captures with `RAGEXE_MSAA=1`, the line's against this client's (one run each;
+the scenes give the same pictures run after run, but for 99 pixels of `mvp_randgris` in one of the
+measured build's three runs): twelve of the thirteen keep the budget, with 0 to 90 pixels more than
+a step apart, each alone or in twos, on the static world's faces and on effects drawn on the
+ground. The
+thirteenth, `arrive_castle`, has 50 such pixels (0.0035 % of the screen), 46 of them in one row (37
+and 9, at y 531 from x 1,213 to 1,260) along a straight edge of the static world, which lies within
+the floats' rounding of the row of pixel centres; with 4 samples that row is gone (11 pixels apart
+in that capture, each alone). A group one pixel thick along an edge is an edge's difference, which
+the budget holds to its share of the screen alone (the plan's Decisions), so it keeps the budget.
+Before the depths were handed over, `town_prontera` had a group of 445 (a figure's cloak turned behind its body),
+`arrive_prontera` 150 and stripes of two layers, `woe_choke` 35; and before the particles' were
+too, `town_prontera` kept groups of 34 where a level-99 aura's particles tie with the figure.
+
+**What goes to the GPU next.** A CPU profile of the result (VSDiagnostics' sampler at 4 kHz on a
+`build.bat dbg` build, one run of each scene cut to its measured stretch; the main thread's samples,
+times as shares of each run's median frame) says where the renderer's own time goes:
+
+| part | Emperium room (30.3 ms) | Prontera (11.2) | bombers (16.5) |
+|---|---|---|---|
+| presenting: recording the passes into Vulkan's command buffer | 1.26 ms | 0.37 | 0.42 |
+| presenting: the frame's records copied into the transfer buffer | 0.33 | 0.10 | 0.19 |
+| presenting: waiting for the GPU | 0.00 | 0.00 | 0.00 |
+| `renderer_draw_scene`: the quads' records (`gfx_draw_quad`) | 2.87 | 0.62 | 1.89 |
+| `renderer_draw_scene`: sorting the lists | 0.70 | 0.08 | 0.48 |
+| `renderer_draw_scene`: batches recorded | 0.75 | 0.19 | 0.45 |
+| effect primitives' triangles built and queued | 3.56 | 0.00 | 2.67 |
+| level-99 auras (stepped and drawn) | 1.51 | 1.81 | 0.38 |
+| particles drawn (the auras' among them) | 0.98 | 1.20 | 0.50 |
+
+The CPU's own waste outside the renderer, which the two entries below fix, is larger still: the
+sprite atlas's linear search (2.80, 0.35 and 0.72 ms), robe sprites looked for on disk every frame
+(1.42, 3.20, 0.58), Lua calls per layer (1.18, 1.38, 0.32) and a linear search of the skills for
+every effect (2.0 ms in the Emperium room). From these numbers `plans/gpu-renderer.md` takes three
+phases: recording and submitting the frame on a thread of the device's own, with the records
+written once into the memory the GPU reads (about 2 ms of the Emperium room's main thread, where
+Direct3D 9's driver did that work on its own thread); the effect primitives and particle systems as
+parametric instances whose triangles the vertex shader makes (3.6 and 1.5 ms there, 2.7 among the
+bombers, 1.8 in Prontera), where their blending lets one entry stand for many in the sorted lists;
+and the 16-bit texels widened on the GPU (13 to 16 ms of an arrival's first frame).
+
+Checks: With the Khronos validation layer (synchronization validation on) and SDL's debug checks
+(`RAGEXE_GPU_DEBUG=1`), `test_gfx_gpu` at 1 and 4 samples, `test_quad_instances` (20,000 records a
+kind, both sample counts), `test_skin_instances` (both), `test_shadow_fit_gpu` and the scenes
+`camera_level_view`, `prontera_crowd`, `effects_instances`, `screen_wobble`, `window_resize`,
+`granny_actions` and `two_pass_alpha` at 1 and 4 samples run without a message but the layer's own
+note on its settings. That run found the skin test failing on a fuzzed pose of another seed than the
+suite's: a corner nearer than the near plane (depth -6.05, which clips it) held to the depth range's
+absolute bound; it counts such corners apart now, as `test_quad_instances` does. `build.bat check`
+passes (the include check over 1,863 files in 35 libraries, the link check over 1,148 objects, the
+shaders' check), and so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 336 tests and
+the oracle's 7. Not checked: Linux: the WSL build and the device's tests on Mesa's lavapipe did not
+run, as the machine had 4 GB of its 32 free while two other agents worked on it; macOS and Android
+were not built, and no Metal compiler has seen the shaders, so how SDL's fast-math MSL rounds them
+is not known. The effect gallery (`tools/effect_gallery.py`) did not run: the effect primitives'
+triangles, which the scene set and the load scenes show only some of, are held to the tolerance by
+`test_quad_instances` alone. The load scenes' times were measured on the build before the depths
+were handed over and textures not yet sent were cleared; the final build was timed against it on
+three scenes only (the two arrivals and the Emperium room, where the frames stayed within what the
+rounds spread over). Trilinear filtering, under which the atlas's pages have mipmaps, was checked by
+`test_gfx_gpu` only, in no capture. The GPU's own time was not measured, and no one played.
+
+## A player drawn without the disk, Lua or searches (2026-11-13)
+
+A sampling profile of the load scenes found that drawing a player took 28 µs (the War of
+Emperium's crowd) to 41 µs (Prontera's) of the main thread a frame, most of it work whose answer
+the frames before had already had. Each of these is a change of `custom`: the original does the
+same work every frame, as the addresses below show. The work was done and measured on the load
+scenes' commit (`88f1365a`), before the shadows were fitted on the GPU, Granny's actors skinned
+there and the shaders held to a tolerance (the entries above), and merged onto them afterwards.
+
+- **Robes.** A robe's sprite and action depend on the player's job (as `game_actor_get_job` gives
+  it), sex, robe and mount. The original's robe draw (`0x82f1b0`, which also asks `_New_DrawOnTop`
+  inline) builds both names (`0x879640`, `0x8795d0`) and asks the resource manager whether each
+  exists (`0x5013d0`) on every frame, for each of its two passes that draws. Most robes have no
+  whole-robe sprite, and the name tried first for it (`sprite\로브\<name>\<name>.spr`) is in no GRF,
+  so it was looked for on disk, a `FindFirstFile` of about 57 µs, each time. The player now keeps
+  the robe's sprite and action with the job, sex, robe and mount they were found for
+  (`struct PcRobeSprites`, `actor/types.h`), finds them again only when one of those changes, and
+  holds them locked as it holds its layer sprites.
+- **Lua.** `GetLayerPriority`, `_New_DrawOnTop`, `TB_Layer_Priority.IsIgnoredRidingState` and
+  `IsTopLayer` answer from their arguments and from tables their scripts set up as they load
+  (`TB_Layer_Priority`, the `_New_*LayerDir_*` tables, `LAYER_ALL_TABLE_LIST`, `LayerSizeTypeList`,
+  `RobeTopLayer`), which no other script of the game data names; `_New_DrawOnTop` also writes a
+  global `motInfo`, which only it and `DrawOnTop` read, after writing it. Their calls go through
+  `client_lua_call_pure` (`contents/client_lua_calls.h`), which remembers each answer by the call's
+  format and arguments in a memo of its own library (`contents/lua_memo.c`). Each function's
+  answers are kept apart from the others', in sets of eight by the key's hash: the memo doubles when
+  a new answer would take another's place, up to 16,384 answers of 68 bytes for one function, and
+  from then on a new answer takes the place of the one in its set used longest ago, so one
+  function's many answers never push out another's and nothing is ever emptied at once. The memo
+  trusts these functions to answer from their arguments alone, which the game data's do; another
+  data set's scripts might not, so one remembered answer in 256 is asked of Lua again, and a
+  function that then answers differently, or fails, is called every time from then on while the
+  state lives, and the debug output says so once. The answers are forgotten whenever a script is
+  loaded, and the functions too when the state is opened or closed again; a call with a string or
+  without results, a call that fails, and one too long to remember go to Lua every time. In the load
+  scenes a function kept at most 2,439 answers (`_New_DrawOnTop` in `town_prontera`, in 8,192
+  slots; its 2,330 in the Emperium room took 16,384), `GetLayerPriority` 256 and the other two at
+  most 22, and after the first call with given arguments nearly every call was answered from the
+  memo: in `town_prontera` 210,764 of `GetLayerPriority`'s 211,017 calls. `DrawOnTop`, used when
+  `_New_2DLayerDir_F` does not load, reads a global `robeID` that is not its argument, and is called
+  as before.
+  `OffsetItemPos_GetUppingBottomItem` was called for every layer of every player drawn, but its
+  answer was used only for the accessory's layer, which never reaches that function: the original's
+  only call of its depth bias (`0x830040`, from `0x910e4d`) takes layers 0, 1 and 5 to 7, and sends
+  the worn layers (2 to 4 and 8) to another (`0x82f0b0`). The call, and the cases for layers 2 to 4
+  that nothing reaches, are gone (`pc_body_layer_depth_bias`); the character windows' model
+  (`ui/render/character_render.c`) still asks it, so its scripts still load.
+- **The sprite atlas** found a frame's cell by walking every cell of the frame's size bucket: in the
+  Emperium room 6,458 lookups a frame over a bucket of 832 cells, 1.6 million cells. An index of its
+  own library (`render/atlas_index.c`) maps a frame's image, palette and size bucket to the cell
+  holding them; the atlas keeps it right as cells are taken, reused and invalidated and as pages
+  are purged or cleared. A frame not in the atlas still takes the first free or expired cell of its
+  bucket in page order, so every frame lands in the cell it landed in before.
+- **A player's frame** made three trees and two vectors and freed them again, copied the imf's and
+  the palettes' names to look them up, looked up `shadow.spr` and `shadow.act` by name for every
+  shadow, and allocated its pick box and the box's list node. The layers' sprites, views and queued
+  worn layers are arrays now (one quad per priority, the first queued keeping it, as the original's
+  `std::map` insert at `0x90f2d0` keeps it); the shadow's sprite and action are looked up once; and
+  the pick boxes (`world/pick_node.c`) are copied into storage the frames keep, so a frame
+  allocates nothing for them once the frames before held as many. The body palette (every actor's),
+  the head palette and the imf are a `NamedRes` (`resources/named_res.c`, a library of its own
+  with its own test): the name, and the resource it names, looked up the first time it is asked for
+  after the name is set, even to the same name, and held locked until the name is set again or the
+  actor goes. The resource cache's purges skip locked resources, so what a `NamedRes` holds stays
+  while its actor lives; actors are freed when they go, and all at once when the world's
+  objects are cleared on a map change, so what they hold is bounded by the actors alive: one
+  palette for each, and a head palette and an imf more for each player.
+- **What else asked the disk.** The resource manager's other questions in these frames are about
+  files the GRF has. The Granny models' bone animations asked for an absent `.gr2`, and opened and
+  read again one that is there but fails to load, each time an animation was played
+  (`resources/granny_res.c`, as the original's `0x9ff1f0` does: it looks for the file and loads it
+  whenever the entry has no animation); both are now remembered as unavailable for the rest of the
+  run, since the animation cache is cleared only at exit.
+
+The profile again after the changes (VSDiagnostics, 4 kHz, the same scripts; ms of the profiled
+runs' mean frame, which the sampling makes longer), taken on a build with one memo for all four Lua
+functions and without its checks, and without the pick boxes' kept storage or the bone animations'
+remembered absence:
+
+| work | Prontera before | after | Emperium before | after |
+|---|---|---|---|---|
+| the players' layers (`pc_render_body_layers`) | 7.23 | 0.80 | 4.99 | 0.96 |
+| disk searches (`FindFirstFile`) | 3.59 | 0 | 1.59 | 0.04 |
+| Lua calls | 1.43 | 0.01 | 1.36 | 0.11 |
+| the sprite atlas | 0.39 | 0.10 | 3.02 | 0.22 |
+| trees, vectors and the heap under the players' layers | 0.88 | 0.08 | 0.77 | 0.08 |
+| lookups by name under the players' layers and shadows | 0.28 | 0 | 0.24 | 0 |
+
+A player drawn in Prontera costs 4.4 µs instead of 40. The Emperium room's 0.04 ms of disk
+searches in that profile are the bone animations' searches, which the client now makes once.
+
+The load scenes before and after, three runs each by turns (before, after, before, ...),
+`RAGEXE_MSAA=4`, the median and, in brackets, the worst frame of all measured frames in ms, on a
+GTX 970 while other programs used the machine and its graphics card:
+
+| scene | `frame_ms` before | after | `objects_render_ms` before | after | `view_render_ms` before | after |
+|---|---|---|---|---|---|---|
+| `woe_emperium` | 39.20 (190.56) | 29.03 (130.43) | 17.47 (104.66) | 8.90 (66.56) | 20.15 (110.56) | 11.38 (79.72) |
+| `woe_choke` | 31.07 (152.11) | 22.76 (45.83) | 12.82 (80.90) | 6.78 (13.79) | 15.35 (85.24) | 9.06 (17.00) |
+| `arrive_castle` | 29.88 (297.32) | 23.85 (293.43) | 12.18 (28.41) | 6.37 (16.64) | 14.08 (30.49) | 8.32 (18.23) |
+| `bombers_ifrit` | 21.12 (122.90) | 16.63 (29.38) | 6.93 (84.21) | 4.41 (8.09) | 8.07 (85.97) | 5.49 (9.76) |
+| `arrive_prontera` | 15.71 (205.33) | 8.34 (208.18) | 8.54 (27.90) | 0.88 (17.57) | 10.65 (31.00) | 2.90 (20.28) |
+| `town_prontera` | 15.23 (29.68) | 7.44 (17.18) | 8.98 (19.31) | 0.83 (2.52) | 11.10 (22.48) | 2.79 (6.88) |
+| `mvp_randgris` | 8.49 (53.19) | 12.56 (102.99) | 2.10 (4.93) | 1.09 (4.24) | 2.56 (5.56) | 1.53 (11.09) |
+| `snow_lutie` | 8.88 (34.88) | 5.38 (44.87) | 4.41 (10.92) | 0.57 (3.12) | 5.74 (13.41) | 1.77 (13.56) |
+| `mvp_baphomet` | 7.70 (64.08) | 7.58 (42.38) | 2.03 (4.46) | 1.13 (2.96) | 2.91 (6.21) | 2.01 (4.59) |
+| `aoe_orc_dungeon` | 3.04 (34.53) | 3.01 (23.61) | 0.35 (2.05) | 0.30 (1.72) | 0.68 (2.70) | 0.65 (2.21) |
+
+`mvp_randgris`'s frame is longer after in all three runs by its present alone, the wait for the
+graphics card (3.0 to 4.5 ms a run before, 6.4 to 10.4 after), while every part the CPU spends is
+shorter (its objects 1.0 to 1.3 ms instead of 2.0 to 2.2); its present varies as much between runs
+of one client (3.9 to 12.7 ms in three runs of the old client at another time). `mvp_baphomet` and
+`aoe_orc_dungeon` draw few players, and their frames are the same within that noise.
+
+Validation: the regular scene set and every load scene at `RAGEXE_MSAA=1` against the client of
+`88f1365a`, run one after the other: all 38 regular captures and all 13 load captures are the same
+to the pixel, and the 13 again in a second pair of runs. The draws and texture binds of single
+frames differ by one or two between the two clients (`town_prontera`, `arrive_prontera`,
+`woe_choke`, `snow_lutie`), as they also differ between two runs of the same client
+(`town_prontera`, `arrive_prontera`, `woe_choke`): the ground's surfaces were sorted by the addresses
+of their textures and lightmap pages (`world/ground_load.c`), so which textures share an array, and
+with it the binds and merged draws a frame needs, could follow where the heap placed them (the next
+entry sorts them by the textures' serials). An earlier
+build of these changes once drew 139 pixels of damage digits in `mvp_randgris`'s last capture
+differently, with every count of every frame the same, in one of ten runs; it was not seen again,
+and its cause was not found.
+
+The tests of the three new libraries push them against references: `test_lua_memo` runs 300,000
+steps of stores, finds, growth and fresh starts against a list that keeps the sets and the order of
+use, and catches eight of ten mistakes made in the memo on purpose (the two it misses change nothing
+it can see: a key-length comparison that matters only for two keys of the same hash where one begins
+the other, and which free place a new function takes); `test_named_res` runs 200,000 steps of
+assigning, taking, asking and freeing against a model, counting every lookup and lock;
+`test_atlas_index` fuzzes the index against a list, and the atlas's test runs 180,000 steps of
+takes, uses, reuses, invalidations, purges and clears, each resolve checked against the cell a scan
+of the pages picks on the same state (`test_sprite_atlas`), and catches each of five mistakes made
+in the atlas on purpose. `test_lua_calls` checks the remembered answers, the calls that are not
+remembered (a string among the values, no result, a name too long), the checks (a function whose
+answer changed, and one that now fails, found out at the 256th answer, said once and called every
+time after, past a script load, until the state is opened again) and the bounds (20,000 answers of
+one function take 16,384 slots, keep its latest and leave another function's answer);
+`test_lua_boundaries` checks the forgetting on every script load, `test_resource_lifecycle` the bone
+animations that are absent or fail to load (not looked for, opened or reported again until the cache
+is cleared), `test_body_layer_slots` the arrays and that a player's frame allocates nothing,
+`test_pick_state` the kept storage. The effect trace's digest moves with the actors' layout
+(`tests/test_effect_trace.c` says how it was checked). `build.bat check` passes, and so does the
+whole suite (`tests\build.bat` with `ORACLE_EXE`): 334 tests and the oracle's 7.
+
+## Objects found and taken off their lists without a search (2026-11-13)
+
+A profile of the load scenes (`tests/scenes/load`; 4 kHz samples with stacks of the measured
+frames) found jobs that the client did per object or per draw every frame by walking a list. The
+original does the same walks (or, for the queues' references, nothing at all), so each change below
+is `custom`'s own; the order in which every list is walked, which decides the order the objects are
+processed and drawn in, is kept. It was done and measured on the load scenes' commit (`88f1365a`), as
+the entry above was, and merged onto the GPU line after it.
+
+- **Actors and skill units by their aid.** Every effect looks its owner up by aid each frame
+  (`effect_find_actor`, `0x9818d0` in the original: the actors, then the skill units). The original
+  walks the world's actors (`GetGameActorByAID`, `0x65c580`) and then its units (`sub_65c6a0`) for
+  the first with the aid, to the end where the owner is none; in the Emperium room, with 1,783
+  units, the units' walk took 3.7 % of a frame. `main` puts a cache in front of the actors' walk,
+  whose 4,096 slots hash the world's address with the aid, give up after 8 probes, keep at most
+  2,048 answers and remember absent aids until an actor joins; where it misses, it walks.
+  Each list now carries an index by aid (`world/id_index.c`, its own library `id-index`): an
+  open-addressed table of the aids, each with the chain of its entries in the list's order, so it
+  answers the first actor or unit with the aid in the list's order, as the walk did, with no limit
+  and nothing that hangs on an address. Each node of the list holds the object and its link in the
+  index (`struct ActorEntry`, `struct SkillEntry`), so the index's entries go with the list's nodes,
+  and the object keeps its node (`actor_node`, `unit_node`). The lists' storage, the actors' lookup
+  and their aid's setter are in `world/aid_index.c`, below the game state, whose packet handlers look
+  actors up too; joining and leaving the lists and the units' lookup in `world/aid_lists.c`.
+  An actor's or a unit's aid changes only through its setter once it may be on its list
+  (`world_set_actor_aid`, `world_set_skill_aid`), which moves the entry in the index and keeps its
+  place: an actor's entry messages set it after the actor joined in the move entry and for the store
+  assistant, and the vanish sets -1; packet `0x1c9`'s unit is made with aid 0 and a graffiti gets its
+  aid by message `0x16`. Several objects do share an aid: a unit kept for the hits it still plays
+  beside a new one of the same aid, or graffiti sent twice. An object is destroyed before its entry
+  leaves the list, as in the original, so it is still found while its destructor runs. The walks of
+  the actors by aid in `world_get_actor_or_player`, `world_actor_matches_global` and the guild
+  master's nearness check go through the index too.
+- **Units that leave while they play hits.** A unit the server says has left while it still plays
+  hits stays until they end. The original put its aid on a list (`world+0xd8`, gone through each
+  frame at `0x65e1a9`) that it never shortened until the map changed: from then on it removed every
+  unit with that aid as soon as it came, a new one the next frame, and the unit itself when the
+  server showed it again before its hits ended. The mark is now the unit's own (`SkillEntry`'s
+  node on `pendingSkills`), so it goes with the unit, and a kept unit that the server shows again
+  stays (`world_keep_skill`).
+- **Objects taken off the world's list.** `world_remove_object` searched the world's list of objects
+  for the object (the original's `0x65e620`, which the listing names `UIWindow::RemoveChild`); each
+  object now keeps its node on that list (`world_node`, set by `world_add_object`, through which
+  every object joins it), and an actor its node on the actors (`actor_node`), which the processing
+  of the objects searched for each object that ended. The search mattered where damage numbers come
+  in crowds: an actor's total damage (style `0x16`, the original's number routine at `0x767040`,
+  which the listing names `CSession::LaunchSkillSpecialEffect`) takes the actor's previous total
+  off, digit by digit, each through `0x65e620` over the whole list. The object given to
+  `world_remove_object` is now read, so it must be alive (the search only compared addresses); each
+  caller says why its object is: found on a list that only live objects are on, or one whose holder
+  is told when it goes.
+- **Attached effects taken off their actor's list.** Each digit's destructor sends message `0x30` to
+  its actor, whose handler (`sub_751dc7`, reached through the jump table at `0x75bc98`) walked the
+  actor's list of attached objects for it, after the routine above had already taken it off, so
+  the walk always ran the whole list. The attached objects are message effects (damage numbers,
+  marks, emotions, the miss mark, a costume, the cart, the falcon), each of which now keeps its node
+  on the list (`msg_effect_attach`) and sends it with `0x30`; the actor takes the node off only where
+  it holds the effect that sent it (`game_actor_detach`), so a node of another object changes
+  nothing. The routine's own walk for the old total stays.
+- **The queues' texture references.** `queue_append` took a reference to each queued draw's texture
+  and clearing the queues let each go again; the original's `CRenderer::AddPrim` (`0x4e60c0`)
+  queues the draw with none. The reference kept a texture that its owner let go between queueing
+  and drawing: a sprite or a cached texture loaded again, released or evicted while its draws are
+  queued (`tests/renderer_texture_owner_test.h`). The device now holds each surface the queues name
+  once a frame (`gfx_hold`, a reference taken by the first draw that names it) and lets the holds go
+  when the queues are cleared, so a surface goes at the moment it goes in `main`, and one that no
+  queued draw names goes at once. On the GPU line each queued draw of a Granny model's mesh also took
+  a reference to the model (`gfx_skin_addref`, "Granny's actors skinned on the GPU"), which clearing
+  the queues let go by walking every entry for them; the device holds those models the same way
+  (`gfx_hold_skin`, let go by `gfx_release_holds` with the surfaces), so clearing the queues walks
+  none, and `gfx_skin_addref`, which had no other caller, is gone.
+- **Two ways what is drawn hung on addresses.** An upload of the same pixels into the same unchanged
+  texture is skipped (`texture_upload_pixels`; `main` too). `main` kept the last upload of each
+  texture in a table of 8,192 slots keyed by the texture's address with 8 probes, which kept no
+  record where the slots near the address's hash were taken, so which uploads were skipped changed
+  with where the heap put the textures, and with them the version of a texture already drawn in the
+  frame, for which the device splits the frame's passes for a late upload (`add_upload`), a draw and
+  a texture bind more or fewer from run to run. Each texture now keeps its own last upload
+  (`struct Texture`, `lastUpload`). The ground's blocks in the static world sorted their surfaces by
+  their textures' and lightmap pages' addresses, unstably, so the order of a block's runs and of
+  the surfaces within a run changed from run to run; they sort by the textures' serials and then by
+  the surfaces' place in the block. A texture's serial is taken atomically, since the model loader's
+  thread makes textures too.
+- **Leftovers.** The skill unit's vector of cells (`0x410` in the original), which nothing ever
+  filled, there either (only its constructor, reset, destructor and release touch it; the release,
+  `0x89bdc0`, walks it and sends each cell's object a message through `sub_65ea80`), is gone with
+  that walk and `world_send_msg_to_object`; so is the message effect's float at `0x19c`, which the
+  float follower's step writes (`0x89d711`) and nothing reads.
+
+The client before these changes (built from the same tree) and this one, three runs a scene each,
+`RAGEXE_MSAA=4`, back to back by turns (each scene's runs alternate between the two clients, the
+order turned round each round), 600 measured frames (the arrivals 300) pooled over the runs; times
+in ms, the median frame and the worst, before → after, on a GTX 970 that other builds and runs
+shared, so the worst frames are noise:
+
+| scene | objects | `frame_ms` | worst frame | `effects_ms` | `effects_render_ms` | `actors_ms` | `objects_render_ms` | `draw_scene_ms` |
+|---|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,976 | 35.90 → 31.06 | 66.11 → 56.65 | 2.09 → 0.58 | 2.40 → 1.25 | 3.48 → 3.20 | 16.25 → 14.90 | 8.33 → 7.58 |
+| `arrive_castle` | 7,028 | 30.53 → 29.85 | 640.97 → 310.67 | 0.95 → 0.63 | 1.59 → 1.34 | 2.41 → 2.46 | 12.15 → 12.61 | 8.34 → 8.10 |
+| `woe_choke` | 11,290 | 28.58 → 26.08 | 61.01 → 48.42 | 1.66 → 0.61 | 2.05 → 1.28 | 2.50 → 2.55 | 11.94 → 11.56 | 6.97 → 6.52 |
+| `bombers_ifrit` | 5,559 | 19.62 → 17.33 | 31.12 → 37.21 | 0.39 → 0.42 | 0.73 → 0.77 | 4.52 → 2.35 | 6.60 → 6.75 | 4.92 → 4.75 |
+| `arrive_prontera` | 243 | 15.59 → 16.21 | 210.43 → 199.93 | 0.71 → 0.73 | 1.60 → 1.64 | 0.10 → 0.11 | 8.53 → 8.99 | 2.44 → 2.42 |
+| `town_prontera` | 243 | 14.46 → 14.40 | 127.96 → 54.62 | 0.64 → 0.64 | 1.51 → 1.48 | 0.10 → 0.10 | 8.59 → 8.48 | 1.86 → 1.81 |
+| `mvp_randgris` | 2,041 | 8.29 → 8.25 | 36.62 → 82.69 | 0.01 → 0.01 | 0.01 → 0.01 | 0.63 → 0.66 | 2.14 → 2.29 | 1.16 → 1.21 |
+| `mvp_baphomet` | 2,160 | 8.02 → 8.28 | 36.99 → 97.98 | 0.25 → 0.20 | 0.45 → 0.43 | 0.69 → 0.68 | 2.22 → 2.30 | 1.53 → 1.60 |
+| `snow_lutie` | 837 | 8.00 → 7.86 | 68.15 → 22.15 | 0.23 → 0.23 | 0.70 → 0.68 | 0.29 → 0.28 | 4.29 → 4.16 | 1.06 → 1.04 |
+| `aoe_orc_dungeon` | 731 | 2.88 → 2.88 | 22.20 → 61.37 | 0.01 → 0.01 | 0.01 → 0.01 | 0.10 → 0.11 | 0.36 → 0.37 | 0.21 → 0.22 |
+
+The Emperium room's frame is 4.8 ms shorter: 2.7 ms of it in finding the effects' owners by their
+aid, while the effects step (`effects_ms`) and while they draw (`effects_render_ms`); the walk also
+emptied the caches the rest of the frame worked from, so the objects' quads gain about 1.3 ms more
+and `renderer_draw_scene` 0.75 ms. Among the bombers, stepping the objects takes about half the
+time it took (4.52 → 2.35 ms). The other scenes are within the spread of their runs.
+
+A profile after (VSDiagnostics' CPU sampling at 4 kHz on `build.bat dbg`, the measured frames of two
+runs of each scene, against three runs of the Emperium room and two of the bombers before) puts
+`world_get_skill_by_aid` at 0.06 % of the Emperium room's main thread (3.70 % before) and the
+actors' lookup at 0.27 % (0.41 % with `main`'s cache and its walks); among the bombers
+`world_remove_object` at 0.04 % (10.64 %), the attached effects' leaving (`msg_effect_delete`) at
+0.07 % (3.67 %) and stepping the objects at 13.4 % (20.8 %). The queues' references cost 0.97 % of
+the Emperium room before (clearing the queues 0.62 %, the releases 0.35 %); the holds cost 0.33 %
+(taking them 0.31 %, letting them go 0.02 %), and appending an entry costs what it did (3.5 %). The
+search that remains is the routine's walk of the actor's attached list for its previous total
+(2.3 % among the bombers).
+
+Validation: at `RAGEXE_MSAA=1`, the captures of the regular scene set (38) and of the ten load
+scenes (13), the load scenes four times with each client by turns, are the same to the pixel as
+the client's before, with the same counters, and every measured frame has the same counts but where
+the runs of one client differ among themselves. The client before, over six to eight runs of each
+load scene, differs from itself in `arrive_prontera` (12 frames, by one or two draws and a texture
+bind), `snow_lutie` (98 frames of one run, by a draw and a texture bind), `town_prontera` (4
+frames) and `woe_choke` (1 frame of one run), and one of its eight runs of `bombers_ifrit` in its
+capture (140 pixels, by up to 100 steps). This client's four runs give the same counts in eight of
+the scenes, and differ in `arrive_prontera` (one or two draws in four single frames) and in
+`town_prontera` (one run of four in 23 frames, by up to two draws and a texture bind), where the
+client before differs too. Four more runs of each of those two, of this client linked without
+address space layout randomisation, differ there as well; but the heap's addresses still change
+from run to run in a program linked so, so that does not tell addresses from timing, and the cause
+of what remains in those two scenes is open. Of the
+timing runs' 39 captures at `RAGEXE_MSAA=4`, all are the same as the client's before, and each
+client's three runs are the same as each other. `build.bat check` passes, and so does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 334
+tests and the oracle's 7. `test_aid_lists` is new (seeded runs of actors and units joining, changing their aid, leaving and
+being processed, against walks of the lists and a model of the units that leave, and the cases by
+name: a unit that leaves view while its hits play and comes back with the same aid, before its hits
+end and after it went, a unit replaced while it plays hits, units that share an aid, removals from a
+destructor), and so is `test_attached_effects` (the hand-off of message `0x30`, with show_number's
+totals and an owner that goes first); `test_surface_lifecycle` checks the skipped uploads, `test_gfx_gpu`
+draws a held texture after its owner let it go, and `test_renderer_storage` one hold for each surface
+that queued draws name. Each of eleven changes that break a rule of the code under test (a leaving
+unit's mark ignored when the server shows it again, pushed twice or left behind when it goes; an
+actor's or a unit's aid set past its index; an actor's node left in the index; the sender's check,
+the node in `0x30` or its clearing when the owner goes; an upload's record not kept or its version
+not compared) makes its test fail. `test_effect_trace`'s digest moves with the objects' layout alone:
+built with the layout before (no `world_node`, no `actor_node`), the changed code gives the digest
+before.
+
+## The CPU fixes on the GPU line, and the load scenes again (2026-11-19)
+
+The two entries above were made on the load scenes' commit (`88f1365a`) and merged onto the GPU
+line after phase 7 (`plans/gpu-renderer.md`). Where they met the line:
+
+- **Granny's models held as the textures are.** Each queued draw of a Granny model's mesh took a
+  reference to its model, and clearing the queues walked every entry of every queue to let them go;
+  the entry above holds the textures the queues name once a frame instead and clears the queues
+  without a walk. The models are held the same way now (`gfx_hold_skin` beside `gfx_hold`, one
+  reference a frame however many of a model's meshes are queued, let go by `gfx_release_holds`), and
+  `gfx_skin_addref` goes. `test_renderer_storage` checks the hold (a model with two meshes queued
+  holds one reference until the queues are cleared), and `test_gfx_gpu` draws a model held twice
+  and given up by its owner before its draw.
+- **Textures.** Phase 7 locks only the atlas cell `texture_draw_sprite_frame` writes and sends a
+  texture's written rectangles; the first entry above finds the cell by an index and takes, for a
+  new frame, the cell the walk took; the second keeps each texture's last upload in the texture,
+  compared by the surface and its content version, which every unlock moves as it marks the
+  rectangle dirty, so an upload is skipped only where nothing was written into the texture since the
+  same one. None of the three changes what another writes or sends.
+- **A test that read a dead frame.** `test_renderer_storage`'s device stub remembered the surfaces
+  bound to its stages, and its tests bind surfaces that are their own locals; the next test's static
+  world draws read the stage 0 surface that the Granny test had left bound, which lay in the next
+  test's frame. It passed while that memory happened to read as no texture and failed once the
+  merge moved the frames. Each test now forgets its stages' surfaces when it ends.
+- **The effect trace** moves with both entries' layouts: its digest is `3445124eaf068fdb`, and built
+  with the objects' layout without `world_node` and `actor_node` it is the first entry's.
+
+Validation: the regular scene set (40 captures) at `RAGEXE_MSAA=1` and at 4 and every load scene
+(13 captures) at `RAGEXE_MSAA=1`, against phase 7's client (`27fded8f`), run one after the other
+after each of the two merges: every capture the same to the pixel, with the same counts in every
+counters file of the regular set. The load scenes' frames differ by a draw or a texture bind here
+and there in `arrive_prontera`, `town_prontera`, `woe_choke` and `snow_lutie`, where phase 7's
+client differs from itself the same way (its ground's surfaces sorted by their textures' addresses); the
+merged client run twice differs from itself in one value of one frame of `town_prontera`.
+`build.bat check` passes (1,873 files in 39 libraries, 1,152 objects, the shaders' check), and so
+does the whole suite (`tests\build.bat` with `ORACLE_EXE`): 342 tests and the oracle's 7.
+
+**The load scenes**, `tests/scenes/load.py`, `RAGEXE_MSAA=4`, 600 measured frames (the arrivals
+300): the merged client, phase 7's and the Direct3D 9 baseline (`02fc9e5e` with
+`tests/scenes/load/d3d9_baseline.patch`, FreeType), three rounds, in each round every scene run once
+by each client one right after the other, the clients' order turned round from round to round; the
+frames pooled over the rounds; on a GTX 970 at 1,600 by 900, with fewer other programs on the
+machine than before. `frame_ms` in ms, the worst frame with its round and its frame in the stretch:
+
+| scene | objects | merged | worst | phase 7 | worst | Direct3D 9 | worst |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,975 | 20.44 | 31.4 (3.336) | 30.70 | 51.9 (1.218) | 29.21 | 108.5 (3.532) |
+| `woe_choke` | 11,290 | 17.58 | 39.9 (2.238) | 23.78 | 41.7 (1.275) | 23.45 | 36.1 (3.375) |
+| `arrive_castle` | 7,028 | 17.63 | 336.2 (2.1) | 23.00 | 257.6 (3.1) | 21.70 | 247.0 (1.1) |
+| `bombers_ifrit` | 5,559 | 12.20 | 27.2 (2.82) | 16.48 | 40.3 (1.144) | 16.15 | 25.1 (2.536) |
+| `arrive_prontera` | 243 | 4.58 | 174.1 (1.1) | 11.87 | 168.2 (2.1) | 13.41 | 142.3 (2.1) |
+| `town_prontera` | 243 | 4.67 | 23.5 (3.469) | 11.33 | 17.6 (2.37) | 12.85 | 22.6 (3.512) |
+| `mvp_randgris` | 2,041 | 5.89 | 26.3 (2.45) | 5.91 | 24.3 (3.15) | 4.48 | 11.5 (1.574) |
+| `snow_lutie` | 837 | 3.61 | 22.6 (1.101) | 5.58 | 24.7 (3.133) | 7.72 | 16.4 (2.24) |
+| `mvp_baphomet` | 2,160 | 5.96 | 25.8 (1.161) | 6.26 | 28.0 (3.58) | 5.32 | 10.1 (3.517) |
+| `aoe_orc_dungeon` | 731 | 2.91 | 23.5 (1.28) | 3.01 | 21.6 (3.27) | 2.35 | 5.0 (2.564) |
+
+A scene's medians of the three rounds lie within 2.4 ms of each other for every client, but for
+two: the Direct3D 9 client's Emperium room (27.3 to 32.1 ms) and the merged client's busy Prontera,
+4.1 and 4.4 ms in two rounds and 9.1 in the first, where every part of the frame took about twice
+as long (the objects 1.27 ms against 0.66, presenting 1.47 against 0.82) with the same counts,
+which points at the machine rather than the client. The merged client's counts (draws, primitives,
+instance and texture bytes) are phase 7's.
+
+The parts' medians, merged / phase 7 / Direct3D 9, in ms:
+
+| scene | view | objects | effects | actors | effects step | draw scene | present | texels |
+|---|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 9.41 / 17.20 / 17.62 | 8.13 / 14.91 / 15.31 | 1.19 / 2.26 / 2.45 | 2.63 / 2.90 / 2.98 | 0.49 / 1.98 / 1.97 | 5.29 / 5.97 / 5.71 | 1.92 / 2.04 / 0.35 | 0.22 / 0.22 / 0.00 |
+| `woe_choke` | 7.93 / 12.82 / 12.95 | 6.65 / 10.95 / 10.67 | 1.23 / 1.93 / 2.10 | 2.08 / 2.05 / 2.04 | 0.51 / 1.48 / 1.46 | 4.58 / 4.92 / 5.56 | 1.75 / 1.74 / 0.66 | 0.19 / 0.19 / 0.00 |
+| `arrive_castle` | 7.07 / 12.01 / 13.17 | 5.77 / 10.50 / 11.27 | 1.22 / 1.44 / 1.65 | 1.79 / 1.84 / 1.90 | 0.49 / 0.82 / 0.83 | 5.29 / 5.35 / 4.63 | 2.18 / 2.11 / 0.30 | 0.54 / 0.54 / 0.00 |
+| `bombers_ifrit` | 5.21 / 7.04 / 7.30 | 4.51 / 6.33 / 6.22 | 0.67 / 0.67 / 0.75 | 1.74 / 3.80 / 3.82 | 0.30 / 0.32 / 0.31 | 3.73 / 4.01 / 3.50 | 0.80 / 0.80 / 0.51 | 0.13 / 0.13 / 0.00 |
+| `arrive_prontera` | 1.92 / 8.98 / 9.93 | 0.73 / 7.56 / 7.68 | 1.13 / 1.40 / 1.79 | 0.08 / 0.08 / 0.08 | 0.50 / 0.54 / 0.55 | 1.00 / 1.14 / 2.33 | 0.84 / 0.85 / 0.20 | 0.16 / 0.17 / 0.00 |
+| `town_prontera` | 1.97 / 8.76 / 9.65 | 0.74 / 7.43 / 7.58 | 1.19 / 1.33 / 1.63 | 0.09 / 0.08 / 0.08 | 0.56 / 0.50 / 0.44 | 0.99 / 0.95 / 2.24 | 0.88 / 0.83 / 0.19 | 0.08 / 0.07 / 0.00 |
+| `mvp_randgris` | 1.20 / 2.07 / 2.12 | 1.03 / 1.89 / 1.76 | 0.01 / 0.01 / 0.01 | 0.33 / 0.44 / 0.35 | 0.00 / 0.00 / 0.00 | 0.99 / 0.89 / 1.34 | 3.10 / 2.12 / 0.30 | 0.03 / 0.03 / 0.00 |
+| `snow_lutie` | 0.90 / 4.10 / 4.78 | 0.39 / 3.51 / 3.55 | 0.43 / 0.52 / 0.72 | 0.13 / 0.18 / 0.19 | 0.14 / 0.14 / 0.16 | 0.48 / 0.48 / 2.17 | 1.65 / 0.51 / 0.17 | 0.03 / 0.04 / 0.00 |
+| `mvp_baphomet` | 1.41 / 2.24 / 2.81 | 1.10 / 1.88 / 1.94 | 0.27 / 0.33 / 0.46 | 0.39 / 0.48 / 0.42 | 0.11 / 0.16 / 0.18 | 1.03 / 0.97 / 1.45 | 2.61 / 1.85 / 0.15 | 0.04 / 0.04 / 0.00 |
+| `aoe_orc_dungeon` | 0.27 / 0.36 / 0.62 | 0.24 / 0.34 / 0.32 | 0.01 / 0.01 / 0.01 | 0.05 / 0.07 / 0.05 | 0.00 / 0.00 / 0.00 | 0.16 / 0.17 / 1.01 | 2.34 / 2.31 / 0.21 | 0.00 / 0.00 / 0.00 |
+
+In the crowds the merged client's worst frames of the parts are the lowest or near them (the
+Emperium room's objects 13.1 ms, phase 7's 27.6 and Direct3D 9's 59.9); both GPU clients have
+single presents of 16 to 24 ms in most scenes. The first frame of an arrival (the median of the
+rounds') is 251 ms in the castle and 174 in Prontera, phase 7's 256 and 163, Direct3D 9's 226 and
+137: handling the packets of the crowd that appears takes 101 to 147 ms of it on each client, and
+the GPU clients spend 24 and 19 ms in `renderer_draw_scene` where Direct3D 9 spends 5 and 7, 16 and
+12 of them widening texels.
+
+What the numbers say: with the CPU's searches gone, the merged client's frame is two thirds of
+Direct3D 9's in the crowds (20.4 ms against 29.2 in the Emperium room, 12.2 against 16.2 among the
+bombers) and a third of it in Prontera (4.7 against 12.9). The objects' part, which was half of a
+crowded frame, is now 40 % of it, and the renderer's own work on the main thread a larger share:
+`renderer_draw_scene` and presenting take 7.2 of the Emperium room's 20.4 ms (Direct3D 9's 6.1 of
+29.2) and 4.5 of the bombers' 12.2. Presenting is where the GPU client stays behind Direct3D 9: 0.8
+to 2.2 ms in the crowds against 0.3 to 0.7, and 2.3 to 3.1 ms in the three light scenes, Randgris,
+Baphomet and the Orc Dungeon, the only ones where Direct3D 9's frame is the shorter (4.5 against
+5.9 ms in Randgris), against its 0.15 to 0.3. Why presenting takes that long in a light frame
+(recording, or waiting for the GPU while the frame before is drawn) was not profiled. For the plan
+this puts phase 8, the frame recorded and submitted on a thread of its own, first: it takes the
+part that Direct3D 9 does not pay in every scene. Phase 9's effect primitives and auras were
+profiled at 3.6 and 1.5 ms of a 30 ms Emperium frame on phase 7's client and were not profiled
+again: the CPU entries did not change how they are built, but the walks they removed ran inside the
+same parts of the frame, so what phase 9 would take of a 20 ms frame needs a profile of the merged
+client first. Phase 10 stays small: widening texels takes 0.1 to 0.5 ms of a steady frame, and 16
+and 12 ms of an arrival's first frame, beside 106 and 134 ms of packets that no GPU phase touches.
+
+Not checked: Linux, macOS and Android were not built; the frame time on the GPU was not measured;
+the effect gallery did not run; no one played.
+
+## The frame recorded on a render thread (2026-11-20)
+
+Phase 8 of `plans/gpu-renderer.md`, on the GPU line after the CPU fixes (`f555328e`). Presenting
+recorded the frame's passes into the GPU's command buffer, copied the frame's records into the
+transfer buffer and submitted it, all on the main thread; a thread of the device's own does that
+now, while the main thread records the next frame.
+
+**What presenting was.** A CPU profile of `f555328e` (VSDiagnostics' sampler at 4 kHz on a
+`build.bat dbg` build, one run of each scene cut to its 600 measured frames, `RAGEXE_MSAA=4`) gives
+the time presenting spent on the CPU; sampling sees no waits, so a build with wall-clock timers
+around the fence wait, the preparation, the command buffer's acquire, the recording and the submit
+(a measuring copy, not in the tree) gave the rest. The main thread, ms a frame:
+
+| | `woe_emperium` | `town_prontera` | `mvp_randgris` |
+|---|---|---|---|
+| frame (median) | 21.6 | 5.4 | 6.0 |
+| presenting (`present_ms`, mean) | 2.05 | 1.00 | 2.95 |
+| of it on the CPU | 2.02 | 0.98 | 1.18 |
+| recording the passes (`run_pass`) | 1.33 | 0.42 | 0.76 |
+| the compute and shadow passes recorded | 0.20 | 0.30 | 0.16 |
+| the records copied into the transfer buffer | 0.31 | 0.11 | 0.07 |
+| SDL's own bookkeeping (fences, command buffers) | 0.11 | 0.11 | 0.11 |
+| the rest (acquire, uploads, reset) | 0.07 | 0.04 | 0.08 |
+
+The waits come from a second run of each scene with the timed build, whose figures are its own
+and do not add up with the sampled run's (the timers' means over frames 300 to 800):
+
+| | `woe_emperium` | `town_prontera` | `mvp_randgris` |
+|---|---|---|---|
+| presenting (`present_ms`, mean) | 2.23 | 0.97 | 3.14 |
+| waiting for the GPU (the fence of the frame two before) | 0.01 | 0.02 | 1.92 |
+| recording the frame | 1.92 | 0.77 | 0.96 |
+
+In the crowds and in Prontera presenting was recording and copying. In the light scenes it was
+waiting for the GPU: the main thread waited 1.9 ms a frame in Randgris's fight, 2.7 in
+Baphomet's and 3.2 in the Orc Dungeon, and 0.1, 0.3 and 0.5 with `RAGEXE_SHADOWS=0`, which
+shortens those frames from 6.1, 7.9 and 4.2 ms to 3.8, 4.7 and 1.2 (with one sample the wait
+stays, 1.7 ms in Randgris). The GPU's time was not measured; that the GPU bounds those frames, and
+that the shadows' passes take about 2.3 to 3.2 ms of each, is inferred from the wait and from how
+much shorter the frames are without shadows. Then the frame is the GPU's: neither a thread that
+records nor more frames in flight nor another present mode shortens it, only less GPU work in the
+shadows would.
+
+**The design.** A frame is recorded into a packet of its own, a slot of a ring of four, and handed
+over whole at its end; the render thread records it into one command buffer and submits it.
+
+- *What it takes from whom.* id Software's split of the renderer into a front end that builds a
+  frame's commands into frame data and a back end that executes the previous frame's while the next
+  is built (id Tech 4's SMP renderer, its frame data double-buffered and swapped at the frame's
+  end): the packet holds everything its passes read, the swap is the one moment the threads meet,
+  and the back end runs one frame behind. bgfx's API thread and render thread: `bgfx::frame()`
+  waits for the render thread to finish the frame before, swaps and wakes it, two semaphores and
+  no lock on the frame's data, and handles freed in a frame are destroyed once the render thread
+  has executed it; the client's transient data (bgfx's transient buffers) is written by the
+  producer into the memory the frame is submitted from. Unreal's RHI thread: resources given up on
+  the rendering thread are deleted only after the RHI thread has passed the point where commands
+  recorded before could use them, and a read-back flushes and waits. Vulkan's frames in flight
+  (Khronos' samples): per-frame resources, here the transfer buffers, in a ring, reused once the
+  frame's fence has passed.
+- *The ring* (`render/frame_ring.c`, the library `frame-ring`, pure). Frame n lives in slot n % 4.
+  The main thread begins, posts and retires (takes back) frames; the render thread takes and
+  finishes them, one at a time and in order, and before it records frame n it waits for the GPU to
+  finish frame n - 2 (`FRAME_RING_IN_FLIGHT`, as before). The main thread may begin a frame only
+  once at most one frame is out, so the slot it fills held a frame whose GPU work the render thread
+  has waited for: four slots are one being recorded, one being submitted and two on the GPU.
+- *The thread* (`render/render_thread.c`, the library `render-thread`): one of SDL's threads, the
+  ring's counts kept under a mutex taken a few times a frame, and a condition each way for the side
+  that waits. The frames' data is never under a lock: a slot belongs to one side at a time.
+- *Records written once.* The frame's draw records, the wobble's tables, the instances' records and
+  their offsets, and the texels (with everything else that goes up: the world's records, slots,
+  cells and frame, the identity instances, the Granny models filled, the clearing blocks) are each
+  a stream in a transfer buffer of the packet's own, mapped while the frame is recorded and
+  unmapped when it is handed over, grown by a larger one with what was written copied over, and
+  made again small after 120 of its packet's frames in a row (480 of the client's) that needed a
+  quarter of one larger than 4 MB. What a caller
+  writes whole is not zeroed first. Every record goes through one small function that takes its
+  bytes from a stream (`bytes_at`, two calls or more for each quad drawn); a
+  stream's growth, which makes and maps a larger transfer buffer, is a function the compiler may
+  not inline into it (`RAGE_NOINLINE`): inlined, its locals and calls gave each of those calls a
+  stack frame, seven saved registers and a stack cookie, which a back-to-back CPU profile against
+  the line found as 0.34 ms of the Emperium room's `renderer_draw_scene` in that function alone. The world's draws' records, which they take as uniforms and no
+  shader reads from a buffer, are kept on the CPU, and so are the views the water draws with.
+- *Hand-over.* At a frame's end the main thread takes back the frame before once the render thread
+  has finished it (so that nothing the render thread reads changes now), grows the texture arrays,
+  sends the static world's stream up, stages the world's part, makes the frame's buffers large
+  enough, and hands the packet over with every GPU object its passes use as they are then: the
+  frame's buffers, the world's buffers and arrays and what its compute and shadow passes are given,
+  each pass's colour, resolve and depth textures and size (taken when the pass begins), each
+  upload's texture and array, each Granny draw's buffers. The shadow passes' draws, which the
+  render thread records, are counted then (`diag/perf.h`), in the frame they belong to.
+- *Giving up.* A GPU object the main thread gives up (a texture released, an array emptied, a
+  buffer or array grown, the world made again, the shadows' targets at a new size, the screen
+  resized, a scratch texture of a layer's mipmaps) goes with the next frame handed over and is
+  released by the render thread once that frame is submitted: every frame that could record it has
+  been recorded by then, and SDL keeps what a submitted command buffer uses. A surface or Granny
+  model given up while the frame being recorded draws with it goes when that frame is handed over,
+  as it went when the frame was submitted before: the render thread reads none, only the GPU
+  objects the packet holds.
+- *Presenting.* SDL lets the swapchain be acquired only on the window's thread, so the main thread
+  presents, in a command buffer of its own: at a frame's end it first takes the window's next
+  picture, which with vsync waits for one, while the render thread still records and submits the
+  frame before and the GPU draws; once that frame is back it puts the screen, as that frame left
+  it, into the picture, and then hands the new frame over. A frame is shown at the next present, as
+  Direct3D 9's driver queued a frame. Nothing is shown until a frame drawn into the screen as it is
+  has been submitted (the first, and the first after a resize). The new frame is not handed over
+  before the present: the present's submit is one at which SDL moves memory (below), so it must
+  not fall while the render thread records, and a frame handed over first would then wait for it,
+  or be shown at its own present or the next depending on which thread came first.
+- *Command buffers one at a time.* SDL 3.4's Vulkan driver moves textures and buffers to other
+  memory when a command buffer is submitted (`VULKAN_Submit` runs `VULKAN_INTERNAL_DefragmentMemory`
+  on every submit while no window is claimed, and on the submits that present while one is): it
+  copies an allocation's contents in the command buffer being submitted and points the textures'
+  and buffers' handles at the new memory, leaving only allocations with an upload or download
+  pending in some command buffer, and never a transfer buffer (each its own allocation). A render
+  pass or a bind takes a texture's or buffer's memory as it is recorded, so a submit on the main
+  thread while the render thread records a frame, which `SDL_CreateGPUTexture` makes too (SDL
+  submits a command buffer for every texture it makes), could leave that frame's earlier passes
+  drawing into the old memory and its later ones and the screen's read reading the new: in the
+  scene harness, the GPU tests and the headless playground (no window), and in a client before its
+  window is claimed. So command buffers are recorded one at a time, under one mutex of the
+  device's: the render thread holds it from acquiring a frame's command buffer to submitting it
+  (not while it waits for the GPU), the main thread while it records and submits one of its own
+  (the present's blit, the static world's stream, the reads) and while SDL makes a texture. The
+  main thread then waits at most for the render thread's recording, about 1 to 2 ms, never for its
+  wait on the GPU, and only in a frame that makes a texture before that recording is done; the
+  textures stay the main thread's to make when a draw first needs them, and SDL's API has no way to
+  keep an object where it is.
+- *Failures.* The device is made whole or not at all: a setup that cannot make one of its objects
+  or its thread lets go of what it made. A frame the main thread cannot hand over whole (a buffer
+  it needs cannot be made) puts back its uploads at once. A frame the render thread cannot submit
+  puts them back when it is taken back, at the next frame's end; that next frame was recorded on
+  the uploads having gone up, so it is dropped as well, and the one after is recorded with them.
+- *Across the hand-off.* A read of the screen (`gfx_read_frame`: screenshots, the harness's
+  captures) hands the frame over with a download of it, which the render thread waits for and
+  copies out while the main thread waits, so it reads the frame just drawn, as before; the other
+  reads (`gfx_read_shadow_fit`, `gfx_read_texture_level`) wait for every frame handed over to be
+  submitted first. The wobble's copy of the screen and the copies between targets are steps of the
+  frame with their textures; the copy texture made again at a new size is given up as above. The
+  composited windows' targets are pinned by the frames that draw into them. Textures changed after a
+  frame's first draw go up between its passes, as before. The static world's stream stays on the
+  main thread, its batches in command buffers of its own that it waits for; what it grows is given
+  up as above. A resize hands over and waits for what was recorded, then makes the screen's
+  textures again. Closing the device hands over and waits, stops the thread (which runs whatever was
+  handed over), waits for every frame's fence and the GPU, and releases everything. A frame while
+  the window is minimised is recorded and submitted as any other, and the present finds no picture
+  to put it in.
+- *One path.* The single-threaded flush, the one transfer buffer that every frame's bytes were
+  copied into, the device's list of fences and the dead textures collected after each flush are
+  gone; there is no switch back.
+
+Tests. `test_frame_ring` (pure) explores every ordering of the three parties over twelve frames:
+the main thread beginning, posting and retiring whenever the ring lets it, the render thread taking
+a frame, waiting for the GPU to finish the frame the ring names, recording it and finishing it, and
+the GPU finishing the frames submitted in order. In every reachable state a slot is filled again
+only once its last frame was retired and finished on the GPU, the render thread takes the frames in
+order and only once posted and finds the frame it waits for still in the slot the ring names (its
+fence lives there), and something can always go on until every frame is back; besides, the calls
+with nothing to act on answer so and change nothing. Changing the rule for beginning a frame, or
+the frame waited for, fails it. `test_render_thread` runs the thread on 20,000 frames with no GPU:
+the main thread fills each packet with a pattern of its own, posts it and retires frames at random
+points, both sides pausing at random; the thread finds every packet as it was filled, in order, and
+the frame it waits for submitted, and the main thread never fills a slot whose frame has not been
+run and finished. `test_gfx_gpu`, `test_quad_instances` and `test_skin_instances` run the device
+with its thread as they did without it. `test_gfx_gpu_faults` includes `render/gfx_gpu.c` with the
+SDL calls it makes passed through the test, which can fail them and watches them: each of the 37
+objects the device's setup makes failing in turn, and the render thread failing to start, leave
+the device whole or absent and nothing made kept, and the device made next draws; with the render
+thread's passes slowed by a millisecond each and a texture made on the main thread every frame, no
+command buffer is submitted or texture made on the main thread while the render thread records one,
+and the frames read show their textures; after a frame the render thread could not submit, and
+after one dropped on the main thread for a buffer that could not be made, every frame read shows the
+texture those frames were to take up. With the device's recording not held it fails at its check
+of the main thread's submits; without dropping the frame after one not submitted, at its first read;
+without a failed setup letting go, at its check that the device is whole or absent.
+`test_gfx_gpu` draws two wobbles in one frame besides, each with a table of its own, so that each
+draw must find its own record through the identity instances the frame's upload fills: with one
+wobble a frame, whose table lies at the start of the frame's tables, a draw that read another
+record's place found the same table.
+
+Captures: `f555328e`'s scene client and this one, one right after the other, with `RAGEXE_VSYNC=0`
+and SDL's dummy audio: the scene set (19 scripts, 40 captures) at `RAGEXE_MSAA=1` and 4, with and
+without shadows, and every load scene at `RAGEXE_MSAA=1` (13 captures). Every capture is the same to
+the pixel, and every counters file holds the same counts, but for one capture of `arrive_castle` by
+`f555328e` in the last comparison, 229 pixels apart from this client's: three more runs of each
+client, by turns, all gave this client's picture, as had the comparison before. The load scenes'
+frames, counted one by one (`frames.jsonl`), hold the same counts too but for the draws of a few
+frames, one or two more or fewer: in the last comparison 6 of `arrive_prontera`'s 300, 12 of
+`town_prontera`'s 600 and one of `woe_choke`'s, in the one before one frame each of
+`arrive_prontera` (frame 235) and `town_prontera` (115). The client batches by its textures' arrays
+in a way that depends on where its memory lies, which this change moves. `f555328e` built with 3,000
+small allocations made and kept when the device is made, and nothing else changed, differs from
+`f555328e` the same way (9 frames of `arrive_prontera`, 20 of `town_prontera`, among them the same
+frames), and `f555328e` run twice differs from itself in one frame of each, the same two frames 235
+and 115. The client also differs from itself now and then in what it draws: one of six runs of
+`f555328e` drew one sprite more in a frame of `woe_emperium` and its capture differed in 61 pixels,
+and one of thirteen runs of this client in a capture of 201 pixels (a damage number's digit placed
+otherwise), with the same counts. Neither comes from the render thread; neither is found yet.
+
+Validation: with the Khronos validation layer (synchronization validation on, and its other checks,
+thread safety among them) and SDL's debug checks (`RAGEXE_GPU_DEBUG=1`), `test_gfx_gpu` at 1 and 4
+samples and under the offscreen video driver, `test_gfx_gpu_faults` (its 41 devices, the failed
+setups among them), `test_quad_instances` (20,000 records a kind) and
+`test_skin_instances` at both sample counts, every scene of the scene set at 1 and 4 samples and
+three load scenes (`woe_emperium`, `arrive_prontera`, `mvp_randgris`, 120 measured frames each)
+run without a message but the layer's own note on its settings.
+
+**The load scenes**, `tests/scenes/load.py`, `RAGEXE_MSAA=4`, 600 measured frames (the arrivals
+300): this client, the line's (`f555328e`) and the Direct3D 9 baseline (`02fc9e5e` with
+`tests/scenes/load/d3d9_baseline.patch`, FreeType; its tree checked to be that commit with exactly
+the patch), three rounds, in each round every scene run once by each client one right after the other,
+the clients' order turned round from round to round; the frames pooled over the rounds; on a GTX
+970 at 1,600 by 900, the scene harness's window never shown, so that no frame waits for a
+swapchain (`RAGEXE_VSYNC=0` as well): presenting with vsync is not measured. `frame_ms` in ms, the
+worst frame with its round and its frame in the stretch:
+
+| scene | objects | this client | worst | the line | worst | Direct3D 9 | worst |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,975 | 18.18 | 29.7 (1.350) | 20.23 | 28.9 (3.356) | 27.04 | 40.6 (1.266) |
+| `woe_choke` | 11,290 | 15.31 | 24.1 (1.441) | 16.95 | 28.2 (1.189) | 22.80 | 44.7 (1.405) |
+| `arrive_castle` | 7,028 | 14.62 | 231.9 (3.1) | 16.27 | 259.1 (2.1) | 20.51 | 211.5 (1.1) |
+| `bombers_ifrit` | 5,559 | 10.74 | 18.2 (1.71) | 11.60 | 27.9 (2.88) | 15.02 | 21.0 (2.598) |
+| `arrive_prontera` | 243 | 3.54 | 146.8 (3.1) | 3.93 | 158.5 (2.1) | 12.25 | 130.2 (1.1) |
+| `town_prontera` | 243 | 3.52 | 6.6 (2.7) | 3.65 | 7.7 (3.161) | 12.06 | 15.4 (3.451) |
+| `mvp_randgris` | 2,041 | 5.50 | 25.6 (3.157) | 5.53 | 25.0 (2.157) | 4.08 | 8.7 (1.231) |
+| `snow_lutie` | 837 | 3.38 | 23.7 (2.203) | 3.38 | 22.6 (3.104) | 7.01 | 9.7 (2.147) |
+| `mvp_baphomet` | 2,160 | 5.54 | 21.9 (1.421) | 5.54 | 26.5 (2.49) | 4.70 | 8.7 (1.336) |
+| `aoe_orc_dungeon` | 731 | 2.78 | 22.5 (2.298) | 2.78 | 22.4 (2.142) | 2.32 | 4.1 (3.64) |
+
+The parts the change touches, and the texels widened (`texels_ms`, the textures' pixels into
+B8G8R8A8 as they go up, which Direct3D 9 did not do), medians (the worst for presenting), this
+client / the line / Direct3D 9, in ms:
+
+| scene | present | its worst | draw scene | view | texels |
+|---|---|---|---|---|---|
+| `woe_emperium` | 0.02 / 1.88 / 0.31 | 0.0 / 3.7 / 1.0 | 5.28 / 5.37 / 5.24 | 9.08 / 9.19 / 16.42 | 0.22 / 0.22 / 0 |
+| `woe_choke` | 0.02 / 1.69 / 0.65 | 0.0 / 2.7 / 1.7 | 4.55 / 4.40 / 5.25 | 7.70 / 7.71 / 12.70 | 0.20 / 0.19 / 0 |
+| `arrive_castle` | 0.02 / 2.04 / 0.32 | 0.0 / 23.6 / 0.9 | 5.03 / 4.88 / 4.33 | 6.72 / 6.80 / 12.43 | 0.55 / 0.54 / 0 |
+| `bombers_ifrit` | 0.01 / 0.75 / 0.53 | 0.0 / 17.6 / 1.3 | 3.58 / 3.59 / 3.19 | 4.91 / 4.99 / 6.90 | 0.13 / 0.13 / 0 |
+| `arrive_prontera` | 0.01 / 0.77 / 0.21 | 20.1 / 22.0 / 0.6 | 0.91 / 0.89 / 2.10 | 1.55 / 1.65 / 9.24 | 0.16 / 0.15 / 0 |
+| `town_prontera` | 0.01 / 0.76 / 0.21 | 1.9 / 1.6 / 1.0 | 0.81 / 0.76 / 2.03 | 1.53 / 1.55 / 9.18 | 0.07 / 0.07 / 0 |
+| `mvp_randgris` | 3.17 / 3.10 / 0.29 | 23.2 / 22.7 / 2.9 | 0.69 / 0.72 / 1.22 | 1.10 / 1.15 / 2.01 | 0.03 / 0.03 / 0 |
+| `snow_lutie` | 1.77 / 1.77 / 0.18 | 22.2 / 20.9 / 0.7 | 0.43 / 0.45 / 1.97 | 0.79 / 0.79 / 4.43 | 0.03 / 0.03 / 0 |
+| `mvp_baphomet` | 2.84 / 2.59 / 0.15 | 17.7 / 21.3 / 0.7 | 0.84 / 0.88 / 1.32 | 1.27 / 1.36 / 2.54 | 0.04 / 0.04 / 0 |
+| `aoe_orc_dungeon` | 2.23 / 2.23 / 0.21 | 22.1 / 21.8 / 2.3 | 0.16 / 0.15 / 1.00 | 0.26 / 0.26 / 0.58 | 0 / 0 / 0 |
+
+Presenting took the main thread 1.7 to 2.0 ms a frame in the crowds and 0.75 among the bombers and
+in Prontera; it takes 0.01 or 0.02 ms now, and its worst frame in the crowds and among the bombers
+is under 0.05 ms where the line's reached 2.7 to 23.6 (in an arrival's first frame in Prontera it
+still waits 20 ms for the render thread). The frame is 2.0 ms shorter in the Emperium room (18.2
+against 20.2 ms), 1.6 at the choke and arriving at the castle, 0.9 among the bombers, 0.4 arriving
+in Prontera and 0.1 in Prontera's street. `renderer_draw_scene` is the line's within 0.15 ms (5.28
+against 5.37 in the Emperium room, 4.55 against 4.40 at the choke). The main thread's waits for the
+render thread's recording when it makes a texture, timed in a separate build, are 0.02 ms a frame
+in the Emperium room and 0.03 among the bombers (two or three textures a frame) and 120 ms in all
+over the castle's arrival. In the light scenes nothing changes, as the profile said: presenting is
+the wait for the GPU, and the frames are the line's (5.50 against 5.53 ms in Randgris, 5.54 in
+Baphomet's fight, 3.38 in Lutie's snow and 2.78 in the Orc Dungeon on both); Direct3D 9's frame
+stays the shorter in Randgris, Baphomet and the Orc Dungeon. Each client's rounds' medians lie
+within 0.25 ms of each other in every scene but the line's choke and arrival at the castle (0.3 and
+0.4) and Direct3D 9's (0.5 and 0.3). The first frame of an arrival takes 230 ms in the castle and 138 in Prontera (the line's 248 and
+139, Direct3D 9's 212 and 130), most of it handling the packets of the crowd that appears (133 and
+99 ms), 17 and 12 ms widening texels.
+
+`build.bat check` passes (the include check over 1,877 files in 41 libraries, the link check over
+1,154 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 345 tests and the oracle's 7. On Linux, in WSL with GCC, the client, its scene
+harness and the tests of the ring and the thread build and pass, and `test_gfx_gpu` passes on Mesa's
+lavapipe at 1 and 4 samples under the offscreen video driver, whose window gets a swapchain there,
+so its frames are presented through the main thread's own command buffer. Not checked: presenting
+into a real window on Windows (the scene harness's window is never shown, and the GPU tests'
+offscreen window gets no swapchain from NVIDIA's driver), so the frame shown a present late has
+been seen by no one and the wait for the window's picture beside the render thread's work was
+never timed; `test_gfx_gpu_faults` runs on Windows only; macOS and Android were not built; the GPU's own time was not measured;
+no one played.
+
+## The netcode and the GPU renderer in one tree (2026-11-20)
+
+Decided with Patrick on 2026-11-20: the line that moved the client to one 64-bit renderer on SDL's
+GPU API and one CMake test suite, and the line that brought the netcode (ENet, the delivery piece,
+timed requests, the predicted world, presence, the drawn place, the playground), are one tree. The
+two had parted at 17db3ca0. Where both changed the same thing, the merge keeps what each did and
+removes what one made dead; the GPU line's build and test suite are the only ones left.
+
+- **The renderer.** The netcode's changes to `render/gfx_d3d9.c`, `render/gfx_gl.c`,
+  `render/text_freetype.c`, `tests/test_gfx_gl.c` and `tests/oracle/build.bat` were all one
+  commit, the canvas lock fix from `main`, which the GPU line had picked onto `render/gfx_gpu.c`
+  and its oracle CMake; those files stay deleted. In `render/c3ddevice.c`, `render/csurface.c`,
+  `render/frame_capture.c`, `render/gfx.h`, `tests/scenes/scene_driver.c`,
+  `tests/test_jpeg_capture.c` and `tests/test_text_freetype.c` the netcode line had that same fix
+  only, so they are the GPU line's. `world/ground_water.c` had the water angle fix twice, picked
+  from `main` and made on its own by the static world; the GPU line's form is kept
+  (`docs/upstream/README.md`).
+- **The net overview.** `RAGEXE_NET_OVERVIEW`'s two lines (`game/net_overview.c`) were drawn into
+  the frame with `renderer_text_out`, which the GPU renderer no longer has: nothing draws text into
+  the frame. They are written into a bitmap each frame and shown as a quad over everything the
+  frame holds, the mouse cursor included (`dc_bitmap_draw_on_top`), as the login screen's serial
+  number is; the game mode's frame queues them before the scene is drawn.
+- **ENet in the build.** `build.bat` compiles with ENet's headers and links `vendor\build_vendor.bat`'s
+  `enet.lib`; the scene harness and the playground leave out `platform/net_enet.c` as they leave
+  out the other socket files. In the test suite `platform/net_enet.c` links `rage_enet`, and it
+  and `platform/net_win32.c` compile with `_WINSOCK_DEPRECATED_NO_WARNINGS` at `/W4`, as the
+  netcode's tests held them. `tests/headless_win32.h`, which wrote `net_win32.c`'s two message
+  boxes about Winsock's `send` and `recv` to stderr, goes: the ENet transport removed those boxes.
+- **The tests.** Every test the netcode line added or changed is a declaration in
+  `tests/CMakeLists.txt`, and its batch file is gone: `act_track`, `body`, `clock_sync`, `drawn`,
+  `grid_path`, `lossy_link`, `move_track`, `own_swing`, `predicted`, `record_wait`,
+  `render_delay`, `skill_poses`, `swing_pace`, `view_floors` and `way_up` in the Windows section;
+  `platform_net` (now over ENet and the delivery piece), `connection`, `delivery` and
+  `delivery_route` for every platform, as the netcode's CMake had the last three;
+  `attack_records`, `packets`, `path_info` and `pathfinder_owner` link the netcode's files their
+  batch lines had. Each declaration has its batch file's sources, warning level and arguments;
+  the pure pieces they compiled at `/W4` are held to `/W4` in the client libraries. `drawn`
+  compiles its own copy of `world/drawn.c` as C99, which MSVC compiles in its default mode, since
+  the piece has to compile without `/std:c11`. `tools/check_body_copy.py`,
+  `tools/check_delivery_copy.py` and `tools/check_one_world.py` are the tests `body_copy`,
+  `delivery_copy` and `one_world`, beside `tools\check_libraries.bat`. `tests\measure_requests.bat`
+  goes: `measure_requests` is built with the suite and not run by it, since it takes real time.
+  The suite has 366 tests where the GPU line had 345.
+- **What 64 bits changed in the netcode's code.** At `/W4` the 64-bit build warns where
+  `contents/connection.c` handed a `size_t` difference of a queue's positions to an `int`
+  length; it takes `byte_queue_size`, which gives the same difference as an `int`.
+  `test_attack_records` passes the widened `intptr_t` values it records to `hit_shows` as the
+  milliseconds they are. The rules shared with the server (`src/body`, `src/delivery`) were not
+  changed: their layout checks give the same sizes on 64 bits. Two places in the client keep the
+  core's arena 8-aligned because a 32-bit stack is not (`world/predicted.c`'s trial block,
+  `game/own_body.c`'s static world); they keep it aligned on any build and stay as they are.
+- **Digests.** `test_effect_trace`'s trace is the GPU line's line for line but for the actor's
+  size (1,824 bytes, the netcode's fields, where it was 1,512) in its state's line and the lines
+  of the effects that construct a copy of it. `test_game_mode_layout`'s trace is the GPU line's
+  without the list of pickup requests' allocation and free in each of its 32 rounds.
+- **The playground** (`tests/playground`) is built as the scene harness is now: 64-bit, the C
+  runtime linked in, with `scene_app_hidden.c` and `scene_window_win.c`, so its window is never
+  shown and the GPU device draws without a swapchain; the hidden window and Granny's clock it set
+  up itself went with the 32-bit client. `tools\find_wasm_clang.bat` picks the clang that builds
+  `drawn.wasm` and `grid_path.wasm`: Visual Studio's own clang, which the 64-bit environment puts
+  first on PATH, has no wasm32 target.
+
+Validation: `build.bat check` and the whole suite with the oracle tests (365 tests and the 7 oracle
+tests) pass, but for the check that `src/body` is the server's: the server's body core in
+`ring-buffer`'s `action-timing` worktree has a newer rule (`body_hold_until`), so `body_copy` fails
+on the merged tree as on the netcode line's tip, whose `src/body` the merge keeps unchanged. In the
+first whole run `gfx_gpu_faults`, whose code the merge does not touch, crashed after an injected
+shader failure while other GPU tests ran beside it; in seven runs after (alone, beside the other
+GPU tests, and in a second whole run) it passed. The playground, 2 seeds of 20 s, gives the merged
+client and the netcode line's 32-bit client the same findings to the word, against the server at
+e1a2520, before that rule (no finding on screen, no request late, the own body through the piece on
+time, the predicted body off the server's 3 times in 1,250 ticks of the second seed, 2 hits drawn
+0.08 cells from the server's place on average), and at ab316f9, with it (6 findings each, the own
+character drawn at no cell, the predicted body not measured). Every tick the runner records is 16
+ms (one frame) earlier with the merged client, from entering the map on. The GPU line's scene set,
+run with the GPU line's client and with the merged one back to back: 37 of 40 captures are
+identical to the pixel; `granny_actions`, `granny_actions_later` and `measure_frames` differ where
+their scripts move actors with the original's packets, which the netcode no longer acts on as the
+original did: `ZC_NOTIFY_MOVE` (0x86) moves no actor, so the walking guardian and the Poring stand,
+and the guardians that `ZC_NOTIFY_ACT` (0x8a) has attack the player show no attack motion. The
+motion scenes (`tests/scenes/motion`, whose player walks by `ZC_NOTIFY_PLAYERMOVE`, 0x87) and the
+load scenes (`tests/scenes/load`) stage their walks and attacks with the same kind of packets;
+staging them with the netcode's records is open. Not checked: the Linux, macOS and Android builds;
+the client in a shown window; play by a person.

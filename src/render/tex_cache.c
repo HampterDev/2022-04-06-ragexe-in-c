@@ -4,6 +4,7 @@
 #include "fileio/resource_api.h"
 #include "render/cache_lock.h"
 #include "render/render_api.h"
+#include "render/gfx.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -267,6 +268,9 @@ void texcache_reload_all(struct TexCache *cache)
         }
     }
     cache_leave(section);
+    /* custom: the static world holds copies of the textures' pixels, at their old size and
+       mipmaps: it is made again from the new ones (render/gfx.h, gfx_world_generation) */
+    gfx_world_clear();
 }
 
 void texcache_evict(struct TexCache *cache)
@@ -283,7 +287,6 @@ void texcache_evict(struct TexCache *cache)
             ++i;
     }
     platform_heap_compact();
-    gfx_evict_managed_textures(&g_3dDevice);
     cache_leave(section);
 }
 

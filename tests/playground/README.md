@@ -12,8 +12,8 @@ Windows only so far: `build.bat`, then `tests\playground\build.bat`, which links
 
 ## What is swapped
 
-Everything the scene harness swaps (the clock, the sockets, the threads, the settings store,
-the cursor and key state, Granny's clock, the crash dialog), and in the place of
+Everything the scene harness swaps (the clock, the sockets, the threads, the settings store, the
+window, which is never shown, the message boxes and the crash dialog), and in the place of
 `scene_driver.c`:
 
 | file            | what it does                                                                  |
@@ -21,7 +21,8 @@ the cursor and key state, Granny's clock, the crash dialog), and in the place of
 | `play_driver.c` | each tick: reports the frame to the runner, waits for its answer, does it      |
 | `play_link.c`   | the line to the runner: one blocking TCP connection on this machine            |
 
-The client is silent in a run whatever its saved options say, and its window is hidden.
+The client is silent in a run whatever its saved options say, and its window is never shown, so
+the GPU device draws its frames without a swapchain, as in a scene run.
 
 ## A tick
 

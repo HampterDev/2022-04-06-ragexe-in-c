@@ -237,8 +237,11 @@ int main(int argc, char **argv)
     for (i = 0; i < trace_count * sizeof *trace; ++i)
         digest = (digest ^ ((const unsigned char *)trace)[i]) * UINT32_C(16777619);
     /* The screenshot prefix and the list of pickup requests are gone: each was one allocation
-       and one free a round. */
-    assert(trace_count == 6402 && digest == UINT32_C(0x10e9cde8));
+       and one free a round. The 64-bit trace with the list (digest 0d45e24c) is this one but for
+       the list's 16-byte allocation and its free in each round; that one is the 32-bit one
+       (digest 274efe64) but for the sizes of 384 allocations holding pointers: 32 bytes for 16,
+       16 for 8 and 192 for 100. */
+    assert(trace_count == 6402 && digest == UINT32_C(0xbcbf7528));
     if (argc == 2) {
         FILE *file = fopen(argv[1], "wb");
         assert(file && fwrite(trace, sizeof *trace, trace_count, file) == trace_count);

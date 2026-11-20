@@ -78,7 +78,7 @@ struct ResMgr * g_resMgr(void) { abort(); }
 struct GameMode * game_current_mode(void) { abort(); }
 unsigned char navi_result_name_greater(struct SearchResult * arg0, const struct SearchResult * arg1) { abort(); }
 unsigned int number_truncate_low32(double arg0) { abort(); }
-void std_sort(void * arg0, void * arg1, unsigned int arg2, unsigned char (*arg3)(const void *, const void *, void *), void * arg4) { abort(); }
+void std_sort(void * arg0, void * arg1, size_t arg2, unsigned char (*arg3)(const void *, const void *, void *), void * arg4) { abort(); }
 void std_vector_bytes_resize_fill(struct Vec * arg0, unsigned int arg1, const char * arg3) { abort(); }
 struct UIWindow * ui_window_open(int arg0) { abort(); }
 

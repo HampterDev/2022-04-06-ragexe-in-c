@@ -9,10 +9,11 @@
 #include "platform/clock.h"
 #include "render/fonts.h"
 
-#ifdef _WIN32
-#define PERF_RENDERER "Direct3D 9"
+/* the one GPU driver the device asks SDL for (render/gfx_gpu.c) */
+#ifdef __APPLE__
+#define PERF_RENDERER "Metal"
 #else
-#define PERF_RENDERER "OpenGL"
+#define PERF_RENDERER "Vulkan"
 #endif
 
 struct perf_counters g_perf;
@@ -24,7 +25,7 @@ struct perf_counters g_perf;
 #define OV_MARGIN 8
 
 static const char *const phase_name[PERF_N] = {
-    "frame", "scene", "destroy", "endscene", "overlay", "targetlock", "present", "text", "texlock",
+    "frame", "scene", "destroy", "endscene", "overlay", "present", "text", "texlock",
     "l_ground", "l_water", "l_multitexture", "l_blended_nodepth", "l_alpha_nodepth", "l_alpha_depth", "l_additive_fog", "l_alphatest",
     "l_alpha_writedepth", "l_alpha_cutout", "l_additive", "l_blended_wrap", "l_additive_overlay", "l_overlay_ordered", "l_blended_overlay",
 };
@@ -44,11 +45,6 @@ static struct {
         struct perf_counters per;
         int valid;
     } snap;
-#ifdef TEXT_BACKEND_GDI
-    HDC dc;
-    HBITMAP bmp;
-    HGDIOBJ oldBmp;
-#endif
     FontHandle font;
     DWORD *bits;
     int charW, lineH;
@@ -66,8 +62,8 @@ static LONGLONG now(void)
 static void init(void);
 
 /* The overlay is a developer tool and is off unless RAGEXE_OVERLAY is set to something
-   other than 0. Off, nothing is timed or drawn, and Scroll Lock, which players press
-   for screenshots, does not show it. */
+   other than 0. Off, it times and draws nothing (the counters in perf.h still count), and
+   Scroll Lock, which players press for screenshots, does not show it. */
 static int overlay_enabled(void)
 {
     if (!P.inited)
@@ -124,9 +120,9 @@ static void build_lines(void)
     snprintf(P.lines[0], sizeof P.lines[0], "%s  FPS %s  frame %s ms (max %s)  frames %u", PERF_RENDERER,
              tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
              tenths(b3, P.snap.frameMax10), P.snap.frames);
-    snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
+    snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s",
              tenths(b1, P.snap.ms10[PERF_SCENE]), tenths(b2, P.snap.ms10[PERF_DESTROY]),
-             tenths(b3, P.snap.ms10[PERF_ENDSCENE]), tenths(b4, P.snap.ms10[PERF_TARGETLOCK]));
+             tenths(b3, P.snap.ms10[PERF_ENDSCENE]));
     snprintf(P.lines[2], sizeof P.lines[2], "present %s (the blank wait)  logic %s (text %s, surface locks %s)  overlay %s",
              tenths(b1, P.snap.ms10[PERF_PRESENT]), tenths(b2, P.snap.logic10),
              tenths(b3, P.snap.ms10[PERF_TEXT]), tenths(b4, P.snap.ms10[PERF_TEXLOCK]), tenths(b5, P.snap.ms10[PERF_OVERLAY]));
@@ -142,17 +138,18 @@ static void build_lines(void)
     for (i = 0; i < 5 && i < nl; i++) {
         snprintf(s + strlen(s), sizeof P.lines[3] - strlen(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
     }
-    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  states %u sent / %u skipped  tex sets %u  locks %u (target %u)",
-             c->draws / f, c->drawCalls / f, c->prims / f, c->statesSent / f, c->statesSkipped / f, c->texSets / f,
-             c->locks / f, c->targetLocks / f);
-    snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  dc %u  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
-             c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f, c->dcGets / f,
+    snprintf(P.lines[4], sizeof P.lines[4],
+             "draws %u (%u calls, %u indirect)  prims %u  modes %u sent / %u skipped  tex sets %u  locks %u",
+             c->draws / f, c->drawCalls / f, c->indirectDraws / f, c->prims / f, c->modesSent / f,
+             c->modesSkipped / f, c->texSets / f, c->locks / f);
+    snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
+             c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f,
              (c->textMeasured + c->textHits) / f,
              c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
              c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
-    snprintf(P.lines[6], sizeof P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
+    snprintf(P.lines[6], sizeof P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame",
              c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->ondraws / f,
-             c->actorLookups / f, c->actorLookups ? c->actorIndexHits * 100 / c->actorLookups : 0);
+             c->actorLookups / f);
     P.nlines = 7;
     P.dirty = 1;
 }
@@ -169,7 +166,7 @@ static void roll(LONGLONG t)
     P.snap.frames = P.frames;
     P.snap.per = g_perf;
     logic = P.snap.ms10[PERF_FRAME] - P.snap.ms10[PERF_SCENE] - P.snap.ms10[PERF_DESTROY] - P.snap.ms10[PERF_ENDSCENE]
-          - P.snap.ms10[PERF_OVERLAY] - P.snap.ms10[PERF_TARGETLOCK] - P.snap.ms10[PERF_PRESENT];
+          - P.snap.ms10[PERF_OVERLAY] - P.snap.ms10[PERF_PRESENT];
     P.snap.logic10 = logic < 0 ? 0 : logic;
     P.snap.valid = 1;
     build_lines();
@@ -201,54 +198,11 @@ void perf_frame_end(struct Renderer *r)
         roll(t);
 }
 
-#ifdef TEXT_BACKEND_GDI
-static int make_dib(void)
-{
-    BITMAPINFO bi;
-    SIZE sz;
-    P.dc = CreateCompatibleDC(NULL);
-    if (!P.dc)
-        return 0;
-    memset(&bi, 0, sizeof(bi));
-    bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
-    bi.bmiHeader.biWidth = OV_TEX_W;
-    bi.bmiHeader.biHeight = -OV_TEX_H;
-    bi.bmiHeader.biPlanes = 1;
-    bi.bmiHeader.biBitCount = 32;
-    bi.bmiHeader.biCompression = BI_RGB;
-    P.bmp = CreateDIBSection(P.dc, &bi, DIB_RGB_COLORS, (void **)&P.bits, NULL, 0);
-    if (!P.bmp || !P.bits) {
-        DeleteDC(P.dc);
-        P.dc = NULL;
-        P.bits = NULL;
-        return 0;
-    }
-    P.oldBmp = SelectObject(P.dc, P.bmp);
-    P.font = CreateFontA(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                         NONANTIALIASED_QUALITY, FIXED_PITCH | FF_MODERN, "Lucida Console");
-    if (P.font)
-        SelectObject(P.dc, P.font);
-    SetBkMode(P.dc, TRANSPARENT);
-    SetTextColor(P.dc, RGB(255, 255, 255));
-    P.charW = 7;
-    P.lineH = 13;
-    if (GetTextExtentPoint32W(P.dc, L"W", 1, &sz)) {
-        P.charW = sz.cx;
-        P.lineH = sz.cy + 1;
-    }
-    return 1;
-}
-
-static void overlay_text_out(int x, int y, const char *line, int len)
-{
-    TextOutA(P.dc, x, y, line, len);
-}
-#else
-static int make_dib(void)
+static int make_canvas(void)
 {
     static const uint16_t widest = 'W';
     SIZE sz;
-    P.font = font_cache_get_family(&g_fontCache, "monospace", -12);
+    P.font = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
     if (!P.font)
         return 0;
     P.bits = malloc((size_t)OV_TEX_W * OV_TEX_H * sizeof *P.bits);
@@ -269,7 +223,6 @@ static void overlay_text_out(int x, int y, const char *line, int len)
         text[i] = (unsigned char)line[i];
     font_text_out(P.font, &target, x, y, text, i, RGB(255, 255, 255), NULL);
 }
-#endif
 
 static void rasterize(void)
 {
@@ -288,9 +241,6 @@ static void rasterize(void)
     }
     if (P.usedW > OV_TEX_W)
         P.usedW = OV_TEX_W;
-#ifdef TEXT_BACKEND_GDI
-    SelectObject(P.dc, P.font);
-#endif
     for (y = 0; y < P.usedH; y++) {
         DWORD *row = P.bits + y * OV_TEX_W;
         for (x = 0; x < P.usedW; x++)
@@ -330,19 +280,9 @@ static int upload(void)
     return 1;
 }
 
-struct ov_vertex {
-    float x, y, z, rhw;
-    DWORD diffuse, specular;
-    float u, v;
-};
-
 static void draw(struct Renderer *r)
 {
-    static const int rs_ids[6] = { GFX_RS_ZENABLE, GFX_RS_ALPHABLENDENABLE, GFX_RS_ALPHATESTENABLE,
-                                   GFX_RS_FOGENABLE, GFX_RS_SRCBLEND, GFX_RS_DESTBLEND };
-    static const DWORD rs_vals[6] = { FALSE, TRUE, FALSE, FALSE, GFX_BLEND_SRCALPHA, GFX_BLEND_INVSRCALPHA };
-    DWORD saved[6];
-    struct ov_vertex v[4];
+    struct TexDrawVertex v[4];
     float x0 = (float)(g_3dDevice.width - P.usedW - OV_MARGIN) - 0.5f;
     float y0 = (float)(g_3dDevice.height - P.usedH - OV_MARGIN) - 0.5f;
     float x1 = x0 + (float)P.usedW, y1 = y0 + (float)P.usedH;
@@ -354,36 +294,22 @@ static void draw(struct Renderer *r)
         v[i].z = 0.0f;
         v[i].rhw = 1.0f;
         v[i].diffuse = 0xffffffffu;
-        v[i].specular = 0;
         v[i].u = (i & 1) ? u1 : 0.0f;
         v[i].v = (i & 2) ? v1 : 0.0f;
     }
-    for (i = 0; i < 6; i++) {
-        saved[i] = rs_vals[i];
-        gfx_get_render_state(rs_ids[i], &saved[i]);
-        gfx_set_render_state(rs_ids[i], rs_vals[i]);
-    }
-    gfx_set_stage_state(0, GFX_TSS_COLOROP, GFX_TOP_SELECTARG1);
-    gfx_set_stage_state(0, GFX_TSS_COLORARG1, GFX_TA_TEXTURE);
-    gfx_set_stage_state(0, GFX_TSS_ALPHAOP, GFX_TOP_SELECTARG1);
-    gfx_set_stage_state(0, GFX_TSS_ALPHAARG1, GFX_TA_TEXTURE);
-    gfx_set_stage_state(1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
-    gfx_set_stage_state(1, GFX_TSS_ALPHAOP, GFX_TOP_DISABLE);
+    gfx_set_mode(DRAW_PANEL);
     gfx_set_texture(0, P.tex);
     gfx_set_texture(1, NULL);
-    gfx_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1, v, 4, NULL, 0);
+    gfx_draw_vertices(v, 4, 1);
     gfx_set_texture(0, NULL);
     gfx_set_texture(1, NULL);
     r->boundTextures[0] = NULL;
     r->boundTextures[1] = NULL;
-    renderer_set_blend_stages(r, 0);
-    for (i = 0; i < 6; i++)
-        gfx_set_render_state(rs_ids[i], saved[i]);
 }
 
 static void draw_overlay(struct Renderer *r)
 {
-    if (!P.bits && !make_dib())
+    if (!P.bits && !make_canvas())
         return;
     if (P.dirty) {
         rasterize();

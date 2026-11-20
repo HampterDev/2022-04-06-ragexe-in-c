@@ -1,18 +1,19 @@
-#ifndef _WIN32
 #include "core/app.h"
 #include "core/window_events.h"
 #include "core/drive_state.h"
 #include "core/user_input.h"
 #include "core/touch.h"
 #include "contents/frame_timer.h"
+#include "contents/mouse.h"
 #include "platform/code_page.h"
 #include "platform/filesystem.h"
 #include "platform/language.h"
 #include "platform/vk.h"
 #include "platform/window.h"
 #include "render/device.h"
+#include "render/display_options.h"
 #include "render/present_fit.h"
-#include "session/session_options.h"
+#include "render/render_api.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
@@ -20,11 +21,26 @@
 #include "ui/window_types.h"
 #include "core/window_state.h"
 #include <SDL3/SDL.h>
+#ifdef _WIN32
+#define SDL_MAIN_HANDLED
+#include <SDL3/SDL_main.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 
+/* The client's window on every platform: SDL's window, its events turned into the client's input
+   (core/user_input.h), text input and the IME. */
+
 static struct PresentCover g_cover;
 static int g_composing, g_compositionEnded;
+/* AltGr is held (on_key). */
+static int g_altGr;
+#ifdef _WIN32
+/* Whether the last right Alt that went down came with the left Ctrl Windows sends for AltGr
+   (window_message), and the event that carries a key the IME took (VK_PROCESSKEY). */
+static int g_rightAltIsAltGr;
+static Uint32 g_processKeyEvent;
+#endif
 
 static const unsigned short g_scanCodes[SDL_SCANCODE_RGUI + 1] = {
     [SDL_SCANCODE_A] = 0x1e, [SDL_SCANCODE_B] = 0x30, [SDL_SCANCODE_C] = 0x2e, [SDL_SCANCODE_D] = 0x20,
@@ -84,8 +100,29 @@ static const unsigned char g_scanKeys[SDL_SCANCODE_RGUI + 1] = {
     [SDL_SCANCODE_RALT] = VK_MENU, [SDL_SCANCODE_RGUI] = VK_RWIN,
 };
 
+/* The keypad with NumLock off, as Windows names its keys then: the arrows, Home, End, Page Up and
+   Down, Insert, Delete and Clear. */
+static int keypad_navigation(SDL_Scancode scancode)
+{
+    switch (scancode) {
+    case SDL_SCANCODE_KP_1: return VK_END;
+    case SDL_SCANCODE_KP_2: return VK_DOWN;
+    case SDL_SCANCODE_KP_3: return VK_NEXT;
+    case SDL_SCANCODE_KP_4: return VK_LEFT;
+    case SDL_SCANCODE_KP_5: return VK_CLEAR;
+    case SDL_SCANCODE_KP_6: return VK_RIGHT;
+    case SDL_SCANCODE_KP_7: return VK_HOME;
+    case SDL_SCANCODE_KP_8: return VK_UP;
+    case SDL_SCANCODE_KP_9: return VK_PRIOR;
+    case SDL_SCANCODE_KP_0: return VK_INSERT;
+    case SDL_SCANCODE_KP_PERIOD: return VK_DELETE;
+    default: return 0;
+    }
+}
+
 static int key_code(const SDL_KeyboardEvent *key)
 {
+    int navigation;
     if (key->key >= 'a' && key->key <= 'z')
         return (int)(key->key - 'a' + 'A');
     if (key->key >= '0' && key->key <= '9')
@@ -100,6 +137,8 @@ static int key_code(const SDL_KeyboardEvent *key)
     if (key->scancode == SDL_SCANCODE_AC_BACK)
         return VK_ESCAPE;
 #endif
+    if (!(key->mod & SDL_KMOD_NUM) && (navigation = keypad_navigation(key->scancode)) != 0)
+        return navigation;
     return (unsigned)key->scancode <= SDL_SCANCODE_RGUI ? g_scanKeys[key->scancode] : 0;
 }
 
@@ -113,18 +152,45 @@ static char *client_text(const char *utf8)
     return text;
 }
 
+/* SDL's pointer is in window coordinates, the game's in the device's pixels (present_point). */
 static void scene_point(float x, float y, int *outX, int *outY)
 {
-    int w = 0, h = 0, fx, fy, fw, fh;
+    int w = 0, h = 0;
     SDL_GetWindowSize(g_hMainWnd, &w, &h);
-    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, &fx, &fy, &fw, &fh);
-    if (fw > 0 && fh > 0 && g_3dDevice.width > 0 && g_3dDevice.height > 0) {
-        *outX = (int)((x - fx) * g_3dDevice.width / fw);
-        *outY = (int)((y - fy) * g_3dDevice.height / fh);
-    } else {
-        *outX = (int)x;
-        *outY = (int)y;
+    present_point(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, x, y, outX, outY);
+}
+
+/* AltGr types characters as Ctrl+Alt does, and Windows reports it as a left Ctrl and a right Alt.
+   SDL reports it as SDLK_MODE on X11 and Wayland, and on Windows as the right Alt alone, leaving
+   out the left Ctrl (window_message tells which right Alt is AltGr). */
+static int is_altgr(const SDL_KeyboardEvent *key)
+{
+    if (key->key == SDLK_MODE)
+        return 1;
+#ifdef _WIN32
+    return key->scancode == SDL_SCANCODE_RALT && g_rightAltIsAltGr;
+#else
+    return 0;
+#endif
+}
+
+/* AltGr as the Win32 client saw it: Ctrl and Alt held, so that edit boxes take the keys typed with
+   it as characters (ui/wndmgr/key_down.c), and those keys without Alt. */
+static void on_altgr(const struct InputKey *alt)
+{
+    struct InputKey ctrl = *alt;
+    ctrl.vk = VK_CONTROL;
+    ctrl.scancode = 0x1d;
+    if (alt->down) {
+        input_key(&ctrl);
+        input_key(alt);
+        return;
     }
+    input_key(alt);
+    /* Windows sends the left Ctrl's release first, which SDL passes on */
+    if (platform_key_state(VK_CONTROL) & 0x8000)
+        input_key(&ctrl);
+    g_altGr = 0;
 }
 
 /* SDL's keys as Windows delivers them: Print Screen only as it goes up, and Backspace also as a
@@ -132,14 +198,21 @@ static void scene_point(float x, float y, int *outX, int *outY)
 static void on_key(const SDL_KeyboardEvent *key, int down)
 {
     struct InputKey in;
+    int altgr_key = key->scancode == SDL_SCANCODE_RALT || key->key == SDLK_MODE;
+    if (down && !key->repeat && altgr_key && is_altgr(key))
+        g_altGr = 1;
     in.vk = key_code(key);
     in.scancode = (unsigned)key->scancode <= SDL_SCANCODE_RGUI ? g_scanCodes[key->scancode] : 0;
     in.down = down;
     in.repeat = down && key->repeat;
-    in.alt = (key->mod & SDL_KMOD_ALT) != 0;
+    in.alt = (key->mod & (g_altGr ? SDL_KMOD_LALT : SDL_KMOD_ALT)) != 0;
     in.count = 1;
     if (!in.vk)
         return;
+    if (g_altGr && altgr_key) {
+        on_altgr(&in);
+        return;
+    }
     if (down && in.vk == VK_SNAPSHOT) {
         platform_note_key(in.vk, 1);
         return;
@@ -150,6 +223,23 @@ static void on_key(const SDL_KeyboardEvent *key, int down)
     if (down && in.vk == VK_BACK && !g_composing)
         input_char(VK_BACK);
 }
+
+#ifdef _WIN32
+/* A key the IME took, which Windows reports as VK_PROCESSKEY with the key's scan code, and SDL leaves
+   out: the client maps it back to its letter by the scan code for the hotkeys
+   (ui/wndmgr/keyboard.c), as it did with the Win32 window. */
+static void on_process_key(Uint32 lparam)
+{
+    struct InputKey in;
+    in.vk = VK_PROCESSKEY;
+    in.scancode = (int)(lparam >> 16 & 0xff) | (lparam & 1u << 24 ? 0x100 : 0);
+    in.down = 1;
+    in.repeat = (lparam & 1u << 30) != 0;
+    in.alt = (lparam & 1u << 29) != 0;
+    in.count = (int)(lparam & 0xffff);
+    input_key(&in);
+}
+#endif
 
 static void on_text(const char *utf8)
 {
@@ -218,10 +308,18 @@ static void on_finger(const SDL_TouchFingerEvent *finger)
 static void dispatch(const SDL_Event *event)
 {
     int x, y;
+#ifdef _WIN32
+    if (g_processKeyEvent && event->type == g_processKeyEvent) {
+        on_process_key((Uint32)event->user.code);
+        return;
+    }
+#endif
     switch (event->type) {
     case SDL_EVENT_QUIT:
     case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-        window_events_close();
+        /* SDL follows the last window's close request with a quit; the client closes once */
+        if (!g_quitRequested)
+            window_events_close();
         break;
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
         window_events_activate(1);
@@ -234,6 +332,35 @@ static void dispatch(const SDL_Event *event)
         touch_cancel();
         window_events_activate(0);
         app_activate(0);
+        break;
+#ifdef _WIN32
+    case SDL_EVENT_WINDOW_MOVED:
+        /* A window that is not active still draws, but shows its last frame again at once when it
+           is moved, as the Win32 window did. */
+        if (g_windowActive != 1)
+            c3d_device_show_frame(&g_3dDevice, 1);
+        break;
+#endif
+#ifndef __ANDROID__
+    case SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED:
+        /* Fullscreen keeps covering its display when the display's own resolution changes, which
+           SDL leaves to the client. */
+        if (g_fullscreenMode && event->display.displayID == SDL_GetDisplayForWindow(g_hMainWnd))
+            platform_window_fullscreen(g_hMainWnd);
+        break;
+#endif
+    case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        /* the smallest size in pixels, at the pixel density of the display the window is now on */
+        platform_window_minimum(g_hMainWnd, DISPLAY_MIN_WIDTH, DISPLAY_MIN_HEIGHT);
+        break;
+    case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+        /* The pointer went onto the window's frame or off the window, where the system's cursor
+           shows: the client's own cursor, drawn in the scene, leaves the scene. */
+        if (!g_session1.mouseExclusiveOption) {
+            mouse_set_x(&g_mouse, -100);
+            mouse_set_y(&g_mouse, -100);
+        }
         break;
     case SDL_EVENT_KEY_DOWN:
         on_key(&event->key, 1);
@@ -270,11 +397,87 @@ static void dispatch(const SDL_Event *event)
     }
 }
 
+#ifdef _WIN32
+/* Windows moves a window dragged by its caption in a loop of its own, and the game would stand
+   still until the button went up. As the Win32 client did, the client moves the window itself:
+   SDL's message hook takes the press on the caption, and every pump moves the window as far as the
+   pointer has gone, until the left button is up. */
+static struct {
+    int on, left, top;
+    float x, y;
+} g_drag;
+
+/* SDL's hook sees the messages its pump takes from the queue, and those of a modal loop (the
+   window's system menu): the game counts as inactive while such a loop runs, as it did with the
+   Win32 window. */
+static bool SDLCALL window_message(void *userdata, MSG *msg)
+{
+    HWND hwnd = g_hMainWnd ? SDL_GetPointerProperty(SDL_GetWindowProperties(g_hMainWnd),
+                                                    SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL) : NULL;
+    (void)userdata;
+    if (!hwnd || msg->hwnd != hwnd)
+        return true;
+    switch (msg->message) {
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+        if (msg->wParam == VK_MENU && (msg->lParam & 1 << 24) && !(msg->lParam & 1 << 30))
+            g_rightAltIsAltGr = (GetKeyState(VK_LCONTROL) & 0x8000) != 0;
+        if (msg->wParam == VK_PROCESSKEY && g_processKeyEvent) {
+            /* SDL leaves out the keys the IME takes; the client still gets them, in order */
+            SDL_Event event;
+            SDL_zero(event);
+            event.type = g_processKeyEvent;
+            event.user.windowID = SDL_GetWindowID(g_hMainWnd);
+            event.user.code = (Sint32)(Uint32)msg->lParam;
+            SDL_PushEvent(&event);
+        }
+        return true;
+    case WM_NCLBUTTONDOWN:
+        /* a maximised window is Windows' to drag: dragging restores it */
+        if (msg->wParam != HTCAPTION || (SDL_GetWindowFlags(g_hMainWnd) & SDL_WINDOW_MAXIMIZED))
+            return true;
+        SDL_GetGlobalMouseState(&g_drag.x, &g_drag.y);
+        SDL_GetWindowPosition(g_hMainWnd, &g_drag.left, &g_drag.top);
+        g_drag.on = 1;
+        return false;
+    case WM_ENTERMENULOOP:
+    case WM_ENTERSIZEMOVE:
+        app_activate(0);
+        return true;
+    case WM_EXITMENULOOP:
+    case WM_EXITSIZEMOVE:
+        app_activate(GetActiveWindow() != hwnd && IsIconic(hwnd) ? 0 : 1);
+        return true;
+    default:
+        return true;
+    }
+}
+
+static void follow_drag(void)
+{
+    float x, y;
+    SDL_MouseButtonFlags buttons;
+    int dx, dy;
+    if (!g_drag.on)
+        return;
+    buttons = SDL_GetGlobalMouseState(&x, &y);
+    dx = (int)(x - g_drag.x);
+    dy = (int)(y - g_drag.y);
+    if (dx || dy)
+        SDL_SetWindowPosition(g_hMainWnd, g_drag.left + dx, g_drag.top + dy);
+    if (!(buttons & SDL_BUTTON_LMASK))
+        g_drag.on = 0;
+}
+#endif
+
 static void pump_events(void)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event))
         dispatch(&event);
+#ifdef _WIN32
+    follow_drag();
+#endif
     touch_frame((uint32_t)SDL_GetTicks());
 }
 
@@ -387,16 +590,23 @@ static void sync_text_input(void)
 static void sync_candidate_area(void)
 {
     static struct LanguageCandidatePos told;
+    static int toldW, toldH, toldSceneW, toldSceneH;
     const struct LanguageCandidatePos *pos;
     int w = 0, h = 0, fx, fy, fw, fh;
     SDL_Rect area;
     if (!g_language || !g_composing || !(pos = &g_language->candidate_pos)->placed
         || g_3dDevice.width <= 0 || g_3dDevice.height <= 0)
         return;
-    if (told.placed && told.x == pos->x && told.top == pos->top && told.bottom == pos->bottom)
+    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    /* the same place in the scene is somewhere else in a window or a scene of another size */
+    if (told.placed && told.x == pos->x && told.top == pos->top && told.bottom == pos->bottom && toldW == w
+        && toldH == h && toldSceneW == g_3dDevice.width && toldSceneH == g_3dDevice.height)
         return;
     told = *pos;
-    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    toldW = w;
+    toldH = h;
+    toldSceneW = g_3dDevice.width;
+    toldSceneH = g_3dDevice.height;
     present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, &fx, &fy, &fw, &fh);
     area.x = fx + pos->x * fw / g_3dDevice.width;
     area.y = fy + pos->top * fh / g_3dDevice.height;
@@ -409,10 +619,11 @@ static void sync_candidate_area(void)
 void check_system_message(void)
 {
     pump_events();
+    display_follow_window();
 #ifdef __ANDROID__
     sync_window_cover();
     sync_text_input();
-    gfx_gl_set_cover(&g_cover);
+    gfx_set_cover(&g_cover);
 #else
     sync_candidate_area();
 #endif
@@ -427,11 +638,31 @@ void app_last_pump(void)
     g_hMainWnd = NULL;
 }
 
-int app_create_window(HINSTANCE instance)
+/* The display a client that starts fullscreen goes fullscreen on: the one its saved windowed
+   position is on, or the primary display when no display holds that point or none was saved. */
+static SDL_DisplayID saved_display(void)
 {
-    SDL_WindowFlags flags = SDL_WINDOW_OPENGL;
-    int screenW, screenH, x, y;
-    g_hInstance = instance;
+    SDL_Point at;
+    SDL_Rect bounds;
+    SDL_DisplayID id;
+    if (g_windowX == DISPLAY_NO_POSITION || g_windowY == DISPLAY_NO_POSITION)
+        return SDL_GetPrimaryDisplay();
+    at.x = g_windowX;
+    at.y = g_windowY;
+    id = SDL_GetDisplayForPoint(&at);
+    if (!id || !SDL_GetDisplayBounds(id, &bounds) || !SDL_PointInRect(&at, &bounds))
+        return SDL_GetPrimaryDisplay();
+    return id;
+}
+
+int app_create_window(void)
+{
+    /* With a high pixel density the window has as many pixels as the display gives it, also where
+       SDL's window coordinates are points (macOS, scaled Wayland); the game draws at its size in
+       pixels and the windowed size is in pixels (render/display_options.h). */
+    SDL_WindowFlags flags = SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_DisplayID on;
+    int screenW, screenH, x = 0, y = 0, top = 0, left = 0, w, h;
     SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
     /* Touches reach the client through core/touch.c only, a mouse and a pen as a mouse. */
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
@@ -443,59 +674,96 @@ int app_create_window(HINSTANCE instance)
     SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
     SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
 #endif
+#ifdef _WIN32
+    /* As the Win32 window did: the click that activates the window reaches the game, and the window
+       class keeps the client's name and the icon of its resources (0x77). */
+    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "119");
+    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL, "119");
+    SDL_RegisterApp(g_windowClassName, CS_BYTEALIGNCLIENT | CS_OWNDC, NULL);
+    SDL_SetWindowsMessageHook(window_message, NULL);
+#endif
     if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         platform_message_box(0, SDL_GetError(), "ERROR", 0);
         return 0;
     }
-#if defined(__ANDROID__) || defined(RAGE_GLES)
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-#else
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#ifdef _WIN32
+    g_processKeyEvent = SDL_RegisterEvents(1);
 #endif
-#ifdef __APPLE__
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-#endif
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 #ifdef __ANDROID__
-    /* An Android window always covers the screen, so the client runs in its full-screen mode: at its
-       own resolution, scaled to the screen with the aspect kept, without the system bars. */
+    /* An Android window always covers the screen, so the client runs in its fullscreen mode, at the
+       window's size, without the system bars. */
     g_fullscreenMode = 1;
     flags |= SDL_WINDOW_FULLSCREEN;
+#else
+    /* Shown once it is in its place; the player can resize and maximise it when it is windowed. */
+    flags |= SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE;
 #endif
-    g_hMainWnd = SDL_CreateWindow(g_windowClassName, g_screenWidth, g_screenHeight, flags);
+    on = g_fullscreenMode ? saved_display() : SDL_GetPrimaryDisplay();
+    w = platform_window_units(NULL, on, g_displayWidth, 0);
+    h = platform_window_units(NULL, on, g_displayHeight, 0);
+    g_hMainWnd = SDL_CreateWindow(g_windowClassName, w, h, flags);
     if (!g_hMainWnd) {
         platform_message_box(NULL, "Window Creation Failed", "ERROR", 0);
         return 0;
     }
+    platform_window_minimum(g_hMainWnd, DISPLAY_MIN_WIDTH, DISPLAY_MIN_HEIGHT);
     if (g_fullscreenMode == 0) {
-        platform_screen_size(&screenW, &screenH);
-        x = (screenW - g_screenWidth) / 2;
-        y = (screenH - g_screenHeight) / 2;
-        if (g_savedWidth == g_screenWidth && g_savedHeight == g_screenHeight) {
-            x = session_get_option_int(&g_session1, "Window_XPos", x);
-            y = session_get_option_int(&g_session1, "Window_YPos", y);
+        int placed = g_savedWidth == g_displayWidth && g_savedHeight == g_displayHeight
+                     && g_windowX != DISPLAY_NO_POSITION;
+        int displayW, displayH, roomW, roomH, fitW = g_displayWidth, fitH = g_displayHeight;
+        /* a saved size the display has no room for opens at the largest that fits */
+        platform_window_room(g_hMainWnd, &displayW, &displayH, &roomW, &roomH);
+        display_fit(&fitW, &fitH, roomW, roomH);
+        if (fitW != g_displayWidth || fitH != g_displayHeight) {
+            g_displayWidth = fitW;
+            g_displayHeight = fitH;
+            w = platform_window_units(g_hMainWnd, 0, fitW, 0);
+            h = platform_window_units(g_hMainWnd, 0, fitH, 0);
+            SDL_SetWindowSize(g_hMainWnd, w, h);
         }
-        if (x > screenW - g_screenWidth)
-            x = (screenW - g_screenWidth) / 2;
+        /* x and y are the window's outer corner, as Window_XPos and Window_YPos keep it
+           (platform_window_rect); SDL places the client area, inside the frame. */
+        platform_screen_size(&screenW, &screenH);
+        x = (screenW - w) / 2;
+        y = (screenH - h) / 2;
+        if (placed) {
+            x = g_windowX;
+            y = g_windowY;
+        }
+        if (x > screenW - w)
+            x = (screenW - w) / 2;
         if (x < 0)
             x = 0;
-        if (y > screenH - g_screenHeight)
-            y = (screenH - g_screenHeight) / 2;
+        if (y > screenH - h)
+            y = (screenH - h) / 2;
         if (y < 0)
             y = 0;
-        SDL_SetWindowPosition(g_hMainWnd, x, y);
+        SDL_GetWindowBordersSize(g_hMainWnd, &top, &left, NULL, NULL);
+        SDL_SetWindowPosition(g_hMainWnd, x + left, y + top);
+        /* maximised once it is shown, and restored to this size and place */
+        if (g_windowMaximized)
+            SDL_MaximizeWindow(g_hMainWnd);
+    } else {
+        /* covers the display it is placed on once it is shown; the device takes its size
+           (render/c3ddevice.c) */
+        SDL_SetWindowPosition(g_hMainWnd, SDL_WINDOWPOS_CENTERED_DISPLAY(on), SDL_WINDOWPOS_CENTERED_DISPLAY(on));
+        platform_window_fullscreen(g_hMainWnd);
     }
     SDL_ShowWindow(g_hMainWnd);
+    SDL_SyncWindow(g_hMainWnd);
+    if (g_fullscreenMode == 0) {
+        /* X11 knows the frame only once the window manager has framed the shown window */
+        int shownTop = 0, shownLeft = 0;
+        SDL_GetWindowBordersSize(g_hMainWnd, &shownTop, &shownLeft, NULL, NULL);
+        if (shownTop != top || shownLeft != left)
+            SDL_SetWindowPosition(g_hMainWnd, x + shownLeft, y + shownTop);
+    }
+    /* The client draws its own cursor: the system's shows only off the client area. */
+    SDL_HideCursor();
 #ifndef __ANDROID__
     SDL_StartTextInput(g_hMainWnd);
 #endif
     platform_current_directory(g_clientDir, 0x80);
     return 1;
 }
-#endif

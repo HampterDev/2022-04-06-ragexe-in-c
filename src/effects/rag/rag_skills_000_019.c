@@ -117,7 +117,7 @@ void rag_hit2(struct RagEffect *self, int tinted)
     rag_project_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_hit2.wav");
+    effect_play_wave("effect\\EF_hit2.wav");
     for (i = 0, angle = 0.0f; 360.0f > angle; i++, angle += 45.0f) {
         p = self->last_prim = rag_launch_prim(self, 0, 0.0f, 0.0f, 0.0f);
         if (!p)
@@ -156,7 +156,7 @@ void rag_hit3(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_hit3.wav");
+    effect_play_wave("effect\\EF_hit3.wav");
     facing = master_facing(self);
     p = lens_ring(self, facing, 15);
     if (!p)
@@ -190,7 +190,7 @@ void rag_hit4(struct RagEffect *self)
     rag_project_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_hit4.wav");
+    effect_play_wave("effect\\EF_hit4.wav");
     facing = master_facing(self);
     p = lens_ring(self, facing, 15);
     if (!p)
@@ -216,7 +216,7 @@ static void crossed_rays(struct RagEffect *self, const char *wave, int width_fro
     rag_project_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, wave);
+    effect_play_wave(wave);
     angles[0] = rnd(360);
     angles[1] = angles[0] + 90;
     for (i = 0; i < 2; i++) {
@@ -328,7 +328,7 @@ void rag_exit(struct RagEffect *self)
         p->alpha_speed = p->alpha_max / 30.0f;
         p->fade_frame = p->duration - 20;
         prim_set_texture(p, "effect\\alpha_down.tga");
-        rag_play_wave_here(self, "_heal_effect.wav");
+        effect_play_wave("_heal_effect.wav");
     }
     if (g_session1.map_rule_flags[0] == 0 && self->frame % 9 == 0)
         rising_sparkle(self, 50, SPR_DIR "particle1.spr", SPR_DIR "particle1.act");
@@ -469,7 +469,7 @@ void rag_endure(struct RagEffect *self)
 
     rag_project_master(self);
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_Endure.wav");
+        effect_play_wave("effect\\EF_Endure.wav");
         p = self->last_prim = rag_launch_prim(self, 0, 0.0f, 0.0f, 0.0f);
         if (!p)
             return;
@@ -575,7 +575,7 @@ unsigned char rag_glass_wall(struct RagEffect *self)
     int facing, side;
 
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_GlassWall.wav");
+        effect_play_wave("effect\\EF_GlassWall.wav");
         facing = master_facing(self);
         mat_set_rotate_y(facing_m, deg_to_rad(facing));
         for (side = 1; side >= -1; side -= 2) {
@@ -647,7 +647,7 @@ void rag_heal_sp(struct RagEffect *self)
         heal_sp_ring(self, 2.5f, 15.0f, 16.0f);
         heal_sp_ring(self, 3.5f, 25.0f, 32.0f);
         heal_sp_ring(self, 4.5f, 35.0f, 64.0f);
-        rag_play_wave_here(self, "_heal_effect.wav");
+        effect_play_wave("_heal_effect.wav");
     }
     if (self->frame & 1)
         return;
@@ -675,7 +675,7 @@ void rag_soul_strike(struct RagEffect *self, char ghost)
     index = tick / 11;
     if (index > count)
         return;
-    rag_play_wave_here(self, "effect\\EF_SoulStrike.wav");
+    effect_play_wave("effect\\EF_SoulStrike.wav");
     p = self->last_prim = rag_launch_prim(self, 8, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -714,7 +714,7 @@ void rag_bash(struct RagEffect *self)
     rag_project_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_Bash.wav");
+    effect_play_wave("effect\\EF_Bash.wav");
     p = self->last_prim = rag_launch_prim(self, 4, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -773,7 +773,7 @@ void rag_magnum_break(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_MagnumBreak.wav");
+    effect_play_wave("effect\\EF_MagnumBreak.wav");
     magnum_ring(self, self->duration);
 
     p = self->last_prim = rag_launch_prim(self, 14, 0.0f, 0.0f, 0.0f);
@@ -798,7 +798,7 @@ void rag_steal(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_Steal.wav");
+    effect_play_wave("effect\\EF_Steal.wav");
     for (i = 0; i < 10; i++) {
         p = self->last_prim = rag_launch_prim(self, 6, 0.0f, 0.0f, 0.0f);
         if (!p)

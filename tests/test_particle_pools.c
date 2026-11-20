@@ -77,7 +77,7 @@ static void check_reset(struct Particle *p, int kind)
     assert(p->r == 255 && p->g == 255 && p->b == 255 && p->alpha == 255);
     assert(p->scale == 1 && !p->texture && !p->flags && !p->age);
     assert(p->life_seconds == 0 && p->depth_bias == 0 && p->submit == particle_submit);
-    assert(p->src_blend == GFX_BLEND_SRCALPHA && p->dest_blend == GFX_BLEND_ONE);
+    assert(p->src_blend == DRAW_BLEND_SRCALPHA && p->dest_blend == DRAW_BLEND_ONE);
     assert(!memcmp(p->matrix, g_identityMatrix.m, sizeof p->matrix));
     assert(p->corners[0].x == -1 && p->corners[2].y == -1 && p->corners[3].z == 1);
     {

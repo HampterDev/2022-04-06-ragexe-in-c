@@ -12,6 +12,7 @@
 #include "effects/skills/skill_view.h"
 #include <string.h>
 #include "actor/game_actor.h"
+#include "world/world.h"
 
 #define MSG_SET_UNIT_AID 0x16
 #define MSG_SET_END_TICK 0x73
@@ -214,7 +215,7 @@ void graffi_skill_send_msg(struct GameObject *object, struct GameObject *source,
 
     switch (msg) {
     case MSG_SET_UNIT_AID:
-        self->base.unit_aid = (int)par1;
+        world_set_skill_aid(game_current_world(), &self->base, (int)par1);
         return;
     case MSG_SET_END_TICK:
         self->end_tick = (int)par1;

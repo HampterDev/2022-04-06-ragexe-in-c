@@ -180,7 +180,7 @@ void rag_cast_bubbles_149(struct RagEffect *self,
     self->base.pos = self->master->pos;
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "effect\\EF_BeginSpell.wav", -100.0f);
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     if (self->duration < 120)
         self->duration = 120;
     p = launch(self, 149);
@@ -385,7 +385,7 @@ void rag_thunder_spheres(struct RagEffect *self)
 void rag_cloaking_fade(struct RagEffect *self)
 {
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\assasin_cloaking.wav");
+        effect_play_wave("effect\\assasin_cloaking.wav");
     render_object_set_argb(self->master, 50, 0, 0, 0);
     self->base.has_shadow = 0;
 }
@@ -401,7 +401,6 @@ void rag_project_master(struct RagEffect *self)
         return;
     at = self->master->pos;
     memset(&screen, 0, sizeof(screen));
-    screen.specular = 0xff000000;
     renderer_project_vertex(g_renderer, &at, view, &screen);
     self->screen_pos.x = screen.x;
     self->screen_pos.y = screen.y;
@@ -473,14 +472,14 @@ void rag_tetra_vortex(struct RagEffect *self, signed char style)
     self->base.pos = self->master->pos;
     switch (self->frame) {
     case 0:
-        rag_play_wave_here(self, "effect\\wizard_meteo.wav");
-        rag_play_wave_here(self, "effect\\hunter_blastmine.wav");
+        effect_play_wave("effect\\wizard_meteo.wav");
+        effect_play_wave("effect\\hunter_blastmine.wav");
         break;
     case 10:
     case 20:
     case 50:
     case 80:
-        rag_play_wave_here(self, "effect\\wl_tetravortex.wav");
+        effect_play_wave("effect\\wl_tetravortex.wav");
         break;
     }
     if (self->frame > 80 || self->frame % 25 != 0)
@@ -821,7 +820,7 @@ void rag_random_tint_rings(struct RagEffect *self)
     int r, g, b;
 
     if (self->frame == 0)
-        sound_play_wave("effect\\EF_BeginSpell.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\EF_BeginSpell.wav", 1.0f);
     if (self->frame % 5 <= 1)
         self->master->overlay_flags |= 1;
     b = rand() % 256;

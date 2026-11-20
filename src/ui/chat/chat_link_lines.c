@@ -73,7 +73,7 @@ static void rewrap(struct UIChatHisBox *self, struct TextArray *lines, const int
         int f, offset;
         if (lines->size > REWRAP_MAX_LINES) break;
         break_text(self, mode, &sub, text_array_at(lines, li));
-        n = sub.size;
+        n = (unsigned)sub.size;
         if (n > 1) {
             for (j = 0; j < n; ++j) {
                 struct OwnedText *piece = &sub.items[j];
@@ -139,7 +139,7 @@ static struct String *build_navi_line(struct UIChatHisBox *self, struct String *
 
     if (!strstr(line, "<") &&
         !strstr(line, ">")) {
-        p = string_find(remain, line, 0);
+        p = (int)string_find(remain, line, 0);
         if (p != -1)
             string_substring(remain, remain, p + strlen(line), (size_t)-1);
         string_init(out);
@@ -157,7 +157,7 @@ static struct String *build_navi_line(struct UIChatHisBox *self, struct String *
         void *value;
         int q, r;
 
-        p = text_view_find(string_view(&s), string_view(&text_tag_NAVIL), 0);
+        p = (int)text_view_find(string_view(&s), string_view(&text_tag_NAVIL), 0);
         if (p == -1)
             break;
         string_clear(&result);
@@ -167,7 +167,7 @@ static struct String *build_navi_line(struct UIChatHisBox *self, struct String *
         string_substring(&rest, &s, p, (size_t)-1);
         string_free(&cur);
         string_move(&cur, &rest);
-        q = text_view_find(string_view(&cur), string_view(&text_tag_NAVIL_END), 0);
+        q = (int)text_view_find(string_view(&cur), string_view(&text_tag_NAVIL_END), 0);
         if (q == -1)
             break;
         string_truncate(&cur, q + text_tag_NAVIL_END.size);
@@ -181,7 +181,7 @@ static struct String *build_navi_line(struct UIChatHisBox *self, struct String *
         string_init(&rest);
         string_init(&whole);
         string_assign_cstr(&whole, line);
-        r = text_view_find(string_view(&whole), string_view(&label), 0);
+        r = (int)text_view_find(string_view(&whole), string_view(&label), 0);
         if (r != -1) {
             string_substring(&rest, &whole, r + label.size, (size_t)-1);
         }

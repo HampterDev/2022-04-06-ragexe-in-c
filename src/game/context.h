@@ -48,7 +48,6 @@ int game_copy_view_matrix(float matrix[12]);
 int game_copy_camera_position(float position[3]);
 struct C3dGround15;
 struct C3dGround15 *game_current_ground(void);
-struct List *game_current_object_list(void);
 struct SceneGraphNode *game_current_scene_root(void);
 const struct List *game_current_actor_list(void);
 struct GameActor *game_find_actor(int aid);
@@ -56,6 +55,7 @@ int game_world_to_cell(float x, float z, int *cell_x, int *cell_y);
 int game_cell_to_world(int x, int y, float *world_x, float *world_z);
 int game_can_walk_to_cell(int x, int y);
 int game_closest_walkable_cell(int *x, int *y);
+/* world_remove_object in the current world: custom: the object must be alive (world/world.h) */
 void game_remove_object(void *object);
 int game_battleground_state(void);
 int game_siege_state(void);

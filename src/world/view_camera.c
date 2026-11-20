@@ -15,6 +15,10 @@
 #include "game/camera.h"
 #include "game/mode_callbacks.h"
 #include "platform/clock.h"
+#include "diag/perf.h"
+#include "world/world_gpu.h"
+#include "actor/attr_state.h"
+#include "actor/weather.h"
 
 int g_drawnCellMaxX = 0;
 
@@ -292,36 +296,39 @@ static void cells_max(int *v, int c)
         *v = c;
 }
 
-/* custom: the models and ground the view left out whose shadows can fall into it
-   (render/renderer.h): their casters only, the models animated as the view's are */
-static void view_cast_shadows(struct SceneGraphNode *node, int level, const float *view)
+/* custom: the frame of the static world (world/world_gpu.c) begins: the ground and the models
+   drawn with the weather's colour as the original's CPU scaled them by it, the models with the
+   player's blind tint while blind, and the ground's light under the models where that option is
+   on; a model's alpha is whole, as no model is ever picked */
+static void world_begin(struct World *world, const float *view)
 {
-    struct Renderer *r = g_renderer;
-    size_t index;
-    int i;
+    struct GfxWorldDraw models, ground;
+    int k;
 
-    if (!renderer_shadow_reaches(r, node->centre, node->half, NULL))
-        return;
-    if (level < RSW_TREE_DEPTH) {
-        for (i = 0; i < 4; i++)
-            if (node->child[i])
-                view_cast_shadows(node->child[i], level + 1, view);
-        return;
+    memset(&models, 0, sizeof models);
+    memset(&ground, 0, sizeof ground);
+    models.kind = GFX_MESH_MODEL;
+    models.lightGround = !g_playerBlind && g_weather.ground_lighting;
+    ground.kind = GFX_MESH_GROUND;
+    for (k = 0; k < 3; k++) {
+        models.colour[k] = g_playerBlind ? g_weather.tint[k] : g_weather.color[k];
+        ground.colour[k] = g_weather.color[k];
     }
-    for (index = 0; index < node->objects.count; ++index) {
-        struct C3dActor *a = node->objects.data[index];
+    models.colour[3] = 1.0f;
+    ground.colour[3] = 1.0f;
+    world_gpu_begin(world, view, &models, &ground);
+}
 
-        if (a->castFrame == r->frame || !renderer_shadow_reaches(r, a->obb.centre, a->obb.extent, a->obb.axis))
-            continue;
-        if (a->lastFrame != r->frame) {
-            if (g_isSkipFrame > 0)
-                a->ops->tick(a);
-            a->lastFrame = r->frame;
-        }
-        a->ops->cast(a, view);
-    }
-    if (node->ground)
-        c3d_ground15_cast(node->ground, view, node->groundCell);
+/* custom: a model the walk below did not reach whose moving part the view holds, or whose shadow
+   can fall into the view (world/world_gpu.c): ticked as the walk ticks a model it reaches, once a
+   frame */
+static void tick_in_view(struct C3dActor *a)
+{
+    if (a->lastFrame == g_renderer->frame)
+        return;
+    if (g_isSkipFrame > 0)
+        a->ops->tick(a);
+    a->lastFrame = g_renderer->frame;
 }
 
 void view_on_render(struct View *self)
@@ -330,13 +337,23 @@ void view_on_render(struct View *self)
     struct ListNode *n;
     size_t leaf_index;
     float *view = self->viewMatrix;
+    /* custom: timed for the counters (diag/perf.h) */
+    int64_t start = platform_stopwatch_ns();
 
     g_quakeFrameDrawn = 1;
     r = g_renderer;
-    view_frustum_build(&self->frustum, r->proj[2], r->proj[3], view, &self->world->root);
-    /* custom: the models' shadows, fitted to what the camera sees (render/renderer.h) */
-    renderer_shadow_frame(r, view, self->at, self->distance);
+    {
+        struct FrustumScreen screen = {{r->proj[0], r->proj[1]}, {(float)r->centreX, (float)r->centreY},
+                                       {(float)r->width, (float)r->height}};
+        view_frustum_build(&self->frustum, &screen, view, &self->world->root);
+    }
+    /* custom: the shadows of the ground and the models, which the device fits to what the camera
+       sees of them (render/renderer.h; their box along the light comes with the static world's
+       frame, world/world_gpu.c) */
+    renderer_shadow_frame(r, view, self->distance);
     renderer_set_camera(r, view);
+    /* custom: the static world takes the models the scene graph took (world/world_gpu.c) */
+    world_begin(self->world, view);
     g_drawnCellMinY = 999;
     g_drawnCellMinX = 999;
     g_drawnCellMaxY = 0;
@@ -356,10 +373,10 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (res != FRUSTUM_OUTSIDE)
-                a->ops->render(a, view);
+                world_gpu_seen(self->world, a);
             a->lastFrame = g_renderer->frame;
         }
-        c3d_ground15_render(leaf->ground, view, leaf->groundCell);
+        c3d_ground15_leaf(leaf->ground, view, leaf->groundCell);
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
         cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
@@ -376,18 +393,18 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (a->lastFrame != g_renderer->frame) {
-                a->ops->render(a, view);
+                world_gpu_seen(self->world, a);
                 a->lastFrame = g_renderer->frame;
             }
         }
-        c3d_ground15_render(leaf->ground, view, leaf->groundCell);
+        c3d_ground15_leaf(leaf->ground, view, leaf->groundCell);
         cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
         cells_max(&g_drawnCellMaxY, leaf->groundCell[3]);
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
     }
 
-    view_cast_shadows(&self->world->root, 0, view);
+    world_gpu_frame(self->world, tick_in_view);
 
     navi_manager_draw_path(&g_navi, view);
     if (g_hoverCellHidden == 0)
@@ -396,11 +413,19 @@ void view_on_render(struct View *self)
     if (g_session1.homun_ai_flags[0] && g_session1.homun_command[1] && g_session1.homun_command[2])
         c3d_ground15_render_attr_tile(self->world->ground, view,
                                                           g_session1.homun_command[1], g_session1.homun_command[2], (int)0xfeff0000);
-    for (n = self->world->gameObjects.head->next; n != self->world->gameObjects.head; n = n->next) {
-        struct GameObject *object = *LIST_VALUE(n, struct GameObject *);
-        game_object_render(object, view);
+    {
+        /* custom: the objects' and the effects' parts timed for the counters (diag/perf.h) */
+        int64_t objects_start = platform_stopwatch_ns(), effects_start;
+        for (n = self->world->gameObjects.head->next; n != self->world->gameObjects.head; n = n->next) {
+            struct GameObject *object = *LIST_VALUE(n, struct GameObject *);
+            game_object_render(object, view);
+        }
+        effects_start = platform_stopwatch_ns();
+        g_perf.objectsRenderNs += effects_start - objects_start;
+        effect_mgr_render(g_effectMgr);
+        g_perf.effectsRenderNs += platform_stopwatch_ns() - effects_start;
     }
-    effect_mgr_render(g_effectMgr);
 
     view_frustum_clear(&self->frustum);
+    g_perf.viewRenderNs += platform_stopwatch_ns() - start;
 }

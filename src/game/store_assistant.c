@@ -517,8 +517,7 @@ static int store_assistant_enter(struct GameMode *self, struct ActorEntryInfo *i
         if (!pc)
             return 0;
         actor = (struct GameActor *)pc;
-        list_push_back(&self->world->gameObjects, &pc, sizeof pc);
-        actor_list_push_back(&self->world->actors, pc);
+        world_add_actor(self->world, actor);
         render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (intptr_t)info, 0, 0, 0);
     }
     actor->is_store_assistant = 1;

@@ -1,495 +1,312 @@
-#include "render/fonts.h"
+/* The font cache (render/fonts_ft.c) over fonts this test makes, found by the font finder's folder
+   scan: a face asked by its display-language name then its English one; GDI's sizes (a cell
+   height through the face's own Windows ascent and descent, an em height, a stand-in for a CJK face
+   with its em as the cell); the face's own hints for a Windows family and the autohinter for a
+   stand-in; the Hangul fallback; the fixed-pitch family and its fallbacks; drawing and measuring;
+   every allocation failing in turn, and many caches made and destroyed, without a leak. */
+#include "font_fixture.h"
 #include "render/device.h"
-#include "render/font_family.h"
+#include "render/fonts.h"
+#include "platform/code_page.h"
+#include "platform/filesystem.h"
 #include <assert.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_SFNT_NAMES_H
+#include FT_TRUETYPE_TABLES_H
+#include FT_TRUETYPE_TAGS_H
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
+#ifdef _WIN32
+#include <windows.h>
+#define SEPARATOR ";"
+static void set_variable(const char *name, const char *value) { assert(!_putenv_s(name, value)); }
+#else
+#define SEPARATOR ":"
+static void set_variable(const char *name, const char *value) { assert(!setenv(name, value, 1)); }
+#endif
 
-#define TEST_DC   ((HDC)(uintptr_t)0x345)
-#define DC_FONT   ((HGDIOBJ)(uintptr_t)0x777)
-#define GULIM_KR  L"\xad74\xb9bc"
+struct C3dDevice g_3dDevice = {
+    .faceNamesB = {L"Gulim", L"Fixture Sans", L"Fixture Gothic"},
+    .faceNamesA = {L"Gulim", L"Missing Face", L"Fixture Pair"},
+    .faceCharsets = {CHARSET_HANGUL, CHARSET_ANSI, CHARSET_SHIFTJIS},
+};
+char g_clientDir[0x88] = "nonexistent";
 
-struct C3dDevice g_3dDevice;
-static int startup_fails, create_fails, add_fails, dc_fails, alloc_fails, family_fails;
-static int select_fails, glyph_fails, metric_fails;
-static int starts, stops, creates, deletes, adds, removes, dc_gets, dc_releases, enums, reads, allocs;
-static int selects, glyph_calls, metric_calls;
-static int live_fonts, live_resources[2], active_dc;
-static uintptr_t active_token;
-static int alive[4096], resource_for_font[4096];
-static LOGFONTW fonts[4096], last_font;
-static int last_indirect, last_name_null, last_enum_charset;
-static const wchar_t *available[6];
-static const wchar_t *family_name = L"Test Family";
-static HGDIOBJ selected = DC_FONT;
-static void (*exit_callback)(void);
+static long live, calls, fail_at;
 
-int font_backend_start(uintptr_t *token)
+static void *test_malloc(size_t size)
 {
-    ++starts;
-    if (startup_fails)
-        return 0;
-    assert(!active_token);
-    *token = active_token = 0x12345678;
-    return 1;
-}
-
-void font_backend_stop(uintptr_t token)
-{
-    if (token) {
-        assert(token == active_token && !live_fonts && !live_resources[0] && !live_resources[1]);
-        active_token = 0;
-        ++stops;
-    }
-}
-
-/* Like the GDI+ backend: the name is written only when it fits. */
-int font_file_read_family(const wchar_t *path, wchar_t *name, size_t capacity)
-{
-    assert(active_token && capacity == LF_FACESIZE);
-    assert(!wcscmp(path, L"system\\font\\SCDream4.otf") || !wcscmp(path, L"system\\font\\SCDream6.otf"));
-    ++reads;
-    if (family_fails || wcslen(family_name) + 1 > capacity)
-        return 0;
-    wcscpy(name, family_name);
-    return 1;
-}
-
-void *font_cache_test_realloc(void *data, size_t size)
-{
-    ++allocs;
-    return alloc_fails ? NULL : realloc(data, size);
-}
-
-HDC WINAPI font_cache_test_get_dc(HWND window)
-{
-    assert(!window && !active_dc);
-    ++dc_gets;
-    if (dc_fails)
+    void *data;
+    if (++calls == fail_at)
         return NULL;
-    active_dc = 1;
-    return (HDC)(uintptr_t)0x234;
+    data = malloc(size);
+    live += data != NULL;
+    return data;
 }
 
-int WINAPI font_cache_test_release_dc(HWND window, HDC dc)
+static void *test_calloc(size_t count, size_t size)
 {
-    assert(!window && active_dc && dc == (HDC)(uintptr_t)0x234);
-    ++dc_releases;
-    active_dc = 0;
-    return 1;
-}
-
-int WINAPI font_cache_test_enum(HDC dc, LPLOGFONTW query, FONTENUMPROCW callback, LPARAM context, DWORD flags)
-{
-    int i, result = 0;
-    assert(active_dc && dc == (HDC)(uintptr_t)0x234 && !flags);
-    assert(!query->lfFaceName[0] && !query->lfPitchAndFamily);
-    ++enums;
-    last_enum_charset = query->lfCharSet;
-    for (i = 0; available[i]; ++i) {
-        LOGFONTW font = {0};
-        wcscpy(font.lfFaceName, available[i]);
-        result = callback(&font, NULL, TRUETYPE_FONTTYPE, context);
-        if (!result)
-            break;
-    }
-    return result;
-}
-
-static HFONT created(const LOGFONTW *font, int indirect, int null_name)
-{
-    ++creates;
-    last_font = *font;
-    last_indirect = indirect;
-    last_name_null = null_name;
-    assert(creates < (int)(sizeof(alive) / sizeof(alive[0])));
-    if (create_fails)
+    void *data;
+    if (++calls == fail_at)
         return NULL;
-    fonts[creates] = *font;
-    alive[creates] = 1;
-    resource_for_font[creates] = -1;
-    ++live_fonts;
-    return (HFONT)(uintptr_t)(0x1000 + creates);
+    data = calloc(count, size);
+    live += data != NULL;
+    return data;
 }
 
-HFONT WINAPI font_cache_test_create(int height, int width, int escapement, int orientation, int weight,
-                                  DWORD italic, DWORD underline, DWORD strikeout, DWORD charset,
-                                  DWORD output, DWORD clipping, DWORD quality, DWORD pitch, LPCWSTR name)
+static void *test_realloc(void *data, size_t size)
 {
-    LOGFONTW font = {0};
-    assert(!width && !escapement && !orientation && !underline && !strikeout && !output && !clipping && !pitch);
-    assert(quality == NONANTIALIASED_QUALITY);
-    font.lfHeight = height;
-    font.lfWeight = weight;
-    font.lfItalic = (BYTE)italic;
-    font.lfCharSet = (BYTE)charset;
-    if (name)
-        wcscpy(font.lfFaceName, name);
-    return created(&font, 0, name == NULL);
-}
-
-HFONT WINAPI font_cache_test_create_indirect(const LOGFONTW *font)
-{
-    return created(font, 1, 0);
-}
-
-static int resource_index(const wchar_t *path)
-{
-    if (!wcscmp(path, L"system\\font\\SCDream4.otf"))
-        return 0;
-    assert(!wcscmp(path, L"system\\font\\SCDream6.otf"));
-    return 1;
-}
-
-int WINAPI font_cache_test_add(LPCWSTR path, DWORD flags, PVOID reserved)
-{
-    int index = resource_index(path);
-    assert(flags == FR_PRIVATE && !reserved);
-    ++adds;
-    if (add_fails)
-        return 0;
-    ++live_resources[index];
-    return 2;
-}
-
-BOOL WINAPI font_cache_test_remove(LPCWSTR path, DWORD flags, PVOID reserved)
-{
-    int i, outstanding = 0, index = resource_index(path);
-    assert(flags == FR_PRIVATE && !reserved && live_resources[index]);
-    for (i = 1; i <= creates; ++i)
-        outstanding += alive[i] && resource_for_font[i] == index;
-    assert(live_resources[index] > outstanding);
-    --live_resources[index];
-    ++removes;
-    return TRUE;
-}
-
-BOOL WINAPI font_cache_test_delete_object(HGDIOBJ object)
-{
-    int id = (int)(uintptr_t)object - 0x1000;
-    assert(id > 0 && id <= creates && alive[id]);
-    alive[id] = 0;
-    --live_fonts;
-    ++deletes;
-    return TRUE;
-}
-
-HGDIOBJ WINAPI font_cache_test_select(HDC dc, HGDIOBJ object)
-{
-    HGDIOBJ previous = selected;
-    assert(dc == TEST_DC);
-    ++selects;
-    if (select_fails)
+    void *grown;
+    if (++calls == fail_at)
         return NULL;
-    selected = object;
-    return previous;
+    grown = realloc(data, size);
+    live += grown && !data;
+    return grown;
 }
 
-static const LOGFONTW *selected_font(void)
+static void test_free(void *data)
 {
-    int id = (int)(uintptr_t)selected - 0x1000;
-    assert(id > 0 && id <= creates && alive[id]);
-    return &fonts[id];
+    live -= data != NULL;
+    free(data);
 }
 
-/* Gulim and Malgun Gothic have every sample but Thai; "Primary" has only Thai. */
-DWORD WINAPI font_cache_test_glyphs(HDC dc, LPCWSTR text, int count, LPWORD glyphs, DWORD flags)
+#define malloc test_malloc
+#define calloc test_calloc
+#define realloc test_realloc
+#define free test_free
+#include "../src/render/fonts_ft.c"
+/* Each file has a FreeType library of its own. */
+#define library finder_library
+#include "../src/render/font_match_scan.c"
+#undef library
+#undef malloc
+#undef calloc
+#undef realloc
+#undef free
+
+#define LATIN 'A', 'z', 'a', 'Z', ' ', 'W', 'i'
+static const unsigned latin[] = {LATIN, 0};
+static const unsigned japanese[] = {LATIN, 0x3042, 0x30a2, 0x65e5, 0};
+static const unsigned hangul[] = {' ', 0xac00, 0xd7a3, 0xd55c, 0x2605, 0};
+/* "가나" */
+static const uint16_t ga_na[] = {0xac00, 0xac00};
+static const uint16_t hello[] = {'A', 'z', 'a', 'W', 'i'};
+
+static void folder(const char *path)
 {
-    const wchar_t *name = selected_font()->lfFaceName;
-    int korean = !_wcsicmp(name, L"Gulim") || !wcscmp(name, GULIM_KR) || !_wcsicmp(name, L"Malgun Gothic");
-    assert(dc == TEST_DC && count == 1 && flags == GGI_MARK_NONEXISTING_GLYPHS);
-    ++glyph_calls;
-    if (glyph_fails)
-        return GDI_ERROR;
-    glyphs[0] = (text[0] == 0x0e01 ? !wcscmp(name, L"Primary") : korean) ? 7 : 0xffff;
-    return 1;
+    assert(platform_directory_create(path) || platform_path_is_directory(path));
 }
 
-BOOL WINAPI font_cache_test_metrics(HDC dc, LPTEXTMETRICW metric)
+static void save(const char *path, const char *family, int weight, int fixed, int em, int ascent, int descent,
+                 const unsigned *chars)
 {
-    assert(dc == TEST_DC);
-    ++metric_calls;
-    if (metric_fails)
-        return FALSE;
-    memset(metric, 0, sizeof(*metric));
-    metric->tmAscent = abs(selected_font()->lfHeight) * 4 / 5;
-    return TRUE;
+    const struct FixtureFont font = {family, NULL, 0, NULL, 0, weight, 0, fixed, em, ascent, descent, chars};
+    assert(font_fixture_save(path, &font, 1));
 }
 
-int font_cache_test_atexit(void (*callback)(void))
+/* windows: Windows fonts the client asks for by name; standin: a free font that stands in for one;
+   mono: a fixed-pitch font of no family the client names; lucida: the overlay's own. Malgun
+   Gothic's cell is 1.33 of its em, as the real font's is; Fixture Gothic's cell is its em, as
+   Gulim's and MS Gothic's are. */
+static void make_fonts(void)
 {
-    assert(!exit_callback);
-    exit_callback = callback;
-    return 0;
+    folder("windows");
+    folder("standin");
+    folder("mono");
+    folder("lucida");
+    save("windows/sans.ttf", "Fixture Sans", 400, 0, 2048, 1854, 434, latin);
+    save("windows/sans-bold.ttf", "Fixture Sans", 700, 0, 2048, 1854, 434, latin);
+    save("windows/gothic.ttf", "Fixture Gothic", 400, 0, 256, 220, 36, japanese);
+    save("windows/pair.ttf", "Fixture Pair", 400, 0, 1000, 900, 300, japanese);
+    save("windows/malgun.ttf", "Malgun Gothic", 400, 0, 2048, 2210, 514, hangul);
+    save("windows/courier.ttf", "Courier New", 400, 1, 2048, 1705, 615, latin);
+    save("windows/msgothic.ttf", "MS Gothic", 400, 0, 256, 220, 36, latin);
+    save("standin/nanum.ttf", "NanumGothic", 400, 0, 2048, 2210, 514, hangul);
+    save("standin/sans.ttf", "Fixture Sans", 400, 0, 2048, 1854, 434, latin);
+    save("mono/mono.ttf", "Fixture Mono", 400, 1, 1000, 800, 200, latin);
+    save("mono/sans.ttf", "Fixture Sans", 400, 0, 2048, 1854, 434, latin);
+    save("lucida/lucida.ttf", "Lucida Console", 400, 1, 2048, 1616, 432, latin);
+    save("lucida/courier.ttf", "Courier New", 400, 1, 2048, 1705, 615, latin);
+    folder("flat");
+    save("flat/flat.ttf", "Arial", 400, 0, 1000, -1, -1, latin);
 }
 
-static void finish(struct FontCache *cache)
+static int ink_rows(FontHandle font, const uint16_t *text, int length);
+
+/* A font without an ascent or a descent (data from outside) takes its em as its cell. */
+static void flat_font(void)
 {
-    int deleted, removed, stopped, i;
-    font_cache_destruct(cache);
-    assert(!cache->entries && !cache->count && !cache->capacity && !cache->token);
-    for (i = 0; i < TEXT_SCRIPT_COUNT; ++i)
-        assert(!cache->fallback[i]);
-    assert(!live_fonts && !live_resources[0] && !live_resources[1] && !active_token && !active_dc);
-    assert(selected == DC_FONT);
-    deleted = deletes; removed = removes; stopped = stops;
-    font_cache_destruct(cache);
-    assert(deletes == deleted && removes == removed && stops == stopped);
+    FontHandle font;
+    SIZE extent;
+    set_variable("RAGE_FONT_DIRS", "flat");
+    fonts_init();
+    font = font_cache_get_font(&g_fontCache, 1, 12, CHARSET_ANSI, 0, 0);
+    assert(font && font->ppem == 12 && font->ascent == 12 && !font->descent);
+    font_text_extent(font, hello, 5, 0, &extent);
+    assert(extent.cy == 12);
+    ink_rows(font, hello, 5);
+    fonts_shutdown();
+    assert(!live);
 }
 
-static void installed_fonts(void)
+static const char *family_name(const struct Source *source)
 {
-    struct FontCache cache;
-    HFONT first;
-    int c, a, d, e, i;
-    font_cache_construct(&cache);
-    available[0] = L"unrelated"; available[1] = L"PRIMARY"; available[2] = NULL;
-    first = font_cache_get_font(&cache, 0, 13, 129, 0, 0);
-    assert(first && !last_indirect && !wcscmp(last_font.lfFaceName, L"Primary") && last_enum_charset == 129);
-    assert(last_font.lfHeight == 13 && last_font.lfWeight == 400 && last_font.lfCharSet == 129 && !last_font.lfItalic);
-    c = creates; a = allocs; d = dc_gets; e = enums;
-    assert(font_cache_get_font(&cache, 0, 13, 129, 256, 256) == first);
-    assert(creates == c && allocs == a && dc_gets == d && enums == e);
-    assert(font_cache_get_font(&cache, 1, 13, 129, 0, 0) != first);
-    assert(font_cache_get_font(&cache, 0, 14, 129, 0, 0) != first);
-    assert(font_cache_get_font(&cache, 0, 13, 0, 0, 0) != first && last_enum_charset == 0);
-    assert(font_cache_get_font(&cache, 0, 13, 129, 1, 0) != first);
-    assert(font_cache_get_font(&cache, 0, 13, 129, 0, 1) != first);
-    assert(font_cache_get_font(&cache, 0, 13, 129, 0, 2) != first);
-    assert(last_font.lfItalic == 1);
-    available[1] = L"fallback";
-    assert(font_cache_get_font(&cache, 0, 15, 0, 0, 0));
-    assert(!wcscmp(last_font.lfFaceName, L"Fallback"));
-    available[1] = NULL;
-    assert(font_cache_get_font(&cache, 0, 16, 0, 0, 0) && last_name_null);
-    available[0] = NULL;
-    assert(font_cache_get_font(&cache, 0, 17, 0, 0, 0) && last_name_null);
-    g_3dDevice.faceNamesA[1] = g_3dDevice.faceNamesB[1] = NULL;
-    e = enums;
-    assert(font_cache_get_font(&cache, 1, 17, 0, 0, 0) && last_name_null && enums == e);
-    d = dc_gets;
-    assert(font_cache_get_font(&cache, -1, 17, 0, 0, 0) && last_name_null);
-    assert(font_cache_get_font(&cache, 12, 17, 0, 0, 0) && last_name_null);
-    assert(font_cache_get_font(&cache, 1000000, 17, 0, 0, 0) && last_name_null && dc_gets == d);
-    dc_fails = 1;
-    e = enums;
-    assert(font_cache_get_font(&cache, 0, 18, 0, 0, 0) && last_name_null && enums == e);
-    dc_fails = 0;
-    for (i = 0; i < 500; ++i)
-        assert(font_cache_get_font(&cache, 0, 100 + i, 0, i % 2, i % 3));
-    assert(font_cache_get_font(&cache, 0, 13, 129, 0, 0) == first);
-    finish(&cache);
+    return source->face->family_name;
 }
 
-static void eot_fonts(void)
+static int ink_rows(FontHandle font, const uint16_t *text, int length)
 {
-    static const wchar_t *const names[] = {L"RixSquirrel_10.eot", L"RixLoveangel_10.eot", L"RixNHCgogo_10.eot",
-        L"RixDiary_10.eot", L"RixMiniHeart_10.eot", L"RixFreshman_10.eot", L"RixKid_10.eot", L"RixMagic_10.eot",
-        L"RixJJangu_10.eot"};
-    struct FontCache cache;
-    int i, d = dc_gets, a = adds;
-    font_cache_construct(&cache);
-    for (i = 0; i < 9; ++i) {
-        assert(font_cache_get_font(&cache, 20 + i, 99, 129, 1, 2));
-        assert(last_indirect && !wcscmp(last_font.lfFaceName, names[i]));
-        assert(last_font.lfHeight == -13 && last_font.lfWeight == 400 && last_font.lfCharSet == 1);
-        assert(!last_font.lfItalic && last_font.lfOutPrecision == 6 && last_font.lfQuality == 2);
+    static DWORD pixels[64 * 64];
+    struct FontTarget target = {(BYTE *)pixels, 64, 64, 64 * 4};
+    int x, y, rows = 0;
+    memset(pixels, 0, sizeof pixels);
+    font_text_out(font, &target, 2, 2, text, length, RGB(1, 2, 3), NULL);
+    for (y = 0; y < 64; ++y)
+        for (x = 0; x < 64; ++x)
+            if (pixels[y * 64 + x]) {
+                assert(pixels[y * 64 + x] == 0x010203);
+                ++rows;
+                break;
+            }
+    return rows;
+}
+
+static void windows_fonts(void)
+{
+    FontHandle sans, gothic, pair, hangul_font, fixed;
+    SIZE extent;
+    set_variable("RAGE_FONT_DIRS", "windows");
+    fonts_init();
+    /* Face 1: "Missing Face" is not installed, so its English name, Fixture Sans, at a cell of 15:
+       ppem round(15 * 2048 / 2288) = 13, ascent round(1854 * 15 / 2288) = 12, descent 3. */
+    sans = font_cache_get_font(&g_fontCache, 1, 15, CHARSET_ANSI, 0, 0);
+    assert(sans && sans == font_cache_get_font(&g_fontCache, 1, 15, CHARSET_ANSI, 0, 0));
+    assert(!strcmp(family_name(&sans->primary), "Fixture Sans") && sans->primary.own_hints && !sans->em_cell);
+    assert(sans->ppem == 13 && sans->ascent == 12 && sans->descent == 3 && font_ascent(sans) == 12);
+    font_text_extent(sans, hello, 5, 0, &extent);
+    assert(extent.cy == 15 && extent.cx > 5 * 5);
+    assert(!font_covers(sans, TEXT_SCRIPT_HANGUL) && !font_covers(sans, TEXT_SCRIPT_EMOJI));
+    /* An em height: 13 pixels of em. */
+    sans = font_cache_get_font(&g_fontCache, 1, -13, CHARSET_ANSI, 1, 0);
+    assert(sans->ppem == 13 && sans->ascent == 12 && sans->descent == 3 && !sans->embolden);
+    /* Face 2: "Fixture Pair", its first name, before Fixture Gothic. */
+    pair = font_cache_get_font(&g_fontCache, 2, 12, CHARSET_SHIFTJIS, 0, 0);
+    assert(pair && !strcmp(family_name(&pair->primary), "Fixture Pair") && pair->primary.own_hints);
+    /* A cell of 12 on a 1,200-unit cell of a 1,000-unit em: ppem 10. */
+    assert(pair->ppem == 10 && pair->ascent == 9 && pair->descent == 3 && !pair->em_cell);
+    g_3dDevice.faceNamesA[2] = L"Missing Too";
+    gothic = font_cache_get_font(&g_fontCache, 2, 13, CHARSET_SHIFTJIS, 0, 0);
+    assert(gothic && !strcmp(family_name(&gothic->primary), "Fixture Gothic") && gothic->primary.own_hints);
+    assert(gothic->ppem == 13 && gothic->ascent == 11 && gothic->descent == 2);
+    g_3dDevice.faceNamesA[2] = L"Fixture Pair";
+    /* Hangul: Gulim is missing, Malgun Gothic is the next Windows font, sized as GDI sizes it, by
+       its own cell: ppem round(12 * 2048 / 2724) = 9. */
+    hangul_font = font_cache_get_script_font(&g_fontCache, TEXT_SCRIPT_HANGUL, 12, 0, 0);
+    assert(hangul_font && !strcmp(family_name(&hangul_font->primary), "Malgun Gothic"));
+    assert(hangul_font->primary.own_hints && !hangul_font->em_cell);
+    assert(hangul_font->ppem == 9 && hangul_font->ascent == 10 && hangul_font->descent == 2);
+    assert(font_covers(hangul_font, TEXT_SCRIPT_HANGUL) && font_covers(hangul_font, TEXT_SCRIPT_SYMBOL));
+    assert(ink_rows(hangul_font, ga_na, 2) == 6);
+    assert(font_cache_get_script_font(&g_fontCache, TEXT_SCRIPT_SYMBOL, 12, 0, 0)->ppem == 9);
+    /* Han: Gulim is missing, MS Gothic is the next Windows font and is taken, as GDI took the first
+       installed, though it has no Han here; its em is its cell */
+    hangul_font = font_cache_get_script_font(&g_fontCache, TEXT_SCRIPT_HAN, 12, 0, 0);
+    assert(hangul_font && !strcmp(family_name(&hangul_font->primary), "MS Gothic"));
+    assert(hangul_font->primary.own_hints && hangul_font->ppem == 12);
+    assert(!font_cache_get_script_font(&g_fontCache, TEXT_SCRIPT_DEFAULT, 12, 0, 0));
+    /* No Lucida Console: Courier New, as GDI's mapper gives, with its own hints. */
+    fixed = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
+    assert(fixed && !strcmp(family_name(&fixed->primary), "Courier New") && fixed->primary.own_hints);
+    assert(fixed->ppem == 12 && fixed == font_cache_get_fixed(&g_fontCache, "Lucida Console", -12));
+    fonts_shutdown();
+    assert(!live);
+}
+
+static void stand_ins(void)
+{
+    FontHandle hangul_font, gothic, fixed;
+    SIZE wide, thin;
+    set_variable("RAGE_FONT_DIRS", "standin" SEPARATOR "mono");
+    fonts_init();
+    /* NanumGothic stands in for Gulim, whose em is its cell: ppem 12, autohinted. */
+    hangul_font = font_cache_get_script_font(&g_fontCache, TEXT_SCRIPT_HANGUL, 12, 0, 0);
+    assert(hangul_font && !strcmp(family_name(&hangul_font->primary), "NanumGothic"));
+    assert(!hangul_font->primary.own_hints && hangul_font->em_cell);
+    assert(hangul_font->ppem == 12 && hangul_font->ascent == 10 && hangul_font->descent == 2);
+    assert(ink_rows(hangul_font, ga_na, 2) == 8);
+    /* Face 2 has no font of its language here: the first face, a stand-in at its cell as its em. */
+    gothic = font_cache_get_font(&g_fontCache, 2, 12, CHARSET_SHIFTJIS, 0, 0);
+    assert(gothic && !gothic->primary.own_hints && gothic->em_cell && gothic->ppem == 12);
+    /* No Lucida Console and no Courier New: a fixed-pitch face. */
+    fixed = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
+    assert(fixed && !strcmp(family_name(&fixed->primary), "Fixture Mono") && !fixed->primary.own_hints);
+    font_text_extent(fixed, hello + 3, 1, 0, &wide);
+    font_text_extent(fixed, hello + 4, 1, 0, &thin);
+    assert(wide.cx == thin.cx && wide.cx > 0);
+    fonts_shutdown();
+    assert(!live);
+    set_variable("RAGE_FONT_DIRS", "lucida");
+    fonts_init();
+    fixed = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
+    assert(fixed && !strcmp(family_name(&fixed->primary), "Lucida Console") && fixed->primary.own_hints);
+    /* GDI's em of 12: ascent round(1616 * 12 / 2048) = 9, descent 3. */
+    assert(fixed->ppem == 12 && fixed->ascent == 9 && fixed->descent == 3);
+    fonts_shutdown();
+    assert(!live);
+}
+
+/* One cache's life: fonts, a fallback face for a character, measuring and drawing. */
+static void life(void)
+{
+    static const uint16_t mixed[] = {'A', 0xac00, 0x2605};
+    FontHandle sans, hangul_font, fixed;
+    SIZE extent;
+    fonts_init();
+    sans = font_cache_get_font(&g_fontCache, 1, 12, CHARSET_ANSI, 1, 1);
+    hangul_font = font_cache_get_script_font(&g_fontCache, TEXT_SCRIPT_HANGUL, 15, 0, 0);
+    fixed = font_cache_get_fixed(&g_fontCache, "Lucida Console", -12);
+    if (sans) {
+        font_text_extent(sans, mixed, 3, 1, &extent);
+        ink_rows(sans, mixed, 3);
     }
-    assert(dc_gets == d && adds == a);
-    finish(&cache);
+    if (hangul_font)
+        ink_rows(hangul_font, mixed, 3);
+    if (fixed)
+        ink_rows(fixed, hello, 5);
+    fonts_shutdown();
+    assert(!live);
 }
 
-/* Modes: 0 reads the family, 1 has no GDI+, 2 fails the read, 3 reads a family too long
-   for LOGFONT, 4 fails to add the file, 5 uses the regular file. */
-static void file_fonts(void)
+static void allocation_failures(void)
 {
-    struct FontCache cache;
-    int mode, a, r, f;
-    HFONT font;
-    for (mode = 0; mode < 6; ++mode) {
-        startup_fails = mode == 1; family_fails = mode == 2; add_fails = mode == 4;
-        family_name = mode == 3 ? L"A family name that does not fit in LF_FACESIZE characters" : L"Test Family";
-        font_cache_construct(&cache);
-        a = adds; r = removes; f = reads;
-        font = font_cache_get_font(&cache, 29, 19, 129, mode == 5 ? 2 : 1, 2);
-        assert(font && adds == a + 1);
-        assert(font_cache_get_font(&cache, 29, 19, 129, mode == 5 ? 2 : 1, 2) == font && adds == a + 1);
-        assert(last_font.lfWeight == 700 && last_font.lfCharSet == 129);
-        if (mode == 4) {
-            assert(!last_indirect && last_name_null && last_font.lfHeight == 19 && last_font.lfItalic == 1);
-        } else {
-            assert(last_indirect && last_font.lfHeight == -19 && last_font.lfItalic == 2);
-            assert(live_resources[mode == 5 ? 0 : 1] == 1);
-            resource_for_font[(int)(uintptr_t)font - 0x1000] = mode == 5 ? 0 : 1;
-            if (mode >= 1 && mode <= 3)
-                assert(!last_font.lfFaceName[0]);
-            else
-                assert(!wcscmp(last_font.lfFaceName, L"Test Family"));
-        }
-        assert(reads == f + (!startup_fails && !add_fails));
-        finish(&cache);
-        assert(removes == r + (mode != 4));
+    long total, i;
+    set_variable("RAGE_FONT_DIRS", "windows");
+    calls = fail_at = 0;
+    life();
+    total = calls;
+    assert(total > 20);
+    for (i = 1; i <= total; ++i) {
+        calls = 0;
+        fail_at = i;
+        life();
     }
-    startup_fails = family_fails = add_fails = 0;
-    family_name = L"Test Family";
-}
-
-static void shared_file_resources(void)
-{
-    struct FontCache cache;
-    int i, a = adds, r = removes;
-    font_cache_construct(&cache);
-    for (i = 0; i < 12; ++i) {
-        HFONT font = font_cache_get_font(&cache, 29, 10 + i, 129, i % 2, 0);
-        assert(font);
-        resource_for_font[(int)(uintptr_t)font - 0x1000] = i % 2;
-    }
-    assert(live_resources[0] == 6 && live_resources[1] == 6);
-    finish(&cache);
-    assert(adds == a + 12 && removes == r + 12);
-}
-
-static void retry_failures(void)
-{
-    struct FontCache cache;
-    HFONT old;
-    size_t count, capacity;
-    int c, a, r, face;
-    font_cache_construct(&cache);
-    alloc_fails = 1; c = creates; a = adds;
-    assert(!font_cache_get_font(&cache, 29, 10, 0, 0, 0));
-    assert(!cache.entries && !cache.count && !cache.capacity && creates == c && adds == a);
-    alloc_fails = 0;
-    old = font_cache_get_font(&cache, 0, 10, 0, 0, 0);
-    assert(old);
-    while (cache.count < cache.capacity)
-        assert(font_cache_get_font(&cache, 0, 100 + (int)cache.count, 0, 0, 0));
-    capacity = cache.capacity;
-    alloc_fails = 1; c = creates;
-    assert(!font_cache_get_font(&cache, 0, 4000, 0, 0, 0));
-    assert(cache.count == capacity && cache.capacity == capacity && creates == c);
-    assert(font_cache_get_font(&cache, 0, 10, 0, 0, 0) == old);
-    alloc_fails = 0;
-    assert(font_cache_get_font(&cache, 0, 4000, 0, 0, 0) && cache.capacity > capacity);
-    for (face = 0; face <= 29; face += face == 0 ? 20 : 9) {
-        count = cache.count; a = adds; r = removes;
-        create_fails = 1;
-        assert(!font_cache_get_font(&cache, face, 1234, 0, 1, 0) && cache.count == count);
-        assert(adds == a + (face == 29) && removes == r + (face == 29));
-        assert(!live_resources[0] && !live_resources[1]);
-        create_fails = 0;
-        assert(font_cache_get_font(&cache, face, 1234, 0, 1, 0) && cache.count == count + 1);
-    }
-    finish(&cache);
-}
-
-static void script_fonts(void)
-{
-    struct FontCache cache;
-    HFONT primary, hangul;
-    int c, e, s, g, m;
-    font_cache_construct(&cache);
-    g_3dDevice.faceNamesA[0] = L"Primary";
-    available[0] = L"Primary"; available[1] = L"malgun gothic"; available[2] = NULL;
-    primary = font_cache_get_font(&cache, 0, 13, 129, 0, 0);
-    assert(primary && !wcscmp(last_font.lfFaceName, L"Primary"));
-    /* The face lacks Hangul; finding out selects it once and restores the DC's font. */
-    s = selects; g = glyph_calls;
-    assert(!font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_HANGUL));
-    assert(selects == s + 2 && glyph_calls == g + 1 && selected == DC_FONT);
-    assert(!font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_HANGUL) && glyph_calls == g + 1);
-    assert(font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_THAI) && glyph_calls == g + 2);
-    /* The default script, unknown fonts and bad scripts draw in the face; emoji never do. */
-    assert(font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_DEFAULT));
-    assert(font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_COUNT));
-    assert(font_cache_covers(&cache, TEST_DC, (HFONT)(uintptr_t)0x999, TEXT_SCRIPT_HANGUL));
-    assert(!font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_EMOJI) && glyph_calls == g + 2);
-    /* Without Gulim, Hangul falls back to Malgun Gothic, matched without case. */
-    c = creates; e = enums;
-    hangul = font_cache_get_script_font(&cache, TEXT_SCRIPT_HANGUL, 13, 1, 1);
-    assert(hangul && hangul != primary && creates == c + 1 && !last_indirect);
-    assert(!wcscmp(last_font.lfFaceName, L"Malgun Gothic") && last_font.lfCharSet == DEFAULT_CHARSET);
-    assert(last_font.lfHeight == 13 && last_font.lfWeight == 700 && last_font.lfItalic == 1);
-    assert(last_enum_charset == DEFAULT_CHARSET && enums == e + 3);
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_HANGUL, 13, 1, 1) == hangul);
-    assert(creates == c + 1 && enums == e + 3);
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_HANGUL, 14, 1, 1) != hangul && enums == e + 3);
-    assert(font_cache_get_font(&cache, FONT_FACE_FALLBACK, 13, DEFAULT_CHARSET, 1, 1) != hangul);
-    assert(font_cache_covers(&cache, TEST_DC, hangul, TEXT_SCRIPT_HANGUL));
-    /* Thai has no installed fallback, which is looked up once. */
-    e = enums;
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_THAI, 13, 0, 0) && enums == e + 2);
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_THAI, 13, 0, 0) && enums == e + 2);
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_DEFAULT, 13, 0, 0));
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_COUNT, 13, 0, 0) && enums == e + 2);
-    /* Ascents are measured once per font. */
-    m = metric_calls;
-    assert(font_cache_ascent(&cache, TEST_DC, primary) == 10 && selected == DC_FONT && metric_calls == m + 1);
-    assert(font_cache_ascent(&cache, TEST_DC, primary) == 10 && metric_calls == m + 1);
-    assert(!font_cache_ascent(&cache, TEST_DC, (HFONT)(uintptr_t)0x999) && metric_calls == m + 1);
-    finish(&cache);
-
-    /* Gulim comes first, here under its Korean name; symbols use it too. */
-    font_cache_construct(&cache);
-    available[0] = L"Malgun Gothic"; available[1] = GULIM_KR; available[2] = L"Segoe UI Emoji"; available[3] = NULL;
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_HANGUL, 13, 0, 0) && !wcscmp(last_font.lfFaceName, GULIM_KR));
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_SYMBOL, 13, 0, 0) && !wcscmp(last_font.lfFaceName, GULIM_KR));
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_HAN, 13, 0, 0) && !wcscmp(last_font.lfFaceName, GULIM_KR));
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_KANA, 13, 0, 0) && !wcscmp(last_font.lfFaceName, GULIM_KR));
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_EMOJI, 13, 0, 0));
-    assert(!wcscmp(last_font.lfFaceName, L"Segoe UI Emoji"));
-    finish(&cache);
-
-    /* Failures are retried. */
-    font_cache_construct(&cache);
-    available[0] = L"Gulim"; available[1] = NULL;
-    alloc_fails = 1;
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_HANGUL, 13, 0, 0) && !cache.entries);
-    alloc_fails = 0; dc_fails = 1; e = enums;
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_SYMBOL, 13, 0, 0) && enums == e);
-    assert(!cache.fallback[TEXT_SCRIPT_SYMBOL]);
-    dc_fails = 0; create_fails = 1;
-    assert(!font_cache_get_script_font(&cache, TEXT_SCRIPT_SYMBOL, 13, 0, 0) && enums == e + 1 && !cache.count);
-    create_fails = 0;
-    assert(font_cache_get_script_font(&cache, TEXT_SCRIPT_SYMBOL, 13, 0, 0) && enums == e + 1 && cache.count == 1);
-    primary = font_cache_get_font(&cache, 0, 13, 129, 0, 0);
-    select_fails = 1; g = glyph_calls; m = metric_calls;
-    assert(font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_HANGUL) && glyph_calls == g);
-    assert(!font_cache_ascent(&cache, TEST_DC, primary) && metric_calls == m);
-    select_fails = 0; glyph_fails = 1;
-    assert(font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_HANGUL) && selected == DC_FONT);
-    glyph_fails = 0;
-    assert(!font_cache_covers(&cache, TEST_DC, primary, TEXT_SCRIPT_HANGUL) && glyph_calls == g + 2);
-    metric_fails = 1;
-    assert(!font_cache_ascent(&cache, TEST_DC, primary) && selected == DC_FONT);
-    metric_fails = 0;
-    assert(font_cache_ascent(&cache, TEST_DC, primary) == 10);
-    assert(!font_cache_ascent(&cache, TEST_DC, font_cache_get_font(&cache, 0, 1, 129, 0, 0)));
-    finish(&cache);
-    available[0] = NULL;
+    fail_at = 0;
+    for (i = 0; i < 32; ++i)
+        life();
 }
 
 int main(void)
 {
-    struct { unsigned before[4]; struct FontCache cache; unsigned after[4]; } guarded;
-    unsigned i;
-    int stopped;
-    g_3dDevice.faceNamesA[0] = g_3dDevice.faceNamesA[1] = L"Primary";
-    g_3dDevice.faceNamesB[0] = g_3dDevice.faceNamesB[1] = L"Fallback";
-    memset(&guarded, 0xa5, sizeof(guarded));
-    assert(font_cache_construct(&guarded.cache) == &guarded.cache);
-    finish(&guarded.cache);
-    for (i = 0; i < 4; ++i)
-        assert(guarded.before[i] == 0xa5a5a5a5 && guarded.after[i] == 0xa5a5a5a5);
-    installed_fonts(); eot_fonts(); file_fonts(); shared_file_resources(); retry_failures(); script_fonts();
-    stopped = stops;
-    fonts_init();
-    assert(exit_callback == fonts_shutdown && g_fontCache.token == active_token);
-    exit_callback(); exit_callback();
-    assert(stops == stopped + 1 && !g_fontCache.entries && !g_fontCache.count);
-    assert(dc_gets == dc_releases + 2 && !active_dc);
-    puts("Font cache: wide names, six-field keys, installed/EOT/file fonts, script fallbacks, glyph coverage, ascents, growth, failure retry and resource cleanup passed.");
+    make_fonts();
+    windows_fonts();
+    stand_ins();
+    flat_font();
+    allocation_failures();
+    puts("Font cache: faces by their first then second name, GDI's cell and em sizes, own hints for "
+         "Windows families and the autohinter for stand-ins, Hangul's and the fixed-pitch fallbacks, "
+         "every allocation failing in turn and 32 caches made and destroyed without a leak passed.");
     return 0;
 }

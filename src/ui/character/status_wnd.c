@@ -385,7 +385,7 @@ intptr_t ui_status_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        status_on_command(self, val1);
+        status_on_command(self, (int)val1);
         return 0;
 
     case UI_MSG_SET_INFO:

@@ -167,14 +167,10 @@ void login_mode_on_update(struct Mode *mode)
 
     if (g_activatedNow) {
         g_activatedNow = 0;
-        c3d_device_restore_surfaces(&g_3dDevice);
         ui_window_mgr_invalidate_all(&g_windowMgr);
         ui_window_mgr_set_backdrop(&g_windowMgr,
                    res_mgr_get(g_resMgr(), ui_skin_path(string_cstr(&self->wallpaper))));
     }
-
-    if (!g_windowActive && g_3dDevice.fullscreen)
-        return;
 
     renderer_clear_frame(g_renderer, 1);
     ui_window_mgr_on_process(&g_windowMgr);
@@ -182,8 +178,10 @@ void login_mode_on_update(struct Mode *mode)
     ui_window_mgr_render_windows(&g_windowMgr);
     mode_draw_mouse_cursor(&self->base);
     mode_process_fade_in(&self->base);
-    if ((char)renderer_draw_scene(g_renderer))
-        ui_window_mgr_draw_serial_number(&g_windowMgr);
+    /* custom: drawn as a quad over everything the frame holds, the cursor included, where the
+       original drew it into the frame after the scene (ui_window_mgr_draw_serial_number) */
+    ui_window_mgr_draw_serial_number(&g_windowMgr);
+    renderer_draw_scene(g_renderer);
     renderer_flip(g_renderer, 1);
     mode_screen_shot(&self->base);
 }

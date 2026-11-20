@@ -22,10 +22,10 @@ static void run_cues(struct RagEffect *self, const struct RagStrBinding *b, unsi
                 rag_follow_master(self);
                 break;
             case RAG_STR_WAVE:
-                rag_play_wave(self, op->wave, op->height);
+                effect_play_wave(op->wave);
                 break;
             case RAG_STR_PLAYER_WAVE:
-                sound_play_wave(op->wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+                sound_play_wave(op->wave, 1.0f);
                 break;
             case RAG_STR_QUAKE:
                 game_send_message(GAME_MSG_QUAKE, op->value, 0, 0, 0);

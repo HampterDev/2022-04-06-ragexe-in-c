@@ -4,6 +4,8 @@
 #include "world/model.h"
 #include "actor/actor_ops.h"
 #include "core/fatal.h"
+#include "diag/perf.h"
+#include "world/world.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -12,6 +14,9 @@
 
 struct Session g_session1;
 struct GuildInfo g_guildInfo = {0};
+struct perf_counters g_perf;
+/* the units' leaving (world/aid_lists.c), which this test does not reach */
+unsigned char game_actor_has_pending_hits(struct GameActor *self) { (void)self; abort(); }
 static struct World world;
 static struct C3dAttr attr;
 static struct { unsigned char *memory; size_t size; } blocks[128];
@@ -113,8 +118,8 @@ static void world_proximity(void)
     master.aid = 42; master_character = g_guildInfo.master_gid;
     other.aid = 43; other_character = 999;
     world.player = (struct Player *)&player; world.attr = &attr; world.nearRange = 2; attr.width = 100;
-    list_init(&world.actors); list_init(&world.idsNowhere);
-    append_pointer(&world.actors, &other); append_pointer(&world.actors, &master);
+    list_init(&world.gameObjects); world_init_aid_lists(&world); list_init(&world.idsNowhere);
+    world_add_actor(&world, &other); world_add_actor(&world, &master);
     tree_init(&world.idsByCell);
     before = allocations;
     world_update_near_flag_for_id(&world, 42, pos);
@@ -168,7 +173,7 @@ static void world_proximity(void)
     second_master.ops = &actor_ops.base.base;
     second_master.aid = 44;
     second_character = g_guildInfo.master_gid;
-    append_pointer(&world.actors, &second_master);
+    world_add_actor(&world, &second_master);
     append_pointer(&world.idsNowhere, (void *)(INT_PTR)44);
     actor_info.pos.x = 30; actor_info.pos.z = 20;
     assert(!world_any_matching_actor_near(&world, &x, &z));
@@ -181,7 +186,7 @@ static void world_proximity(void)
     assert(world.nearFlag);
     world_forget_id_in_list_ec(&world, 42, 1);
     assert(!world.nearFlag && world.idsNowhere.size == 2 && sends == 3);
-    list_free(&world.idsNowhere, NULL); list_free(&world.actors, NULL);
+    list_free(&world.idsNowhere, NULL); world_free_aid_lists(&world); list_free(&world.gameObjects, NULL);
     tree_free(&world.idsByCell, NULL);
     assert(!live_blocks);
 }
@@ -281,36 +286,12 @@ static void model_v1_creation(void)
     assert(!live_blocks);
 }
 
-static void model_picking(void)
-{
-    struct C3dActor actor = {0};
-    struct Ray3 ray = {{2, 3, -5}, {0, 0, 1}, 10};
-    int i;
-    c3d_actor_pick(&actor, NULL);
-    assert(!actor.picked);
-    actor.pickable = 1;
-    actor.obb.centre[0] = 2; actor.obb.centre[1] = 3;
-    for (i = 0; i < 3; ++i) {
-        actor.obb.extent[i] = 1;
-        actor.obb.axis[i][i] = 1;
-    }
-    c3d_actor_pick(&actor, &ray);
-    assert(actor.picked);
-    actor.picked = 0; ray.length = 3;
-    c3d_actor_pick(&actor, &ray);
-    assert(!actor.picked);
-    ray.length = 10; ray.origin.x = 5;
-    c3d_actor_pick(&actor, &ray);
-    assert(!actor.picked);
-}
-
 int main(void)
 {
     g_guildInfo.master_gid = 321;
     world_proximity();
     model_creation();
     model_v1_creation();
-    model_picking();
     puts("traversal callbacks: synchronous names, model ownership, proximity boundaries and packet transitions passed");
     return 0;
 }

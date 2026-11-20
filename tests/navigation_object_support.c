@@ -25,6 +25,6 @@ char *res_mgr_resolve_map_name(struct ResMgr *manager, const char *name) { (void
 struct NaviMap *navi_manager_result_map(const struct SearchResult *result)
 {  (void)result; abort(); }
 void game_mode_get_player_cell(struct GameMode *mode, int *x, int *y) { (void)mode; (void)x; (void)y; abort(); }
-void std_sort(void *a, void *b, unsigned size, unsigned char (*less)(const void *, const void *, void *), void *context)
+void std_sort(void *a, void *b, size_t size, unsigned char (*less)(const void *, const void *, void *), void *context)
 { (void)a; (void)b; (void)size; (void)less; (void)context; abort(); }
 unsigned char navi_result_name_greater(struct SearchResult *a, const struct SearchResult *b) { (void)a; (void)b; abort(); }

@@ -11,7 +11,6 @@
 #include "resources/granny_res.h"
 #include "fileio/resource_api.h"
 #include "contents/sound.h"
-#include "render/display_devices.h"
 #include "platform/client_config.h"
 #include "ui/skin_manager.h"
 #include "session/state.h"
@@ -22,7 +21,6 @@
 #include "platform/desktop.h"
 #include "platform/win_types.h"
 #include "platform/filesystem.h"
-#include <float.h>
 #include <string.h>
 #include "std/std.h"
 #include "render/render_api.h"
@@ -37,7 +35,7 @@ void winmain_on_crash(void)
 {
 }
 
-static int client_run(HINSTANCE instance)
+static int client_run(void)
 {
     struct InitResult init;
     struct PlatformFind *find;
@@ -59,16 +57,11 @@ static int client_run(HINSTANCE instance)
     session_init_at_startup(&g_session1);
     read_startup_settings();
 
-    if (render_enum_adapters() < 0)
-        platform_message_box(0, "d3denum init", "Error", 0);
     find = platform_find_first("savedata");
     if (!find)
         platform_directory_create("savedata");
     else
         platform_find_close(find);
-#ifdef _WIN32
-    _controlfp(0x20000, 0x30000);
-#endif
 
     period = platform_timer_period_begin();
     frame_timer_reset();
@@ -82,7 +75,7 @@ static int client_run(HINSTANCE instance)
     session_startup(&g_session1);
 
     res_mgr_read_res_name_table(g_resMgr());
-    if (app_create_window(instance) == 0) {
+    if (app_create_window() == 0) {
         result = 1;
         goto com_done;
     }
@@ -108,8 +101,6 @@ static int client_run(HINSTANCE instance)
 
     frame_timer_start(0x3c);
     platform_focus_window(g_hMainWnd);
-    if (g_3dDevice.fullscreen != 0)
-        platform_show_cursor(0);
 
     ui_window_mgr_set_screen_size(&g_windowMgr, g_renderer->width,
                g_renderer->height);
@@ -150,10 +141,11 @@ com_done:
 #ifdef _WIN32
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
 {
+    (void)instance;
     (void)prev_unused;
     (void)cmd_unused;
     (void)show;
-    return client_run(instance);
+    return client_run();
 }
 #else
 #include <unistd.h>
@@ -172,7 +164,7 @@ int main(int argc, char **argv)
     (void)argv;
     if (!files || chdir(files) != 0)
         SDL_Log("ragexe: cannot enter the game folder %s", files ? files : SDL_GetError());
-    return client_run(NULL);
+    return client_run();
 }
 #else
 /* Like a double-clicked Windows exe, run in the game folder: the current directory when it holds
@@ -203,7 +195,7 @@ static void enter_game_directory(void)
 int main(void)
 {
     enter_game_directory();
-    return client_run(NULL);
+    return client_run();
 }
 #endif
 #endif

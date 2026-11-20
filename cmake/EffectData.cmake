@@ -1,7 +1,8 @@
 # data/effects/effects.json is compiled into the client as a byte array, as build.bat does it:
 # tools/bin2c.c writes effect_data_embedded.c with g_effectData and g_effectData_size
 # (src/effects/effect_data.c reads them). A cross build (Android) cannot run a tool it compiles, so
-# there cmake/bin2c.cmake writes the same file.
+# there cmake/bin2c.cmake writes the same file. The client (cmake/Client.cmake) and, on Windows, the
+# effect tests (tests/CMakeLists.txt) include this file.
 set(RAGE_EFFECT_DATA_JSON ${PROJECT_SOURCE_DIR}/data/effects/effects.json)
 set(RAGE_EFFECT_DATA_C ${CMAKE_BINARY_DIR}/gen/effect_data_embedded.c)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/gen)
@@ -13,7 +14,7 @@ if(CMAKE_CROSSCOMPILING)
         COMMENT "Embedding data/effects/effects.json"
         VERBATIM)
 else()
-    add_executable(rage_bin2c tools/bin2c.c)
+    add_executable(rage_bin2c ${PROJECT_SOURCE_DIR}/tools/bin2c.c)
     add_custom_command(OUTPUT ${RAGE_EFFECT_DATA_C}
         COMMAND rage_bin2c ${RAGE_EFFECT_DATA_C} g_effectData ${RAGE_EFFECT_DATA_JSON}
         DEPENDS rage_bin2c ${RAGE_EFFECT_DATA_JSON}

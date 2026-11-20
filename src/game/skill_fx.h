@@ -56,7 +56,7 @@ static __inline Vec3 cell_on_ground(struct GameMode *mode, int x, int y)
 
 static __inline void play_skill_wave(const char *wave)
 {
-    sound_play_wave(wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave(wave, 1.0f);
 }
 
 static __inline struct RagEffect *actor_launch_effect(struct GameActor *actor, int effect_id)

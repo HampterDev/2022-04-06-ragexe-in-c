@@ -9,9 +9,10 @@ Original upstream SHA-256:
 - `dr_mp3.h`: `d80e6800ddde29d50988ce894affe601858802d1bb8f047f98b84b33ae66c11a`
 
 `dr_mp3_impl.c` compiles the decoder once, without its stdio file helpers
-(`DR_MP3_NO_STDIO`, set for every user of the library). It is built only off
-Windows, where it decodes the MP3 background music and MP3 sound effects that
-Miles Sound System decodes on Windows. The caller opens files through the
-platform filesystem layer and hands the decoder memory.
+(`DR_MP3_NO_STDIO`, set for every user of the library), into `build\vendor\dr_mp3.lib`
+on Windows (`vendor\build_vendor.bat`) and `rage_dr_mp3` in the CMake builds (the
+tests on Windows too). It decodes
+the MP3 background music and MP3 sound effects (`src/platform/audio_sdl.c`). The
+caller opens files through the platform filesystem layer and hands the decoder memory.
 
 No local patches.

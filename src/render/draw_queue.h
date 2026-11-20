@@ -17,8 +17,6 @@ enum RenderPass {
     RENDER_ADDITIVE_FOG,
     RENDER_ADDITIVE,
     RENDER_ADDITIVE_OVERLAY,
-    RENDER_GROUND_MESH,
-    RENDER_SHADOW_CASTERS,
     RENDER_BLENDED_WRAP,
     RENDER_BLENDED_NO_DEPTH,
     RENDER_ALPHA_NO_DEPTH,
@@ -33,13 +31,16 @@ struct RenderTexture {
     unsigned sort_key;
 };
 
-/* mesh: the primitive is a struct RPMeshDraw (custom) */
+/* What a queue's entry is: a struct RPQuad; custom, a draw of the static world (struct
+   RPWorldDraw) or of a Granny model's mesh (struct RPSkinDraw), render/primitive_types.h */
+enum { RP_ENTRY_QUAD, RP_ENTRY_WORLD, RP_ENTRY_SKIN };
+
 struct RenderEntry {
     void *primitive;
     float key;
     unsigned order;
     struct RenderTexture textures[2];
-    unsigned char mesh;
+    unsigned char kind;
 };
 
 struct RenderQueue {

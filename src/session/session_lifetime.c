@@ -1,6 +1,5 @@
 #include "contents/client_lua.h"
 #include <stdlib.h>
-#include "render/display_devices.h"
 #include "session/state.h"
 #include "core/memory.h"
 #include "session/csession.h"
@@ -206,7 +205,6 @@ void session_destruct(struct Session *self)
     item_info_mgr_clear();
     pet_auto_feed_destroy();
     achievement_destroy();
-    display_devices_reset();
     tree_clear(&self->transparentItemPulses, NULL);
     memset(&self->baseLevel, 0, offsetof(struct Session, auras) - offsetof(struct Session, baseLevel));
     private_airplane_destroy();

@@ -86,7 +86,7 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
         render_object_send(scope, NULL, GROUND_MSG_CELL, (short)x, (short)y, 0, 0);
         render_object_send(scope, NULL, GROUND_MSG_END_TIME, (unsigned)(platform_ticks_ms() + cast_time), 0, 0, 0);
         render_object_send(scope, NULL, GROUND_MSG_SKILL, skill, 0, 0, 0);
-        list_push_back(&mode->world->gameObjects, &scope, sizeof scope);
+        world_add_object(mode->world, scope);
         return;
     }
     if (!target || caster == target)

@@ -2,6 +2,8 @@
 #include "std/container_memory.h"
 #include "core/fatal.h"
 #include "core/memory.h"
+#include <limits.h>
+#include <stdint.h>
 #include <string.h>
 
 void select_char_init_storage(struct SelectCharStorage *self,
@@ -16,7 +18,8 @@ void select_char_init_storage(struct SelectCharStorage *self,
     if (slots < usable_slots)
         slots = usable_slots;
     pages = slots / SELECT_CHAR_PER_PAGE + (slots % SELECT_CHAR_PER_PAGE != 0);
-    if (pages > (SIZE_MAX / sizeof *self->previews) / SELECT_CHAR_PER_PAGE)
+    if (pages > INT_MAX / SELECT_CHAR_PER_PAGE ||
+        pages > (SIZE_MAX / sizeof *self->previews) / SELECT_CHAR_PER_PAGE)
         fatal_error("too many character slots");
     self->usable_slots = self->listed_slots = (int)usable_slots;
     self->per_page = SELECT_CHAR_PER_PAGE;

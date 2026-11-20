@@ -224,7 +224,7 @@ intptr_t ui_tag_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *s
         case TAG_LINK_NAVI:
         case TAG_LINK_ITEM:
         case TAG_LINK_QUEST:
-            ui_tag_text_viewer_on_link(self, (struct UITextButton *)sender, val1);
+            ui_tag_text_viewer_on_link(self, (struct UITextButton *)sender, (int)val1);
             break;
         }
     }
@@ -239,7 +239,7 @@ intptr_t ui_tag_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *s
         else if (msg == UI_MSG_PAGE_DOWN)
             self->scroll_pos = old_pos + TAG_PAGE;
         else
-            self->scroll_pos = old_pos + val1;
+            self->scroll_pos = old_pos + (int)val1;
         if (self->scroll_pos != old_pos)
             ui_tag_text_viewer_update_scroll(self);
         return self->scroll_pos - old_pos;

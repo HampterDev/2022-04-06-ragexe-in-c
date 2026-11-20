@@ -218,7 +218,7 @@ intptr_t ui_item_base_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
         else if (msg == UI_MSG_PAGE_DOWN)
             self->scroll = self->rows - 1 + old;
         else
-            self->scroll = val1 + old;
+            self->scroll = (int)val1 + old;
         if (old != self->scroll) {
             ui_item_base_wnd_update_scroll(self);
             ui_window_invalidate_base(wnd);
@@ -229,8 +229,8 @@ intptr_t ui_item_base_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
 
         if (val1 != UI_EDGE_BOTTOM_RIGHT)
             return 0;
-        width = val2 > BASE_MAX_WIDTH ? BASE_MAX_WIDTH : val2;
-        height = val3 > BASE_MAX_HEIGHT ? BASE_MAX_HEIGHT : val3;
+        width = val2 > BASE_MAX_WIDTH ? BASE_MAX_WIDTH : (int)val2;
+        height = val3 > BASE_MAX_HEIGHT ? BASE_MAX_HEIGHT : (int)val3;
         if (width < BASE_MIN_WIDTH)
             width = BASE_MIN_WIDTH;
         if (height < BASE_MIN_HEIGHT)

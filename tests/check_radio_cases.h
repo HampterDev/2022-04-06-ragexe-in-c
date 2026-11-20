@@ -25,7 +25,7 @@ void ui_window_on_l_btn_up_base(struct UIWindow *wnd, int x, int y) { abort(); }
 static intptr_t receive_notice(struct UIWindow *wnd, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(wnd == &parent && sender && notices < 4 && !c && !d);
-    notice_msg[notices] = msg; notice_a[notices] = a; notice_b[notices] = b;
+    notice_msg[notices] = msg; notice_a[notices] = (int)a; notice_b[notices] = (int)b;
     ++notices;
     return 0;
 }

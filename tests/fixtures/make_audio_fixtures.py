@@ -1,7 +1,7 @@
 """Regenerate the owned audio fixtures with FFmpeg and independent reference decoders.
 
 Each ADPCM file is a synthesized sine encoded by FFmpeg. The matching .pcm file (raw signed 16-bit
-little-endian, interleaved) is what the POSIX Miles decoder must reproduce exactly:
+little-endian, interleaved) is what SDL's WAV decoder must reproduce exactly (tests/test_audio.c):
 - Microsoft ADPCM: FFmpeg's own decoding, which follows Microsoft's algorithm bit for bit.
 - IMA ADPCM: CPython's audioop.adpcm2lin, a port of the Intel/DVI reference decoder that
   Microsoft's codec also follows. FFmpeg's IMA decoder rounds differently, so it is not used.

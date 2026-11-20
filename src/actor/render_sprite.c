@@ -105,7 +105,7 @@ void render_object_render_sprite(struct RenderObject *self, const float *matrix,
         }
         palette = spr->palette;
         if (self->body_palette)
-            palette = palette_resource_colors(RS_RES(string_cstr(&self->body_pal_name)), spr->palette);
+            palette = palette_resource_colors((struct PaletteRes *)named_res_get(&self->body_pal), spr->palette);
         flags = 0x101;
         render_object_draw_clip_overlays(self, &quad, clip, rect, screen_shift, depth_a, depth_b, palette, image, &flags, colour);
         if (self->monster_job == 0x235) {

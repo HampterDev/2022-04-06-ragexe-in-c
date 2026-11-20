@@ -14,6 +14,24 @@ static void compare(FILE *file, const void *value, size_t size)
     }
 }
 
+/* The fixture's vertices are 32 bytes: a vertex's 28 with a specular colour after the colour, which
+   the vertices no longer have and the geometry left 0. */
+static void compare_vertices(FILE *file, const struct PieVertex *verts)
+{
+    unsigned char expected[32];
+    int i;
+    for (i = 0; i < PIE_VERTICES; i++) {
+        unsigned zero;
+        assert(sizeof verts[i] == 28 && fread(expected, sizeof expected, 1, file) == 1);
+        memcpy(&zero, expected + 20, 4);
+        if (memcmp(expected, &verts[i], 20) || memcmp(expected + 24, (const unsigned char *)&verts[i] + 20, 8)
+            || zero) {
+            fprintf(stderr, "Cooldown geometry differs at frame %u, vertex %d\n", frame, i);
+            assert(0);
+        }
+    }
+}
+
 static void check(FILE *file, const struct CooldownTimer *t, unsigned queued)
 {
     compare(file, &t->segment, sizeof t->segment);
@@ -25,7 +43,7 @@ static void check(FILE *file, const struct CooldownTimer *t, unsigned queued)
     compare(file, &t->last_minute, sizeof t->last_minute);
     compare(file, &t->color, sizeof t->color);
     compare(file, &queued, sizeof queued);
-    compare(file, t->verts, sizeof t->verts);
+    compare_vertices(file, t->verts);
     ++frame;
 }
 

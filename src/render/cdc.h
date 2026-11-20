@@ -1,7 +1,6 @@
 #ifndef RENDER_CDC_H
 #define RENDER_CDC_H
 #include "platform/win_types.h"
-#include "render/text_backend.h"
 #include <stddef.h>
 
 struct Texture;
@@ -11,7 +10,6 @@ struct Texture;
 
 struct DcBitmap {
     int width, height;
-    struct TextBitmapState text;
     DWORD *bits;
     BYTE changed;
     struct Texture **textures;
@@ -28,8 +26,9 @@ void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h,
 void dc_bitmap_copy_bitmap(struct DcBitmap *self, unsigned dx, unsigned dy, unsigned w, unsigned h,
                                       struct DcBitmap *src);
 void dc_bitmap_fill(struct DcBitmap *self, const RECT *r, DWORD colour);
-void dc_bitmap_fill_triangle(struct DcBitmap *self, const POINT points[3], COLORREF colour);
 void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour);
+/* custom: as dc_bitmap_draw, over everything the frame has queued so far (texture_draw_surface_on_top) */
+void dc_bitmap_draw_on_top(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour);
 void dc_bitmap_draw_sprite(struct DcBitmap *self, int a, int b, int c, int d, void *spr, void *motion,
                                       int x, int y, float scale, DWORD *palette);
 void dc_bitmap_draw_texels(struct DcBitmap *self, int x, int y, struct Texture *tex, int sx, int sy, int sw, int sh,
@@ -45,6 +44,9 @@ void dc_bitmap_to_texture(struct DcBitmap *self, struct Texture **tex);
 void dc_bitmap_upload(struct DcBitmap *self);
 
 void texture_draw_surface(struct Texture *self, int x, int y, int w, int h, DWORD colour);
+/* custom: as texture_draw_surface, in the frame's last list after what it holds so far, the mouse
+   cursor included */
+void texture_draw_surface_on_top(struct Texture *self, int x, int y, int w, int h, DWORD colour);
 void texture_draw_surface_stretch(struct Texture *self, int x, int y, int w, int h);
 
 #endif

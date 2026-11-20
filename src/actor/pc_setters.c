@@ -23,8 +23,7 @@ void pc_set_imf_name(struct GameActor * base_actor)
     int job = game_actor_get_job((struct GameActor *)self);
 
     session_get_imf_name(&name, job, self->sex);
-    string_free(&self->imf_name);
-    string_move(&self->imf_name, &name);
+    named_res_take(&self->imf, &name);
 }
 
 void pc_set_head_pal_name(struct GameActor * base_actor)
@@ -36,8 +35,7 @@ void pc_set_head_pal_name(struct GameActor * base_actor)
     if (!self->head_palette)
         return;
     session_get_head_pal_name(&name, self->head, self->look_job, self->sex, self->head_palette);
-    string_free(&self->head_pal_name);
-    string_move(&self->head_pal_name, &name);
+    named_res_take(&self->head_pal, &name);
 }
 
 void pc_set_body_pal_name(struct GameActor * base_actor)
@@ -56,8 +54,7 @@ void pc_set_body_pal_name(struct GameActor * base_actor)
     }
     session_get_body_pal_name(&name, job, self->sex, self->body_palette, self->body_style,
                             actor_get_sprite_variant(self));
-    string_free(&self->body_pal_name);
-    string_move(&self->body_pal_name, &name);
+    named_res_take(&self->body_pal, &name);
 }
 
 void pc_set_body_palette(struct GameActor * base_actor, int palette)

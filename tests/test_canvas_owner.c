@@ -6,40 +6,22 @@
 #include <windows.h>
 #include "owned_storage_test_allocator.h"
 
-static int fail_dib;
-static HBITMAP test_dib(HDC dc, const BITMAPINFO *info, UINT use, void **bits, HANDLE section, DWORD offset)
-{
-    if (fail_dib) return NULL;
-    return CreateDIBSection(dc, info, use, bits, section, offset);
-}
+/* fail_pixels fails the allocation of a canvas's pixels, the only one of DWORDs */
+static int fail_pixels;
 static void *checked_calloc(size_t count, size_t size)
 {
     void *p;
     assert(!size || count <= SIZE_MAX / size);
+    if (fail_pixels && size == sizeof(DWORD)) return NULL;
     p = checked_malloc(count * size);
     if (p) memset(p, 0, count * size);
     return p;
 }
 #define calloc checked_calloc
 #define free checked_free
-#define CreateDIBSection test_dib
 #include "../src/render/cdc.c"
-#include "../src/render/text_gdi.c"
-#undef CreateDIBSection
 #undef free
 #undef calloc
-
-/* The text DCs of render/text_gdi.c are tested in test_text_render.c; no surface reaches them here. */
-void gfx_addref(gfx_surface *surface) { (void)surface; assert(!"surface text DC"); }
-void gfx_release(gfx_surface *surface) { (void)surface; assert(!"surface text DC"); }
-int gfx_get_dc(gfx_surface *surface, HDC *dc) { (void)surface; (void)dc; assert(!"surface text DC"); return -1; }
-void gfx_release_dc(gfx_surface *surface, HDC dc) { (void)surface; (void)dc; assert(!"surface text DC"); }
-/* The script fallback of render/text_gdi.c asks the font cache; no text is drawn here. */
-struct FontCache g_fontCache;
-int font_cache_covers(struct FontCache *cache, HDC dc, HFONT font, int script)
-{ (void)cache; (void)dc; (void)font; (void)script; assert(!"font coverage"); return 1; }
-int font_cache_ascent(struct FontCache *cache, HDC dc, HFONT font)
-{ (void)cache; (void)dc; (void)font; assert(!"font ascent"); return 0; }
 
 static unsigned creates, live, uploads, draws, fail_texture, fail_upload;
 static unsigned sprite_draws;
@@ -67,6 +49,9 @@ void texture_draw_surface(struct Texture *tex, int x, int y, int w, int h, DWORD
     drawn[draws] = tex;
     draw_width[draws] = w; draw_height[draws++] = h;
 }
+/* render/cdc.c's dc_bitmap_draw_on_top; no canvas here is drawn over the frame */
+void texture_draw_surface_on_top(struct Texture *tex, int x, int y, int w, int h, DWORD color)
+{ (void)tex; (void)x; (void)y; (void)w; (void)h; (void)color; abort(); }
 struct Texture *texture_create(int w, int h, int format)
 {
     struct Texture *tex;
@@ -110,7 +95,8 @@ static void allocation_failures(int single)
         memset(bitmap.bits, 0x29, 513 * 257 * 4);
         fail_at = allocation_calls + failure;
         dc_bitmap_upload(&bitmap);
-        assert(bitmap.changed && !bitmap.textures && !bitmap.texture_count && !uploads && !live && !outstanding);
+        /* what is left is the canvas's pixels */
+        assert(bitmap.changed && !bitmap.textures && !bitmap.texture_count && !uploads && !live && outstanding == 1);
         fail_at = 0; clear_counts();
         dc_bitmap_upload(&bitmap);
         assert(!bitmap.changed && bitmap.texture_count == (single ? 1u : 6u));
@@ -150,19 +136,15 @@ static void sprite_regions(void)
 }
 static void heap_canvas_lifetime(void)
 {
-    static const POINT corners[3] = {{0, 0}, {3, 0}, {3, 2}};
     struct DcBitmap *bitmap;
     size_t i;
-    dc_bitmap_fill_triangle(NULL, corners, 0);
     dc_bitmap_destroy(NULL);
     fail_at=allocation_calls+1; assert(!dc_bitmap_create(3,2) && !outstanding); fail_at=0;
-    fail_dib=1; assert(!dc_bitmap_create(3,2) && !outstanding); fail_dib=0;
+    fail_pixels=1; assert(!dc_bitmap_create(3,2) && !outstanding); fail_pixels=0;
     assert(!dc_bitmap_create(-1,2) && !outstanding);
-    bitmap=dc_bitmap_create(3,2); assert(bitmap && outstanding==1);
-    assert(bitmap->width==3 && bitmap->height==2 && bitmap->text.hdc && bitmap->bits);
+    bitmap=dc_bitmap_create(3,2); assert(bitmap && outstanding==2); /* the canvas and its pixels */
+    assert(bitmap->width==3 && bitmap->height==2 && bitmap->bits);
     for(i=0;i<6;++i) assert(bitmap->bits[i]==CDC_COLOR_KEY);
-    bitmap->changed=0; dc_bitmap_fill_triangle(bitmap, corners, RGB(1, 2, 3)); GdiFlush();
-    assert(bitmap->changed && bitmap->bits[2]==0x010203);
     dc_bitmap_destroy(bitmap); assert(!outstanding);
 }
 int main(void)
@@ -170,7 +152,6 @@ int main(void)
     struct DcBitmap bitmap;
     unsigned i;
     DWORD before, *bits;
-    HBITMAP dib;
     heap_canvas_lifetime();
     sprite_regions();
     allocation_failures(0); allocation_failures(1);
@@ -186,16 +167,16 @@ int main(void)
     for (i = 1; i <= 6; ++i) {
         clear_counts(); assert(dc_bitmap_construct(&bitmap, 513, 257));
         fail_texture = i; dc_bitmap_draw(&bitmap, 0, 0, 513, 257, 0x12345678);
-        assert(bitmap.changed && !bitmap.texture_count && !draws && !live && !outstanding);
+        assert(bitmap.changed && !bitmap.texture_count && !draws && !live && outstanding == 1);
         clear_counts(); dc_bitmap_upload(&bitmap); assert(uploads == 6);
         dc_bitmap_destruct(&bitmap); assert(!live && !outstanding);
     }
     clear_counts(); assert(dc_bitmap_construct(&bitmap, 2, 2));
     bitmap.bits[0] = 0x12345678; dc_bitmap_upload(&bitmap);
-    bits = bitmap.bits; dib = bitmap.text.dib; before = bitmap.bits[0];
-    fail_dib = 1; dc_bitmap_alloc(&bitmap, 4, 4);
-    assert(bitmap.bits == bits && bitmap.text.dib == dib && bitmap.bits[0] == before && bitmap.width == 2 && bitmap.texture_count == 1);
-    fail_dib = 0; dc_bitmap_alloc(&bitmap, 4, 4);
+    bits = bitmap.bits; before = bitmap.bits[0];
+    fail_pixels = 1; dc_bitmap_alloc(&bitmap, 4, 4);
+    assert(bitmap.bits == bits && bitmap.bits[0] == before && bitmap.width == 2 && bitmap.texture_count == 1);
+    fail_pixels = 0; dc_bitmap_alloc(&bitmap, 4, 4);
     assert(bitmap.width == 4 && bitmap.height == 4 && bitmap.changed && !bitmap.texture_count && !live);
     {
         struct DcBitmap empty;
@@ -211,10 +192,10 @@ int main(void)
         assert(!bitmap.changed && bitmap.bits[0] == 0x5a5a5a5a && bitmap.bits[5] == 0x5a5a5a5a);
     }
     dc_bitmap_destruct(&bitmap);
-    assert(!dc_bitmap_construct(&bitmap, -1, 2) && !bitmap.text.hdc);
-    assert(!dc_bitmap_construct(&bitmap, INT_MAX, INT_MAX) && !bitmap.text.hdc);
-    fail_dib = 1; assert(!dc_bitmap_construct(&bitmap, 2, 2) && !bitmap.text.hdc); fail_dib = 0;
+    assert(!dc_bitmap_construct(&bitmap, -1, 2) && !bitmap.bits);
+    assert(!dc_bitmap_construct(&bitmap, INT_MAX, INT_MAX) && !bitmap.bits);
+    fail_pixels = 1; assert(!dc_bitmap_construct(&bitmap, 2, 2) && !bitmap.bits); fail_pixels = 0;
     assert(!live && !outstanding);
-    puts("Canvas owner: C tile arrays, every allocation failure, retry, cropped rows, GDI replacement, copies from a missing or pixel-less canvas and repeated cleanup passed.");
+    puts("Canvas owner: C tile arrays, every allocation failure, retry, cropped rows, pixel replacement, copies from a missing or pixel-less canvas and repeated cleanup passed.");
     return 0;
 }

@@ -13,6 +13,7 @@
 #include "ui/chat/sub_chat_map.h"
 #include "ui/quests/navigation.h"
 #include "resources/bitmap_types.h"
+#include "render/textdc.h"
 
 void ui_window_mgr_add_window(struct UIWindowMgr *self, struct UIWindow *wnd)
 {
@@ -615,20 +616,68 @@ void ui_window_mgr_set_shop_titles_shown(struct UIWindowMgr *self, BYTE show)
     ui_window_mgr_show_windows(self, 0xbd, show);
 }
 
+#define SERIAL_NUMBER "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX"
+
+/* The serial number in white, outlined in black one pixel to each side, drawn once as plain text
+   into a bitmap one pixel larger all round than it, with its width in the face the original
+   measured it in (face 0 at 12) for its place: *width. */
+static struct DcBitmap *make_serial_number(int *width)
+{
+    static const POINT outline[4] = { { 2, 1 }, { 0, 1 }, { 1, 2 }, { 1, 0 } };
+    struct DcBitmap *bitmap = dc_bitmap_create(1, 1);
+    struct TextDC dc;
+    SIZE measured, size;
+    int i;
+
+    if (!bitmap)
+        return NULL;
+    text_dc_construct(&dc, bitmap);
+    text_dc_select_font(&dc, 0, 12, 0, 0);
+    text_dc_text_extent(&dc, SERIAL_NUMBER, (int)sizeof SERIAL_NUMBER - 1, &measured);
+    text_dc_destruct(&dc);
+    text_dc_construct(&dc, bitmap);
+    text_dc_select_font(&dc, 0, 12, 0, 0);
+    text_dc_text_extent_plain(&dc, SERIAL_NUMBER, (int)sizeof SERIAL_NUMBER - 1, &size);
+    text_dc_destruct(&dc);
+    *width = measured.cx;
+    dc_bitmap_alloc(bitmap, size.cx + 2, size.cy + 2);
+    if (size.cx <= 0 || bitmap->width != size.cx + 2 || bitmap->height != size.cy + 2) {
+        dc_bitmap_destroy(bitmap);
+        return NULL;
+    }
+    dc_bitmap_fill(bitmap, NULL, CDC_COLOR_KEY);
+    text_dc_construct(&dc, bitmap);
+    text_dc_select_font(&dc, 0, 12, 0, 0);
+    text_dc_set_text_color(&dc, 0);
+    for (i = 0; i < 4; i++)
+        text_dc_text_out_plain(&dc, outline[i].x, outline[i].y, SERIAL_NUMBER, (int)sizeof SERIAL_NUMBER - 1);
+    text_dc_set_text_color(&dc, 0xffffff);
+    text_dc_text_out_plain(&dc, 1, 1, SERIAL_NUMBER, (int)sizeof SERIAL_NUMBER - 1);
+    text_dc_destruct(&dc);
+    return bitmap;
+}
+
+/* custom: the original measured the serial number and drew it five times into the frame through a
+   DC, after the scene; it is drawn once into a bitmap here and shown as a quad over everything else
+   the frame holds, the mouse cursor included, at the same pixels: its text's left edge 0x64 pixels
+   plus its measured width from the right edge, its top 0x14 pixels above the bottom. A bitmap that
+   could not be made (no memory, or a font that measures nothing) is not tried again: its width is
+   kept as -1. */
 void ui_window_mgr_draw_serial_number(struct UIWindowMgr *self)
 {
-    SIZE size;
-    int x, y;
+    struct DcBitmap *b;
 
     if (self->tape_top + 0x50 < g_renderer->height)
         return;
-    x = g_renderer->width - renderer_get_text_extent(g_renderer, &size, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0, 0, 0xc, 0)->cx - 0x64;
-    y = g_renderer->height - 0x14;
-    renderer_text_out(g_renderer, x + 1, y, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x - 1, y, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x, y + 1, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x, y - 1, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x, y, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0xffffff);
+    if (!self->serial_number && self->serial_number_width >= 0) {
+        self->serial_number = make_serial_number(&self->serial_number_width);
+        if (!self->serial_number)
+            self->serial_number_width = -1;
+    }
+    b = self->serial_number;
+    if (b)
+        dc_bitmap_draw_on_top(b, g_renderer->width - self->serial_number_width - 0x64 - 1,
+                              g_renderer->height - 0x14 - 1, b->width, b->height, 0xffffffff);
 }
 
 static void show_or_store(struct UIWindow *wnd, int show)

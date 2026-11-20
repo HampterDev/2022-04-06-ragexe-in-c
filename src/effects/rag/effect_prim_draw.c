@@ -1,16 +1,11 @@
 #include "render/projection.h"
+#include "render/quads.h"
 #include "render/rp_pool.h"
-#include <math.h>
 #include <string.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
 #define PRIM_POOL_LIMIT 0x1fe
-
-#define D3DBLEND_ZERO        1
-#define D3DBLEND_ONE         2
-#define D3DBLEND_SRCALPHA    5
-#define D3DBLEND_INVSRCALPHA 6
 
 struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float *matrix, Vec3 pos)
 {
@@ -19,21 +14,133 @@ struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float
     out->z = 0.0f;
     out->rhw = 0.0f;
     out->diffuse = 0;
-    out->specular = 0xff000000;
     out->u = 0.0f;
     out->v = 0.0f;
     renderer_project_vertex(g_renderer, &pos, matrix, out);
     return out;
 }
 
-static void set_vertex(struct TexDrawVertex *vx, const float *matrix, Vec3 pos, unsigned argb, float u, float v)
-{
-    struct TexDrawVertex projected;
+/* custom: how the device takes a set of corners onto the screen (render/quads.h, struct
+   GfxCorners): its rhw and depth rules, and for an upright quad the point its corners stand around
+   and their lift */
+struct WorldRule {
+    int rhw, depth;
+    float rhwValue, depthValue;
+    int upright;
+    Vec3 centre;
+    float lift;
+};
 
-    *vx = *prim_project_vertex(&projected, matrix, pos);
-    vx->diffuse = argb;
-    vx->u = u;
-    vx->v = v;
+static const struct WorldRule g_projected = {GFX_RHW_PROJECTED, GFX_DEPTH_PROJECTED, 0.0f, 0.0f, 0, {0.0f, 0.0f, 0.0f},
+                                             0.0f};
+
+/* custom: a new set of the frame's, holding no corner yet, for corners in `colour` through `view` by
+   the rule */
+static struct GfxCornerSet *new_corner_set(const float *view, uint32_t colour, const struct WorldRule *rule)
+{
+    struct GfxCornerSet *set = renderer_new_corner_set(g_renderer);
+    struct GfxCorners *c = &set->corners;
+
+    memcpy(c->view, view, sizeof c->view);
+    c->proj[0] = g_renderer->proj[0];
+    c->proj[1] = g_renderer->proj[1];
+    c->centre[0] = (float)g_renderer->centreX;
+    c->centre[1] = (float)g_renderer->centreY;
+    c->rhw = rule->rhw;
+    c->depth = rule->depth;
+    c->rhwValue = rule->rhwValue;
+    c->depthValue = rule->depthValue;
+    c->colour = colour;
+    if (rule->upright) {
+        c->upright = 1;
+        c->uprightPoint[0] = rule->centre.x;
+        c->uprightPoint[1] = rule->centre.y;
+        c->uprightPoint[2] = rule->centre.z;
+        c->lift = rule->lift;
+    }
+    return set;
+}
+
+/* custom: the corner's place in the set, where the set has it already (bit for bit) */
+static int set_corner(const struct GfxCorners *c, const struct PrimCorner *corner)
+{
+    int k;
+
+    for (k = 0; k < c->count; k++)
+        if (!memcmp(c->point[k], corner->pos, sizeof corner->pos) && !memcmp(&c->u[k], &corner->u, sizeof corner->u)
+            && !memcmp(&c->v[k], &corner->v, sizeof corner->v))
+            return k;
+    return -1;
+}
+
+/* custom: the effect's triangles tri[0] to tri[count - 1] (their corners in the world, in their
+   colour, with their textures and blending) as instances of the frame, in that order, the corners
+   they have in common put up once: a set of up to GFX_CORNERS_MAX corners, which the triangles name
+   (render/quads.h, GFX_QUAD_CORNERS), until one does not fit or is of another colour. The CPU
+   finds the corners' rhw alone, by the rule, for the lists' key (the rhw of a triangle's first two
+   corners, as of its vertices before) and whether a triangle lies flat on the screen. In an
+   upright quad the second triangle's corner 2 stands on the right, the first's on the left. */
+static void queue_world_triangles(const struct PrimTriangle *tri, int count, const float *view, int flags,
+                                  const struct WorldRule *rule)
+{
+    struct GfxCornerSet *set = NULL;
+    float rhw[GFX_CORNERS_MAX];
+    int t, k;
+
+    for (t = 0; t < count; t++) {
+        struct TexDrawPrim *prim;
+        struct GfxQuad *q;
+        float own[3];
+        int missing = 0;
+
+        for (k = 0; k < 3 && set; k++)
+            missing += set_corner(&set->corners, &tri[t].world.corner[k]) < 0;
+        if (!set || set->corners.colour != tri[t].world.colour || set->corners.count + missing > GFX_CORNERS_MAX)
+            set = new_corner_set(view, tri[t].world.colour, rule);
+        prim = renderer_new_triangle_instance(g_renderer);
+        q = &prim->instance;
+        q->kind = GFX_QUAD_CORNERS;
+        q->corners.set = set;
+        q->corners.right = rule->upright && t == 1;
+        for (k = 0; k < 3; k++) {
+            const struct PrimCorner *corner = &tri[t].world.corner[k];
+            struct GfxCorners *c = &set->corners;
+            int at = set_corner(c, corner);
+
+            if (at < 0) {
+                Vec3 p;
+
+                at = c->count++;
+                memcpy(c->point[at], corner->pos, sizeof corner->pos);
+                c->u[at] = corner->u;
+                c->v[at] = corner->v;
+                p.x = corner->pos[0];
+                p.y = corner->pos[1];
+                p.z = corner->pos[2];
+                if (rule->rhw == GFX_RHW_VALUE)
+                    rhw[at] = rule->rhwValue;
+                else if (rule->rhw == GFX_RHW_ADD)
+                    rhw[at] = renderer_project_rhw(&p, view) + rule->rhwValue;
+                else
+                    rhw[at] = renderer_project_rhw(&p, view);
+            }
+            q->corners.corner[k] = (unsigned char)at;
+            own[k] = rhw[at];
+        }
+        q->corners.flat = quad_rhw_flat(own, 3);
+        prim->base.texture = tri[t].texture;
+        prim->base.stageMode = 0;
+        prim->base.srcBlend = (uint32_t)tri[t].src_blend;
+        prim->base.destBlend = (uint32_t)tri[t].dest_blend;
+        prim->base.rhw[0] = own[0];
+        prim->base.rhw[1] = own[1];
+        renderer_add_prim(g_renderer, &prim->base, flags);
+    }
+}
+
+void prim_add_world_triangles(const struct PrimTriangle *tri, int count, const float *view, int flags)
+{
+    queue_world_triangles(tri, count, view, flags, &g_projected);
 }
 
 static float upright_lift(const struct EffectPrim *self)
@@ -41,37 +148,32 @@ static float upright_lift(const struct EffectPrim *self)
     return (float)(-30 * g_renderer->height / 480) * self->base.scale;
 }
 
-static void quad_depth(struct EffectPrim *self, struct PrimTriangle *tri, const float *matrix, unsigned char mode,
-                       int second)
+/* custom: the original moved the projected vertices of a quad's two triangles by its mode, which
+   the device now does as the rules say: PRIM_QUAD_DEPTH_BIAS adds 4.5e-5 to the rhw, and z is the
+   depth of that rhw; PRIM_QUAD_IN_FRONT puts every corner in front of everything (z 1e-9, rhw 1);
+   PRIM_QUAD_UPRIGHT does that too, and stands the triangles up on the screen around the
+   primitive's point, lifted, each as wide as its first two corners lie apart (the second's corner
+   2 on the right, the first's on the left); other modes leave them as projected. */
+static void queue_quad_triangles(struct EffectPrim *self, const struct PrimTriangle *tri, const float *matrix,
+                                 unsigned char mode)
 {
-    int i;
+    struct WorldRule rule = g_projected;
 
     if (mode == PRIM_QUAD_DEPTH_BIAS) {
-        for (i = 0; i < 3; i++) {
-            tri->v[i].rhw = tri->v[i].rhw + 4.5e-5f;
-            tri->v[i].z = renderer_project_depth(tri->v[i].rhw);
-        }
-        return;
-    }
-    if (mode == PRIM_QUAD_UPRIGHT) {
-        struct TexDrawVertex centre;
-        float half_width;
-
-        prim_project_vertex(&centre, matrix, self->base.pos);
-        half_width = (float)fabs((double)(tri->v[0].x - tri->v[1].x)) * 0.5f;
-        tri->v[0].x = centre.x + half_width;
-        tri->v[1].x = centre.x - half_width;
-        tri->v[2].x = second ? centre.x + half_width : centre.x - half_width;
-        for (i = 0; i < 3; i++)
-            tri->v[i].y = upright_lift(self) + tri->v[i].y;
-        mode = PRIM_QUAD_IN_FRONT;
-    }
-    if (mode == PRIM_QUAD_IN_FRONT) {
-        for (i = 0; i < 3; i++) {
-            tri->v[i].z = 1e-9f;
-            tri->v[i].rhw = 1.0f;
+        rule.rhw = GFX_RHW_ADD;
+        rule.rhwValue = 4.5e-5f;
+    } else if (mode == PRIM_QUAD_IN_FRONT || mode == PRIM_QUAD_UPRIGHT) {
+        rule.rhw = GFX_RHW_VALUE;
+        rule.rhwValue = 1.0f;
+        rule.depth = GFX_DEPTH_VALUE;
+        rule.depthValue = 1e-9f;
+        if (mode == PRIM_QUAD_UPRIGHT) {
+            rule.upright = 1;
+            rule.centre = self->base.pos;
+            rule.lift = upright_lift(self);
         }
     }
+    queue_world_triangles(tri, 2, matrix, self->list_flags, &rule);
 }
 
 void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, Vec3 p1,
@@ -80,7 +182,7 @@ void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, V
                                float v_p2p3, float v_p0p1, float u_p0p3, float u_p1p2, unsigned char mode)
 {
     const struct RagEffect *master = self->master;
-    int dest = blend != PRIM_BLEND_ADDITIVE ? D3DBLEND_INVSRCALPHA : D3DBLEND_ONE;
+    int dest = blend != PRIM_BLEND_ADDITIVE ? DRAW_BLEND_INVSRCALPHA : DRAW_BLEND_ONE;
     int red = r, green = g, blue = b;
     unsigned argb;
     struct PrimTriangle *tri;
@@ -118,34 +220,33 @@ void prim_draw_quad(struct EffectPrim *self, int *count, short alpha, Vec3 p0, V
 
     tri = &self->triangles[*count];
     if (blend == PRIM_BLEND_OPAQUE) {
-        tri->src_blend = D3DBLEND_ONE;
-        tri->dest_blend = D3DBLEND_ZERO;
+        tri->src_blend = DRAW_BLEND_ONE;
+        tri->dest_blend = DRAW_BLEND_ZERO;
     } else {
-        tri->src_blend = D3DBLEND_SRCALPHA;
-        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? D3DBLEND_INVSRCALPHA : dest;
+        tri->src_blend = DRAW_BLEND_SRCALPHA;
+        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? DRAW_BLEND_INVSRCALPHA : dest;
     }
-    set_vertex(&tri->v[0], matrix, p0, argb, u_p0p3, v_p0p1);
-    set_vertex(&tri->v[1], matrix, p1, argb, u_p1p2, v_p0p1);
-    set_vertex(&tri->v[2], matrix, p2, argb, u_p1p2, v_p2p3);
+    prim_set_corner(&tri->world.corner[0], p0, u_p0p3, v_p0p1);
+    prim_set_corner(&tri->world.corner[1], p1, u_p1p2, v_p0p1);
+    prim_set_corner(&tri->world.corner[2], p2, u_p1p2, v_p2p3);
+    tri->world.colour = argb;
     tri->texture = self->textures[texture];
-    quad_depth(self, tri, matrix, mode, 0);
-    renderer_add_triangle(g_renderer, tri, self->list_flags);
     ++*count;
 
     tri = &self->triangles[*count];
     if (blend == PRIM_BLEND_OPAQUE) {
-        tri->src_blend = D3DBLEND_ONE;
-        tri->dest_blend = D3DBLEND_ZERO;
+        tri->src_blend = DRAW_BLEND_ONE;
+        tri->dest_blend = DRAW_BLEND_ZERO;
     } else {
-        tri->src_blend = D3DBLEND_SRCALPHA;
-        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? D3DBLEND_INVSRCALPHA : dest;
+        tri->src_blend = DRAW_BLEND_SRCALPHA;
+        tri->dest_blend = blend == PRIM_BLEND_ALPHA ? DRAW_BLEND_INVSRCALPHA : dest;
     }
-    set_vertex(&tri->v[0], matrix, p3, argb, u_p0p3, v_p2p3);
-    set_vertex(&tri->v[1], matrix, p2, argb, u_p1p2, v_p2p3);
-    set_vertex(&tri->v[2], matrix, p0, argb, u_p0p3, v_p0p1);
+    prim_set_corner(&tri->world.corner[0], p3, u_p0p3, v_p2p3);
+    prim_set_corner(&tri->world.corner[1], p2, u_p1p2, v_p2p3);
+    prim_set_corner(&tri->world.corner[2], p0, u_p0p3, v_p0p1);
+    tri->world.colour = argb;
     tri->texture = self->textures[texture];
-    quad_depth(self, tri, matrix, mode, 1);
-    renderer_add_triangle(g_renderer, tri, self->list_flags);
+    queue_quad_triangles(self, tri - 1, matrix, mode);
     ++*count;
 }
 
@@ -275,22 +376,23 @@ void prim_draw_strip(struct EffectPrim *self, int *count, int segment, short alp
     p3.z = self->base.pos.z + p3.z;
 
     tri = &self->triangles[*count];
-    tri->src_blend = D3DBLEND_SRCALPHA;
+    tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
-    set_vertex(&tri->v[0], matrix, p0, argb, u0, look.v);
-    set_vertex(&tri->v[1], matrix, p1, argb, u1, look.v);
-    set_vertex(&tri->v[2], matrix, p2, argb, u1, 0.0f);
+    prim_set_corner(&tri->world.corner[0], p0, u0, look.v);
+    prim_set_corner(&tri->world.corner[1], p1, u1, look.v);
+    prim_set_corner(&tri->world.corner[2], p2, u1, 0.0f);
+    tri->world.colour = argb;
     tri->texture = self->textures[texture];
-    renderer_add_triangle(g_renderer, tri, self->list_flags);
     ++*count;
 
     tri = &self->triangles[*count];
-    tri->src_blend = D3DBLEND_SRCALPHA;
+    tri->src_blend = DRAW_BLEND_SRCALPHA;
     tri->dest_blend = dest;
-    set_vertex(&tri->v[0], matrix, p3, argb, u0, 0.0f);
-    set_vertex(&tri->v[1], matrix, p2, argb, u1, 0.0f);
-    set_vertex(&tri->v[2], matrix, p0, argb, u0, look.v);
+    prim_set_corner(&tri->world.corner[0], p3, u0, 0.0f);
+    prim_set_corner(&tri->world.corner[1], p2, u1, 0.0f);
+    prim_set_corner(&tri->world.corner[2], p0, u0, look.v);
+    tri->world.colour = argb;
     tri->texture = self->textures[texture];
-    renderer_add_triangle(g_renderer, tri, self->list_flags);
+    prim_add_world_triangles(tri - 1, 2, matrix, self->list_flags);
     ++*count;
 }

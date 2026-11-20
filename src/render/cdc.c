@@ -34,14 +34,8 @@ static void opaque(struct DcBitmap *self)
 struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h)
 {
     memset(self, 0, sizeof *self);
-    if (!text_bitmap_open(self))
-        return NULL;
     dc_bitmap_alloc(self, w, h);
-    if (!self->bits) {
-        text_bitmap_close(self);
-        return NULL;
-    }
-    return self;
+    return self->bits ? self : NULL;
 }
 
 struct DcBitmap *dc_bitmap_create(int w, int h)
@@ -59,7 +53,7 @@ struct DcBitmap *dc_bitmap_create(int w, int h)
 void dc_bitmap_destruct(struct DcBitmap *self)
 {
     delete_textures(self);
-    text_bitmap_close(self);
+    free(self->bits);
     self->bits = NULL;
     self->width = self->height = 0;
     self->changed = 0;
@@ -77,9 +71,10 @@ void dc_bitmap_alloc(struct DcBitmap *self, int w, int h)
     DWORD *bits;
     if (w <= 0 || h <= 0 || (size_t)w > (size_t)INT_MAX / 4 / (size_t)h)
         return;
-    bits = text_bitmap_resize(self, w, h);
+    bits = calloc((size_t)w * (size_t)h, sizeof *bits);
     if (!bits)
         return;
+    free(self->bits);
     delete_textures(self);
     self->bits = bits;
     self->width = w;
@@ -219,7 +214,8 @@ void dc_bitmap_upload(struct DcBitmap *self)
     self->changed = 0;
 }
 
-void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour)
+static void draw_tiles(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour,
+                       void (*draw)(struct Texture *, int, int, int, int, DWORD))
 {
     size_t columns, i;
     int tx, ty, tw, th;
@@ -227,7 +223,7 @@ void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD col
     dc_bitmap_upload(self);
     if (!self->texture_count || self->changed) return;
     if (self->singleTexture == 1) {
-        texture_draw_surface(self->textures[0], x, y, w, h, colour);
+        draw(self->textures[0], x, y, w, h, colour);
         return;
     }
     if (w > self->width) w = self->width;
@@ -238,8 +234,18 @@ void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD col
             i = (size_t)(ty / CDC_TILE) * columns + (size_t)(tx / CDC_TILE);
             tw = w - tx > CDC_TILE ? CDC_TILE : w - tx;
             th = h - ty > CDC_TILE ? CDC_TILE : h - ty;
-            texture_draw_surface(self->textures[i], x + tx, y + ty, tw, th, colour);
+            draw(self->textures[i], x + tx, y + ty, tw, th, colour);
         }
+}
+
+void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour)
+{
+    draw_tiles(self, x, y, w, h, colour, texture_draw_surface);
+}
+
+void dc_bitmap_draw_on_top(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour)
+{
+    draw_tiles(self, x, y, w, h, colour, texture_draw_surface_on_top);
 }
 
 void dc_bitmap_draw_sprite(struct DcBitmap *self, int a, int b, int c, int d, void *sprv, void *motionv,
@@ -256,7 +262,7 @@ void dc_bitmap_draw_sprite(struct DcBitmap *self, int a, int b, int c, int d, vo
         palette = spr->palette;
     memset(&place, 0, sizeof(place));
     for (i = 0; i < motion->clip_count; i++) {
-        struct SprClip *clip = motion_get_clip(motion, i);
+        struct SprClip *clip = motion_get_clip(motion, (unsigned)i);
         struct SprImg *img;
         struct Texture *tex;
         float zx, zy;

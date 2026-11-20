@@ -707,7 +707,7 @@ void rag_kyrie_guard_flicker(struct RagEffect *self)
 {
     if (self->frame == 0) {
         rag_follow_master(self);
-        rag_play_wave_here(self, "effect\\kyrie_guard.wav");
+        effect_play_wave("effect\\kyrie_guard.wav");
     }
     if ((unsigned)self->frame <= 29) {
         self->master->overlay_flags |= 8;

@@ -493,13 +493,13 @@ void storm_kick_effect_after_init(struct Effect *effect)
     switch (effect->type) {
     case STORM_KICK:
         effect_add_sound_cue(effect, SOUND_CUE_WAVE,
-                             "effect\\T_회오리차기.wav", 5, 0.0f);
+                             "effect\\T_회오리차기.wav", 5);
         break;
     case STORM_KICK_ICE:
-        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "ice_titan_attack.wav", 5, 0.0f);
+        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "ice_titan_attack.wav", 5);
         break;
     case STORM_KICK_DOUBLE:
-        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "effect\\REVERBERATION.wav", 0, 0.0f);
+        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "effect\\REVERBERATION.wav", 0);
         break;
     }
 }

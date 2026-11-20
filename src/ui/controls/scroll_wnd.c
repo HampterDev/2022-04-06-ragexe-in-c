@@ -104,20 +104,20 @@ static struct TexDrawPrim *texture_quad(int x, int y, int sx, int sy, int w, int
     quad->base.texture = tex;
     quad->quad[0].y = (float)y;
     quad->quad[0].x = (float)x;
-    quad->quad[0].u = ((float)sx + g_texelOffsetU) / tw;
-    quad->quad[0].v = ((float)sy + g_texelOffsetV) / th;
+    quad->quad[0].u = ((float)sx + TEXEL_CENTRE) / tw;
+    quad->quad[0].v = ((float)sy + TEXEL_CENTRE) / th;
     quad->quad[1].y = (float)y;
     quad->quad[1].x = (float)(x + w);
-    quad->quad[1].u = ((float)(sx + w) + g_texelOffsetU) / tw;
-    quad->quad[1].v = ((float)sy + g_texelOffsetV) / th;
+    quad->quad[1].u = ((float)(sx + w) + TEXEL_CENTRE) / tw;
+    quad->quad[1].v = ((float)sy + TEXEL_CENTRE) / th;
     quad->quad[2].x = (float)x;
     quad->quad[2].y = (float)(y + h);
-    quad->quad[2].u = ((float)sx + g_texelOffsetU) / tw;
-    quad->quad[2].v = ((float)(sy + h) + g_texelOffsetV) / th;
+    quad->quad[2].u = ((float)sx + TEXEL_CENTRE) / tw;
+    quad->quad[2].v = ((float)(sy + h) + TEXEL_CENTRE) / th;
     quad->quad[3].x = (float)(x + w);
     quad->quad[3].y = (float)(y + h);
-    quad->quad[3].u = ((float)(sx + w) + g_texelOffsetU) / tw;
-    quad->quad[3].v = ((float)(sy + h) + g_texelOffsetV) / th;
+    quad->quad[3].u = ((float)(sx + w) + TEXEL_CENTRE) / tw;
+    quad->quad[3].v = ((float)(sy + h) + TEXEL_CENTRE) / th;
     for (i = 0; i < 4; i++) {
         quad->quad[i].diffuse = argb;
         *(DWORD *)&quad->quad[i].z = UI_QUAD_Z_BITS;
@@ -371,7 +371,7 @@ intptr_t ui_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
             val1 = -1;
         else if (msg == UI_MSG_PAGE_DOWN)
             val1 = 1;
-        return scroll_by(self, self->vbar, &self->vpos, val1, self->content_height, self->view_height);
+        return scroll_by(self, self->vbar, &self->vpos, (int)val1, self->content_height, self->view_height);
     case UI_MSG_SCROLL_H:
     case UI_MSG_PAGE_LEFT:
     case UI_MSG_PAGE_RIGHT:
@@ -379,7 +379,7 @@ intptr_t ui_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
             val1 = -1;
         else if (msg == UI_MSG_PAGE_RIGHT)
             val1 = 1;
-        return scroll_by(self, self->hbar, &self->hpos, val1, self->content_width, self->view_width);
+        return scroll_by(self, self->hbar, &self->hpos, (int)val1, self->content_width, self->view_width);
     }
     return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);
 }

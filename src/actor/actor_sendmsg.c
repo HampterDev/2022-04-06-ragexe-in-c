@@ -29,6 +29,8 @@
 #include "platform/clock.h"
 #include "world/move_track.h"
 #include <string.h>
+#include "world/world.h"
+#include "actor/attached.h"
 
 
 static struct RagEffect *sm_launch(struct GameActor *self, int effect)
@@ -41,7 +43,7 @@ static struct GameObject *sm_msg_effect(struct GameActor *self, struct GameMode 
 {
     struct GameObject *obj = game_mode_make_msg_effect(mode, kind, &self->pos, self->aid, drawn);
 
-    list_push_back(&self->attached, &obj, sizeof obj);
+    msg_effect_attach((struct MsgEffect *)obj, &self->attached);
     render_object_send(obj, self, 0x32, 0, 0, 0, 0);
     return obj;
 }
@@ -150,7 +152,6 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
     if (info->hit_effect == -2) {
         self->hit_flash = 0;
     } else {
-        struct GameActor *player = (struct GameActor *)mode->world->player;
         const char *wave;
 
         self->hit_flash = 1;
@@ -170,8 +171,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
             }
             wave = session_get_weapon_hit_wave(&g_session1, w);
         }
-        sound_play_wave(wave, self->pos.x - player->pos.x, 0.0f, self->pos.z - player->pos.z,
-                        250, 40, 1.0f);
+        sound_play_wave(wave, 1.0f);
     }
 
     if (effect == 0x61f) {
@@ -407,7 +407,7 @@ static void sm_appear_new(struct GameActor *self, struct GameMode *mode, struct 
 {
     if (sm_kind_has_owner(self))
         self->owner_aid = info->char_id;
-    self->aid = info->aid;
+    world_set_actor_aid(game_current_world(), self, info->aid);
     info->job = game_actor_state_job(info->job, info->effect_state);
     actor_set_job_model(self, info->job, info->sex);
     sm_place(self, mode, info);
@@ -442,7 +442,7 @@ static void sm_moving_new(struct GameActor *self, struct ActorMoveEntryInfo *inf
 {
     if (sm_kind_has_owner(self))
         self->owner_aid = info->char_id;
-    self->aid = info->aid;
+    world_set_actor_aid(game_current_world(), self, info->aid);
     sm_moving_fields(self, info);
     self->walk_speed = info->speed;
     /* it appears where its walk starts; the server sends the walk's record after the entry */
@@ -466,7 +466,6 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
     struct GameMode *mode = game_current_mode();
     void *info = MSG_PTR(par1);
     unsigned char shown = 1;
-    struct ListNode *node;
     int job;
 
     if (self->aid != g_session1.ownAid
@@ -514,12 +513,11 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
                 if (self->emotion_mute)
                     break;
                 self->emotion_mute = game_mode_make_emotion_effect(mode, &self->pos.x, 0x22, self->aid);
-                list_push_back(&self->attached, &self->emotion_mute, sizeof self->emotion_mute);
                 obj = self->emotion_mute;
             } else {
                 obj = game_mode_make_emotion_effect(mode, &self->pos.x, (int)par1, self->aid);
-                list_push_back(&self->attached, &obj, sizeof obj);
             }
+            msg_effect_attach((struct MsgEffect *)obj, &self->attached);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
         }
         break;
@@ -621,31 +619,10 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         self->pk_mode = states->pk_mode;
         break;
     }
-    case 0x30: {
-        struct ListNode *head = self->attached.head;
-        struct GameObject *value;
-
-        for (node = head->next; node != head; node = node->next)
-            if (*LIST_VALUE(node, struct GameObject *) == source)
-                break;
-        if (node == head)
-            break;
-        value = *LIST_VALUE(node, struct GameObject *);
-        if (self->cart == value) self->cart = 0;
-        else if (self->falcon == value) self->falcon = 0;
-        else if (self->emotion_mark == value) self->emotion_mark = 0;
-        else if (self->frozen_mark == value) self->frozen_mark = 0;
-        else if (self->curse_mark == value) self->curse_mark = 0;
-        else if (self->sleep_mark == value) self->sleep_mark = 0;
-        else if (self->stun_mark == value) self->stun_mark = 0;
-        else if (self->msg_mark_1 == value) self->msg_mark_1 = 0;
-        else if (self->msg_mark_2 == value) self->msg_mark_2 = 0;
-        else if (self->emotion_mark_a == value) self->emotion_mark_a = 0;
-        else if (self->emotion_mute == value) self->emotion_mute = 0;
-        else if (self->cursor_mark == value) self->cursor_mark = 0;
-        list_erase(&self->attached, node, NULL);
+    case 0x30:
+        /* custom: the attached effect that goes gives its node on the list (actor/attached.h) */
+        game_actor_detach(self, MSG_PTR(par1), source);
         break;
-    }
     case 0x33: {
         int kind = self->mark_kind, plus;
 
@@ -752,7 +729,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         if (g_session1.makeMissEffect) {
             struct GameObject *obj = game_mode_make_miss_effect(mode, &self->pos.x, (unsigned)par1, self->aid);
 
-            list_push_back(&self->attached, &obj, sizeof obj);
+            msg_effect_attach((struct MsgEffect *)obj, &self->attached);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
             self->miss_count++;
         }
@@ -769,7 +746,7 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
     case 0x63: {
         unsigned until;
 
-        self->aid = -1;
+        world_set_actor_aid(game_current_world(), self, -1);
         self->aura_level = 0;
         self->has_shadow = 0;
         until = platform_ticks_ms() + 0x1fe;
@@ -818,6 +795,8 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         break;
     }
     case 0x76:
+        /* alive: the effect is attached, and every way it goes clears emotion_mute (0x30 from its
+           destructor, game_actor_detach) */
         if (self->emotion_mute)
             game_remove_object(self->emotion_mute);
         break;

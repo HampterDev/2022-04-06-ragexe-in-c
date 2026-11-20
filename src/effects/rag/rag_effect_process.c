@@ -36,10 +36,10 @@ static void quake(int par1)
     game_send_message(GAME_MSG_QUAKE, par1, 0, 0, 0);
 }
 
-static void follow_wave(struct RagEffect *self, const char *wave, float y)
+static void follow_wave(struct RagEffect *self, const char *wave)
 {
     rag_follow_master(self);
-    rag_play_wave(self, wave, y);
+    effect_play_wave(wave);
 }
 
 static int str_step(struct RagEffect *self)
@@ -298,9 +298,9 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 227:
             if (self->frame == 0)
-                follow_wave(self, "effect\\EF_Bash.wav", 0.0f);
+                follow_wave(self, "effect\\EF_Bash.wav");
             if (self->frame == 35)
-                rag_play_wave_here(self, "effect\\rog_intimidate.wav");
+                effect_play_wave("effect\\rog_intimidate.wav");
             for (n = 20; n > 0; n--)
                 rag_intimidate(self, 0);
             break;
@@ -336,7 +336,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 252: rag_defender(self, "effect\\ring_yellow.tga"); break;
         case 253:
             if (self->frame == 0)
-                follow_wave(self, "effect\\흡기.wav"  , -80.0f);
+                follow_wave(self, "effect\\흡기.wav");
             rag_heal_rings(self, "effect\\ring_blue.tga", 2);
             break;
         case 254: rag_gumgang(self, 4, 0); break;
@@ -354,13 +354,13 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 267: rag_directed_sprite(self, 0); break;
         case 274:
             if (self->frame == 0)
-                follow_wave(self, "effect\\rog_steal coin.wav", 0.0f);
+                follow_wave(self, "effect\\rog_steal coin.wav");
             for (n = 30; n > 0; n--)
                 rag_coin_burst(self, "effect\\coin_a.bmp");
             break;
         case 275:
             if (self->frame == 20)
-                follow_wave(self, "effect\\rog_back stap.wav", 0.0f);
+                follow_wave(self, "effect\\rog_back stap.wav");
             for (n = 20; n > 0; n--)
                 rag_hit_flash(self);
             break;
@@ -413,7 +413,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 377:
             if (self->frame == 5)
-                follow_wave(self, "effect\\mon_맹룡과강.wav"  , 0.0f);
+                follow_wave(self, "effect\\mon_맹룡과강.wav");
             for (n = 0; n < 8; n++)
                 rag_four_turned_rings(self, "effect\\alpha_center.tga", (char)n, 2);
             if ((unsigned)(self->frame - 5) <= 30)
@@ -430,7 +430,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 380:
             if (self->frame == 25)
-                follow_wave(self, "effect\\매직 크래쉬.wav"  , 0.0f);
+                follow_wave(self, "effect\\매직 크래쉬.wav");
             if (self->frame == 30)
                 quake(0);
             if ((unsigned)(self->frame - 30) <= 30) {
@@ -451,7 +451,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 384:
             if (self->frame == 0)
-                follow_wave(self, "effect\\소울 체인지.wav"  , 0.0f);
+                follow_wave(self, "effect\\소울 체인지.wav");
             rag_actor_link(self);
             break;
         case 385:
@@ -460,27 +460,27 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 386:
             if (self->frame == 0)
-                follow_wave(self, "effect\\hunter_detecting.wav", 0.0f);
+                follow_wave(self, "effect\\hunter_detecting.wav");
             for (n = 0; n < 12; n++)
                 rag_four_turned_rings(self, "effect\\alpha_center.tga", (char)n, 3);
             break;
         case 387: rag_quake_spin_master(self); break;
         case 388:
             if (self->frame == 30)
-                follow_wave(self, "effect\\샤프슈팅.wav"  , 0.0f);
+                follow_wave(self, "effect\\샤프슈팅.wav");
             rag_dashes_to_offset(self);
             break;
         case 389:
             rag_cloud_swirl(self, 0);
             if (self->frame == 0)
-                follow_wave(self, "effect\\윈드워크.wav"  , 0.0f);
+                follow_wave(self, "effect\\윈드워크.wav");
             if ((unsigned)(self->frame - 5) <= 20)
                 tint_master(self, 1, 220, 250, 220);
             break;
         case 392: rag_kyrie_guard_flicker(self); break;
         case 393:
             if (self->frame == 30)
-                follow_wave(self, "effect\\애로우 발칸.wav"  , 0.0f);
+                follow_wave(self, "effect\\애로우 발칸.wav");
             rag_dashes_to_offset_long(self);
             break;
         case 394:
@@ -489,7 +489,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 395:
             if (self->frame == 0)
-                follow_wave(self, "effect\\소울 체인지.wav"  , 0.0f);
+                follow_wave(self, "effect\\소울 체인지.wav");
             rag_actor_link_wide(self);
             break;
         case 396:
@@ -498,7 +498,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 399:
             if (self->frame == 0)
-                follow_wave(self, "effect\\헤드 크러쉬.wav"  , 0.0f);
+                follow_wave(self, "effect\\헤드 크러쉬.wav");
             for (n = 0; n < 6; n++)
                 rag_four_turned_rings(self, "effect\\alpha_center.tga", (char)n, 4);
             if ((unsigned)(self->frame - 20) <= 30)
@@ -506,7 +506,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 400:
             if (self->frame == 22)
-                follow_wave(self, "effect\\비트 조인트.wav"  , 0.0f);
+                follow_wave(self, "effect\\비트 조인트.wav");
             for (n = 0; n < 6; n++)
                 rag_four_turned_rings(self, "effect\\alpha_center.tga", (char)n, 5);
             if ((unsigned)(self->frame - 20) <= 30)
@@ -515,7 +515,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 401:
             if (self->frame == 20 || self->frame == 30 || self->frame == 40 || self->frame == 50
                 || self->frame == 60) {
-                follow_wave(self, "effect\\EF_NapalmBeat.wav", 0.0f);
+                follow_wave(self, "effect\\EF_NapalmBeat.wav");
                 rag_hit2(self, 0);
             }
             break;
@@ -526,7 +526,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 403:
             if (self->frame == 25)
-                follow_wave(self, "effect\\swordman_provoke.wav", 0.0f);
+                follow_wave(self, "effect\\swordman_provoke.wav");
             if ((unsigned)self->frame <= 60)
                 tint_master_random(self);
             break;
@@ -534,13 +534,13 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 405: rag_bottom_column(self, "effect\\ring_white.tga", 2); break;
         case 408:
             if (self->frame == 0)
-                follow_wave(self, "effect\\EF_Blessing.wav", 0.0f);
+                follow_wave(self, "effect\\EF_Blessing.wav");
             for (n = 0; n < 45; n += 9)
                 rag_rising_bits(self, "effect\\fire_ivy.bmp", n);
             break;
         case 409:
             if (self->frame == 0)
-                follow_wave(self, "effect\\메테오 어썰트.wav"  , 0.0f);
+                follow_wave(self, "effect\\메테오 어썰트.wav");
             if ((unsigned)self->frame <= 10)
                 tint_master(self, 1, 255, 0, 255);
             for (n = 0; n < 360; n += 45)
@@ -560,7 +560,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 412: rag_blue_ivy(self); break;
         case 413:
             if (self->frame == 5)
-                follow_wave(self, "effect\\T_내려찍기.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_내려찍기.wav");
             if (!(fx->overlay_flags & 0x20) && (unsigned)(self->frame - 17) <= 33) {
                 fx->overlay_flags += 0x20;
                 fx->overlay_step = (short)(self->frame - 17);
@@ -574,9 +574,9 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 415:
             if (self->frame == 17)
-                follow_wave(self, "effect\\EF_hit2.wav", 0.0f);
+                follow_wave(self, "effect\\EF_hit2.wav");
             if (self->frame == 25)
-                follow_wave(self, "effect\\EF_hit4.wav", 0.0f);
+                follow_wave(self, "effect\\EF_hit4.wav");
             if (!(fx->overlay_flags & 0x80) && self->frame >= 30) {
                 fx->overlay_flags += 0x80;
                 fx->overlay_step = (short)(self->frame - 30);
@@ -651,7 +651,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 431: rag_white_streaks_burst(self, 3); break;
         case 432:
             if (self->frame == 25)
-                follow_wave(self, "effect\\T_전기.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_전기.wav");
             rag_electric_rings(self, 0, 0);
             rag_electric_rings(self, 0, 180);
             break;
@@ -662,7 +662,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 434: rag_white_streaks_burst(self, 1); break;
         case 435:
             if (self->frame == 5)
-                follow_wave(self, "effect\\T_회오리차기.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_회오리차기.wav");
             storm_and_swirls(self, 0);
             if (self->frame <= 47)
                 spin_master(self, 30.0f);
@@ -674,7 +674,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 438:
             if (self->frame == 0)
-                follow_wave(self, "effect\\T_마법반사.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_마법반사.wav");
             rag_cloud_rings(self, "effect\\cloud11.tga");
             break;
         case 439:
@@ -692,13 +692,13 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 444:
             if (self->frame == 0)
-                follow_wave(self, "effect\\T_효과음" "1.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_효과음" "1.wav");
             rag_blue_magic_rings(self, 0);
             rag_blue_magic_rings(self, 45);
             break;
         case 445:
             if (self->frame == 30)
-                follow_wave(self, "effect\\T_회피" "2.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_회피" "2.wav");
             if (!(fx->overlay_flags & 0x10000) && self->frame > 35) {
                 fx->overlay_flags += 0x10000;
                 fx->overlay_step = (short)(self->frame - 35);
@@ -741,7 +741,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 460:
             if (self->frame == 5)
-                follow_wave(self, "ice_titan_attack.wav", 0.0f);
+                follow_wave(self, "ice_titan_attack.wav");
             storm_and_swirls(self, 6);
             break;
         case 461:
@@ -749,13 +749,13 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 462:
             if (self->frame == 15)
-                follow_wave(self, "effect\\T_회피.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_회피.wav");
             for (n = 30; n > 0; n--)
                 rag_popping_bits(self, "effect\\whitelight.tga", 1);
             break;
         case 463:
             if (self->frame == 15) {
-                follow_wave(self, "effect\\T_회피.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_회피.wav");
                 self->master->state = 0x25;
                 render_object_play_motion_range(self->master, 0x60, 2, 2, 0x60, 2, 1, 25, 0);
             }
@@ -764,7 +764,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 464:
             if (self->frame == 0)
-                follow_wave(self, "effect\\REVERBERATION.wav", 0.0f);
+                follow_wave(self, "effect\\REVERBERATION.wav");
             storm_and_swirls(self, 11);
             break;
         case 465:
@@ -772,7 +772,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 466:
             if (self->frame == 5)
-                follow_wave(self, "effect\\T_돌려차기.wav"  , 0.0f);
+                follow_wave(self, "effect\\T_돌려차기.wav");
             if (!(fx->overlay_flags & 0x40) && (unsigned)(self->frame - 14) <= 35) {
                 fx->overlay_flags += 0x40;
                 fx->overlay_step = (short)(self->frame - 14);
@@ -823,7 +823,7 @@ unsigned char rag_effect_process300(struct RagEffect *self)
     switch (self->effect_id) {
     case 300:
         if (self->frame == 0)
-            follow_wave(self, "apocalips_attack.wav", 0.0f);
+            follow_wave(self, "apocalips_attack.wav");
         rag_chemical_protection(self, 30);
         rag_chemical_protection(self, 60);
         break;
@@ -834,7 +834,7 @@ unsigned char rag_effect_process300(struct RagEffect *self)
         rag_chemical_slash(self, 1);
         if (self->frame == 44) {
             quake(0);
-            follow_wave(self, "effect\\연주붕격.wav"  , 0.0f);
+            follow_wave(self, "effect\\연주붕격.wav");
         }
         if ((unsigned)(self->frame - 20) <= 100)
             tint_master(self, 8, 255, 255, 150);
@@ -914,7 +914,7 @@ unsigned char rag_effect_process300(struct RagEffect *self)
     case 360: rag_ghost_or_bat(self, 2); break;
     case 361:
         if (self->frame == 20)
-            follow_wave(self, "effect\\기공포.wav"  , 0.0f);
+            follow_wave(self, "effect\\기공포.wav");
         if ((unsigned)self->frame <= 10)
             tint_master(self, 1, 255, 0, 255);
         rag_slash_waves(self, 0);
@@ -924,13 +924,13 @@ unsigned char rag_effect_process300(struct RagEffect *self)
     case 364: rag_valentine_sprite(self, 1); break;
     case 365:
         if (self->frame == 3)
-            follow_wave(self, "effect\\프레셔.wav"  , 0.0f);
+            follow_wave(self, "effect\\프레셔.wav");
         rag_billboard(self, "effect\\cross_old.bmp", 0);
         rag_glow(self, "effect\\explosive_1_128.bmp", -28, 0);
         break;
     case 366:
         if (self->frame == 22)
-            follow_wave(self, "effect\\세크리파이스.wav"  , 0.0f);
+            follow_wave(self, "effect\\세크리파이스.wav");
         for (n = 0; n < 5; n++)
             rag_four_turned_rings(self, "effect\\alpha_center.tga", (char)n, 0);
         if ((unsigned)(self->frame - 20) <= 20)
@@ -940,7 +940,7 @@ unsigned char rag_effect_process300(struct RagEffect *self)
     case 368: tint_master(self, 1, 255, 100, 100); break;
     case 369:
         if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\knight_twohandquicken.wav");
+            effect_play_wave("effect\\knight_twohandquicken.wav");
         render_object_set_argb(self->master, -1, 255, 255, 160);
         rag_str_step(self, 0.0f, -80.0f, 0.0f);
         break;

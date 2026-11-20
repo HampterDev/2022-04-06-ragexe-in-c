@@ -6,18 +6,18 @@
 #include <string.h>
 
 static const char message[] = "A bounded crash report\r\n";
-static LONG dialog_data;
+static LONG_PTR dialog_data;
 static int failure, freed, transferred, opened, closed, ended, centered, displayed;
 static HGLOBAL allocation;
 static HWND window = (HWND)1;
 
-LONG WINAPI test_dialog_set_data(HWND hwnd, int index, LONG value)
+LONG_PTR WINAPI test_dialog_set_data(HWND hwnd, int index, LONG_PTR value)
 {
     assert(hwnd == window && index == DWLP_USER);
     dialog_data = value;
     return 0;
 }
-LONG WINAPI test_dialog_get_data(HWND hwnd, int index)
+LONG_PTR WINAPI test_dialog_get_data(HWND hwnd, int index)
 {
     assert(hwnd == window && index == DWLP_USER);
     return dialog_data;

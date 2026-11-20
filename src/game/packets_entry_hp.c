@@ -169,7 +169,7 @@ void game_mode_zc_notify_newentry7(struct GameMode *self, const struct PacketNew
         if (!actor)
             return;
         actor->object_type = pkt->object_type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (pkt->object_type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &pkt->aid))
                 game_actor_set_mark_listed(actor, 1);
@@ -235,7 +235,7 @@ void game_mode_zc_notify_standentry8(struct GameMode *self, const struct PacketS
         if (!actor)
             return;
         actor->object_type = pkt->object_type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (pkt->object_type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &pkt->aid))
                 game_actor_set_mark_listed(actor, 1);
@@ -301,7 +301,7 @@ void game_mode_zc_notify_moveentry9(struct GameMode *self, const struct PacketMo
         if (!actor)
             return;
         actor->object_type = pkt->object_type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (actor->object_type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &info.aid))
                 game_actor_set_mark_listed(actor, 1);
@@ -364,8 +364,7 @@ static void moveentry10(struct GameMode *self, const struct PacketMoveEntry10 *p
         if (!actor)
             goto done;
         actor->object_type = type;
-        list_push_back(&self->world->gameObjects, &actor, sizeof actor);
-        actor_list_push_back(&self->world->actors, actor);
+        world_add_actor(self->world, actor);
         if (actor->object_type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &info.aid))
                 game_actor_set_mark_listed(actor, 1);
@@ -460,7 +459,7 @@ static void newentry10(struct GameMode *self, const struct PacketNewEntry10 *pkt
         if (!actor)
             goto done;
         actor->object_type = type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &aid))
                 game_actor_set_mark_listed(actor, 1);
@@ -547,7 +546,7 @@ static void standentry10(struct GameMode *self, const struct PacketStandEntry10 
         if (!actor)
             goto done;
         actor->object_type = type;
-        world_add_actor(self, actor);
+        world_add_actor(self->world, actor);
         if (type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &aid))
                 game_actor_set_mark_listed(actor, 1);

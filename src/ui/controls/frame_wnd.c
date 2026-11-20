@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include "core/object_type_tables.h"
 #include "ui/controls/ui_hooks.h"
-#include "render/render_options.h"
 #include "platform/clock.h"
 
 struct ItemInfo;
@@ -171,7 +170,8 @@ void ui_frame_wnd_on_mouse_move(struct UIWindow *window, int x, int y)
 
     if (ui_window_mgr_get_capture(&g_windowMgr) != wnd)
         return;
-    if (x <= -g_displayWidth || y <= -g_displayHeight)
+    /* custom: the screen's size, which fullscreen no longer makes the resolution option's */
+    if (x <= -g_windowMgr.screen_width || y <= -g_windowMgr.screen_height)
         return;
     sx = x;
     sy = y;

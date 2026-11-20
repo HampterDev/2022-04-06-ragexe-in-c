@@ -9,7 +9,8 @@ struct ActorPickNode g_actorPickNode;
 
 static void pick_node_init(struct ActorPickNode *self)
 {
-    list_init(&self->boxes);
+    self->boxes = NULL;
+    self->box_count = self->box_capacity = 0;
     self->child[0] = self->child[1] = self->child[2] = self->child[3] = NULL;
 }
 
@@ -22,21 +23,15 @@ struct ActorPickNode *actor_pick_node_construct(struct ActorPickNode *self)
 void actor_pick_node_destruct(struct ActorPickNode *self)
 {
     actor_pick_node_clear(self);
-    list_free(&self->boxes, NULL);
+    mem_free(self->boxes);
+    pick_node_init(self);
 }
 
 void actor_pick_node_clear(struct ActorPickNode *self)
 {
-    struct ListNode *n;
-    void *box;
     int i;
 
-    for (n = self->boxes.head->next; n != self->boxes.head; n = n->next) {
-        box = *LIST_VALUE(n, void *);
-        if (box)
-            mem_free(box);
-    }
-    list_clear(&self->boxes, NULL);
+    self->box_count = 0;
     for (i = 0; i < 4; i++)
         if (self->child[i]) {
             actor_pick_node_destruct(self->child[i]);
@@ -102,7 +97,7 @@ void actor_pick_node_build(struct ActorPickNode *self, int depth, int left, int 
     }
 }
 
-void actor_pick_node_insert(struct ActorPickNode *self, struct PickInfo *box)
+void actor_pick_node_insert(struct ActorPickNode *self, const struct PickInfo *box)
 {
     int x, y;
 
@@ -113,22 +108,37 @@ void actor_pick_node_insert(struct ActorPickNode *self, struct PickInfo *box)
             self = self->child[actor_pick_node_quadrant(self, x, y)];
         while (self->child[0]);
     }
-    list_push_back(&self->boxes, &box, sizeof box);
+    if (self->box_count == self->box_capacity) {
+        size_t capacity = self->box_capacity ? self->box_capacity * 2 : 64;
+        struct PickInfo *boxes;
+
+        if (capacity > (size_t)-1 / sizeof *boxes)
+            return;
+        boxes = mem_alloc(capacity * sizeof *boxes);
+        if (!boxes)
+            return;
+        if (self->box_count)
+            memcpy(boxes, self->boxes, self->box_count * sizeof *boxes);
+        mem_free(self->boxes);
+        self->boxes = boxes;
+        self->box_capacity = capacity;
+    }
+    self->boxes[self->box_count++] = *box;
 }
 
 struct PickInfo *actor_pick_node_find_pick_info(struct ActorPickNode *self, float x,
                                                         float y)
 {
-    struct ListNode *n;
     struct PickInfo *box, *best;
     float depth, bestDepth;
+    size_t n;
     int q, i;
 
     if (!self->child[0]) {
         best = NULL;
         bestDepth = 0.0f;
-        for (n = self->boxes.head->next; n != self->boxes.head; n = n->next) {
-            box = *LIST_VALUE(n, struct PickInfo *);
+        for (n = 0; n < self->box_count; n++) {
+            box = &self->boxes[n];
             if (x > box->left && box->right > x && y > box->top && box->bottom > y) {
                 depth = box->far_z + box->near_z;
                 if (depth > bestDepth) {

@@ -211,7 +211,7 @@ intptr_t ui_bmp_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sen
 {
     struct UIBmpRadioBtn *self = (struct UIBmpRadioBtn *)window;
     if (msg == UI_MSG_SET_STATE) {
-        self->base.state = val1;
+        self->base.state = (int)val1;
         ui_window_invalidate_base(&self->base);
     }
     return 0;
@@ -245,10 +245,10 @@ void ui_bmp_radio_btn_set_text_style(struct UIWindow *wnd, int look, int height,
 
     if (x == RADIO_CENTRED)
         x = (int)((double)(self->base.width - ui_window_text_width(wnd, string_cstr(&self->label),
-                                                                 self->label.size, 0, height, bold, 0)) * 0.5);
+                                                                 (int)self->label.size, 0, height, bold, 0)) * 0.5);
     if (y == RADIO_CENTRED)
         y = (int)((double)(self->base.height - ui_window_text_height(wnd, string_cstr(&self->label),
-                                                                   self->label.size, 0, height, bold, 0)) * 0.5);
+                                                                   (int)self->label.size, 0, height, bold, 0)) * 0.5);
     style.look = look;
     style.x = x;
     style.y = y;

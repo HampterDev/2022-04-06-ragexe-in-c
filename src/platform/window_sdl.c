@@ -1,16 +1,20 @@
-#ifndef _WIN32
 #include "platform/window.h"
 #include <stdlib.h>
 #include <string.h>
 #include "platform/code_page.h"
 #include "core/utf8.h"
 #include "platform/vk.h"
-#include "platform/system.h"
+#include "render/display_options.h"
 #include <SDL3/SDL.h>
+#ifdef _WIN32
+#include <imm.h>
+#pragma comment(lib, "imm32.lib")
+#endif
+
+/* The client's window services on SDL, on every platform. */
 
 static unsigned char g_keys[256];
 static unsigned char g_toggles[256];
-static int g_cursorCount;
 static int g_cursorX, g_cursorY;
 
 void platform_note_key(int vk, int down)
@@ -135,16 +139,6 @@ void platform_mouse_capture(PlatformWindow window, int capture)
     SDL_CaptureMouse(capture != 0);
 }
 
-int platform_show_cursor(int show)
-{
-    g_cursorCount += show ? 1 : -1;
-    if (g_cursorCount >= 0)
-        SDL_ShowCursor();
-    else
-        SDL_HideCursor();
-    return g_cursorCount;
-}
-
 void platform_clip_cursor_to_client(PlatformWindow window, int clip)
 {
     if (window)
@@ -155,7 +149,7 @@ void platform_client_rect(PlatformWindow window, RECT *out)
 {
     int w = 0, h = 0;
     if (window)
-        SDL_GetWindowSize(window, &w, &h);
+        SDL_GetWindowSizeInPixels(window, &w, &h);
     *out = (RECT){0, 0, w, h};
 }
 
@@ -175,14 +169,7 @@ static SDL_DisplayID display_or_primary(PlatformDisplay display)
     return display ? display : SDL_GetPrimaryDisplay();
 }
 
-void platform_monitor_rect(PlatformDisplay display, RECT *out)
-{
-    SDL_Rect bounds = {0, 0, 0, 0};
-    SDL_GetDisplayBounds(display_or_primary(display), &bounds);
-    *out = (RECT){bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h};
-}
-
-void platform_monitor_rects(PlatformDisplay display, RECT *mon, RECT *work)
+static void monitor_rects(PlatformDisplay display, RECT *mon, RECT *work)
 {
     SDL_Rect bounds = {0, 0, 1024, 768}, usable;
     SDL_DisplayID id = display_or_primary(display);
@@ -198,16 +185,44 @@ PlatformDisplay platform_window_monitor(PlatformWindow window)
     return window ? SDL_GetDisplayForWindow(window) : SDL_GetPrimaryDisplay();
 }
 
-void platform_client_screen_rect(PlatformWindow window, RECT *out)
+void platform_window_room(PlatformWindow window, int *displayW, int *displayH, int *roomW, int *roomH)
 {
-    int x = 0, y = 0;
-    platform_client_rect(window, out);
+    SDL_DisplayID id = display_or_primary(platform_window_monitor(window));
+    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(id);
+    float modeDensity = mode && mode->pixel_density > 0.0f ? mode->pixel_density : 1.0f;
+    float density = window ? SDL_GetWindowPixelDensity(window) : modeDensity;
+    int top = 0, left = 0, bottom = 0, right = 0;
+    RECT mon, work;
+    monitor_rects(id, &mon, &work);
     if (window)
-        SDL_GetWindowPosition(window, &x, &y);
-    out->left += x;
-    out->right += x;
-    out->top += y;
-    out->bottom += y;
+        SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
+    if (density <= 0.0f)
+        density = 1.0f;
+    *displayW = mode ? (int)(mode->w * modeDensity + 0.5f) : (int)(mon.right - mon.left);
+    *displayH = mode ? (int)(mode->h * modeDensity + 0.5f) : (int)(mon.bottom - mon.top);
+    *roomW = (int)((work.right - work.left - left - right) * density + 0.5f);
+    *roomH = (int)((work.bottom - work.top - top - bottom) * density + 0.5f);
+}
+
+int platform_window_units(PlatformWindow window, PlatformDisplay display, int pixels, int roundUp)
+{
+    const SDL_DisplayMode *mode;
+    float density = 1.0f;
+    if (window) {
+        density = SDL_GetWindowPixelDensity(window);
+    } else {
+        mode = SDL_GetDesktopDisplayMode(display_or_primary(display));
+        if (mode)
+            density = mode->pixel_density;
+    }
+    return display_units(pixels, density, roundUp);
+}
+
+void platform_window_minimum(PlatformWindow window, int width, int height)
+{
+    if (window)
+        SDL_SetWindowMinimumSize(window, platform_window_units(window, 0, width, 1),
+                                 platform_window_units(window, 0, height, 1));
 }
 
 void platform_screen_size(int *width, int *height)
@@ -223,22 +238,18 @@ void platform_focus_window(PlatformWindow window)
         SDL_RaiseWindow(window);
 }
 
-void platform_window_frameless(PlatformWindow window, const RECT *area)
-{
-    if (!window)
-        return;
-    SDL_SetWindowBordered(window, false);
-    SDL_SetWindowPosition(window, area->left, area->top);
-    SDL_SetWindowSize(window, area->right - area->left, area->bottom - area->top);
-    SDL_SyncWindow(window);
-}
-
 void platform_window_fullscreen(PlatformWindow window)
 {
     if (!window)
         return;
+    SDL_SetWindowFullscreenMode(window, NULL);
     SDL_SetWindowFullscreen(window, true);
     SDL_SyncWindow(window);
+}
+
+int platform_window_is_fullscreen(PlatformWindow window)
+{
+    return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN);
 }
 
 void platform_ime_cancel(PlatformWindow window)
@@ -247,19 +258,24 @@ void platform_ime_cancel(PlatformWindow window)
         SDL_ClearComposition(window);
 }
 
+/* Windows: the IME of the window's input context leaves its native mode (Hangul, kana) for
+   alphanumeric input, as the password box asks every frame it has the focus. SDL has no call for an
+   input method's mode; elsewhere this does nothing. */
 void platform_ime_alphanumeric(PlatformWindow window)
 {
+#ifdef _WIN32
+    HWND hwnd = window ? (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
+                                                      SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL) : NULL;
+    HIMC imc = hwnd ? ImmGetContext(hwnd) : NULL;
+    DWORD conversion, sentence;
+    if (!imc)
+        return;
+    if (ImmGetConversionStatus(imc, &conversion, &sentence))
+        ImmSetConversionStatus(imc, 0, sentence);
+    ImmReleaseContext(hwnd, imc);
+#else
     (void)window;
-}
-
-WORD platform_keyboard_language(void)
-{
-    return (WORD)platform_user_language();
-}
-
-int platform_window_has_caption(PlatformWindow window)
-{
-    return window && !(SDL_GetWindowFlags(window) & SDL_WINDOW_BORDERLESS);
+#endif
 }
 
 int platform_window_is_foreground(PlatformWindow window)
@@ -267,38 +283,55 @@ int platform_window_is_foreground(PlatformWindow window)
     return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS);
 }
 
-void platform_window_place_windowed(PlatformWindow window, PlatformDisplay on, int x, int y, int clientW,
-                                    int clientH, int centre)
+int platform_window_is_minimized(PlatformWindow window)
 {
-    RECT mon, work;
-    if (!window)
-        return;
-    platform_monitor_rects(on, &mon, &work);
-    SDL_SetWindowFullscreen(window, false);
-    SDL_SetWindowBordered(window, true);
-    SDL_SetWindowSize(window, clientW, clientH);
-    if (centre) {
-        x = work.left + (work.right - work.left - clientW) / 2;
-        y = work.top + (work.bottom - work.top - clientH) / 2;
-    }
-    if (x + clientW > work.right)  x = work.right - clientW;
-    if (y + clientH > work.bottom) y = work.bottom - clientH;
-    if (x < work.left) x = work.left;
-    if (y < work.top)  y = work.top;
-    SDL_SetWindowPosition(window, x, y);
-    SDL_SyncWindow(window);
+    return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED);
 }
 
-void platform_window_place_frameless(PlatformWindow window, PlatformDisplay on, int w, int h)
+int platform_window_is_maximized(PlatformWindow window)
+{
+    return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED);
+}
+
+/* x and y are the corner of the window's frame, as platform_window_rect gives it, and the frame is
+   what is centred and kept in the work area; SDL places the client area inside it. Where the frame
+   is not known yet (X11 before the window manager has framed the window), it counts as none. */
+void platform_window_place_windowed(PlatformWindow window, int x, int y, int clientW, int clientH, int centre,
+                                    int maximized)
 {
     RECT mon, work;
+    int top = 0, left = 0, bottom = 0, right = 0, w, h;
     if (!window)
         return;
-    platform_monitor_rects(on, &mon, &work);
-    SDL_SetWindowFullscreen(window, false);
-    SDL_SetWindowBordered(window, false);
-    SDL_SetWindowPosition(window, mon.left, mon.top);
-    SDL_SetWindowSize(window, w, h);
+    monitor_rects(platform_window_monitor(window), &mon, &work);
+    if (platform_window_is_fullscreen(window)) {
+        /* the frame is back once the window has left fullscreen, which X11, Wayland and macOS do
+           in their own time */
+        SDL_SetWindowFullscreen(window, false);
+        SDL_SyncWindow(window);
+    }
+    if (platform_window_is_maximized(window)) {
+        if (maximized)
+            return;
+        SDL_RestoreWindow(window);
+        SDL_SyncWindow(window);
+    }
+    clientW = platform_window_units(window, 0, clientW, 0);
+    clientH = platform_window_units(window, 0, clientH, 0);
+    SDL_SetWindowSize(window, clientW, clientH);
+    SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
+    w = clientW + left + right;
+    h = clientH + top + bottom;
+    if (centre) {
+        x = work.left + (work.right - work.left - w) / 2;
+        y = work.top + (work.bottom - work.top - h) / 2;
+    }
+    if (x + w > work.right)  x = work.right - w;
+    if (y + h > work.bottom) y = work.bottom - h;
+    if (x < work.left) x = work.left;
+    if (y < work.top)  y = work.top;
+    SDL_SetWindowPosition(window, x + left, y + top);
+    if (maximized)
+        SDL_MaximizeWindow(window);
     SDL_SyncWindow(window);
 }
-#endif

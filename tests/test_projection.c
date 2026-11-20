@@ -12,7 +12,6 @@
 #include <string.h>
 
 DWORD g_fogColor;
-float g_fogNear, g_fogFar;
 struct Renderer *g_renderer;
 struct C3dDevice g_3dDevice;
 static DWORD cleared_color;
@@ -90,13 +89,11 @@ static void test_vertices(struct Renderer *renderer)
             float raw[3] = {point.x, point.y, point.z};
             float expected[4], actual[4];
             struct { unsigned before; struct TexDrawVertex value; unsigned after; } single;
-            struct { unsigned before; struct RPTwoTexVertex value; unsigned after; } multi;
             struct TexDrawVertex old_single;
-            struct RPTwoTexVertex old_multi;
             const float *view = matrices[matrix];
+            float in_view[3], rhw;
             memset(&single, 0xa5, sizeof single);
-            memset(&multi, 0x5a, sizeof multi);
-            old_single = single.value; old_multi = multi.value;
+            old_single = single.value;
 
             renderer_project_point(renderer, &point, view, &actual[0], &actual[1], &actual[2]);
             reference_CRenderer_ProjectPoint(renderer, raw, view, &expected[0], &expected[1], &expected[2]);
@@ -114,15 +111,14 @@ static void test_vertices(struct Renderer *renderer)
             assert(!memcmp(&single.value, &old_single, sizeof old_single));
             assert(single.before == 0xa5a5a5a5 && single.after == 0xa5a5a5a5);
 
-            renderer_project_multitex_vertex(renderer, &point, view, &multi.value);
-            reference_CRenderer_ProjectMultiTexVertex(renderer, raw, view, expected);
-            actual[0] = multi.value.x; actual[1] = multi.value.y;
-            actual[2] = multi.value.z; actual[3] = multi.value.rhw;
-            assert(!memcmp(actual, expected, sizeof actual));
-            old_multi.x = expected[0]; old_multi.y = expected[1];
-            old_multi.z = expected[2]; old_multi.rhw = expected[3];
-            assert(!memcmp(&multi.value, &old_multi, sizeof old_multi));
-            assert(multi.before == 0x5a5a5a5a && multi.after == 0x5a5a5a5a);
+            /* the rhw alone, and the point in view space, from which the rest follows to the bit
+               (what render/shaders/projection.hlsli's project_view computes of it) */
+            same_float(renderer_project_rhw(&point, view), old_single.rhw);
+            renderer_project_view(&point, view, in_view);
+            rhw = 1.0f / in_view[2];
+            same_float(rhw, old_single.rhw);
+            same_float(in_view[0] * rhw * renderer->proj[0] + (float)renderer->centreX, old_single.x);
+            same_float(in_view[1] * rhw * renderer->proj[1] + (float)renderer->centreY, old_single.y);
         }
     }
 }
@@ -165,71 +161,125 @@ static void test_cursor(struct Renderer *renderer)
     }
 }
 
-/* rp_vertex_fog_alpha (render/rp_pool.c), which this test does not link */
-static int cpu_fog_alpha(float rhw)
-{
-    float range = g_fogFar - g_fogNear, t = (1.0f / rhw - 10.0f) / 1490.0f;
-    if (range != 0.0f)
-        t = (t - g_fogNear) / range;
-    t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
-    return (int)((1.0f - t) * 255.0f);
-}
-
 /* custom: a static mesh drawn by the device (render/gfx.h) lands where renderer_project_vertex puts
-   the same point, with its depth and fog */
+   the same point, with its depth */
 static void test_world_view(struct Renderer *renderer)
 {
     static const float view[12] = {0.8f, -0.3f, 0.52f, 0.1f, 0.9f, 0.42f, -0.6f, -0.3f, 0.74f, 15, -40, 260};
-    static const float fog[3][2] = {{0.2f, 0.8f}, {0.0f, 1.0f}, {0.5f, 0.5f}};
     static const Vec3 points[4] = {{0, 0, 0}, {120, 35, -80}, {-200, 10, 400}, {35, -60, 900}};
     struct GfxWorldView world;
-    int f, i;
-    for (f = 0; f < 3; ++f) {
-        g_fogNear = fog[f][0];
-        g_fogFar = fog[f][1];
-        renderer_world_view(renderer, view, &world);
-        assert(!memcmp(world.view, view, sizeof view));
-        assert(world.nearZ == RENDER_NEAR_Z && world.depthScale == RENDER_DEPTH_SCALE);
-        assert(world.centre[0] == (float)renderer->centreX && world.centre[1] == (float)renderer->centreY);
-        for (i = 0; i < 4; ++i) {
-            const Vec3 *p = &points[i];
-            struct TexDrawVertex cpu;
-            float vx = world.view[0] * p->x + world.view[3] * p->y + world.view[6] * p->z + world.view[9];
-            float vy = world.view[1] * p->x + world.view[4] * p->y + world.view[7] * p->z + world.view[10];
-            float vz = world.view[2] * p->x + world.view[5] * p->y + world.view[8] * p->z + world.view[11];
-            float a = (world.fogEnd - vz) / (world.fogEnd - world.fogStart);
-            int fogAlpha;
-            renderer_project_vertex(renderer, p, view, &cpu);
-            assert(vz > RENDER_NEAR_Z);
-            assert(fabsf(vx * world.proj[0] / vz + world.centre[0] - cpu.x) < 0.01f);
-            assert(fabsf(vy * world.proj[1] / vz + world.centre[1] - cpu.y) < 0.01f);
-            assert(fabsf((vz - world.nearZ) * world.depthScale / vz - cpu.z) < 1e-6f);
-            a = a < 0.0f ? 0.0f : a > 1.0f ? 1.0f : a;
-            fogAlpha = (int)floorf(a * 255.0f);
-            assert(abs(fogAlpha - cpu_fog_alpha(cpu.rhw)) <= 1);
-        }
+    int i;
+    renderer_world_view(renderer, view, &world);
+    assert(!memcmp(world.view, view, sizeof view));
+    assert(world.nearZ == RENDER_NEAR_Z && world.depthScale == RENDER_DEPTH_SCALE);
+    assert(world.centre[0] == (float)renderer->centreX && world.centre[1] == (float)renderer->centreY);
+    for (i = 0; i < 4; ++i) {
+        const Vec3 *p = &points[i];
+        struct TexDrawVertex cpu;
+        float vx = world.view[0] * p->x + world.view[3] * p->y + world.view[6] * p->z + world.view[9];
+        float vy = world.view[1] * p->x + world.view[4] * p->y + world.view[7] * p->z + world.view[10];
+        float vz = world.view[2] * p->x + world.view[5] * p->y + world.view[8] * p->z + world.view[11];
+        renderer_project_vertex(renderer, p, view, &cpu);
+        assert(vz > RENDER_NEAR_Z);
+        assert(fabsf(vx * world.proj[0] / vz + world.centre[0] - cpu.x) < 0.01f);
+        assert(fabsf(vy * world.proj[1] / vz + world.centre[1] - cpu.y) < 0.01f);
+        assert(fabsf((vz - world.nearZ) * world.depthScale / vz - cpu.z) < 1e-6f);
     }
 }
 
-/* the frame's shadows follow the lightmaps: without them nothing casts */
-static void test_shadow_gate(struct Renderer *renderer)
+/* what renderer_set_light (render/crenderer.c) leaves: the light, the ambient light and the
+   darkness of a shadow */
+static void set_light(struct Renderer *r, const float *light, const float *ambient, float darkness)
+{
+    memcpy(r->lightDir, light, sizeof r->lightDir);
+    memcpy(r->lightAmbient, ambient, sizeof r->lightAmbient);
+    r->shadowDarkness = darkness;
+    r->lightSet = 1;
+}
+
+/* whether a box, centre and half its size, lies not wholly outside one of the planes, as the
+   static world's culls test a record's bounds (render/static_world.c) */
+static int box_inside(const struct SwFrustum *f, const float *c, const float *h)
+{
+    int i;
+
+    for (i = 0; i < 6; i++) {
+        const float *n = f->plane[i];
+        float reach = fabsf(h[0] * n[0]) + fabsf(n[1] * h[1]) + fabsf(h[2] * n[2]);
+
+        if (!(c[0] * n[0] + n[1] * c[1] + c[2] * n[2] + n[3] > -reach))
+            return 0;
+    }
+    return 1;
+}
+
+/* The frame's shadows follow the lightmaps and the map's shadow strength: with both, the device
+   is given the fit's constants for the camera and the map's light, and then for the box everything
+   lies in, as render/shadow_fit.h makes them, to the bit, with the map's darkness and its ambient
+   light within 0 to 1; the box whatever can shade the view lies in holds a caster at the view's
+   focus and one far before it along the light, not one far beside it nor one beyond the view's
+   farthest point along the light. Without lightmaps, without shadow strength, with a view that
+   cannot be inverted, or with nothing to bound the maps, there are none. */
+static void test_shadow_frame(void)
 {
     static const float view[12] = {0.8f, -0.3f, 0.52f, 0.1f, 0.9f, 0.42f, -0.6f, -0.3f, 0.74f, 15, -40, 260};
-    static const float focus[3] = {0, 0, 0}, centre[3] = {0, 0, 0}, half[3] = {5, 5, 5};
-    renderer->lightSet = 1;
-    renderer->lightDir[0] = 0.5f; renderer->lightDir[1] = 0.707f; renderer->lightDir[2] = 0.5f;
-    renderer->shadowDarkness = 0.5f;
+    static const float ambient[3] = {0.3f, -0.2f, 1.4f}, light[3] = {0.5f, 0.707f, 0.5f};
+    static const float half[3] = {5, 5, 5}, distant[3] = {9000, 0, 9000};
+    static const struct ShadowFitBox ground = {{-500, -20, -500}, {500, 0, 500}}, empty = {{1, 1, 1}, {0, 0, 0}};
+    struct Renderer renderer = {0};
+    struct ShadowFitCamera camera;
+    struct ShadowFitFrame fit;
+    struct SwFrustum reach;
+    float shift[12], focus[3], before[3], beyond[3];
+    int i;
+
+    renderer_set_projection(&renderer, 1600, 900);
+    set_light(&renderer, light, ambient, 0.5f);
     g_lightmap = 1;
-    renderer_shadow_frame(renderer, view, focus, 300.0f);
-    assert(renderer->shadowPending && renderer_shadow_reaches(renderer, centre, half, NULL));
+    renderer_shadow_frame(&renderer, view, 300.0f);
+    assert(renderer.shadowSet && renderer.shadow.darkness == 0.5f);
+    assert(renderer.shadow.ambient[0] == 0.3f && renderer.shadow.ambient[1] == 0.0f && renderer.shadow.ambient[2] == 1.0f);
+    memcpy(camera.view, view, sizeof camera.view);
+    camera.proj[0] = renderer.proj[0];
+    camera.proj[1] = renderer.proj[1];
+    camera.centre[0] = (float)renderer.centreX;
+    camera.centre[1] = (float)renderer.centreY;
+    camera.width = renderer.width;
+    camera.height = renderer.height;
+    camera.nearZ = RENDER_NEAR_Z;
+    camera.farZ = RENDER_FAR_Z;
+    camera.distance = 300.0f;
+    assert(shadow_fit_frame(&fit, &camera, light));
+    assert(!memcmp(&fit, &renderer.shadow.fit, sizeof fit));
+    renderer_shadow_bounds(&renderer, &ground);
+    assert(renderer.shadowSet && shadow_fit_bounds(&fit, &ground, 1));
+    assert(!memcmp(&fit, &renderer.shadow.fit, sizeof fit));
+    /* the focus, 300 deep along the view's axis from the eye; far before it along the light; a
+       little beyond the view's farthest point along the light */
+    assert(renderer_shadow_reach(&renderer, &reach));
+    for (i = 0; i < 3; i++) {
+        focus[i] = fit.inverse[9 + i] + 300.0f * fit.inverse[6 + i];
+        before[i] = focus[i] - 5000.0f * fit.axis[2][i];
+        beyond[i] = focus[i] + (renderer.shadowReach.farthest + 20.0f
+                                - (focus[0] * fit.axis[2][0] + focus[1] * fit.axis[2][1] + focus[2] * fit.axis[2][2]))
+                                   * fit.axis[2][i];
+    }
+    assert(box_inside(&reach, focus, half) && box_inside(&reach, before, half));
+    assert(!box_inside(&reach, distant, half) && !box_inside(&reach, beyond, half));
+    /* nothing to bound the maps: no shadows */
+    renderer_shadow_bounds(&renderer, &empty);
+    assert(!renderer.shadowSet && !renderer_shadow_reach(&renderer, &reach));
     g_lightmap = 0;
-    renderer_shadow_frame(renderer, view, focus, 300.0f);
-    assert(!renderer->shadowPending && !renderer_shadow_reaches(renderer, centre, half, NULL));
+    renderer_shadow_frame(&renderer, view, 300.0f);
+    assert(!renderer.shadowSet && !renderer_shadow_reach(&renderer, &reach));
     g_lightmap = 1;
-    renderer->shadowDarkness = 1.0f;
-    renderer_shadow_frame(renderer, view, focus, 300.0f);
-    assert(!renderer->shadowPending);
-    renderer->lightSet = 0;
+    set_light(&renderer, light, ambient, 1.0f);
+    renderer_shadow_frame(&renderer, view, 300.0f);
+    assert(!renderer.shadowSet);
+    set_light(&renderer, light, ambient, 0.5f);
+    memset(shift, 0, sizeof shift);
+    renderer_shadow_frame(&renderer, shift, 300.0f);
+    assert(!renderer.shadowSet);
 }
 
 int main(void)
@@ -244,10 +294,10 @@ int main(void)
     test_cursor(&renderer);
     test_screen();
     test_world_view(&renderer);
-    test_shadow_gate(&renderer);
+    test_shadow_frame();
     puts("projection: archived coordinates/depth/rays, distinct centres, vertex payload preservation and real ground picking passed");
     puts("renderer screen: named dimensions, clear colour, fog blending, depth clear and frame restore passed");
     puts("world view: device-projected meshes land on the CPU's pixels, depth and fog passed");
-    puts("shadow frame: drawn with lightmaps and a shadowing map, none without lightmaps or shadow strength passed");
+    puts("shadow frame: the fit's constants with lightmaps and a shadowing map, casters that can shade the view, none without lightmaps, shadow strength or anything to fit passed");
     return 0;
 }

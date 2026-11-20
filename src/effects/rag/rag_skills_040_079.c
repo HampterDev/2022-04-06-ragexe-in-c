@@ -14,7 +14,7 @@ unsigned char rag_signum(struct RagEffect *self)
 
     rag_project_master(self);
     if (self->frame == 30) {
-        rag_play_two_waves(self, "effect\\EF_Signum.wav", "effect\\EF_Bash.wav");
+        rag_play_two_waves("effect\\EF_Signum.wav", "effect\\EF_Bash.wav");
         p = self->last_prim = rag_launch_prim(self, 4, 0.0f, 0.0f, 0.0f);
         if (!p)
             return 0;
@@ -54,7 +54,7 @@ void rag_blessing(struct RagEffect *self)
 
     self->base.pos = self->master->pos;
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_Blessing.wav");
+        effect_play_wave("effect\\EF_Blessing.wav");
         p = self->last_prim = rag_launch_prim(self, 12, 0.0f, 0.0f, 0.0f);
         if (!p)
             return;
@@ -114,7 +114,7 @@ void rag_inc_agi_dex(struct RagEffect *self)
     rag_project_master(self);
     self->base.pos = self->master->pos;
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_IncAgiDex.wav");
+        effect_play_wave("effect\\EF_IncAgiDex.wav");
         agility_picture(self, "effect\\dex_agi_up.bmp", 0);
     }
     if (self->frame & 1)
@@ -318,7 +318,7 @@ void rag_ice_wall(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\wizard_icewall.wav");
+    effect_play_wave("effect\\wizard_icewall.wav");
     self->duration = 9999;
     for (side = -2; side < 4; side += 2) {
         p = self->last_prim = rag_launch_prim(self, 9, 0.0f, 0.0f, 0.0f);
@@ -359,11 +359,11 @@ void rag_earth_spike(struct RagEffect *self, char variant)
     if (self->frame != 0)
         return;
     if (variant == 0) {
-        rag_play_wave_here(self, "effect\\wizard_earthspike.wav");
+        effect_play_wave("effect\\wizard_earthspike.wav");
         texture = "effect\\stone.bmp";
     } else if (variant == 2) {
         sprintf(wave, "effect\\EF_IceArrow%d.wav", rnd(3) + 1);
-        rag_play_wave_here(self, wave);
+        effect_play_wave(wave);
         texture = "effect\\ice.tga";
     } else {
         texture = NULL;
@@ -589,7 +589,7 @@ void rag_sightrasher(struct RagEffect *self)
     rag_project_master(self);
     if (self->frame == 0) {
         render_object_send(self->master, 0, 0x6d, 0x16, 0, 0, 0);
-        rag_play_wave_here(self, "effect\\wizard_sightrasher.wav");
+        effect_play_wave("effect\\wizard_sightrasher.wav");
     }
     if (self->frame % 5 == 0 && self->frame < 20) {
         for (i = 0; i < 8; i++) {

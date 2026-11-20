@@ -37,7 +37,7 @@ struct TestTexture { struct Texture texture; struct PaintedCell painted[256]; si
 void surface_destroy(struct Surface *surface)
 { assert(textures); --textures; checked_free(surface); }
 static int power_two(int x) { int n = 1; while (n < x) n *= 2; return n; }
-struct Texture *texture_create(int width, int height, int format)
+struct Texture *texture_create_layer(int width, int height, int format)
 {
     struct TestTexture *texture;
     assert(format == GFX_FMT_1555 && width > 0 && height > 0);
@@ -91,7 +91,7 @@ static void failures(void)
     struct SprImg image = {.width = 16, .height = 24, .pixels = pixels};
     struct SpriteRegion region;
     struct Renderer renderer = {0};
-    for (point = 1; point <= 4; ++point) {
+    for (point = 1; point <= 5; ++point) {
         memset(&region, 0xa7, sizeof region); fail_at = allocation_calls + point;
         assert(!sprite_atlas_resolve(&renderer, &image, palette, &region));
         empty_region(&region); fail_at = 0;
@@ -197,9 +197,140 @@ static void dimensions_and_spares(void)
     fail_at=allocation_calls+1; sprite_atlas_initialize(&renderer); assert(!renderer.sprite_atlas); fail_at=0;
     assert(sprite_atlas_resolve(&renderer,images,palette,&a)); clean(&renderer);
 }
+/* The cell the atlas's first form picked for an image by scanning its bucket's pages in order: the
+   cell holding the image and palette, else the first cell it fits that is free or unused for a
+   quarter of the purge age, else none (a new page). */
+static struct SpriteAtlasCell *scan_pick(struct SpriteAtlasCache *cache, const struct SprImg *image,
+                                         const DWORD *colors, int *hit)
+{
+    struct SpriteAtlasCell *available = NULL;
+    struct SpriteAtlasPage *page;
+    int bucket = atlas_step(image->width) * 5 + atlas_step(image->height);
+    size_t i;
+    *hit = 0;
+    for (page = cache ? cache->pages[bucket] : NULL; page; page = page->next) {
+        for (i = 0; i < page->cell_count; ++i) {
+            struct SpriteAtlasCell *cell = &page->cells[i];
+            if (cell->image == image && cell->palette == colors) { *hit = 1; return cell; }
+            if (!available && image->width <= page->cell_width && image->height <= page->cell_height
+                && (!cell->occupied || (!cell->pinned && (DWORD)(ticks - cell->last_use) > (g_resPurgeAgeMs >> 2))))
+                available = cell;
+        }
+    }
+    return available;
+}
+/* The index holds exactly the cells with an image in the live pages, each under its own key. */
+static void index_matches_pages(struct SpriteAtlasCache *cache)
+{
+    unsigned bucket;
+    size_t cells = 0, i;
+    if (!cache) return;
+    for (bucket = 0; bucket < ATLAS_BUCKETS; ++bucket) {
+        struct SpriteAtlasPage *page;
+        for (page = cache->pages[bucket]; page; page = page->next) {
+            assert(page->bucket == (int)bucket);
+            for (i = 0; i < page->cell_count; ++i) {
+                struct SpriteAtlasCell *cell = &page->cells[i];
+                assert(cell->page == page);
+                if (!cell->image) continue;
+                ++cells;
+                assert(atlas_index_find(&cache->index, cell->image, cell->palette, page->bucket) == cell);
+            }
+        }
+    }
+    assert(cache->index.count == cells);
+}
+static size_t bucket_pages(struct SpriteAtlasCache *cache, int bucket)
+{
+    struct SpriteAtlasPage *page;
+    size_t count = 0;
+    for (page = cache ? cache->pages[bucket] : NULL; page; page = page->next) ++count;
+    return count;
+}
+/* Fuzzed takes, uses, reuses, invalidations, purges and clears: every resolve picks the cell the
+   scan picks on the same state, and the index matches the pages after every step. */
+static void against_the_scan(unsigned seed)
+{
+    static const int sizes[][2] = {{16,16},{32,32},{33,20},{20,40},{64,64},{100,50},{129,129},
+                                   {200,240},{300,40},{40,300},{600,30},{520,520}};
+    static DWORD colors[3][256];
+    struct Renderer renderer = {0};
+    struct SprImg images[48];
+    unsigned state = seed, step, resolves = 0, hits = 0, pages = 0, reuses = 0;
+    for (step = 0; step < 48; ++step) {
+        memset(&images[step], 0, sizeof images[step]);
+        images[step].width = sizes[step % 12][0];
+        images[step].height = sizes[step % 12][1];
+        images[step].pixels = pixels;
+    }
+    for (step = 0; step < 3; ++step) colors[step][1] = 0x100u * (step + 1);
+    ticks = 1000;
+    for (step = 0; step < 60000; ++step) {
+        unsigned op;
+        state ^= state << 13; state ^= state >> 17; state ^= state << 5;
+        op = state % 1000;
+        if (op < 800) {
+            const struct SprImg *image = &images[(state >> 10) % 48];
+            const DWORD *pal = colors[(state >> 20) % 3];
+            struct SpriteAtlasCache *cache = renderer.sprite_atlas;
+            int hit, bucket = atlas_step(image->width) * 5 + atlas_step(image->height);
+            struct SpriteAtlasCell *expected = scan_pick(cache, image, pal, &hit);
+            int reused = expected && !hit && expected->occupied;
+            size_t before = bucket_pages(cache, bucket);
+            unsigned uploads_before = uploads;
+            struct SpriteRegion region;
+            struct Texture *texture;
+            failed_upload = op < 8;
+            texture = sprite_atlas_resolve(&renderer, image, pal, &region);
+            cache = renderer.sprite_atlas;
+            ++resolves;
+            if (failed_upload && !hit) {
+                assert(!texture && uploads == uploads_before + 1);
+                assert(!expected || !expected->image);
+            } else if (expected) {
+                assert(texture == expected->page->texture && region.x == expected->region.x
+                       && region.y == expected->region.y && bucket_pages(cache, bucket) == before);
+                assert(uploads == uploads_before + (hit ? 0u : 1u));
+                assert(expected->image == image && expected->palette == pal && expected->pinned);
+                hits += (unsigned)hit;
+                reuses += (unsigned)reused;
+            } else {
+                struct SpriteAtlasPage *last = cache->pages[bucket];
+                while (last->next) last = last->next;
+                assert(bucket_pages(cache, bucket) == before + 1 && texture == last->texture);
+                assert(region.x == 0 && region.y == 0 && last->cells[0].image == image);
+                ++pages;
+            }
+            failed_upload = 0;
+        } else if (op < 900) {
+            ticks += state % 400;
+        } else if (op < 950) {
+            sprite_atlas_finish_frame(&renderer);
+        } else if (op < 965) {
+            unsigned first = (state >> 8) % 48;
+            sprite_atlas_invalidate_images(&renderer, images + first, (state >> 16) % (48 - first + 1));
+        } else if (op < 975) {
+            sprite_atlas_invalidate_palette(&renderer, colors[(state >> 8) % 3]);
+        } else if (op < 990) {
+            ticks += 1100;
+            sprite_atlas_purge(&renderer);
+        } else if (op < 995) {
+            sprite_atlas_clear(&renderer);
+        } else {
+            sprite_atlas_finish_frame(&renderer);
+            sprite_atlas_clear(&renderer);
+            sprite_atlas_finish_frame(&renderer);
+            assert(!renderer.sprite_atlas || !renderer.sprite_atlas->index.count);
+        }
+        index_matches_pages(renderer.sprite_atlas);
+    }
+    assert(resolves > 40000 && hits > 5000 && reuses > 1000 && pages > 50);
+    clean(&renderer);
+}
 int main(void)
 {
     failures(); lifetimes(); reuse_and_wrap(); dimensions_and_spares();
-    puts("Sprite atlas: C ownership, allocation/upload retry, typed regions, invalidation, queued draws, clock wrap, actual page sizes and spare reuse passed.");
+    against_the_scan(0x2545f491u); against_the_scan(0x9e3779b9u); against_the_scan(0x7f4a7c15u);
+    puts("Sprite atlas: C ownership, allocation/upload retry, typed regions, invalidation, queued draws, clock wrap, actual page sizes, spare reuse, and 180000 fuzzed steps picking the cells a scan of the pages picks passed.");
     return 0;
 }

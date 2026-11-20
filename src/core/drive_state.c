@@ -74,7 +74,7 @@ static void write_game(FILE *f)
 
 static void write_picks(FILE *f, const struct ActorPickNode *node, const char **sep)
 {
-    const struct ListNode *head = node->boxes.head, *n;
+    size_t n;
     int i;
 
     if (node->child[0]) {
@@ -82,10 +82,8 @@ static void write_picks(FILE *f, const struct ActorPickNode *node, const char **
             write_picks(f, node->child[i], sep);
         return;
     }
-    if (!head)
-        return;
-    for (n = head->next; n != head; n = n->next) {
-        const struct PickInfo *box = *LIST_VALUE(n, struct PickInfo *);
+    for (n = 0; n < node->box_count; n++) {
+        const struct PickInfo *box = &node->boxes[n];
 
         fprintf(f, "%s%d:%d:%d:%d,%d", *sep, box->aid, box->job, box->kind,
                 (int)((box->left + box->right) / 2), (int)((box->top + box->bottom) / 2));

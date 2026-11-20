@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
 #include "render/math3d.h"
 
@@ -144,54 +145,6 @@ void mat_rotate_z(float *m, float rad)
     b.m[3] = -s;
     b.m[4] = c;
     mat34_post_multiply(m, &b);
-}
-
-static int ray_slab(float e, float f, float h, float *tmin, float *tmax)
-{
-    if ((float)fabs(f) > 1.0e-5f) {
-        float inv = 1.0f / f;
-        float t1 = (h + e) * inv;
-        float t2 = (e - h) * inv;
-
-        if (t1 > t2) {
-            *tmin = t2 > *tmin ? t2 : *tmin;
-            *tmax = t1 < *tmax ? t1 : *tmax;
-        } else {
-            *tmin = t1 > *tmin ? t1 : *tmin;
-            *tmax = t2 < *tmax ? t2 : *tmax;
-        }
-        if (*tmin > *tmax)
-            return 0;
-        if (0.0f > *tmax)
-            return 0;
-    } else {
-        if (-e - h > 0.0f)
-            return 0;
-        if (0.0f > h - e)
-            return 0;
-    }
-    return 1;
-}
-
-int ray_hits_obb(const struct Ray3 *ray, const struct OrientedBox *box)
-{
-    float tmin = -999999.0f, tmax = 999999.0f;
-    float dx = box->centre.x - ray->origin.x;
-    float dy = box->centre.y - ray->origin.y;
-    float dz = box->centre.z - ray->origin.z;
-    int i;
-
-    for (i = 0; i < 3; i++) {
-        const struct Vec3 *a = &box->axis[i];
-        float e = dy * a->y + dx * a->x + dz * a->z;
-        float f = ray->dir.x * a->x + ray->dir.y * a->y + ray->dir.z * a->z;
-
-        if (!ray_slab(e, f, box->half[i], &tmin, &tmax))
-            return 0;
-    }
-    if (tmin > 0.0f)
-        return !(tmin > ray->length);
-    return !(tmax > ray->length);
 }
 
 int ray_triangle_hit(const struct Ray3 *ray, const struct Vec3 *v0, const struct Vec3 *v1,
@@ -465,36 +418,3 @@ void mat_set_rotate_z(float *m, float rad)
     m[1] = s;
 }
 
-int32_t mat4_perspective_lh(float *m, float fov, float aspect, float zNear, float zFar)
-{
-    float depth = zFar - zNear, cosHalf, w, q;
-    double h;
-
-    if (0.01f > (float)fabs((double)depth))
-        return -INT32_C(2147024809);
-    fov = fov * 0.5f;
-    if (0.01f > (float)fabs((double)float_sin(fov)))
-        return -INT32_C(2147024809);
-    cosHalf = float_cos(fov);
-    w = (float)((double)cosHalf / (double)float_sin(fov) * (double)aspect);
-    cosHalf = float_cos(fov);
-    h = (double)cosHalf / (double)float_sin(fov);
-    m[1] = 0.0f;
-    m[2] = 0.0f;
-    m[3] = 0.0f;
-    m[4] = 0.0f;
-    m[6] = 0.0f;
-    m[7] = 0.0f;
-    m[8] = 0.0f;
-    m[9] = 0.0f;
-    m[12] = 0.0f;
-    m[13] = 0.0f;
-    m[15] = 0.0f;
-    m[11] = 1.0f;
-    q = zFar / depth;
-    m[10] = q;
-    m[0] = w;
-    m[5] = (float)h;
-    m[14] = -(q * zNear);
-    return 0;
-}

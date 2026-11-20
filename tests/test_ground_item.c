@@ -80,6 +80,8 @@ struct Item *world_get_item_by_aid(struct World *w,int aid)
 { struct ListNode *n;assert(w==&world);for(n=ih.next;n!=&ih;n=n->next)if((*LIST_VALUE(n,struct Item *))->aid==aid)return *LIST_VALUE(n,struct Item *);return NULL; }
 void *list_insert(struct List *l,struct ListNode *where,const void *value,size_t size)
 { struct ListNode *n=malloc(sizeof *n+size);assert(l && n && value);memcpy(n+1,value,size);n->next=where;n->prev=where->prev;where->prev->next=n;where->prev=n;++l->size;return n+1; }
+int world_add_object(struct World *w,void *object)
+{ assert(w==&world);list_insert(&w->gameObjects,w->gameObjects.head,&object,sizeof object);return 1; }
 BYTE world_remove_item(struct World *w,int aid) { (void)w;(void)aid;abort(); }
 
 void able_to_make_effect_send_msg(struct GameObject *object, struct GameObject *source,
@@ -95,8 +97,8 @@ void render_object_render_sprite(struct RenderObject *p,const float *matrix,unsi
 static struct PickInfo last_pick;
 static int pick_count, position_count;
 float renderer_scale_x(struct Renderer *p) { assert(p==g_renderer);return 1; }
-void actor_pick_node_insert(struct ActorPickNode *p,struct PickInfo *box)
-{ assert(p==&g_actorPickNode);last_pick=*box;++pick_count;mem_free(box); }
+void actor_pick_node_insert(struct ActorPickNode *p,const struct PickInfo *box)
+{ assert(p==&g_actorPickNode);last_pick=*box;++pick_count; }
 
 int game_object_dir_of(struct GameObject *self, float roty) { abort(); }
 void render_object_set_screen_position(struct RenderObject *self, float x, float y)

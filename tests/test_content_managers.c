@@ -62,6 +62,16 @@ static void *lua_memory(void *context, void *memory, size_t old_size, size_t siz
 }
 lua_State *test_lua_newstate(void) { return fail_state ? NULL : lua_newstate(lua_memory, NULL); }
 void client_lua_register_functions(struct ClientLua *self) { assert(self && self->L); }
+/* The map sky's state makes no pure calls, so it has no remembered answers to forget or release. */
+static int no_answers(const struct ClientLua *self)
+{
+    int i;
+    for (i = 0; i < LUA_MEMO_FUNCTIONS; ++i)
+        if (self->answers.functions[i].name_size || self->answers.functions[i].answers.entries) return 0;
+    return 1;
+}
+void client_lua_forget_answers(struct ClientLua *self) { assert(self && no_answers(self)); }
+void client_lua_release_answers(struct ClientLua *self) { assert(!self || no_answers(self)); }
 
 struct File *file_construct(struct File *file) { memset(file,0,sizeof *file); return file; }
 unsigned char file_open(struct File *file, const char *name, int mode, unsigned char resolve, unsigned char disk)

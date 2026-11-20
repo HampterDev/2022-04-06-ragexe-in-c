@@ -6,18 +6,14 @@
 
 /* The scene harness is the whole client with a few files swapped: the clock (scene_clock.c), the
    sockets (scene_net.c, an in-process map server), the threads (scene_thread.c), the settings
-   store (scene_settings.c), on Windows the cursor and key state (scene_input_win.c), and the
-   per-frame driver hook (scene_driver.c, which runs a Lua scene script). */
+   store (scene_settings.c), the per-frame driver hook (scene_driver.c, which runs a Lua scene
+   script), on Windows and macOS the window (scene_app_hidden.c, never shown) and on Windows the
+   message boxes (scene_window_win.c). */
 
 #define SCENE_MAP_PORT 5121
 #define SCENE_FRAME_MS 16
 
 void scene_clock_advance(uint32_t ms);
-
-#ifdef _WIN32
-/* scene_granny_win.c: points granny2.dll's clock imports at the scene clock. */
-void scene_granny_clock_install(void);
-#endif
 
 /* Server side of the fake sockets. */
 typedef void (*SceneServerPacket)(int port, const unsigned char *packet, int length);

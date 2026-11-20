@@ -125,7 +125,6 @@ static void render_layer(struct RagEffect *self, struct StrLayer *layer, const s
     color = (color << 8) + (unsigned char)(int)s->color[2];
     for (i = 0; i < 4; i++) {
         q[i].diffuse = color;
-        q[i].specular = 0xffffffff;
         q[i].z = 3.102121991105378e-05f;
         q[i].rhw = rhw;
     }

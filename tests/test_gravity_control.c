@@ -38,9 +38,9 @@ float c3d_attr_get_height(struct C3dAttr *ground, float x, float z)
     return 12.0f;
 }
 
-void effect_play_wave_at(const char *wave, const Vec3 *position, float height)
+void effect_play_wave(const char *wave)
 {
-    assert(wave && position == &effect.base.pos && height == 0.0f);
+    assert(wave);
     ++sounds;
 }
 

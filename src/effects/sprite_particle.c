@@ -120,7 +120,9 @@ void sprite_particle_render(struct SpriteParticle *self)
         struct Texture *tex;
         struct SpriteRegion rect;
         struct TexDrawPrim *batch;
-        float u_left, v_top, u_right, v_bottom;
+        struct GfxQuad *q;
+        float u_left, v_top, u_right, v_bottom, rhw4[4];
+        unsigned color;
         float half_w, half_h, unit_x, unit_y, depth;
         float clip_scale[12], clip_turn[12], clip_move[12], clip_scale_turn[12], clip_m[12];
         float own_scale[12], own_turn[12], own_move[12], own_scale_turn[12], own_placed[12], world[12];
@@ -151,16 +153,15 @@ void sprite_particle_render(struct SpriteParticle *self)
         else
             particle_quad_paint(&self->base, self->base.corners, v_bottom, v_top, u_left, u_right);
 
-        batch = renderer_new_prim(g_renderer);
-        memcpy(batch->base.verts, self->base.corners, sizeof(self->base.corners));
+        batch = renderer_new_prim_instance(g_renderer);
+        q = &batch->instance;
         batch->base.texture = tex;
+        color = self->base.corners[0].diffuse;
 
         if (self->base.flags & PARTICLE_TINT_BY_CLIP) {
             const float to_unit = 0.003921569f;
             unsigned alpha = (unsigned char)(int)((float)self->base.alpha * to_unit * ((float)clip->color[3] * to_unit) * 255.0f);
-            unsigned color = (((alpha << 8 | clip->color[0]) << 8) | clip->color[1]) << 8 | clip->color[2];
-            for (k = 0; k < 4; k++)
-                batch->base.verts[k].diffuse = color;
+            color = (((alpha << 8 | clip->color[0]) << 8) | clip->color[1]) << 8 | clip->color[2];
         }
 
         half_w = (float)img->width * 0.5f;
@@ -173,7 +174,7 @@ void sprite_particle_render(struct SpriteParticle *self)
         mat_multiply(clip_scale_turn, clip_scale, clip_turn);
         mat_multiply(clip_m, clip_scale_turn, clip_move);
         for (k = 0; k < 4; k++)
-            transform(&corner[k], clip_m, batch->base.verts[k].x, batch->base.verts[k].y, batch->base.verts[k].z);
+            transform(&corner[k], clip_m, self->base.corners[k].x, self->base.corners[k].y, self->base.corners[k].z);
 
         mat_set_scale(own_scale, self->base.scale, self->base.scale, 1.0f);
         mat_set_rotate_z(own_turn, degrees_to_radians(self->base.roll));
@@ -185,20 +186,40 @@ void sprite_particle_render(struct SpriteParticle *self)
         mat_multiply(own_placed, own_scale_turn, own_move);
         mat_multiply(world, own_placed, self->base.matrix);
 
+        /* custom: the device projects the corners as renderer_project_vertex did them (render/gfx.h,
+           GFX_QUAD_WORLD), with the clip's depth added to their rhw where it is not 0; the CPU finds
+           their rhw, for the lists' order and whether the quad is flat, and the z of that rhw, which
+           the depth test compares by its bits (GFX_DEPTH_CORNERS) */
+        depth = (float)i * 1e-5f + self->base.depth_bias;
+        q->kind = GFX_QUAD_WORLD;
         for (k = 0; k < 4; k++) {
             Vec3 placed;
             transform(&placed, world, corner[k].x, corner[k].y, corner[k].z);
-            renderer_project_vertex(g_renderer, &placed, view, &batch->base.verts[k]);
+            q->world.point[k][0] = placed.x;
+            q->world.point[k][1] = placed.y;
+            q->world.point[k][2] = placed.z;
+            q->world.u[k] = self->base.corners[k].u;
+            q->world.v[k] = self->base.corners[k].v;
+            rhw4[k] = renderer_project_rhw(&placed, view);
+            if (depth != 0)
+                rhw4[k] += depth;
         }
-        depth = (float)i * 1e-5f + self->base.depth_bias;
-        if (depth != 0) {
-            for (k = 0; k < 4; k++) {
-                batch->base.verts[k].rhw += depth;
-                batch->base.verts[k].z = renderer_project_depth(batch->base.verts[k].rhw);
-            }
-        }
-        batch->base.srcBlend = GFX_BLEND_SRCALPHA;
-        batch->base.destBlend = self->base.list_flags != LIST_WORLD ? GFX_BLEND_INVSRCALPHA : GFX_BLEND_ONE;
+        memcpy(q->world.view, view, sizeof q->world.view);
+        q->world.proj[0] = g_renderer->proj[0];
+        q->world.proj[1] = g_renderer->proj[1];
+        q->world.centre[0] = (float)g_renderer->centreX;
+        q->world.centre[1] = (float)g_renderer->centreY;
+        q->world.rhw = depth != 0 ? GFX_RHW_ADD : GFX_RHW_PROJECTED;
+        q->world.rhwValue = depth;
+        q->world.depth = GFX_DEPTH_CORNERS;
+        for (k = 0; k < 4; k++)
+            q->world.z[k] = renderer_project_depth(rhw4[k]);
+        q->world.colour = color;
+        q->world.flat = quad_rhw_flat(rhw4, 4);
+        batch->base.rhw[0] = rhw4[0];
+        batch->base.rhw[1] = rhw4[1];
+        batch->base.srcBlend = DRAW_BLEND_SRCALPHA;
+        batch->base.destBlend = self->base.list_flags != LIST_WORLD ? DRAW_BLEND_INVSRCALPHA : DRAW_BLEND_ONE;
         renderer_add_prim(g_renderer, &batch->base, self->base.list_flags);
     }
 }

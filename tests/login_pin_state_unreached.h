@@ -17,7 +17,7 @@ void login_mode_on_zone_accept(struct LoginMode *arg0, const BYTE *arg1) { (void
 void login_mode_on_zone_accept2(const BYTE *arg0) { (void)arg0; abort(); }
 void login_mode_refuse_login(struct LoginMode *arg0, int arg1, const char *arg2) { (void)arg0; (void)arg1; (void)arg2; abort(); }
 void login_mode_remove_deleted_char(struct LoginMode *arg0) { (void)arg0; abort(); }
-int mode_send_message(struct Mode *arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { (void)arg0; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; abort(); }
+intptr_t mode_send_message(struct Mode *arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { (void)arg0; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; abort(); }
 char *msg_str(int arg0) { (void)arg0; abort(); }
 int rag_connection_get_packet_length(struct RagConnection *arg0, int arg1) { (void)arg0; (void)arg1; abort(); }
 char rag_connection_send_packet(struct RagConnection *arg0, int arg1, const void *arg2) { (void)arg0; (void)arg1; (void)arg2; abort(); }
@@ -25,7 +25,7 @@ const char *session_get_rsw_name(const char *arg0) { (void)arg0; abort(); }
 int session_set_blocked_characters(struct Session *arg0, const void *arg1, size_t arg2) { (void)arg0; (void)arg1; (void)arg2; abort(); }
 const char *thread_text_format(const char *arg0, ...) { (void)arg0; abort(); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *arg0, int arg1) { (void)arg0; (void)arg1; abort(); }
-int ui_window_send(struct UIWindow *arg0, struct UIWindow *arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { (void)arg0; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6; abort(); }
+intptr_t ui_window_send(struct UIWindow *arg0, struct UIWindow *arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { (void)arg0; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6; abort(); }
 void string_assign(struct String *arg0, const char *arg1, size_t arg2) { (void)arg0; (void)arg1; (void)arg2; abort(); }
 void string_assign_cstr(struct String *arg0, const char *arg1) { (void)arg0; (void)arg1; abort(); }
 void string_free(struct String *arg0) { (void)arg0; abort(); }

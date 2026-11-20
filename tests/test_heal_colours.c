@@ -20,8 +20,8 @@ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abor
 const char *game_current_map_name(void) { return "prontera.rsw"; }
 float game_camera_pitch(void) { return -45.0f; }
 float game_camera_heading(void) { return 0.0f; }
-void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame, float height)
-{ (void)self; (void)kind; (void)wave; (void)frame; (void)height; abort(); }
+void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame)
+{ (void)self; (void)kind; (void)wave; (void)frame; abort(); }
 unsigned char effect_is_within_duration(struct Effect *self) { (void)self; abort(); }
 void particle_quad_unit_corners(struct TexDrawVertex *quad) { (void)quad; }
 void particle_render(struct Particle *self, unsigned char facing_fixed, float v_top, float v_bottom,

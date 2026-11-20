@@ -92,12 +92,4 @@ struct UIWindow;
 
 #include "effects/effect_mgr.h"
 
-extern int g_bitsPerPixel;
-extern int g_displayModeIndex;
-
-extern int g_displayDeviceIndex;
-
-int read_display_options(void *session, const char *name, int def);
-void write_display_options(void *session, void *stream, const char *name, int value);
-
 #endif

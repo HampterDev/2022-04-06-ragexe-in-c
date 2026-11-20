@@ -36,9 +36,11 @@ int c3d_ground15_get_vertex_colour(struct C3dGround15 *self, int ax, int ay,
 void c3d_ground15_get_lightmap_colour(struct C3dGround15 *self, int ax, int ay,
     BYTE *c0, BYTE *c1, BYTE *c2, BYTE *c3);
 void c3d_ground15_update_water(struct C3dGround15 *self);
-void c3d_ground15_render(struct C3dGround15 *self, const float *view, const int *cells);
-/* custom: only the shadow casters of render's meshes (render/rp_pool.h) */
-void c3d_ground15_cast(struct C3dGround15 *self, const float *view, const int *cells);
+/* custom: what a leaf of the scene graph gives the frame of the ground in `cells` (x0, y0, x1, y1;
+   each cell once a frame): the water of its cells, among the alpha-blended quads
+   (world/ground_draw.c). The ground itself the device draws from the static world (render/gfx.h,
+   gfx_world_draw), and casts its shadows from there. */
+void c3d_ground15_leaf(struct C3dGround15 *self, const float *view, const int *cells);
 void c3d_ground15_draw_attr_quad(struct C3dGround15 *self, const float *view, int ax,
     int ay, DWORD colour, struct Texture *texture, const float *uv);
 void c3d_ground15_render_attr_tile(struct C3dGround15 *self, const float *view,

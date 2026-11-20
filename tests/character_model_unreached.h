@@ -42,3 +42,7 @@ struct RenewQuestB *quest_hunt_construct(struct RenewQuestB *arg0)
 {
     abort();
 }
+float sprite_flat_row_rhw(const float *up, const float *pos, float rows)
+{
+    abort();
+}

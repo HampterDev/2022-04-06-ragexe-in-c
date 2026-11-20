@@ -84,7 +84,7 @@ intptr_t mode_send_message(struct Mode *self, int message, intptr_t a, intptr_t 
     assert(self == (struct Mode *)&mode && message == 0x6b);
     assert(!b && !c && !d && sends < 32);
     assert(g_guildInfo.master_gid == expected_master);
-    requested[sends++] = a;
+    requested[sends++] = (int)a;
     return 1;
 }
 

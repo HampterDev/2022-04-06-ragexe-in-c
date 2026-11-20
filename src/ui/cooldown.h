@@ -3,7 +3,7 @@
 
 struct PieVertex {
     float x, y, z, rhw;
-    unsigned color, specular;
+    unsigned color;
     float u, v;
 };
 #define PIE_VERTICES 24

@@ -60,12 +60,12 @@ An operation has exactly one action:
 | Operation | Effect |
 |---|---|
 | `{"Follow": true}` | The effect moves to its master's position. |
-| `{"Wave": "file.wav", "Height": y}` | Plays the wave at the effect's position, `y` above it (`rag_play_wave`; default height 0). |
-| `{"Wave": "file.wav", "AtPlayer": true}` | Plays the wave at the player (`sound_play_wave` at 0, 0, 0). |
+| `{"Wave": "file.wav"}` | Plays the wave when there is a player (`effect_play_wave`). |
+| `{"Wave": "file.wav", "AtPlayer": true}` | Plays the wave even when there is none (`sound_play_wave`). |
 | `{"Quake": n}` | Sends game message `0x7a` (quake) with parameter `n`. |
 | `{"Duration": n}` | Sets the effect's duration to `n` frames. |
 
-Numbers given as floats (`Offset`, `Height`) must be exactly representable as a 32-bit
+Numbers given as floats (`Offset`) must be exactly representable as a 32-bit
 float, as the C constants they replace were.
 
 ### Ez2StrFile
@@ -92,12 +92,12 @@ allowed only as the `%d` of `Variants`.
 
 ## Checking a change
 
-`tests\build_effect_trace.bat` runs every effect ID through the client code with several
-inputs and compares one digest; a change to this file changes the digest of the IDs it
-touches, so update `EXPECTED_DIGEST` in `tests/test_effect_trace.c` once the change is
-intended (`--digests FILE` lists the digest of every ID, `--trace FILE --ids FIRST LAST`
-writes what happened frame by frame). `tests\build_effect_data.bat` checks the loader's
-rules and the fallback.
+The test `effect_trace` (`ctest --test-dir build\tests -R effect_trace`, after `tests\build.bat`)
+runs every effect ID through the client code with several inputs and compares one digest; a
+change to this file changes the digest of the IDs it touches, so update `EXPECTED_DIGEST` in
+`tests/test_effect_trace.c` once the change is intended (`build\tests\tests\test_effect_trace.exe
+--digests FILE` lists the digest of every ID, `--trace FILE --ids FIRST LAST` writes what
+happened frame by frame). The test `effect_data` checks the loader's rules and the fallback.
 
 ## Building elsewhere
 

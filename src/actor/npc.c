@@ -24,6 +24,7 @@
 #include "session/session_party.h"
 #include "session/session_talk.h"
 #include "platform/clock.h"
+#include "effects/skills/msg_effect.h"
 
 const char monster_spr_fmt[] = "몬스터\\%s.spr";
 const char monster_act_fmt[] = "몬스터\\%s.act";
@@ -81,7 +82,7 @@ void npc_update_quest_mark(struct Npc *self)
         id = rec->effect;
     }
     obj = game_mode_make_msg_effect(mode, (id < 6 ? 0x24 : 0x36) + id, &self->pos, self->aid, 1);
-    list_push_back(&self->attached, &obj, sizeof obj);
+    msg_effect_attach((struct MsgEffect *)obj, &self->attached);
     render_object_send(obj, self, 0x32, 0, 0, 0, 0);
     self->mark = obj;
     self->mark_effect = rec->effect;
@@ -479,7 +480,7 @@ void npc_set_job_and_sex(struct GameActor * base_actor, int job, int sex)
     self->body_palette = 0;
     if (session_named_body_palettes_enabled(&g_session1)) {
         self->body_palette = 1;
-        string_assign_cstr(&self->body_pal_name, name);
+        named_res_assign(&self->body_pal, name, strlen(name));
     }
 }
 

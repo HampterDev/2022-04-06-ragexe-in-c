@@ -19,11 +19,6 @@ static struct Effect *gs_spawn(Vec3 pos, int type, int level)
     return effect_mgr_spawn(g_effectMgr, 0, type, pos, 0, level, 0, 0);
 }
 
-static void gs_wave(const char *name, float y)
-{
-    sound_play_wave(name, 0.0f, y, 0.0f, 250, 40, 1.0f);
-}
-
 static struct RagEffect *gs_launch(struct GameActor *self, int effect)
 {
     Vec3 zero = { 0.0f, 0.0f, 0.0f };
@@ -111,7 +106,7 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
     case 0x11f:  gs_dummy(mode, &at, 0xed); break;
     case 0x120:  gs_dummy(mode, &at, 0xee); break;
     case 0x1de:
-        gs_wave("assulter_attack.wav", -150.0f);
+        sound_play_wave("assulter_attack.wav", 1.0f);
         if (level < 6)
             gs_dummy(mode, &at, 0x1f1);
         else if (level < 10)
@@ -120,30 +115,30 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
             gs_dummy(mode, &at, 0x1f3);
         break;
     case 0x1e3:
-        gs_wave("effect\\EF_FireWall.wav", 0.0f);
+        sound_play_wave("effect\\EF_FireWall.wav", 1.0f);
         gs_dummy(mode, &at, 0xdf);
         break;
     case 0x1e4:
-        gs_wave("effect\\wizard_earthspike.wav", 0.0f);
+        sound_play_wave("effect\\wizard_earthspike.wav", 1.0f);
         game_mode_launch_dummy_effect(mode, &at, 0x20a, 0x104, 0);
         break;
     case 0x1eb:  gs_launch(self, 0x3a); break;
-    case 0x209:  gs_wave("effect\\그라운드.wav", 0.0f); break;
-    case 0x21a:  gs_wave("effect\\수둔.wav", 0.0f); break;
+    case 0x209:  sound_play_wave("effect\\그라운드.wav", 1.0f); break;
+    case 0x21a:  sound_play_wave("effect\\수둔.wav", 1.0f); break;
     case 0x2c6:
         gs_launch(self, 0x87);
-        gs_wave("effect\\ef_frostdiver.wav", 0.0f);
+        sound_play_wave("effect\\ef_frostdiver.wav", 1.0f);
         break;
     case 0x2cd:  gs_launch(self, 0x408); break;
     case 0x2e1:
         gs_spawn(at, 0x590, -1);
-        gs_wave("effect\\LG_RAYOFGENESIS.wav", 0.0f);
+        sound_play_wave("effect\\LG_RAYOFGENESIS.wav", 1.0f);
         break;
     case 0x301: {
         Vec3 above = { at.x, at.y + 25.0f, at.z };
         gs_spawn(above, 0x4e7, -1);
         gs_spawn(above, 0x4e6, -1);
-        gs_wave("effect\\wizard_meteor.wav", 0.0f);
+        sound_play_wave("effect\\wizard_meteor.wav", 1.0f);
         break;
     }
     case 0x302:  gs_dummy(mode, &at, 0x577); break;

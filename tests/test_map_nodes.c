@@ -425,7 +425,7 @@ static void observe_skill_list(const struct List *list)
         skill_observe(info->level);
         skill_observe(info->sp_cost);
         skill_observe(info->cell_index);
-        skill_observe(vec_count(&info->requirements, sizeof *requirement));
+        skill_observe((unsigned)vec_count(&info->requirements, sizeof *requirement));
         for (requirement = info->requirements.first; requirement != info->requirements.last;
              ++requirement) {
             skill_observe(requirement->skill_id);

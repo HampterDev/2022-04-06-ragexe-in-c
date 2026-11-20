@@ -1,4 +1,3 @@
-#define GRANNY_IMPORT
 #include "actor/render_ops.h"
 #include "actor/sprite_render.h"
 #include "actor/granny_actor.h"
@@ -54,8 +53,8 @@ void render_object_submit_spr_quad(struct RenderObject *o,struct SqQuad *q,
     assert(o==expected_object && p==&palette && x==0 && y==0 && draws<16);
     submitted[draws]=*q;draw_flags[draws++]=flags;
 }
-GrannyClock __stdcall _GrannyGetSystemSeconds(void) { GrannyClock c={{0}};return c; }
-float __stdcall _GrannyGetSecondsElapsed(const GrannyClock *a,const GrannyClock *b)
+GrannyClock _GrannyGetSystemSeconds(void) { GrannyClock c={{0}};return c; }
+float _GrannyGetSecondsElapsed(const GrannyClock *a,const GrannyClock *b)
 { assert(a&&b);return 0.25f; }
 int granny_playback_finished(const struct GrannyPlayback *p,int a)
 { assert(p&&a==2);return finished; }

@@ -264,7 +264,7 @@ void rag_sakura_petals(struct RagEffect *self)
     follow_master(self);
     if (self->frame >= 12 && self->frame <= 15) {
         sprintf(wave, "effect\\EF_FireArrow%d.wav", rand_below(3) + 1);
-        rag_play_wave_here(self, wave);
+        effect_play_wave(wave);
     }
     if (self->frame >= 20)
         return;

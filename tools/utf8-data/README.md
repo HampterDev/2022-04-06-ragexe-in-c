@@ -25,9 +25,10 @@ python -m unittest discover -s tools\utf8-data\tests
 - Start from an empty output folder. A rerun overwrites files but does not delete
   old ones.
 - `build_luadump.bat` builds `build\utf8-data\luadump.exe` from `luadump.c` and
-  `vendor\lua-5.1.4`, as a 32-bit build like the client. Without the 32-bit build it
-  could not load the 32-bit Lua 5.1 bytecode in the `.lub` files. The conversion, the
-  validation and most of the tests need it.
+  `vendor\lua-5.1.4`, 64-bit like the client: the vendored Lua loads the 32-bit Lua 5.1
+  bytecode in the `.lub` files on a 64-bit host. The conversion, the validation and most
+  of the tests need it. The chunks the tests compile with it have 8-byte sizes; the
+  `.lub` files' 4-byte form is covered by `tests/fixtures/lua51_win32.lub` (`test_luabc.py`).
 
 ## Which copy of a file is converted
 

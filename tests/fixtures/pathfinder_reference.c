@@ -13,26 +13,20 @@ struct ReferencePathNode {
     int state;
     int dir;
 };
-SIZE_ASSERT(ReferencePathNode, 0x1c);
 
 #define PATH_INLINE_NODES   0x95
-#define PATH_NODE_MAX       0x9249249u
 
 struct ReferencePathFinder {
     struct C3dAttr *attr;
     int tx, ty;
     int nodeCount;
     struct ReferencePathNode nodes[PATH_INLINE_NODES];
-    unsigned char unused_node[0x1c];
     struct Tree attrCache;
     unsigned char useHeapNodes;
     struct Vec heapNodes;
     struct Tree nodeIndex;
     struct Vec open;
 };
-OFFSET_ASSERT(ReferencePathFinder, attrCache, 0x1078);
-OFFSET_ASSERT(ReferencePathFinder, open, 0x1098);
-SIZE_ASSERT(ReferencePathFinder, 0x10a4);
 
 static void reference_CPathFinder_PurgeAttrCache(struct ReferencePathFinder *self);
 

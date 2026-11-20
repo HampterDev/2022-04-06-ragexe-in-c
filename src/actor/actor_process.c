@@ -339,7 +339,7 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
                                           float b)
 {
     struct GameActor *self = (struct GameActor *)object;
-    struct PickInfo *pick;
+    struct PickInfo value, *pick = &value;
     float lift;
 
     if (self->pickable) {
@@ -350,9 +350,7 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
             if (rect->left == (float)g_renderer->width && rect->top == (float)g_renderer->height && rect->right == 0.0f
                 && rect->bottom == 0.0f)
                 return;
-            pick = mem_alloc(sizeof *pick);
-            if (pick)
-                memset(pick, 0, sizeof *pick);
+            memset(pick, 0, sizeof *pick);
             pick->left = rect->left < rect->right ? rect->left : rect->right;
             pick->top = rect->top;
             pick->near_z = rect->z + lift;

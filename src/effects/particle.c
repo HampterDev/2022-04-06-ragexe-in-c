@@ -43,7 +43,6 @@ void particle_submit(struct TexDrawPrim *batch, int list_flags)
 
 void particle_reset(struct Particle *self)
 {
-    struct TexDrawPrim fresh;
     int i;
 
     self->r = 0xff;
@@ -60,9 +59,9 @@ void particle_reset(struct Particle *self)
     self->age = 0;
     self->flags = 0;
     self->offset.x = self->offset.y = self->offset.z = 0;
-    self->src_blend = GFX_BLEND_SRCALPHA;
-    self->dest_blend = GFX_BLEND_ONE;
-    rp_quad_batch_copy_verts(&self->batch, rp_quad_batch_construct(&fresh));
+    self->src_blend = DRAW_BLEND_SRCALPHA;
+    self->dest_blend = DRAW_BLEND_ONE;
+    rp_instance_construct(&self->batch);
     memcpy(self->matrix, g_identityMatrix.m, MATRIX_BYTES);
     self->depth_bias = 0;
     for (i = 0; i < 4; i++) {
@@ -82,11 +81,9 @@ struct Particle *particle_construct(struct Particle *self, Vec3 pos, int list_fl
     self->velocity.x = self->velocity.y = self->velocity.z = 0;
     self->offset.x = self->offset.y = self->offset.z = 0;
     self->second_offset.x = self->second_offset.y = self->second_offset.z = 0;
-    rp_quad_batch_construct(&self->batch);
-    for (i = 0; i < 4; i++) {
+    rp_instance_construct(&self->batch);
+    for (i = 0; i < 4; i++)
         memset(&self->corners[i], 0, sizeof(self->corners[i]));
-        self->corners[i].specular = 0xff000000;
-    }
     particle_reset(self);
     return self;
 }
@@ -134,11 +131,19 @@ static void billboard_rotation(float turn[12])
     billboard_valid = 1;
 }
 
+/* custom: the quad of the particle's corners, painted, as an instance whose vertices the device
+   projects as renderer_project_vertex did them (render/gfx.h, GFX_QUAD_WORLD), the particle's depth
+   bias added to their rhw. The CPU takes the corners through the particle's matrix and the view
+   into view space, as renderer_project_vertex did, and finds their rhw, which the lists sort by and
+   which say whether the quad lies flat on the screen, and z of that rhw or 0, which the depth test
+   compares with the figure the particle is drawn on by its bits (GFX_DEPTH_CORNERS); the device
+   divides and moves them onto the screen. */
 void particle_render(struct Particle *self, unsigned char facing_fixed,
                                   float v_top, float v_bottom, float u_left, float u_right, unsigned char with_depth)
 {
     float view[12], world[12], to_screen[12];
-    struct TexDrawVertex *v;
+    struct GfxQuad *q = &self->batch.instance;
+    float rhw[4];
     int i, has_corner = 0;
 
     for (i = 0; i < 4; i++)
@@ -148,7 +153,6 @@ void particle_render(struct Particle *self, unsigned char facing_fixed,
         return;
 
     particle_quad_paint(self, self->corners, v_top, v_bottom, u_left, u_right);
-    memcpy(self->batch.base.verts, self->corners, sizeof(self->corners));
 
     if (!facing_fixed) {
         float move[12], facing[12], placed[12];
@@ -161,15 +165,34 @@ void particle_render(struct Particle *self, unsigned char facing_fixed,
         mat_multiply(to_screen, self->matrix, view);
     }
 
-    for (i = 0, v = self->batch.base.verts; i < 4; i++, v++) {
+    q->kind = GFX_QUAD_WORLD;
+    for (i = 0; i < 4; i++) {
         Vec3 corner;
-        corner.x = v->x;
-        corner.y = v->y;
-        corner.z = v->z;
-        renderer_project_vertex(g_renderer, &corner, to_screen, v);
-        v->rhw += self->depth_bias;
-        v->z = with_depth ? renderer_project_depth(v->rhw) : 0.0f;
+        corner.x = self->corners[i].x;
+        corner.y = self->corners[i].y;
+        corner.z = self->corners[i].z;
+        renderer_project_view(&corner, to_screen, q->world.point[i]);
+        q->world.u[i] = self->corners[i].u;
+        q->world.v[i] = self->corners[i].v;
+        rhw[i] = 1.0f / q->world.point[i][2];
+        rhw[i] += self->depth_bias;
     }
+    q->world.viewSpace = 1;
+    q->world.proj[0] = g_renderer->proj[0];
+    q->world.proj[1] = g_renderer->proj[1];
+    q->world.centre[0] = (float)g_renderer->centreX;
+    q->world.centre[1] = (float)g_renderer->centreY;
+    q->world.rhw = GFX_RHW_ADD;
+    q->world.rhwValue = self->depth_bias;
+    q->world.depth = with_depth ? GFX_DEPTH_CORNERS : GFX_DEPTH_VALUE;
+    q->world.depthValue = 0.0f;
+    for (i = 0; i < 4; i++)
+        q->world.z[i] = renderer_project_depth(rhw[i]);
+    q->world.colour = self->corners[0].diffuse;
+    q->world.stage2 = 0;
+    q->world.flat = quad_rhw_flat(rhw, 4);
+    self->batch.base.rhw[0] = rhw[0];
+    self->batch.base.rhw[1] = rhw[1];
     self->batch.base.texture = self->texture;
     self->batch.base.srcBlend = self->src_blend;
     self->batch.base.destBlend = self->dest_blend;

@@ -37,7 +37,6 @@
 #include "login/loginmode.h"
 #include "platform/clock.h"
 #include "platform/net.h"
-#include "platform/window.h"
 #include "session/character_name.h"
 #include "session/state.h"
 #include "std/list.h"
@@ -570,9 +569,6 @@ static void start(void)
     P.started = 1;
     if (!port || !play_link_open(atoi(port)))
         leave(2, "set RAGEXE_PLAY to the port of a playground runner");
-    /* hidden, the desktop's mouse cannot reach the window and focus goes back where it was */
-    ShowWindow(g_hMainWnd, SW_HIDE);
-    scene_granny_clock_install();
     line_open();
     scene_net_set_handler(on_client_packet);
 }
@@ -595,7 +591,6 @@ void drive_state_tick(void)
     g_sound_settings.bgm_on = 0;
     sound_set_bgm_volume(0);
     sound_set_effect_volume(0);
-    sound_set_effect_volume_3d(0);
     /* what the line still has for the runner: a request whose datagram the wire lost */
     line_run();
     size = report();

@@ -15,10 +15,9 @@ static struct RagEffect effect;
 static char played[400];
 static int quakes[400], steps;
 
-void effect_play_wave_at(const char *wave, const Vec3 *position, float height)
+void effect_play_wave(const char *wave)
 {
     size_t length = strlen(played);
-    assert(position == &effect.base.pos && height == 0.0f);
     assert(length + strlen(wave) + 32 < sizeof played);
     sprintf(played + length, "%d:%s ", effect.frame, wave);
 }

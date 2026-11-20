@@ -28,8 +28,6 @@ struct Texture *texture_cache_get(struct TexCache *cache, const char *name, int 
     return fail_picture ? NULL : &picture_texture;
 }
 void surface_destroy(struct Surface *surface) { (void)surface; abort(); }
-/* the ground's meshes are built on its first draw, which these tests do not reach */
-void gfx_mesh_destroy(struct gfx_mesh *mesh) { (void)mesh; abort(); }
 float get_sin_deg(int degrees)
 {
     sampled_angle = degrees;
@@ -193,6 +191,8 @@ static void numeric_cases(void)
         assert(isfinite(ground.waters[0].phase));
         assert(ground.waters[0].phase >= -180 && ground.waters[0].phase <= 180);
     }
+    /* an angle outside the int range is INT_MIN degrees, as x86's conversion makes it (and the
+       water's vertex shader) */
     assert(isfinite(ground_water_height(ground.waters, INT64_MAX)));
     assert(sampled_angle == INT_MIN);
     assert(isfinite(ground_water_height(ground.waters, INT64_MIN)));

@@ -3,10 +3,12 @@
 
 #include "base.h"
 #include "contents/client_lua_calls.h"
+#include "contents/lua_memo.h"
 #include <lua.h>
 
 struct ClientLua {
     lua_State *L;
+    struct LuaMemoBook answers;
 };
 
 struct ClientLua *client_lua_construct(struct ClientLua *self);

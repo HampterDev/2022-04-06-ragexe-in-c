@@ -8,17 +8,13 @@
 #define KEY ((HKEY)(uintptr_t)0x4321)
 #define ROOT HKEY_CURRENT_USER
 
-/* 한국 😀, 메시지 in CP949, /기쁨 and 서버 in UTF-8. */
-#define KOREAN_EMOJI "\xed\x95\x9c\xea\xb5\xad \xf0\x9f\x98\x80"
+/* 메시지 in CP949, /기쁨 and 서버 in UTF-8. */
 #define MESSAGE_CP949 "\xb8\xde\xbd\xc3\xc1\xf6"
 #define JOY "/\xea\xb8\xb0\xec\x81\xa8"
 #define SERVER "\xec\x84\x9c\xeb\xb2\x84"
 
-static int fail_alloc, boxes_w, boxes_a, opens, creates, queries, sets;
-static wchar_t last_text[64], last_caption[64], last_path[128], last_name[64];
-static int text_null, caption_null;
-static UINT last_type;
-static HWND last_owner;
+static int fail_alloc, opens, creates, queries, sets;
+static wchar_t last_path[128], last_name[64];
 
 /* One stored value. */
 static wchar_t stored_name[64];
@@ -32,10 +28,8 @@ void *win_utf8_test_malloc(size_t size)
     return fail_alloc ? NULL : malloc(size);
 }
 
-static void copy_wide(wchar_t *out, size_t capacity, const wchar_t *text, int *null)
+static void copy_wide(wchar_t *out, size_t capacity, const wchar_t *text)
 {
-    if (null)
-        *null = !text;
     out[0] = 0;
     if (text) {
         assert(wcslen(text) < capacity);
@@ -43,28 +37,11 @@ static void copy_wide(wchar_t *out, size_t capacity, const wchar_t *text, int *n
     }
 }
 
-int WINAPI win_utf8_test_message_box_w(HWND owner, LPCWSTR text, LPCWSTR caption, UINT type)
-{
-    ++boxes_w;
-    last_owner = owner;
-    last_type = type;
-    copy_wide(last_text, 64, text, &text_null);
-    copy_wide(last_caption, 64, caption, &caption_null);
-    return IDOK;
-}
-
-int WINAPI win_utf8_test_message_box_a(HWND owner, LPCSTR text, LPCSTR caption, UINT type)
-{
-    (void)owner; (void)text; (void)caption; (void)type;
-    ++boxes_a;
-    return IDCANCEL;
-}
-
 LONG WINAPI win_utf8_test_open(HKEY root, LPCWSTR path, DWORD options, REGSAM access, PHKEY key)
 {
     assert(root == ROOT && !options && access == KEY_QUERY_VALUE && key);
     ++opens;
-    copy_wide(last_path, 128, path, NULL);
+    copy_wide(last_path, 128, path);
     *key = KEY;
     return ERROR_SUCCESS;
 }
@@ -75,7 +52,7 @@ LONG WINAPI win_utf8_test_create(HKEY root, LPCWSTR path, DWORD reserved, LPWSTR
 {
     assert(root == ROOT && !reserved && !class_name && !options && access == KEY_ALL_ACCESS && !security && key);
     ++creates;
-    copy_wide(last_path, 128, path, NULL);
+    copy_wide(last_path, 128, path);
     *key = KEY;
     if (disposition)
         *disposition = REG_OPENED_EXISTING_KEY;
@@ -87,7 +64,7 @@ LONG WINAPI win_utf8_test_query(HKEY key, LPCWSTR name, LPDWORD reserved, LPDWOR
 {
     assert(key == KEY && !reserved);
     ++queries;
-    copy_wide(last_name, 64, name, NULL);
+    copy_wide(last_name, 64, name);
     if (!has_value || wcscmp(name, stored_name))
         return ERROR_FILE_NOT_FOUND;
     if (type)
@@ -108,7 +85,7 @@ LONG WINAPI win_utf8_test_set(HKEY key, LPCWSTR name, DWORD reserved, DWORD type
 {
     assert(key == KEY && !reserved && size <= sizeof stored);
     ++sets;
-    copy_wide(stored_name, 64, name, NULL);
+    copy_wide(stored_name, 64, name);
     stored_type = type;
     memcpy(stored, data, size);
     stored_size = size;
@@ -123,21 +100,6 @@ static void store_wide(const wchar_t *name, DWORD type, const wchar_t *text, DWO
     memcpy(stored, text, bytes);
     stored_size = bytes;
     has_value = 1;
-}
-
-static void message_boxes(void)
-{
-    HWND owner = (HWND)(uintptr_t)0x99;
-    assert(win_utf8_message_box(owner, KOREAN_EMOJI, "Error", MB_OK | MB_ICONWARNING) == IDOK);
-    assert(boxes_w == 1 && last_owner == owner && last_type == (MB_OK | MB_ICONWARNING));
-    assert(!wcscmp(last_text, L"\xd55c\xad6d \xd83d\xde00") && !wcscmp(last_caption, L"Error"));
-    /* Not UTF-8: a resource name in CP949. */
-    assert(win_utf8_message_box(NULL, "data\\" MESSAGE_CP949 ".bmp", NULL, 0) == IDOK);
-    assert(!wcscmp(last_text, L"data\\\xba54\xc2dc\xc9c0.bmp") && caption_null && !text_null);
-    assert(win_utf8_message_box(NULL, "", "", 0) == IDOK && !last_text[0] && !caption_null);
-    fail_alloc = 1;
-    assert(win_utf8_message_box(NULL, "text", "caption", 0) == IDCANCEL && boxes_a == 1 && boxes_w == 3);
-    fail_alloc = 0;
 }
 
 static void keys(void)
@@ -236,10 +198,9 @@ static void other_values(void)
 
 int main(void)
 {
-    message_boxes();
     keys();
     string_values();
     other_values();
-    puts("Win32 UTF-8 calls: message boxes, key paths and string values as UTF-16, CP949 names, sizes and failures passed.");
+    puts("Win32 UTF-8 calls: key paths and string values as UTF-16, CP949 names, sizes and failures passed.");
     return 0;
 }

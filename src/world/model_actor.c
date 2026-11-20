@@ -1,4 +1,3 @@
-#include "render/rp_pool.h"
 #include <string.h>
 #include <stdlib.h>
 #include "core/numeric.h"
@@ -8,24 +7,22 @@
 #include "platform/clock.h"
 
 static const struct ModelActorOps model_actor_v1_ops = {
+    .version = 1,
     .destroy = model_actor_v1_destroy,
     .create = c3d_actor_v1_create,
     .light = c3d_actor_v1_light,
     .animate = c3d_actor_v1_animate,
     .tick = c3d_actor_v1_tick,
-    .render = c3d_actor_v1_render,
-    .cast = c3d_actor_v1_cast,
     .set_speed = c3d_actor_set_speed,
 };
 
 static const struct ModelActorOps model_actor_v2_ops = {
+    .version = 2,
     .destroy = model_actor_v2_destroy,
     .create = c3d_actor_v2_create,
     .light = c3d_actor_v2_light,
     .animate = c3d_actor_v2_animate,
     .tick = c3d_actor_v2_tick,
-    .render = c3d_actor_v2_render,
-    .cast = c3d_actor_v2_cast,
     .set_speed = c3d_actor_v2_set_speed,
 };
 
@@ -48,8 +45,8 @@ struct C3dActor *model_actor_create(int version)
     actor->ops = version == 1 ? &model_actor_v1_ops : &model_actor_v2_ops;
     actor->scale[0] = actor->scale[1] = actor->scale[2] = 1.0f;
     actor->dirty = 1;
-    actor->alpha = 255;
     actor->animType = 2;
+    actor->gpuGeneration = -1;
     if (version == 2) ((struct C3dActorV2 *)actor)->startTick = platform_coarse_ticks_ms();
     return actor;
 }
@@ -396,108 +393,6 @@ void c3d_actor_v2_tick(struct C3dActor *base)
         c3d_actor_v2_animate(&self->base, unsigned_to_double(t));
         break;
     }
-}
-
-static BYTE mirrored(const struct C3dActor *a)
-{
-    BYTE m = 0.0f > a->scale[0];
-
-    if (0.0f > a->scale[1])
-        m = m == 0;
-    if (0.0f > a->scale[2])
-        m = m == 0;
-    return m;
-}
-
-static void fade(struct C3dNode *node)
-{
-    struct C3dActor *a = node->actor;
-
-    if (a->picked == 1) {
-        if (a->alpha > 0x5a)
-            a->alpha -= 5;
-        else
-            a->picked = 0;
-    } else if (a->alpha < 0xff) {
-        a->alpha += 5;
-    }
-}
-
-void c3d_actor_v1_render(struct C3dActor *base, const float *view)
-{
-    struct C3dActorV1 *self = (struct C3dActorV1 *)base;
-    float m[12];
-    BYTE mir;
-
-    if (self->base.dirty == 1)
-        c3d_actor_build_matrix(&self->base);
-    mir = mirrored(&self->base);
-    mat_multiply(m, self->base.matrix, view);
-    c3d_node_v1_render(self->root, m, mir, self->base.layer);
-    self->base.castFrame = g_renderer->frame;
-    if (self->base.pickable == 1)
-        fade(self->root);
-}
-
-void c3d_actor_v1_cast(struct C3dActor *base, const float *view)
-{
-    struct C3dActorV1 *self = (struct C3dActorV1 *)base;
-    float m[12];
-
-    if (self->base.dirty == 1)
-        c3d_actor_build_matrix(&self->base);
-    mat_multiply(m, self->base.matrix, view);
-    c3d_node_v1_cast(self->root, m);
-    self->base.castFrame = g_renderer->frame;
-}
-
-void c3d_actor_v2_render(struct C3dActor *base, const float *view)
-{
-    struct C3dActorV2 *self = (struct C3dActorV2 *)base;
-    float m[12];
-    BYTE mir;
-    size_t nodeIndex;
-
-    if (self->base.dirty == 1)
-        c3d_actor_v2_build_matrix(&self->base);
-    mir = mirrored(&self->base);
-    mat_multiply(m, self->base.matrix, view);
-    for (nodeIndex = 0; nodeIndex < self->nodeCount; ++nodeIndex) {
-        c3d_node_v2_render(self->nodes[nodeIndex], m, mir, self->base.layer);
-        if (self->base.pickable == 1)
-            fade(self->nodes[nodeIndex]);
-    }
-    self->base.castFrame = g_renderer->frame;
-}
-
-void c3d_actor_v2_cast(struct C3dActor *base, const float *view)
-{
-    struct C3dActorV2 *self = (struct C3dActorV2 *)base;
-    float m[12];
-    size_t nodeIndex;
-
-    if (self->base.dirty == 1)
-        c3d_actor_v2_build_matrix(&self->base);
-    mat_multiply(m, self->base.matrix, view);
-    for (nodeIndex = 0; nodeIndex < self->nodeCount; ++nodeIndex)
-        c3d_node_v2_cast(self->nodes[nodeIndex], m);
-    self->base.castFrame = g_renderer->frame;
-}
-
-void c3d_actor_pick(struct C3dActor *self, const struct Ray3 *ray)
-{
-    struct OrientedBox box;
-    int i;
-
-    if (self->pickable != 1)
-        return;
-    box.centre = (Vec3){self->obb.centre[0], self->obb.centre[1], self->obb.centre[2]};
-    for (i = 0; i < 3; ++i) {
-        box.half[i] = self->obb.extent[i];
-        box.axis[i] = (Vec3){self->obb.axis[i][0], self->obb.axis[i][1], self->obb.axis[i][2]};
-    }
-    if (ray_hits_obb(ray, &box))
-        self->picked = 1;
 }
 
 void c3d_actor_set_speed(struct C3dActor *self, float speed)

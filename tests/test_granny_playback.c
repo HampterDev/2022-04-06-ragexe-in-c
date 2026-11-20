@@ -1,4 +1,3 @@
-#define GRANNY_IMPORT
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>

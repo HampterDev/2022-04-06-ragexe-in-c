@@ -42,7 +42,7 @@ static void check_owner(void)
     struct ChatTab before[5], *storage, *entry;
     unsigned i, calls, live;
 
-    assert(sizeof(struct ChatTabs) == 8 && sizeof(struct ChatTabSettings) == 48);
+    assert(sizeof(struct ChatTabs) == 16 && sizeof(struct ChatTabSettings) == 56);
     assert(!chat_tabs_first(&tabs) && !chat_tabs_after(&tabs, INT_MIN));
     for (i = 0; i < 5; ++i) assert(chat_tabs_set(&tabs, keys[i], &value));
     assert(tabs.size == 5);

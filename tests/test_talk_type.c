@@ -35,7 +35,7 @@ char *msg_str(int id) { (void)id; return "NO MSG"; }
 void ui_window_mgr_set_chat_line(struct UIWindowMgr *self, const char *text)
 { assert(self == &g_windowMgr && text); ++chat_lines; }
 struct GameMode *game_current_mode(void) { abort(); }
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)mode; (void)message; (void)a; (void)b; (void)c; (void)d; abort(); }
 int session_lookup_talk_type(struct Session *self, const char *name)
 { assert(self == &session && name); ++lookups; return 0x7777; }

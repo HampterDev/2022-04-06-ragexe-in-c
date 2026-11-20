@@ -62,7 +62,7 @@ void *game_mode_make_emotion_effect(struct GameMode *self, const float *pos, int
     string_assign(&names[1], "이팩트\\emotion.act", 0x12);
     mem = mem_alloc(sizeof(struct MsgEffect));
     effect = mem != 0 ? msg_effect_construct(mem) : 0;
-    list_push_back(&self->world->gameObjects, &effect, sizeof effect);
+    world_add_object(self->world, effect);
     render_object_send(effect, NULL, 0x16, (long long)aid, 1, 0, 0);
     render_object_send(effect, NULL, 0xe, (intptr_t)pos, (intptr_t)names, (long long)action, 0);
     string_free(&names[1]);
@@ -82,7 +82,7 @@ static struct MsgEffect *msg_effect_new(struct GameMode *mode)
     struct MsgEffect *effect = mem != 0 ? msg_effect_construct(mem) : 0;
 
     if (effect != 0)
-        list_push_back(&mode->world->gameObjects, &effect, sizeof effect);
+        world_add_object(mode->world, effect);
     return effect;
 }
 

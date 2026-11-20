@@ -27,7 +27,6 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <float.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -56,7 +55,24 @@
 #include "world/view_types.h"
 #include "game/context.h"
 
-#define EXPECTED_DIGEST 0x922e71328877ac82ull
+/* 64-bit. The 32-bit build's digest was 2842b5a04b52ece4; its trace is this one line for line
+   once the objects' sizes, the hashes of their bytes and the offsets and counts of the changed
+   words, which follow the layout, are left out. Sounds have no position since 2026-11-11: the
+   trace before (7421cc352aaed63c) is this one line for line once its wave lines lose their
+   position and distances. The vertices have had no specular colour since the fog moved into the
+   renderer's shaders: the trace before (356d458afcc7debb) is this one line for line but for the
+   new effects' lines, whose effect is 4,096 bytes smaller and its bytes' hash another. The render
+   objects' body palette became a name with the resource it names, and the players' imf and head
+   palette too, and the players hold their robe's sprites: the trace before (027d7d81b571a862) is
+   that one (070472d1e6f92c2d) line for line once the objects' sizes, the hashes of their bytes and
+   the offsets and counts of the changed words are left out. Every object has kept its nodes on the
+   world's lists since then (struct GameObject, world_node and actor_node): built with the objects'
+   layout without them, this test gives 070472d1e6f92c2d. The actor has had the netcode's fields
+   since then (actor/types.h: its move track, drawn place and swing pacing in place of the path it
+   searched and its slide): the trace before (3445124eaf068fdb) is this one line for line but for
+   the actor's size, 1,824 bytes where it was 1,512, in its state's line and in the lines of the
+   effects that construct a copy of it. */
+#define EXPECTED_DIGEST 0x382a0c634df18917ull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -317,8 +333,8 @@ struct ObjRef {
 static struct ObjRef g_objs[MAX_OBJS];
 static int g_obj_count, g_effect_count, g_prim_count, g_other_count;
 static int g_serialised_count;          /* g_objs[0..g_serialised_count) were serialised as new */
-static struct List g_objects;
-static struct ListNode *g_scanned;      /* last node of g_objects already registered */
+static struct World g_world;           /* its gameObjects: the world list the effects fill */
+static struct ListNode *g_scanned;      /* last node of the world list already registered */
 
 static const struct GameObjectOps *g_rag_ops, *g_prim_ops;
 static struct GameActorOps g_actor_ops, g_foreign_ops;
@@ -362,9 +378,9 @@ static char kind_of_object(const struct GameObject *o)
 static void scan_new_objects(void)
 {
     struct ListNode *n;
-    if (!g_objects.head)
+    if (!g_world.gameObjects.head)
         return;
-    for (n = g_scanned->next; n != g_objects.head; n = n->next) {
+    for (n = g_scanned->next; n != g_world.gameObjects.head; n = n->next) {
         struct GameObject *o = *LIST_VALUE(n, struct GameObject *);
         const struct Block *b = block_of(o);
         if (!obj_of(o))
@@ -478,7 +494,10 @@ static void fix_ptr(size_t at, size_t offset)
 static void fix_render_object(size_t at, size_t base)
 {
     fix_ptr(at, base + offsetof(struct RenderObject, ops));
-    fix_ptr(at, base + offsetof(struct RenderObject, body_pal_name.data));
+    fix_ptr(at, base + offsetof(struct RenderObject, world_node));
+    fix_ptr(at, base + offsetof(struct RenderObject, actor_node));
+    fix_ptr(at, base + offsetof(struct RenderObject, body_pal.name.data));
+    fix_ptr(at, base + offsetof(struct RenderObject, body_pal.res));
     fix_ptr(at, base + offsetof(struct RenderObject, spr));
     fix_ptr(at, base + offsetof(struct RenderObject, act));
     fix_ptr(at, base + offsetof(struct RenderObject, vars.head));
@@ -697,15 +716,24 @@ struct TexCache g_textureCache;
 struct EffectMgr *g_effectMgr;
 int g_isSkipFrame;
 DWORD g_fogColor;
-float g_fogNear, g_fogFar;
 int gfx_shadows_supported(void) { return 0; }
 int g_lightmap = 1;
-static struct World g_world;
 static int g_res_mgr_token, g_map_attr_token, g_mode_token;
 
 struct ResMgr *g_resMgr(void) { return (struct ResMgr *)&g_res_mgr_token; }
 struct World *game_current_world(void) { return &g_world; }
-struct List *game_current_object_list(void) { return &g_objects; }
+/* the world's list of objects, as world/object_list.c keeps it */
+int world_add_object(struct World *world, void *object)
+{
+    struct GameObject *obj = object;
+
+    if (world != &g_world)
+        fail("an object added to another world");
+    if (!g_world.gameObjects.head)
+        return 0;
+    obj->world_node = LIST_NODE_OF(list_push_back(&g_world.gameObjects, &obj, sizeof obj));
+    return 1;
+}
 struct C3dAttr *game_current_map_attr(void) { return (struct C3dAttr *)&g_map_attr_token; }
 const char *game_current_map_name(void) { return "prt_fild08"; }
 int game_map_preserves_party_effects(void) { return 0; }
@@ -763,7 +791,6 @@ struct TexDrawVertex *prim_project_vertex(struct TexDrawVertex *out, const float
     out->z = 0.0f;
     out->rhw = 0.0f;
     out->diffuse = 0;
-    out->specular = 0xff000000;
     out->u = 0.0f;
     out->v = 0.0f;
     renderer_project_vertex(g_renderer, &pos, matrix, out);
@@ -777,30 +804,29 @@ float c3d_attr_get_height(struct C3dAttr *self, float x, float z)
     return z * 0.0625f - x * 0.03125f - 7.0f;
 }
 
-int game_send_message(int message, int a, int b, int c, int d)
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     if (message == 0x87) {
         /* The quake with strength, duration and amplitude passes them as float pointers. */
         char x[32], y[32], z[32];
         line("game_msg 0x87 %s %s %s %d", fstr(*(const float *)(uintptr_t)a, x), fstr(*(const float *)(uintptr_t)b, y),
-             fstr(*(const float *)(uintptr_t)c, z), d);
+             fstr(*(const float *)(uintptr_t)c, z), (int)d);
         return 0;
     }
-    line("game_msg 0x%x %d %d %d %d", message, a, b, c, d);
+    line("game_msg 0x%x %d %d %d %d", message, (int)a, (int)b, (int)c, (int)d);
     return 0;
 }
 
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
-    line("mode_msg %s 0x%x %d %d %d %d", mode == client_current_mode() ? "mode" : "?", message, a, b, c, d);
+    line("mode_msg %s 0x%x %d %d %d %d", mode == client_current_mode() ? "mode" : "?", message, (int)a, (int)b, (int)c, (int)d);
     return 0;
 }
 
-void sound_play_wave(const char *name, float x, float y, float z, int max_distance, int full_distance, float volume)
+void sound_play_wave(const char *name, float volume)
 {
-    char a[32], b[32], c[32], d[32];
-    line("wave f%d %s %s %s %s %d %d %s", g_effect ? g_effect->frame : -1, name, fstr(x, a), fstr(y, b),
-         fstr(z, c), max_distance, full_distance, fstr(volume, d));
+    char a[32];
+    line("wave f%d %s %s", g_effect ? g_effect->frame : -1, name, fstr(volume, a));
 }
 
 void error_msg(const char *text, int flags)
@@ -1408,8 +1434,8 @@ static uint64_t run_effect(int id, const struct InputSet *set, int set_index)
     g_session1.map_rule_flags[0] = set->min_effects;
     g_session1.effectOn = set->effect_on;
 
-    list_init(&g_objects);
-    g_scanned = g_objects.head;
+    list_init(&g_world.gameObjects);
+    g_scanned = g_world.gameObjects.head;
     reset_actor(MASTER, 2001, master_pos, set->facing);
     reset_actor(PLAYER_ACTOR, 1000, player_pos, 45.0f);
     if (set->master_is_player)
@@ -1460,7 +1486,7 @@ static uint64_t run_effect(int id, const struct InputSet *set, int set_index)
         line("destroyed after %d steps, %d frames", calls, frames);
     }
     free_run_blocks();
-    g_objects.head = NULL;
+    g_world.gameObjects.head = NULL;
     g_in_run = 0;
     ++g_total_runs;
     return g_run_hash;
@@ -1479,9 +1505,6 @@ static void prepare(void)
     struct RagEffect *effect;
 
     SetUnhandledExceptionFilter(crashed);
-    /* The client's floating-point setting (START-073, src/core/winmain.c): 24-bit x87
-       precision. */
-    _controlfp(0x20000, 0x30000);
     math_init_degree_tables();
     g_actor_ops.base.base.destroy = actor_destroy;
     g_actor_ops.base.base.on_process = actor_process;
@@ -1495,8 +1518,6 @@ static void prepare(void)
 
     g_renderer_store.proj[0] = 700.0f;
     g_renderer_store.proj[1] = 700.0f;
-    g_renderer_store.proj[2] = 1.0f;
-    g_renderer_store.aspect = 1.3333334f;
     g_renderer_store.scaleX = g_renderer_store.scaleY = 1.0f;
     g_renderer_store.width = 640;
     g_renderer_store.height = 480;

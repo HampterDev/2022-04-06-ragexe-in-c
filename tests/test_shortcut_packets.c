@@ -13,10 +13,7 @@
         }                                                                                          \
     } while (0)
 
-#ifdef SHORTCUT_PACKETS_REFERENCE
-#else
 #include "../src/game/msg_misc.c"
-#endif
 #include "shortcut_packets_unreached.h"
 struct Session g_session1;
 static unsigned char expected[13];
