@@ -104,9 +104,6 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
     long long weapon = -1;
     unsigned char heal = 0;
 
-    /* a hit onto a cell pushes the actor there */
-    if (info->cell_x != -1 && info->cell_y != -1)
-        sm_stand_record(self, info->cell_x, info->cell_y, MOVE_CAUSE_PUSHED);
     job = game_actor_get_job(self);
     if (g_session1.ownAid == src)
         attacker = (struct GameActor *)world->player;
@@ -377,12 +374,6 @@ static int sm_kind_has_owner(const struct GameActor *self)
     return kind <= 2;
 }
 
-static int sm_walk(struct GameActor *self, const struct ActorMoveEntryInfo *info)
-{
-    return game_actor_walk_record(self, info->src_x, info->src_y, info->sub_x, info->sub_y, info->dst_x, info->dst_y,
-                                  info->speed, MOVE_CAUSE_WALKED, info->move_start_time);
-}
-
 /* An entry's cell is the actor's place, taken at once. */
 static void sm_place(struct GameActor *self, struct GameMode *mode, const struct ActorEntryInfo *info)
 {
@@ -454,9 +445,8 @@ static void sm_moving_new(struct GameActor *self, struct ActorMoveEntryInfo *inf
     self->aid = info->aid;
     sm_moving_fields(self, info);
     self->walk_speed = info->speed;
-    /* it appears where its walk is: the walk's record is taken at once */
+    /* it appears where its walk starts; the server sends the walk's record after the entry */
     sm_stand_record(self, info->src_x, info->src_y, MOVE_CAUSE_PLACED);
-    sm_walk(self, info);
 }
 
 static void sm_moving(struct GameActor *self, struct ActorMoveEntryInfo *info)
@@ -465,7 +455,6 @@ static void sm_moving(struct GameActor *self, struct ActorMoveEntryInfo *info)
         self->owner_aid = info->char_id;
     self->walk_speed = info->speed;
     sm_moving_fields(self, info);
-    sm_walk(self, info);
 }
 
 void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
@@ -486,13 +475,6 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         shown = 0;
 
     switch (msg) {
-    case 0x00: {
-        const struct ActorMove *move = info;
-
-        game_actor_walk_record(self, move->src_x, move->src_y, move->sub_x, move->sub_y, move->dst_x, move->dst_y,
-                               self->walk_speed, MOVE_CAUSE_WALKED, move->start_tick);
-        break;
-    }
     case 0x03:
         sm_appear_stand(self, mode, info);
         break;
@@ -521,41 +503,6 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         if (self->state != 3)
             actor_set_state(self, 3);
         break;
-    case 0x13: {
-        int sx, sy, ux, uy, speed = (int)par3;
-        unsigned char ok;
-
-        /* the stop of the original, a placing, is taken at once; the dash of a relocation is
-           walked at its own speed without the walk's animation */
-        game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &sx, &sy, &ux, &uy);
-        if (speed == 0) {
-            sm_stand_record(self, (int)par1, (int)par2, MOVE_CAUSE_PLACED);
-            ok = 1;
-        } else {
-            ok = (unsigned char)game_actor_walk_record(self, sx, sy, ux, uy, (int)par1, (int)par2, speed,
-                                                       MOVE_CAUSE_PUSHED, game_actor_walk_time(self));
-            if (ok) {
-                actor_clear_unit_cell(self);
-                actor_set_state(self, 1);
-                self->glide = 1;
-                self->motion_held = 1;
-            }
-        }
-        if (!ok) {
-            if (g_session1.homun_command[3]) {
-                g_session1.homun_command[1] = 0;
-                g_session1.homun_command[2] = 0;
-                g_session1.homun_command[3] = 0;
-            }
-            if (g_session1.merc_command[3]) {
-                g_session1.merc_command[1] = 0;
-                g_session1.merc_command[2] = 0;
-                g_session1.merc_command[3] = 0;
-            }
-            actor_set_state(self, 0);
-        }
-        break;
-    }
     case 0x14:
         sm_launch(self, 7);
         break;
@@ -943,18 +890,6 @@ void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
         break;
     case 0x8e:
         sm_close_window(&self->buy_shop_title_wnd);
-        break;
-    case 0x90:
-        if (session_is_pc_job(&g_session1, game_actor_get_job(self))) {
-            struct RagEffect *e = sm_launch(self, 0xa6);
-
-            if (e)
-                rag_effect_send_msg(e, NULL, 0x2c, 0xffff, 0xf3, 0x64);
-        }
-        render_object_send(self, NULL, 0x13, (long long)(int)par1, (long long)(int)par2, 0xf, 0);
-        render_object_set_action((struct RenderObject *)self, self->base_action, 1);
-        self->motion = 7;
-        self->motion_held = 1;
         break;
     case 0x91: {
         struct UIWindow *w;

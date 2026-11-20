@@ -110,8 +110,8 @@ static void other_move(struct GameMode *self, struct GameActor *actor, struct Bo
         record_move(&actor->move_track.held[actor->move_track.count - 1], move);
         return;
     }
-    if (actor->has_place) {
-        record_move(&actor->place, move);
+    if (drawn_record(&actor->place)) {
+        record_move(drawn_record(&actor->place), move);
         return;
     }
     game_mode_world_to_cell(self, actor->pos.x, actor->pos.z, &x, &y);

@@ -302,7 +302,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     case 0x10f:
         render_object_set_script_step_frames((struct RenderObject *)self, 4);
         sot_motion(self, 0x58, 0, 7, 0xdac);
-        self->body_relocation = 1;
+        self->asura_dash = 1;
         break;
     case 0x110:
         sot_motion(self, 0x60, 5, 5, sot_attack_duration(self));

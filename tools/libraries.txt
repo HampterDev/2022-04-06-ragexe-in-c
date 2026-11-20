@@ -92,7 +92,7 @@ paths   ui/
         ui/character/selection_buttons.h ui/chat/readable_links.h ui/chat/sub_chat_map.h
         ui/items/styling_shop_std.h ui/render/draw_list.c ui/render/render.h world/mode_actions.h
         world/mode_context.c world/mode_dispatch.* world/mode_types.h world/move_track.h
-        world/act_track.h world/move_place.h world/path_info.h world/view_floors.h
+        world/act_track.h world/drawn.h world/path_info.h world/view_floors.h
 
 library gamedata
 note    The rest of the library layer below game-state: game-side modules the libraries above use
@@ -102,7 +102,7 @@ note    The rest of the library layer below game-state: game-side modules the li
 uses    widgets
 paths   contents/
         effects/stl/ iteminfo/ login/ session/ skills/ ui/character/ ui/chat/ ui/items/ ui/mail/
-        web/ world/ actor/action.c actor/actor.h actor/actor_defaults.c actor/actor_path.*
+        web/ world/ actor/action.c actor/actor.h actor/actor_defaults.c
         actor/actor_values.c actor/actorindex.c actor/getjob.c actor/granny_actor.h
         actor/granny_model_storage.* actor/granny_projection.* actor/head_extent.c actor/job.h
         actor/layer_order.* actor/map_type_table.* actor/motion.c actor/motion_update.c

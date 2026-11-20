@@ -3,6 +3,7 @@ REM tests\playground\build.bat -> build\ragexe_playground.exe, the Windows clien
 REM playground driver (tests\playground\README.md): the scene harness's clock, sockets, threads,
 REM settings and input, and play_driver.c in the place of the scene driver, with the lossy wire
 REM of tools\lossy_link for its line. It links the objects build.bat made, so run build.bat first.
+REM Beside it, build\drawn.wasm: the client's place of a record, which the runner judges by.
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0..\.."
 set "BUILD=%ROOT%\build"
@@ -42,4 +43,6 @@ link /nologo msvcrt.lib msvcprt.lib @"%RSP%" ^
  msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
  /OUT:"%BUILD%\ragexe_playground.exe" /SUBSYSTEM:WINDOWS /MACHINE:X86 /SAFESEH /LARGEADDRESSAWARE /OPT:NOICF
 if errorlevel 1 ( echo *** playground LINK FAILED *** & exit /b 1 )
-echo Done -^> "%BUILD%\ragexe_playground.exe"
+REM The client's place of a record for the runner, beside the client (tools\build_drawn_wasm.bat).
+call "%ROOT%\tools\build_drawn_wasm.bat" || ( echo *** drawn.wasm FAILED *** & exit /b 1 )
+echo Done -^> "%BUILD%\ragexe_playground.exe" and "%BUILD%\drawn.wasm"

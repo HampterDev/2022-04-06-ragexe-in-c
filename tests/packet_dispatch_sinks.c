@@ -174,7 +174,6 @@ struct PacketNotifyMemberInfoToGroupm;
 struct PacketNotifyRanking;
 struct PacketNotifySkill;
 struct PacketNotifySkill2;
-struct PacketNotifySkillPosition;
 struct PacketNotifyUnreadRodex;
 struct PacketNpcShowEfstUpdate;
 struct PacketPartyMemberState;
@@ -1342,14 +1341,6 @@ void game_mode_on_notify_skill(struct GameMode *arg0, const struct PacketNotifyS
 void game_mode_on_notify_skill2(struct GameMode *arg0, const struct PacketNotifySkill2 *arg1)
 {
     packet_trace_call("GameMode_OnNotifySkill2");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_notify_skill_position(struct GameMode *arg0,
-                                    const struct PacketNotifySkillPosition *arg1)
-{
-    packet_trace_call("GameMode_OnNotifySkillPosition");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -2711,13 +2702,6 @@ void game_mode_zc_failed_get_item_from_zone_da(struct GameMode *arg0, const unsi
     packet_trace_pointer(arg1);
 }
 
-void game_mode_zc_fast_move(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_FastMove");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_feed(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Feed");
@@ -2796,13 +2780,6 @@ void game_mode_zc_guild_skill_info(struct GameMode *arg0,
                                  const struct PACKET_ZC_GUILD_SKILLINFO *arg1)
 {
     packet_trace_call("GameMode_Zc_Guild_SkillInfo");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_high_jump(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_HighJump");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -3010,13 +2987,6 @@ void game_mode_zc_normal_system_msg(const unsigned char *arg0)
     packet_trace_pointer(arg0);
 }
 
-void game_mode_zc_notify_act_position(struct GameMode *arg0, const struct PACKET_ZC_NOTIFY_ACT_POSITION *arg1)
-{
-    packet_trace_call("GameMode_Zc_Notify_Act_Position");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_notify_actor_init(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Notify_ActorInit");
@@ -3085,13 +3055,6 @@ void game_mode_zc_notify_manner_point_given(const unsigned char *arg0)
 void game_mode_zc_notify_map_info(struct GameMode *arg0, const struct PACKET_ZC_NOTIFY_MAPINFO *arg1)
 {
     packet_trace_call("GameMode_Zc_Notify_MapInfo");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_notify_move(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Notify_Move");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -3204,13 +3167,6 @@ void game_mode_zc_notify_newentry7(struct GameMode *arg0, const struct PacketNew
 void game_mode_zc_notify_player_chat(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Notify_PlayerChat");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_notify_player_move(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Notify_PlayerMove");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -4097,17 +4053,6 @@ void game_mode_zc_status_change_ack(struct GameMode *arg0,
     packet_trace_call("GameMode_Zc_Status_Change_Ack");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_stopmove(struct GameMode *arg0, unsigned int arg1, short arg2, short arg3,
-                          unsigned char arg4)
-{
-    packet_trace_call("GameMode_Zc_Stopmove");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-    packet_trace_value(arg3);
-    packet_trace_value(arg4);
 }
 
 void game_mode_zc_store_assistant_entry(struct GameMode *arg0, const unsigned char *arg1)

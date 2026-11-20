@@ -74,7 +74,6 @@ static void sprite_actions(void)
 
     ops.set_action = game_actor_set_action;
     actor.object_type = 7;
-    actor.glide = 1;
     actor.attack_motion_count = 3;
     action_count = 8;
     before = actor;
@@ -84,7 +83,7 @@ static void sprite_actions(void)
     action_count = 9;
     delay = 2;
     render_object_set_action(object, 8, 0);
-    assert(delay_reads == 1 && !actor.glide && actor.attack_motion_count == -1);
+    assert(delay_reads == 1 && actor.attack_motion_count == -1);
     assert(actor.motion_delay == 2 && actor.play_mode == 0);
 }
 

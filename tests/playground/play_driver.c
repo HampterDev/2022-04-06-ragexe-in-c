@@ -116,7 +116,6 @@ static void leave(int code, const char *why)
 
 static void put16(unsigned char *p, unsigned v) { p[0] = (unsigned char)v; p[1] = (unsigned char)(v >> 8); }
 static void put32(unsigned char *p, unsigned long v) { put16(p, (unsigned)(v & 0xffff)); put16(p + 2, (unsigned)(v >> 16)); }
-static void putf(unsigned char *p, float v) { memcpy(p, &v, 4); }
 static unsigned get16(const unsigned char *p) { return p[0] | (unsigned)p[1] << 8; }
 static unsigned long get32(const unsigned char *p) { return get16(p) | (unsigned long)get16(p + 2) << 16; }
 
@@ -333,15 +332,12 @@ static struct GameMode *game(void)
 }
 
 /* A place of the world in cells: a cell's centre is a whole number. */
-static void cell_of(struct GameMode *mode, const Vec3 *pos, float *x, float *y)
+/* Where an actor is drawn, in 256ths of a cell, a cell's middle at a whole multiple of 256: the
+   drawn point of its place (world/drawn.h), or 0 before its first record. */
+static void point_of(const struct GameActor *actor, long *x, long *y)
 {
-    float ox, oz, ax, az, bx, bz;
-
-    game_mode_cell_to_world(mode, 0, 0, &ox, &oz);
-    game_mode_cell_to_world(mode, 1, 0, &ax, &az);
-    game_mode_cell_to_world(mode, 0, 1, &bx, &bz);
-    *x = ax != ox ? (pos->x - ox) / (ax - ox) : 0.0f;
-    *y = bz != oz ? (pos->z - oz) / (bz - oz) : 0.0f;
+    *x = drawn_record(&actor->place) ? (long)actor->place.x : 0;
+    *y = drawn_record(&actor->place) ? (long)actor->place.y : 0;
 }
 
 /* The own body, for the runner to hold against the server's by tick: the cell the walk the
@@ -359,10 +355,10 @@ static size_t report_body(struct GameMode *mode, struct GameActor *own, unsigned
         clock = game_mode_own_time(mode);
         known = 1;
         game_mode_world_to_sub_cell(mode, own->pos.x, own->pos.z, &x, &y, &sub_x, &sub_y);
-        if (own->has_place) {
+        if (drawn_record(&own->place)) {
             /* the last cell of its record whose time has come, and the one it is on the way to */
             struct MoveCell cells[MOVE_TRACK_STEPS + 1];
-            size_t count = (size_t)move_record_cells(&own->place, cells);
+            size_t count = (size_t)move_record_cells(drawn_record(&own->place), cells);
 
             x = cells[0].x;
             y = cells[0].y;
@@ -399,7 +395,7 @@ static size_t report(void)
     struct GameActor *own = world ? (struct GameActor *)world->player : NULL;
     unsigned char *p = P.out + 4, *count;
     unsigned actors = 0;
-    float x = 0, y = 0;
+    long x = 0, y = 0;
 
     *p++ = MSG_FRAME;
     *p++ = (unsigned char)(g_modeMgr.curMode ? g_modeMgr.curModeType : 255);
@@ -408,9 +404,9 @@ static size_t report(void)
     put32(p, platform_ticks_ms());
     p += 4;
     if (own)
-        cell_of(mode, &own->pos, &x, &y);
-    putf(p, x);
-    putf(p + 4, y);
+        point_of(own, &x, &y);
+    put32(p, (unsigned long)x);
+    put32(p + 4, (unsigned long)y);
     p[8] = (unsigned char)(own ? own->state : 0);
     p[9] = p[10] = p[11] = 0;
     p += 12;
@@ -426,10 +422,10 @@ static size_t report(void)
                 continue;
             if ((size_t)(p - P.out) + 24 + 4 + P.sent_size + 16 + 24 + BODY_STATE_SIZE > sizeof P.out)
                 break;
-            cell_of(mode, &actor->pos, &x, &y);
+            point_of(actor, &x, &y);
             put32(p, (unsigned long)actor->aid);
-            putf(p + 4, x);
-            putf(p + 8, y);
+            put32(p + 4, (unsigned long)x);
+            put32(p + 8, (unsigned long)y);
             p[12] = (unsigned char)actor->state;
             p[13] = actor->is_pc != 0;
             put16(p + 14, (unsigned)actor->job);

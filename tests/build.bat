@@ -751,7 +751,7 @@ call "%~dp0build_render_delay.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_move_track.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%~dp0build_move_place.bat"
+call "%~dp0build_drawn.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_act_track.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)

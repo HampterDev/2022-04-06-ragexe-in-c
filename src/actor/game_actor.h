@@ -8,7 +8,6 @@
 #include "actor/appearance.h"
 
 #include "actor/render_object.h"
-#include "actor/actor_path.h"
 #include "skills/skill_action_registry.h"
 
 #include "actor/actor.h"

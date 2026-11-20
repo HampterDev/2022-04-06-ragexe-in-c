@@ -7,6 +7,7 @@
 #include "render/vec3.h"
 #include "world/path_info.h"
 #include "world/move_track.h"
+#include "world/drawn.h"
 
 enum { ACTOR_EFFECT_SLOT_COUNT = 5 };
 
@@ -131,39 +132,32 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int casting;                               \
     int state_locked;                          \
     int wave_pending;                          \
-    int body_relocation;                       \
+    /* Asura Strike's dash: a push the actor takes after its motion slides at the dash's speed, \
+       and its end motion plays when the slide is over. */                                       \
+    int asura_dash;                            \
     struct UIWindow *siege_wnd;                \
     struct UIWindow *word_display_wnd;         \
     unsigned char wave_name[128];              \
     int wave_extra_flag;                       \
     unsigned short level;                      \
     Vec3 facing_vector;                        \
-    /* A walk the client searched itself, from a packet that gave no steps, before it becomes a \
-       record (game_actor_walk_record). */                                                     \
-    struct PathInfo path;                      \
     /* Where the server says the actor is (ZC_TRACK_MOVE, plans/core-loop.md): the records    \
        waiting for their tick. */                                                              \
     struct MoveTrack move_track;               \
-    /* Where it is (plans/drawn-place.md): the record played last, which gives its place at    \
-       any tick (world/move_place.h), and how the drawn point joins that place: the most ms a  \
-       cell its step may take, 0 for at once; the real time of its last step. */               \
-    struct MoveRecord place;                   \
-    int place_ms;                              \
-    unsigned place_real;                       \
-    unsigned char has_place;                   \
+    /* Where it is drawn (plans/drawn-place.md, world/drawn.h): the record played last, the     \
+       drawn point and how it joins the record's place. */                                     \
+    struct Drawn place;                        \
     /* While the attack of a swing the server announced is set up (game_actor_swing_begin):    \
        the time until its hit is to show, and the frame delay the attack has on its own        \
        (game_actor_pace_attack). */                                                            \
     int swing_lands_ms;                        \
     float swing_own_delay;                     \
     unsigned char swing_paces;                 \
-    unsigned char glide;                       \
     float walked;                              \
     unsigned process_tick;                     \
     unsigned balloon_tick;                     \
     int attack_target_aid;                     \
     int attack_target_extra;                   \
-    unsigned path_start;                       \
     int job;                                   \
     int sex;                                   \
     struct UIWindow *balloon_wnd;              \

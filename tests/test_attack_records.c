@@ -307,48 +307,6 @@ static void expect_hit(const struct Sent *s, void *to, int kind, int damage, lon
     assert(s->hit.tick - delay - t0 <= t1 - t0);
 }
 
-static void act_position(void)
-{
-    unsigned char packet[0x17];
-    DWORD t0, t1;
-
-    setup();
-    memset(packet, 0, sizeof packet);
-    put16(packet, 0, 0x8b);
-    put32(packet, 2, MONSTER_AID);
-    put32(packet, 6, OWN_AID);
-    put32(packet, 0xa, 777);
-    put16(packet, 0xe, 50);
-    put16(packet, 0x10, 60);
-    put16(packet, 0x12, 25);
-    put16(packet, 0x14, 1);
-    packet[0x16] = 0;
-    t0 = timeGetTime();
-    dirty_stack();
-    game_mode_zc_notify_act_position(&mode, (const struct PACKET_ZC_NOTIFY_ACT_POSITION *)packet);
-    t1 = timeGetTime();
-
-    assert(sent_count == 4);
-    assert(sent[0].what == SENT_ATTACK && sent[0].to == &monster);
-    assert(sent[0].attack.damage == 25 && sent[0].attack.left_damage == 0 && sent[0].attack.action == 0);
-    assert(sent[0].attack.target_aid == OWN_AID && sent[0].attack.start_time == 777 && sent[0].attack.count == 1);
-    assert(sent[0].attack.cell_x == 50 && sent[0].attack.cell_y == 60);
-    assert(sent[0].attack.attack_mt == 0x1b0 && sent[0].attack.attacked_mt == 0x120);
-    assert(sent[0].attack.is_sp_damage == 0);
-    assert(sent[1].what == SENT_SPEED && sent[1].to == &monster && sent[1].value[0] == 0x1b0);
-    assert(sent[2].what == SENT_STATE && sent[2].to == &monster && sent[2].value[0] == 2);
-    expect_hit(&sent[3], &player, 0x1a, 25, 0, MONSTER_AID, 50, 60, 0x120 / 288.0f, 0, t0, t1, 144);
-    assert(sent[3].hit.effect == -1 && sent[3].hit.hit_effect == 0 && sent[3].hit.value == 1);
-
-    setup();
-    put16(packet, 0x12, -30000);
-    game_mode_zc_notify_act_position(&mode, (const struct PACKET_ZC_NOTIFY_ACT_POSITION *)packet);
-    put16(packet, 0x12, 25);
-    put32(packet, 2, UNIT_AID);
-    game_mode_zc_notify_act_position(&mode, (const struct PACKET_ZC_NOTIFY_ACT_POSITION *)packet);
-    assert(sent_count == 0);
-}
-
 static void act(void)
 {
     DWORD t0, t1;
@@ -434,28 +392,6 @@ static void skill_use(void)
     game_mode_on_notify_skill(&mode, (const struct PacketNotifySkill *)packet);
     assert(sent_count == 1);
     expect_use(&sent[0], &monster, 0x13, -40, 6, 9, 5, 2, -1, -1);
-
-    setup();
-    attack_test_monster_actor = 0;
-    memset(packet, 0, sizeof packet);
-    put16(packet, 0, 0x115);
-    put16(packet, 2, 0x13);
-    put32(packet, 4, MONSTER_AID);
-    put32(packet, 8, OWN_AID);
-    put32(packet, 0xc, 9);
-    put32(packet, 0x10, 600);
-    put32(packet, 0x14, 700);
-    put16(packet, 0x18, 70);
-    put16(packet, 0x1a, 80);
-    put16(packet, 0x1c, 40);
-    put16(packet, 0x1e, 5);
-    put16(packet, 0x20, 2);
-    packet[0x22] = 8;
-    game_mode_on_notify_skill_position(&mode, (const struct PacketNotifySkillPosition *)packet);
-    assert(sent_count == 2);
-    expect_use(&sent[0], &monster, 0x13, 40, 8, 9, 5, 2, 70, 80);
-    assert(sent[1].what == SENT_MODE && sent[1].value[0] == 0x56 && sent[1].value[1] == 0x13);
-    assert(sent[1].value[2] == (int)(intptr_t)&monster && sent[1].value[3] == 5);
 
     setup();
     memset(packet, 0, sizeof packet);
@@ -941,7 +877,7 @@ int game_actor_on_place(struct GameActor *actor)
     int drawn = drawn_walking[actor_index(actor)];
 
     if (drawn == 2)
-        return (int)(render_clock - actor->place.at_tick) < 0;
+        return (int)(render_clock - actor->place.record.at_tick) < 0;
     return !drawn;
 }
 
@@ -955,7 +891,7 @@ static void waits_to_walk(struct GameActor *actor)
 /* Its walk is over and its drawn point on its place: it stands. */
 static void arrives(struct GameActor *actor)
 {
-    actor->has_place = 0;
+    actor->place.has = 0;
     actor->state = 0;
     drawn_walking[actor_index(actor)] = 0;
 }
@@ -964,12 +900,12 @@ static void arrives(struct GameActor *actor)
 static void walks(struct GameActor *actor, DWORD ends)
 {
     memset(&actor->place, 0, sizeof actor->place);
-    actor->place.at_tick = ends - 100;
-    actor->place.land_ms = 100;
-    actor->place.speed_ms = 150;
-    actor->place.steps = 1;
-    actor->place.path[0] = 6;
-    actor->has_place = 1;
+    actor->place.record.at_tick = ends - 100;
+    actor->place.record.land_ms = 100;
+    actor->place.record.speed_ms = 150;
+    actor->place.record.steps = 1;
+    actor->place.record.path[0] = 6;
+    actor->place.has = 1;
     actor->state = 1;
     drawn_walking[actor_index(actor)] = 1;
 }
@@ -995,7 +931,7 @@ static void threats_wait_for_the_walk(void)
     waits_to_walk(&monster);
     play_at(own - FAR_BEHIND);
     assert(sent_count == 0);
-    monster.has_place = 0;
+    monster.place.has = 0;
     monster.move_track.count = 1;
     monster.move_track.held[0].at_tick = own - 400;
     monster.move_track.held[0].steps = 1;
@@ -1448,7 +1384,6 @@ static void own_swing(void)
 
 int main(void)
 {
-    act_position();
     act();
     skill_use();
     swing();

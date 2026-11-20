@@ -34,7 +34,6 @@
 
 #define ACTOR_MSG_DEAD          0x1c
 #define ACTOR_MSG_OUT_OF_SIGHT  0x63
-#define ACTOR_MSG_STOP          0x13
 #define ACTOR_MSG_PLAYER_GONE   0xd
 #define SKILL_MSG_SPRITE        0x2f
 
@@ -88,12 +87,6 @@ struct PACKET_ZC_SPRITE_CHANGE {
     unsigned char type;
     unsigned char value;
 };
-struct PACKET_ZC_FASTMOVE {
-    unsigned short id;
-    unsigned aid;
-    short x;
-    short y;
-};
 struct PACKET_ZC_BLADESTOP {
     unsigned short id;
     unsigned source_aid;
@@ -106,28 +99,11 @@ struct PACKET_ZC_PAR_CHANGE_USER {
     short type;
     int value;
 };
-struct PACKET_ZC_NOTIFY_MOVE {
-    unsigned short id;
-    unsigned aid;
-    unsigned char move_data[6];
-    DWORD start_tick;
-};
-struct PACKET_ZC_NOTIFY_PLAYERMOVE {
-    unsigned short id;
-    DWORD start_tick;
-    unsigned char move_data[6];
-};
 struct PACKET_ZC_CHANGE_DIRECTION {
     unsigned short id;
     unsigned aid;
     short head_direction;
     unsigned char body_direction;
-};
-struct PACKET_ZC_HIGHJUMP {
-    unsigned short id;
-    unsigned aid;
-    short x;
-    short y;
 };
 struct PACKET_ZC_EMOTION {
     unsigned short id;
@@ -169,13 +145,9 @@ struct PACKET_ZC_EQUIP_ARROW {
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_NOTIFY_VANISH, 7);
 SIZE_ASSERT(PACKET_ZC_SPRITE_CHANGE, 8);
-SIZE_ASSERT(PACKET_ZC_FASTMOVE, 10);
 SIZE_ASSERT(PACKET_ZC_BLADESTOP, 14);
 SIZE_ASSERT(PACKET_ZC_PAR_CHANGE_USER, 12);
-SIZE_ASSERT(PACKET_ZC_NOTIFY_MOVE, 16);
-SIZE_ASSERT(PACKET_ZC_NOTIFY_PLAYERMOVE, 12);
 SIZE_ASSERT(PACKET_ZC_CHANGE_DIRECTION, 9);
-SIZE_ASSERT(PACKET_ZC_HIGHJUMP, 10);
 SIZE_ASSERT(PACKET_ZC_EMOTION, 7);
 SIZE_ASSERT(PACKET_ZC_NOTIFY_FONT, 8);
 SIZE_ASSERT(PACKET_ZC_PROGRESS_ACTOR, 14);
@@ -428,18 +400,6 @@ void game_mode_apply_sprite_change2(struct GameMode *self, const struct PACKET_Z
     }
 }
 
-void game_mode_zc_stopmove(struct GameMode *self, unsigned aid, short x, short y, unsigned char dir)
-{
-    struct GameActor *actor;
-
-    /* Where the player's own character stops is the predicted world's to say, from the server's
-       word of the body (game/own_body.c), and the server sends no ZC_STOPMOVE of her: one that
-       comes anyway would set the character where the world steers it. */
-    if (aid == ((unsigned)g_session1.ownAid) || !(actor = world_get_game_actor_by_aid(self->world, aid)))
-        return;
-    render_object_send(actor, NULL, ACTOR_MSG_STOP, x, y, 0, dir);
-}
-
 void game_mode_zc_sprite_change2(struct GameMode *self, const struct PACKET_ZC_SPRITE_CHANGE2 *pkt)
 {
     struct PACKET_ZC_SPRITE_CHANGE2 copy;
@@ -459,22 +419,6 @@ void game_mode_zc_sprite_change2(struct GameMode *self, const struct PACKET_ZC_S
         copy.value = pkt->value;
         game_mode_apply_sprite_change2(self, &copy);
     }
-}
-
-#define ACTOR_MSG_FAST_MOVE     0x90
-
-void game_mode_zc_fast_move(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_FASTMOVE *packet = (const struct PACKET_ZC_FASTMOVE *)pkt;
-    unsigned aid = packet->aid;
-    struct GameActor *actor;
-
-    if (aid == ((unsigned)g_session1.ownAid))
-        actor = self->world ? (struct GameActor *)self->world->player : NULL;
-    else
-        actor = session_get_actor_by_aid(&g_session1, aid);
-    if (actor)
-        actor_send(actor, ACTOR_MSG_FAST_MOVE, packet->x, packet->y);
 }
 
 #define ACTOR_VALUE_BLADE_STOP  3
@@ -544,33 +488,7 @@ void game_mode_zc_par_change_user(struct GameMode *self, const unsigned char *pk
         actor_set_honor(actor, packet->value);
 }
 
-#define ACTOR_MSG_MOVE          0
 #define ACTOR_MSG_TURN          0x64
-
-void game_mode_zc_notify_move(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_NOTIFY_MOVE *packet = (const struct PACKET_ZC_NOTIFY_MOVE *)pkt;
-    struct ActorMove move;
-    struct GameActor *actor;
-
-    move.start_tick = packet->start_tick;
-    packet_decode_move_data(packet->move_data, &move.src_x, &move.src_y, &move.dst_x, &move.dst_y, &move.sub_x, &move.sub_y);
-    actor = world_get_game_actor_by_aid(self->world, packet->aid);
-    session_sync_server_time(&g_session1, move.start_tick);
-    if (actor)
-        actor_send(actor, ACTOR_MSG_MOVE, (intptr_t)&move, 0);
-}
-
-void game_mode_zc_notify_player_move(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_NOTIFY_PLAYERMOVE *packet = (const struct PACKET_ZC_NOTIFY_PLAYERMOVE *)pkt;
-    struct ActorMove move;
-
-    move.start_tick = packet->start_tick;
-    packet_decode_move_data(packet->move_data, &move.src_x, &move.src_y, &move.dst_x, &move.dst_y, &move.sub_x, &move.sub_y);
-    session_sync_server_time(&g_session1, move.start_tick);
-    actor_send((struct GameActor *)self->world->player, ACTOR_MSG_MOVE, (intptr_t)&move, 0);
-}
 
 void game_mode_zc_change_direction(struct GameMode *self, const unsigned char *pkt)
 {
@@ -655,27 +573,6 @@ void game_mode_zc_combo_delay(struct GameMode *self, const struct PACKET_ZC_COMB
 }
 
 #define ACTOR_MSG_EMOTION       0x15
-
-void game_mode_zc_high_jump(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_HIGHJUMP *packet = (const struct PACKET_ZC_HIGHJUMP *)pkt;
-    unsigned aid = packet->aid;
-    struct GameActor *actor;
-    struct MoveRecord record;
-
-    if (aid == ((unsigned)g_session1.ownAid))
-        actor = (struct GameActor *)self->world->player;
-    else if ((actor = world_get_game_actor_by_aid(self->world, aid)) == 0)
-        return;
-    /* the original's jump onto a cell: a placing, as a record from the actor's clock now
-       (plans/drawn-place.md, part 4) */
-    memset(&record, 0, sizeof record);
-    record.at_tick = game_actor_walk_time(actor);
-    record.x = packet->x;
-    record.y = packet->y;
-    record.cause = MOVE_CAUSE_PLACED;
-    game_actor_set_place(actor, &record);
-}
 
 void game_mode_zc_emotion(struct GameMode *self, const unsigned char *pkt)
 {

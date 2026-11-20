@@ -20,13 +20,6 @@
 #include "game/packet_rows.h"
 
 #pragma pack(push, 1)
-struct PACKET_ZC_STOPMOVE {
-    unsigned short packet_type;
-    int aid;
-    unsigned short x;
-    unsigned short y;
-};
-
 struct PACKET_ZC_NOTIFY_ACT {
     unsigned short packet_type;
     int aid;
@@ -94,7 +87,6 @@ struct PACKET_ZC_SKILLINFO_UPDATE2 {
     unsigned char upgradable;
 };
 #pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_STOPMOVE, 10);
 SIZE_ASSERT(PACKET_ZC_NOTIFY_ACT, 29);
 SIZE_ASSERT(PACKET_ZC_NOTIFY_ACT2, 33);
 SIZE_ASSERT(PACKET_ZC_ADD_SKILL, 39);
@@ -104,12 +96,6 @@ SIZE_ASSERT(PACKET_ZC_SKILLINFO_DELETE, 4);
 SIZE_ASSERT(PACKET_ZC_SKILLINFO_UPDATE2, 15);
 
 /* Shims for the rows whose packet is unpacked into arguments or checked first. */
-static void zc_stopmove(struct GameMode *self, unsigned char *pkt)
-{
-    const struct PACKET_ZC_STOPMOVE *packet = (const struct PACKET_ZC_STOPMOVE *)pkt;
-    game_mode_zc_stopmove(self, packet->aid, packet->x, packet->y, 0);
-}
-
 static void zc_notify_act(struct GameMode *self, unsigned char *pkt)
 {
     const struct PACKET_ZC_NOTIFY_ACT *packet = (const struct PACKET_ZC_NOTIFY_ACT *)pkt;
@@ -167,11 +153,11 @@ static void zc_skillinfo_update2(struct GameMode *self, unsigned char *pkt)
     PACKET(HEADER_ZC_NOTIFY_TIME, game_mode_zc_notify_time(self, pkt)) \
     PACKET(HEADER_ZC_NOTIFY_VANISH, game_mode_zc_notify_vanish(self, pkt)) \
     PACKET(HEADER_SC_NOTIFY_BAN, game_mode_notify_ban(self, (const struct PACKET_SC_NOTIFY_BAN *)pkt)) \
-    PACKET(HEADER_ZC_NOTIFY_MOVE, game_mode_zc_notify_move(self, pkt)) \
-    PACKET(HEADER_ZC_NOTIFY_PLAYERMOVE, game_mode_zc_notify_player_move(self, pkt)) \
-    PACKET(HEADER_ZC_STOPMOVE, zc_stopmove(self, pkt)) \
+    CONSUMED(HEADER_ZC_NOTIFY_MOVE) \
+    CONSUMED(HEADER_ZC_NOTIFY_PLAYERMOVE) \
+    CONSUMED(HEADER_ZC_STOPMOVE) \
     PACKET(HEADER_ZC_NOTIFY_ACT, zc_notify_act(self, pkt)) \
-    PACKET(HEADER_ZC_NOTIFY_ACT_POSITION, game_mode_zc_notify_act_position(self, (const struct PACKET_ZC_NOTIFY_ACT_POSITION *)pkt)) \
+    CONSUMED(HEADER_ZC_NOTIFY_ACT_POSITION) \
     PACKET(HEADER_ZC_NOTIFY_CHAT, game_mode_zc_notify_chat(self, pkt)) \
     PACKET(HEADER_ZC_NOTIFY_PLAYERCHAT, game_mode_zc_notify_player_chat(self, pkt)) \
     PACKET(HEADER_ZC_NPCACK_MAPMOVE, game_mode_zc_npcack_mapmove(self, pkt)) \
@@ -259,7 +245,7 @@ static void zc_skillinfo_update2(struct GameMode *self, unsigned char *pkt)
     PACKET(HEADER_ZC_ACK_TOUSESKILL, game_mode_ack_to_use_skill(self, (const struct PACKET_ZC_ACK_TOUSESKILL *)pkt)) \
     PACKET(HEADER_ZC_ADD_SKILL, zc_add_skill(pkt)) \
     PACKET(HEADER_ZC_NOTIFY_SKILL, game_mode_on_notify_skill(self, (const struct PacketNotifySkill *)pkt)) \
-    PACKET(HEADER_ZC_NOTIFY_SKILL_POSITION, game_mode_on_notify_skill_position(self, (const struct PacketNotifySkillPosition *)pkt)) \
+    CONSUMED(HEADER_ZC_NOTIFY_SKILL_POSITION) \
     PACKET(HEADER_ZC_NOTIFY_GROUNDSKILL, game_mode_on_notify_ground_skill(self, (const struct PacketNotifyGroundSkill *)pkt)) \
     PACKET(HEADER_ZC_STATE_CHANGE, game_mode_zc_state_change(self, (const struct PACKET_ZC_STATE_CHANGE *)pkt)) \
     PACKET(HEADER_ZC_USE_SKILL, zc_use_skill(self, pkt)) \
@@ -394,7 +380,7 @@ static void zc_skillinfo_update2(struct GameMode *self, unsigned char *pkt)
     PACKET(HEADER_ZC_START_BABY, game_mode_on_start_baby(self, pkt)) \
     PACKET(HEADER_ZC_REPAIRITEMLIST, game_mode_zc_repair_item_list(self, (const struct PacketRepairItemList *)pkt)) \
     PACKET(HEADER_ZC_ACK_ITEMREPAIR, game_mode_zc_ack_item_repair(self, (const struct PacketItemRepair *)pkt)) \
-    PACKET(HEADER_ZC_HIGHJUMP, game_mode_zc_high_jump(self, pkt)) \
+    CONSUMED(HEADER_ZC_HIGHJUMP) \
     PACKET(HEADER_ZC_FRIENDS_LIST, game_mode_friends_list(pkt)) \
     PACKET(HEADER_ZC_DIVORCE, game_mode_zc_divorce(self, (const struct PACKET_ZC_DIVORCE *)pkt)) \
     PACKET(HEADER_ZC_FRIENDS_STATE, game_mode_friends_state(pkt)) \

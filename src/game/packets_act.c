@@ -280,11 +280,12 @@ static int aimed_when(struct GameMode *self, struct GameActor *actor, DWORD tick
 {
     DWORD now = session_get_server_time(&g_session1);
     int waited = (int)(now - tick) >= 0;
+    const struct MoveRecord *record = drawn_record(&actor->place);
     struct MoveCell cells[MOVE_TRACK_STEPS + 1];
     int x, y, count;
 
-    if (actor->has_place && actor->place.steps) {
-        count = move_record_cells(&actor->place, cells);
+    if (record && record->steps) {
+        count = move_record_cells(record, cells);
         if ((int)(cells[count - 1].tick - tick) <= 0) {
             if ((int)(now - cells[count - 1].tick) < 0 || !game_actor_on_place(actor))
                 return waited ? AIMED_NOW : AIMED_WAITS;
@@ -650,45 +651,3 @@ void game_mode_zc_own_intent(struct GameMode *self, const unsigned char *pkt)
         intent_ended(self, packet->seq);
 }
 
-#pragma pack(push, 1)
-struct PACKET_ZC_NOTIFY_ACT_POSITION {
-    unsigned short id;
-    unsigned aid;
-    unsigned target;
-    int start_time;
-    short x, y;
-    short damage;
-    short count;
-    unsigned char action;
-};
-#pragma pack(pop)
-
-#define ATTACK_POSITION_MT      0x1b0
-#define ATTACKED_POSITION_MT    0x120
-
-void game_mode_zc_notify_act_position(struct GameMode *self, const struct PACKET_ZC_NOTIFY_ACT_POSITION *packet)
-{
-    struct ActorAttack attack;
-    struct GameActor *actor;
-
-    if (packet->damage == DAMAGE_NONE)
-        return;
-    attack.damage = packet->damage;
-    attack.left_damage = 0;
-    attack.action = packet->action;
-    attack.target_aid = (int)packet->target;
-    attack.start_time = packet->start_time;
-    attack.count = packet->count;
-    attack.cell_x = packet->x;
-    attack.cell_y = packet->y;
-    attack.attack_mt = ATTACK_POSITION_MT;
-    attack.attacked_mt = ATTACKED_POSITION_MT;
-    attack.is_sp_damage = 0;
-    attack.impact = 0;
-    if (packet->aid == (unsigned)g_session1.ownAid)
-        actor = (struct GameActor *)self->world->player;
-    else
-        actor = world_get_game_actor_by_aid(self->world, packet->aid);
-    if (actor)
-        actor_send(actor, ACTOR_MSG_ATTACK, (intptr_t)&attack, 0);
-}

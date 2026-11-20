@@ -175,23 +175,6 @@ static int player_burrow_skill(int skill, int hi, int with_250)
     return skill == 0x89 || skill == 0xd4 || skill == 0x211 || skill == 0x212 || (with_250 && skill == 0x250);
 }
 
-/* A walk to a cell that came without its steps: the fork's walk start, and the way to the
-   cell a record says the character stands on (actor_state.c). The walk the player asks for
-   comes as records from the predicted world, with the server's steps (game/own_body.c). */
-static void player_msg_walk(struct Player *self, struct GameMode *mode, const struct ActorMove *move)
-{
-    int x, y, sub_x, sub_y;
-
-    self->move_request_pending = 0;
-    if (!game_actor_walk_record((struct GameActor *)self, move->src_x, move->src_y, move->sub_x, move->sub_y,
-                                move->dst_x, move->dst_y, g_session1.walkSpeed, MOVE_CAUSE_WALKED, move->start_tick)) {
-        game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &x, &y, &sub_x, &sub_y);
-        game_actor_walk_record((struct GameActor *)self, x, y, sub_x, sub_y, move->dst_x, move->dst_y,
-                               g_session1.walkSpeed, MOVE_CAUSE_WALKED, move->start_tick);
-    }
-    navi_manager_check_arrival(&g_navi, self->cell_x, self->cell_y);
-}
-
 static void player_msg_turn(struct Player *self, struct GameMode *mode, int x, int y)
 {
     float fx, fz, toward, roty;
@@ -266,9 +249,6 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
             return;
         }
     switch ((int)msg) {
-    case 0x0:
-        player_msg_walk(self, mode, MSG_PTR(par1));
-        break;
     case 0x8:
         actor_set_state(self, 0);
         break;
@@ -375,9 +355,6 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         self->asked_walk = 1;
         self->asked_walk_x = p1;
         self->asked_walk_y = p2;
-        break;
-    case 0x95:
-        path_info_clear(&self->path);
         break;
     default:
         pc_send_msg(object, source, msg, par1, par2, par3, par4);

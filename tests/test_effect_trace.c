@@ -56,7 +56,7 @@
 #include "world/view_types.h"
 #include "game/context.h"
 
-#define EXPECTED_DIGEST 0xaa57490b8aef1cfeull
+#define EXPECTED_DIGEST 0x7f03102f36be8a92ull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -582,7 +582,6 @@ static void put_actor(const struct GameActor *a)
     size_t at = buf_put(a, sizeof(struct Pc));
     fix_render_object(at, 0);
     FIX(at, struct GameActor, effects.head);
-    FIX(at, struct GameActor, path.cells);
     FIX(at, struct GameActor, extra_hit_queue.head);
     FIX(at, struct GameActor, hit_queue.head);
     FIX(at, struct GameActor, attached.head);

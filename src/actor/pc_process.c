@@ -156,12 +156,6 @@ static void pc_walk_place(struct Pc *self, struct GameMode *mode, const struct A
     pc_place_record(self, entry->src_x, entry->src_y);
 }
 
-static void pc_walk(struct Pc *self, const struct ActorMoveEntryInfo *entry)
-{
-    game_actor_walk_record((struct GameActor *)self, entry->src_x, entry->src_y, entry->sub_x, entry->sub_y,
-                           entry->dst_x, entry->dst_y, entry->speed, MOVE_CAUSE_WALKED, entry->move_start_time);
-}
-
 static void pc_appear_effect(struct Pc *self, long long par2)
 {
     if (par2 == 2 && !effect_state_bit6(self->effect_state)) {
@@ -221,28 +215,24 @@ void pc_send_msg(struct GameObject *object, struct GameObject *source,
     case 6:
         pc_walk_look(self, walk, 0);
         pc_walk_place(self, mode, walk);
-        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         return;
     case 0x7a:
         self->body_style = walk->body;
         pc_walk_look(self, walk, 1);
         pc_walk_place(self, mode, walk);
-        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         self->char_id = walk->char_id;
         return;
     case 5:
         self->body_style = walk->body;
         pc_walk_look(self, walk, 0);
-        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         self->char_id = walk->char_id;
         return;
     case 0x7b:
         self->body_style = walk->body;
         pc_walk_look(self, walk, 1);
-        pc_walk(self, walk);
         game_actor_show_party_mark((struct GameActor *)self, walk->aid);
         self->char_id = walk->char_id;
         self->body_style = walk->body;

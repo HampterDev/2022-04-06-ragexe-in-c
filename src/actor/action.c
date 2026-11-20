@@ -52,7 +52,6 @@ void game_actor_set_action(struct RenderObject *object, int action, int type)
     }
     set_action_delay((struct RenderObject *)self, action);
     set_action_reset((struct RenderObject *)self, action, type);
-    self->glide = 0;
     self->attack_motion_count = -1.0f;
 }
 

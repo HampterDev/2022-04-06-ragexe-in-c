@@ -90,7 +90,6 @@ void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameAc
 void skill_hit_target_effects(int skill_id, int level, struct GameActor *caster, struct GameActor *target);
 
 struct PacketNotifySkill;
-struct PacketNotifySkillPosition;
 struct PacketNotifySkill2;
 
 #endif

@@ -45,7 +45,6 @@ struct PACKET_ZC_HP_INFO;
 struct PACKET_ZC_HP_INFO_TINY;
 struct PACKET_ZC_HUNTINGLIST;
 struct PACKET_ZC_MONSTER_INFO;
-struct PACKET_ZC_NOTIFY_ACT_POSITION;
 struct PACKET_ZC_NOTIFY_MAPINFO;
 struct PACKET_ZC_PAR_CHANGE;
 struct PACKET_ZC_QUEST_NOTIFY_EFFECT;
@@ -143,7 +142,6 @@ struct PacketNotifyGroundSkill;
 struct PacketNotifyMemberInfoToGroupm;
 struct PacketNotifySkill;
 struct PacketNotifySkill2;
-struct PacketNotifySkillPosition;
 struct PacketNotifyUnreadRodex;
 struct PacketNpcShowEfstUpdate;
 struct PacketPartyMemberState;
@@ -403,14 +401,9 @@ void game_mode_zc_change_direction(struct GameMode *self, const unsigned char *p
 void game_mode_zc_combo_delay(struct GameMode *self, const struct PACKET_ZC_COMBODELAY *packet);
 void game_mode_zc_emotion(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_equip_arrow(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_fast_move(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_high_jump(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_mvp(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_notify_act_position(struct GameMode *self, const struct PACKET_ZC_NOTIFY_ACT_POSITION *packet);
 void game_mode_zc_notify_actor_init(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_notify_font(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_notify_move(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_notify_player_move(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_notify_vanish(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_par_change_user(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_progress(struct GameMode *self, const unsigned char *pkt);
@@ -418,8 +411,6 @@ void game_mode_zc_progress_actor(struct GameMode *self, const unsigned char *pkt
 void game_mode_zc_progress_cancel(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_sprite_change(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_sprite_change2(struct GameMode *self, const struct PACKET_ZC_SPRITE_CHANGE2 *pkt);
-void game_mode_zc_stopmove(struct GameMode *self, unsigned aid, short x, short y,
-                          unsigned char dir);
 
 void game_mode_zc_ack_create_chatroom(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_change_chatroom(struct GameMode *self, const unsigned char *pkt);
@@ -760,8 +751,6 @@ void game_mode_zc_skill_select_request(const struct PACKET_ZC_SKILL_SELECT_REQUE
 
 void game_mode_on_notify_skill(struct GameMode *self, const struct PacketNotifySkill *packet);
 void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotifySkill2 *packet);
-void game_mode_on_notify_skill_position(struct GameMode *self,
-                                    const struct PacketNotifySkillPosition *packet);
 
 void game_mode_zc_skill_entry(struct GameMode *self, struct PACKET_ZC_SKILL_ENTRY *packet);
 void game_mode_zc_skill_entry2(struct GameMode *self, struct PACKET_ZC_SKILL_ENTRY2 *packet);

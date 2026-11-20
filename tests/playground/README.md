@@ -34,8 +34,8 @@ Frame, client to runner, little-endian:
 u32 size of what follows
 u8  1; u8 mode (0 login screen, 1 in a map, 255 between); u8 the player is there; u8 0
 u32 tick                      the client's clock, 16 ms a frame
-f32 x, y; u8 state; 3 unused  the player
-u32 actors, each: u32 gid; f32 x, y; u8 state; u8 is a player; u16 job;
+i32 x, y; u8 state; 3 unused  the player
+u32 actors, each: u32 gid; i32 x, y; u8 state; u8 is a player; u16 job;
                   u8 the frame its action is on; u8 the frame its attack shows its hit on
                   (255: none); u8 1 when the client has its unit in view
                   (`world/view_floors.h`; an actor shown dying after its going has not);
@@ -50,7 +50,8 @@ u32 predicted tick            the server's tick the predicted body is of
 224 bytes                     the predicted body (`game/own_body.h`); zero without one
 ```
 
-Places are in cells, where the actor is drawn: a cell's centre is a whole number. An object of
+An actor's x, y is the drawn point of its place (`world/drawn.h`), in 256ths of a cell: a cell's
+centre is a whole multiple of 256, and an actor without a record yet is at 0, 0. An object of
 the world that is no unit has the gid 0xFFFFFFFF.
 
 The last block is the own body, for the runner to hold against the server's body by tick: what

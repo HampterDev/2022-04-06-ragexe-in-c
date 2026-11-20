@@ -48,15 +48,6 @@ struct PACKET_ZC_NOTIFY_ACT3 {
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_NOTIFY_ACT3, 34);
 
-#pragma pack(push, 1)
-struct PACKET_ZC_STOPMOVE_FORCE {
-    unsigned short packet_type;
-    int aid;
-    unsigned short x;
-    unsigned short y;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_STOPMOVE_FORCE, 10);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_ACK_WEAR_EQUIP_V5 {
@@ -602,13 +593,6 @@ static void zc_notify_act3(struct GameMode *self, unsigned char *pkt)
                        packet->is_sp_damage);
 }
 
-static void zc_stopmove_force(struct GameMode *self, unsigned char *pkt)
-{
-    const struct PACKET_ZC_STOPMOVE_FORCE *packet = (const struct PACKET_ZC_STOPMOVE_FORCE *)pkt;
-
-    game_mode_zc_stopmove(self, packet->aid, packet->x, packet->y, 1);
-}
-
 static void zc_navigation_active(struct GameMode *self, unsigned char *pkt, size_t packet_size)
 {
     if (packet_size >= sizeof(struct PacketNavigationActive))
@@ -1045,11 +1029,11 @@ static void zc_ack_takeoff_equip_all(struct GameMode *self, unsigned char *pkt)
     PACKET(HEADER_ZC_NOTIFY_ACT3, zc_notify_act3(self, pkt)) \
     PACKET(HEADER_ZC_PERSONAL_INFOMATION, game_mode_on_personal_info(self, (const struct PacketPersonalInfo *)pkt)) \
     PACKET(HEADER_ZC_PERSONAL_INFOMATION2, game_mode_on_personal_info(self, (const struct PacketPersonalInfo *)pkt)) \
-    PACKET(HEADER_ZC_STOPMOVE_FORCE, zc_stopmove_force(self, pkt)) \
+    CONSUMED(HEADER_ZC_STOPMOVE_FORCE) \
     PACKET(HEADER_ZC_FAILED_GET_ITEM_FROM_ZONEDA, game_mode_zc_failed_get_item_from_zone_da(self, pkt)) \
     PACKET(HEADER_ZC_REQ_WEAR_EQUIP_ACK2, game_mode_zc_req_wear_equip_ack2(self, pkt)) \
     PACKET(HEADER_ZC_REQ_TAKEOFF_EQUIP_ACK2, game_mode_zc_req_takeoff_equip_ack2(self, pkt)) \
-    PACKET(HEADER_ZC_FASTMOVE, game_mode_zc_fast_move(self, pkt)) \
+    CONSUMED(HEADER_ZC_FASTMOVE) \
     PACKET(HEADER_ZC_CLEAR_DIALOG, game_mode_zc_clear_dialog(self, pkt)) \
     PACKET(HEADER_ZC_NAVIGATION_ACTIVE, zc_navigation_active(self, pkt, packet_size)) \
     PACKET(HEADER_ZC_HUNTING_QUEST_INFO, game_mode_zc_hunting_quest_info(self, pkt, packet_size)) \

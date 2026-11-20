@@ -384,9 +384,6 @@ void game_actor_on_init(struct GameActor *self)
     self->attack_motion_count = -1.0f;
     memset(&self->move_track, 0, sizeof self->move_track);
     memset(&self->place, 0, sizeof self->place);
-    self->place_ms = 0;
-    self->place_real = platform_ticks_ms();
-    self->has_place = 0;
     self->swing_lands_ms = 0;
     self->swing_own_delay = 0.0f;
     self->swing_paces = 0;
@@ -418,9 +415,8 @@ void game_actor_on_init(struct GameActor *self)
     self->model_kind = 0;
     self->siege_wnd = NULL;
     self->word_display_wnd = NULL;
-    self->glide = 0;
     self->wave_extra_flag = 0;
-    self->body_relocation = 0;
+    self->asura_dash = 0;
     self->attack_target_extra = 0;
     self->homun_ai = NULL;
     self->merc_ai = NULL;
@@ -457,7 +453,6 @@ struct GameActor *game_actor_construct(struct GameActor *self)
     self->facing_vector.x = 0;
     self->facing_vector.y = 0;
     self->facing_vector.z = 0;
-    path_info_init(&self->path);
     list_init(&self->extra_hit_queue);
     list_init(&self->hit_queue);
     self->miss_count = 0;
@@ -532,7 +527,6 @@ void game_actor_dc_game_actor(struct GameActor *self)
     list_free(&self->attached, NULL);
     list_free(&self->hit_queue, NULL);
     list_free(&self->extra_hit_queue, NULL);
-    path_info_destroy(&self->path);
     able_to_make_effect_dc_able_to_make_effect((struct AbleToMakeEffect *)self);
 }
 

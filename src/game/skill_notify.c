@@ -91,50 +91,6 @@ void game_mode_on_notify_skill(struct GameMode *self, const struct PacketNotifyS
 }
 
 #pragma pack(push, 1)
-struct PacketNotifySkillPosition {
-    unsigned short packet_type;
-    unsigned short skill_id;
-    int src_aid;
-    int target_aid;
-    int start_time;
-    int attack_mt;
-    int attacked_mt;
-    short x, y;
-    short damage;
-    short level;
-    short count;
-    unsigned char action;
-};
-#pragma pack(pop)
-
-void game_mode_on_notify_skill_position(struct GameMode *self, const struct PacketNotifySkillPosition *packet)
-{
-    struct ActorSkillUse info;
-    struct GameActor *caster, *other_actor;
-    int job, action, loop_type;
-
-    info.skill_id = packet->skill_id;
-    info.action = packet->action;
-    info.damage = packet->damage;
-    info.start_time = packet->start_time;
-    info.target_aid = packet->target_aid;
-    info.level = packet->level;
-    info.count = packet->count;
-    info.cell_x = packet->x;
-    info.cell_y = packet->y;
-    info.attack_mt = packet->attack_mt;
-    info.attacked_mt = packet->attacked_mt;
-    caster = tell_caster(self, packet->src_aid, &info, &job, &other_actor);
-
-    if (!session_is_monster_actor(&g_session1, caster)) {
-        mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (intptr_t)caster, packet->level, 0);
-        return;
-    }
-    session_get_monster_skill_info(&g_session1, session_get_job_name(&g_session1, job, -1), info.skill_id, &action,
-                                &loop_type);
-}
-
-#pragma pack(push, 1)
 struct PacketNotifySkill2 {
     unsigned short packet_type;
     unsigned short skill_id;

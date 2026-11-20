@@ -203,7 +203,7 @@ int main(int argc, char **argv)
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0xb80a3c475d6ddf57));
+    assert(digest == UINT64_C(0xb4e8371da25bf6d7));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }
