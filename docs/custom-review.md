@@ -17799,21 +17799,12 @@ validation layer with synchronization validation over the GPU tests, the scene s
 counts and six load scenes, `bombers_ifrit` among them: not one message in 62 logs. `build.bat
 check` and the whole suite (`tests\build.bat` with `ORACLE_EXE`): 346 tests and the oracle's 7 pass.
 
-**A picture of the line's that is not always the same.** `bombers_ifrit`'s captures differ from run
-to run in some runs, in `a1b38b95`'s client as in this one, while the machine's GPU is loaded:
-with a second scene client looping another scene beside it, 4 of 40 runs of `a1b38b95`'s and 1 of
-40 of this client's, run by turns. Each time a sliver of 10 to 75 pixels at another place, inside an
-effect's or a figure's area. It needs the shadows: with `RAGEXE_SHADOWS=0` no run of 38 differed. It
-is not in the shadow passes' output: in the measuring build, the four shadow maps, the fit's
-state and result, the indirect draws, the compacted indices the draws read, the records, the slots,
-the frame's animated matrices and every stream of the captured frame (its draw records, quads,
-offsets, uniforms, texels and draws) came out bit for bit the same in good runs and in differing
-ones. It comes with the main thread running ahead of the GPU: when the main thread waited each frame
-for the frame's picture, 16 runs gave every one of the scene's 918 frames the same; when only the
-render thread waited for the GPU after each submit, 17 of 64 runs differed, and when the main thread
-also waited for each frame's submit, 1 of 9. Leaving out SDL's defragmentation of GPU memory did not
-change it (3 of 11), and GPU-assisted validation with synchronization validation finds nothing in
-the scene. Its cause is not found; it is a bug of the line, not of this change.
+**A picture of the line's that was not always the same.** `bombers_ifrit`'s captures differed from
+run to run in some runs, in `a1b38b95`'s client as in this one, while the machine was loaded: a
+sliver of 10 to 75 pixels at another place each time, inside an effect's or a figure's area (4 of 40
+runs of `a1b38b95`'s client and 1 of 40 of this one, run by turns beside a second scene client).
+Its cause is not in the renderer: a damage number drawn at a champion monster's size from a job
+nobody set (*A message effect is no champion monster*, below).
 
 Not checked: the shaders' MSL on Metal, Linux, and any GPU but a GTX 970.
 
@@ -17864,13 +17855,12 @@ Against f555328e's client (`RAGEXE_MSAA=1`):
   captures of `town_prontera` (58 pixels) and `woe_choke` (566) differ there. `bombers_ifrit`'s quake
   capture differed by 52 pixels in one run of f555328e's client, with equal counts and no skipped
   part; eleven more runs of that client and 17 of this one all gave the other picture.
-- Still open, in f555328e's client as in this one: now and then a run of a load scene draws, from
-  some frame on, a few world sprites and damage numbers a few pixels off and at a slightly other
-  size, with the same counts (`mvp_baphomet`: 3 of 44 traced runs of this client, one in a batch of
-  14, two in one of 18 and none in a later one of 12, and one of the two runs of a `layouts.py` pass; the `bombers_ifrit` and `woe_emperium` runs above look the
-  same). The quads' contents differ on the CPU, so it is the game's state or the quads built from
-  it, not the GPU. Neither the heap layout nor the stack's leftovers bring it out (the layouts gave
-  the same frames in every pair but one), and its cause was not found.
+- Another variation, in f555328e's client as in this one: now and then a run of a load scene draws,
+  from some frame on, a few message effects (damage numbers, marks) a few pixels off and at a
+  slightly other size, with the
+  same counts (`mvp_baphomet`: 3 of 44 traced runs of this client). The quads differ on the CPU; the
+  heap layout and the stack's leftovers do not bring it out. Its cause is a job nobody set
+  (*A message effect is no champion monster*, below).
 
 `tests/scenes/layouts.py` keeps it so: it runs scenes with `RAGEXE_SCENE_LAYOUT=1` and `2` (the
 harness lays the heap out otherwise and fills the stack below its driver with another byte;
@@ -17882,3 +17872,38 @@ folder it is the CMake ctest `scene_layouts`.
 
 Not checked: Linux and macOS were not built or run; the CMake test was not run (the Windows suite
 does not build the client); main was not touched.
+
+## A message effect is no champion monster (2026-11-20)
+
+A load scene's picture differed now and then from run to run: in `bombers_ifrit` a sliver of 10 to
+75 pixels at another place each time, inside an effect's or a figure's area, more often the further
+the main thread ran ahead of the GPU; in other load scenes a few message effects a few pixels off
+and at a slightly other size from some frame on. A hash of each frame's streams in a good and a
+differing run put the first difference in the quads, at one row: a sprite's screen rectangle, about
+1.2 times larger about the same centre. Its draw came from a message effect (`msg_effect_ops`).
+
+`render_object_render_sprite` adds a champion monster's size to a sprite's scale where
+`champion_monster_is_champion` knows the object's `monster_job`. Only an NPC (`npc.c`) and a corpse
+copied from one set that field. Every other render object, a message effect among them (`show_number.c`
+makes one from `mem_alloc`, `msg_effect_construct` → `able_to_make_effect_construct` →
+`render_object_construct` → `render_object_on_init`), kept whatever the heap held there. In the
+differing runs, logged per object, message effects carried 1832 or 2888, this scene's champion
+monsters, and were drawn at their size; what a freed block held depended on the order of the
+allocations of the main thread and the render thread, which share the heap.
+
+The original does the same. `RenderSprite` pushes `[esi+0x10c]` (`m_job`) for the champion lookup
+(`sub_923ea0`) at `0x74fb8a`. `CMsgEffect`'s constructor (`sub_89aa00`, the one that stores its vtable
+`0xd3e1b8`, found from the type descriptor `.?AVCMsgEffect@@` at `0xed1358`) calls `sub_7470e0`,
+which calls `CRenderObject`'s constructor `sub_7474b0` (and that `sub_761000` and `sub_74d440`); none
+of them writes `+0x10c`. So this is a bug the original has, and `main` keeps it. `custom` gives every
+render object no job until one is set (`render_object_construct`, `src/actor/game_object.c`); an
+NPC's and a corpse's job are set as before.
+
+Measured in a measuring build (`RAGEXE_SF_JOBZERO` setting the job to 0 at the same place), on
+`bombers_ifrit` with the GPU loaded by a second scene client and a check of every frame's streams
+that slowed the render thread: 40 of 40 runs gave the same pictures, against 7 of 10 control runs of
+the same build without it that differed. With the job set, the pictures of the scene set and the load
+scenes are those of the commit before (the frames where an effect took a champion's size differ).
+
+Not checked: why turning the shadows off, or the main thread waiting for each frame, made the
+variation vanish (both change what the render thread allocates and when); Linux and macOS.

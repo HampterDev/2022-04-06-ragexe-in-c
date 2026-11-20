@@ -231,6 +231,10 @@ struct RenderObject *render_object_construct(struct RenderObject *self)
     tree_init(&self->vars);
     self->spr = NULL;
     self->act = NULL;
+    /* custom: no job until one is set, where the original left it as the heap had it and a
+       message effect, which never sets one, was drawn at a champion monster's size when the heap
+       held one of their jobs */
+    self->monster_job = 0;
     render_object_on_init(self);
     return self;
 }
