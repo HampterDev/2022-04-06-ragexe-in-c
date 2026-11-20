@@ -48,6 +48,8 @@ a format string, and carry on. Do not assert or abort on such data.
 - C11 with MSVC on Windows; the CMake builds in `docs/portability.md` must keep building.
 - Nothing unused stays: a function, global, type or macro without a user is removed.
 - Third-party code in `vendor/` stays as published.
+- The pieces under `game/` (a submodule) are changed in the set `game` and come here as a new pin
+  of it, never as an edit in this checkout.
 - Packet, file and DLL layouts stay the original's, except where `README.md` lists a change.
 - Every source file belongs to a library in `tools/libraries.txt`; `build.bat check` checks the
   includes and links against it.
@@ -79,7 +81,9 @@ From a shell that sets `NoDefaultCurrentDirectoryInExePath` (agent shells do), c
 `cmd` will not find `build.bat` in the current directory.
 
 Every test is declared once in `tests/CMakeLists.txt` (`rage_test`; the helpers at its top say
-what each keyword does), in the section of the platforms it runs on. `tests\build.bat` configures
+what each keyword does), in the section of the platforms it runs on, except the own tests of the
+pieces `rules` and `delivery` from the submodule `game`, which their own `CMakeLists.txt` declares
+(`rules_*`, `delivery`). `tests\build.bat` configures
 `build\tests` with Ninja the first time, builds only what changed since the last run and runs the
 tests with CTest on every core; then the 32-bit oracle tests in `build\oracle`. These need the
 original executable, which `ORACLE_EXE` names (by default

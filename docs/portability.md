@@ -24,8 +24,10 @@ chunks*).
 
 ## Build and test
 
-Requirements: CMake 3.20+, Python 3.10+ and a C11 compiler. All libraries used by
-the default build are already in `vendor/`. No download is needed.
+Requirements: CMake 3.22+, Python 3.10+ and a C11 compiler. All libraries used by
+the default build are already in `vendor/`, and the C the client shares with the server is in the
+submodule `game` (the set of the game's pieces): clone with `--recurse-submodules`, or run
+`git submodule update --init --recursive` in a clone. No other download is needed.
 
 ```sh
 cmake -S . -B build/portable -DCMAKE_BUILD_TYPE=Debug
@@ -72,6 +74,12 @@ Client files are compiled once, into one static library per library of `tools/li
 compiles a client file with defines or a fixture of its own keeps its own copy. Each test is
 labelled with the libraries whose `.c` files it compiles, links or includes, so
 `ctest -L render` runs the tests a change in the render library reaches.
+
+The pieces `rules` and `delivery` of `game` register their own tests in the same CTest (`rules_*`
+and `delivery`, with the digests their vectors record), so they run with every compiler the client
+is built with; `ctest -R "^(rules_|delivery)"` runs them alone. Their WebAssembly links are tests
+only where the compiler is Clang. `script-vm`, which `rules` links, comes without its tests, which
+need Node.
 
 Every test runs headless and silent: CTest gives it `SDL_VIDEO_DRIVER=dummy` and
 `SDL_AUDIO_DRIVER=dummy` (`RAGE_TEST_ENVIRONMENT`), `audio` SDL's `disk` driver, which writes

@@ -48,6 +48,16 @@ endif()
 
 add_subdirectory(vendor)
 
+# The pieces of the game's C that the client shares with the server, from the set `game` (a
+# submodule): `rules` (the actor core, the path search, the records a viewer keeps and the predicted
+# actor) and `delivery`. `rules` links the C reading of `script-vm`, whose own tests need Node and
+# are left out; with BUILD_TESTING the other two register their own tests here, so they run on
+# every compiler the client is built with.
+add_subdirectory(game/script-vm)
+set(GAME_TESTS ${BUILD_TESTING})
+add_subdirectory(game/rules)
+add_subdirectory(game/delivery)
+
 function(rage_enable_assertions target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /UNDEBUG)
