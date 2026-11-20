@@ -250,9 +250,9 @@ static void own_way_up(struct GameMode *self)
     way_up_sample(&self->way_up, g_own.way_left, g_own.way_arrival);
 }
 
-void game_mode_own_body_heard(DWORD tick)
+void game_mode_own_body_heard(unsigned id, DWORD tick)
 {
-    predicted_heard(&g_own, predicted_wide(&g_own, tick));
+    predicted_heard(&g_own, (uint32_t)id, predicted_wide(&g_own, tick));
 }
 
 unsigned game_mode_own_body_unexplained(void)

@@ -65,6 +65,7 @@ int predicted_read(const unsigned char *packet, size_t size, struct PredictedBod
     body->penalty_ms = get32(packet + 20);
     body->placement = get32(packet + 24);
     body->arrival = get32(packet + 28);
+    body->outside = get32(packet + 32);
     if (version == BODY_RULES_VERSION)
         copy(body->state, packet + PREDICTED_PACKET_HEAD, BODY_STATE_SIZE);
     return 1;
@@ -254,6 +255,40 @@ static const struct PredictedPast *past_at(struct Predicted *predicted, uint64_t
     return found;
 }
 
+/* Whether the own body names the body `id`: it attacks it, swings at it, or its intent is about it. */
+static int names_in(const struct BodyWorld *world, uint32_t id)
+{
+    struct BodyAttack attack;
+    struct BodyIntentState intent;
+
+    if (body_attack(world, OWN, &attack) == BODY_OK
+        && ((attack.has_target && attack.target_id == id) || (attack.swing_open && attack.swing_target_id == id)))
+        return 1;
+    return body_intent(world, OWN, &intent) == BODY_OK && intent.has
+           && (intent.kind == BODY_WANTS_ATTACK || intent.kind == BODY_WANTS_SKILL) && intent.target_id == id;
+}
+
+static int names(const struct Predicted *predicted, uint32_t id)
+{
+    return names_in(world_at(predicted), id);
+}
+
+/* The bodies the own body names in a world: its attack's, its swing's and its intent's targets. */
+static void named_in(const struct BodyWorld *world, uint32_t ids[3])
+{
+    struct BodyAttack attack;
+    struct BodyIntentState intent;
+
+    ids[0] = ids[1] = ids[2] = 0;
+    if (body_attack(world, OWN, &attack) == BODY_OK) {
+        ids[0] = attack.has_target ? attack.target_id : 0;
+        ids[1] = attack.swing_open ? attack.swing_target_id : 0;
+    }
+    if (body_intent(world, OWN, &intent) == BODY_OK && intent.has
+        && (intent.kind == BODY_WANTS_ATTACK || intent.kind == BODY_WANTS_SKILL))
+        ids[2] = intent.target_id;
+}
+
 int predicted_confirm(struct Predicted *predicted, const struct BodyGround *ground, const struct PredictedBody *body)
 {
     /* the arena of a trial world. A 32-bit build's stack is aligned to 4 only, so the world's 8
@@ -261,7 +296,8 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
     unsigned char block[PREDICTED_ARENA + 8u];
     void *arena = block + (8u - ((uintptr_t)block & 7u)) % 8u;
     const struct PredictedPast *past;
-    uint32_t id, kept = 0, i;
+    uint32_t id, kept = 0, i, word_names[3];
+    const struct BodyWorld *made;
     int was, unexplained;
 
     /* a word of a placement not known yet waits, the newest of them; one of another is
@@ -284,8 +320,10 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
                             || (body->tick == predicted->confirmed.tick
                                 && (int16_t)(body->request - predicted->confirmed.request) < 0)))
         return PREDICTED_REFUSED;
-    if (make(predicted, arena, ground, body, &id) == NULL)
+    made = make(predicted, arena, ground, body, &id);
+    if (made == NULL)
         return PREDICTED_REFUSED;
+    named_in(made, word_names);
     past = predicted->live && !predicted->stale ? past_at(predicted, body->tick) : NULL;
     was = past != NULL && same(past->state, body->state, BODY_STATE_SIZE);
     /* the last word that differed with nothing to explain it, and no record of its tick or
@@ -295,9 +333,12 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
         predicted->suspect = 0;
     }
     /* a word that is not what was predicted for its tick is suspect when it answers no
-       request, no request that waits was due by its tick, and no record came since the last
-       word: a record of its tick or before that comes before the next word still explains it */
-    unexplained = past != NULL && !was && !predicted->heard && body->request == predicted->confirmed.request;
+       request, no request that waits was due by its tick, the server's game put nothing to the
+       body since the last word (its `outside` is the last word's), and no record of a body the
+       own body names came since the last word: one of its tick or before that comes before the
+       next word still explains it */
+    unexplained = past != NULL && !was && !predicted->heard && body->request == predicted->confirmed.request
+                  && body->outside == predicted->confirmed.outside;
     for (i = 0; unexplained && i < predicted->pending_count; i++)
         if (predicted->pending[i].apply_tick <= body->tick)
             unexplained = 0;
@@ -307,6 +348,8 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
     }
     predicted->heard = 0;
     predicted->confirmed = *body;
+    for (i = 0; i < 3; i++)
+        predicted->word_names[i] = word_names[i];
     predicted->own_id = id;
     /* the requests the word includes have been answered: they wait no longer */
     for (i = 0; i < predicted->pending_count; i++)
@@ -337,8 +380,11 @@ int predicted_confirm(struct Predicted *predicted, const struct BodyGround *grou
     return was ? PREDICTED_SAME : PREDICTED_DIFFERENT;
 }
 
-void predicted_heard(struct Predicted *predicted, uint64_t tick)
+void predicted_heard(struct Predicted *predicted, uint32_t id, uint64_t tick)
 {
+    if (!id || !(id == predicted->word_names[0] || id == predicted->word_names[1] || id == predicted->word_names[2]
+                 || (predicted->live && names(predicted, id))))
+        return;
     predicted->heard = 1;
     if (predicted->suspect && tick <= predicted->suspect_tick)
         predicted->suspect = 0;
@@ -371,19 +417,6 @@ int predicted_request(struct Predicted *predicted, const struct PredictedRequest
     }
     predicted->pending[predicted->pending_count++] = *request;
     return 1;
-}
-
-/* Whether the own body names the body `id`: it attacks it, swings at it, or its intent is about it. */
-static int names(const struct Predicted *predicted, uint32_t id)
-{
-    struct BodyAttack attack;
-    struct BodyIntentState intent;
-
-    if (body_attack(world_at(predicted), OWN, &attack) == BODY_OK
-        && ((attack.has_target && attack.target_id == id) || (attack.swing_open && attack.swing_target_id == id)))
-        return 1;
-    return body_intent(world_at(predicted), OWN, &intent) == BODY_OK && intent.has
-           && (intent.kind == BODY_WANTS_ATTACK || intent.kind == BODY_WANTS_SKILL) && intent.target_id == id;
 }
 
 /* Whether two records have a body on the same cell at `tick` and on the same steps at the

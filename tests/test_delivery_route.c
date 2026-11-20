@@ -104,13 +104,13 @@ static void test_body_and_notice(void)
 
     /* the own body: the newest replaces every earlier one, before notices and records; its
        size is its length field and at least its head */
-    size = packet_of(p, 0x0f25, 32 + 224, 1, 0, 0);
+    size = packet_of(p, 0x0f25, 36 + 224, 1, 0, 0);
     CHECK(delivery_route(p, size, &route) == 1 && route.kind == DELIVERY_REPLACEABLE && route.priority == 0);
     CHECK(route.key == (uint64_t)0x0f25 << 32 && route.from == 0);
     CHECK(delivery_route(p, size - 1, &route) == 0 && delivery_route(p, size + 1, &route) == 0);
-    size = packet_of(p, 0x0f25, 32, 1, 0, 0);
+    size = packet_of(p, 0x0f25, 36, 1, 0, 0);
     CHECK(delivery_route(p, size, &route) == 1);
-    size = packet_of(p, 0x0f25, 31, 1, 0, 0);
+    size = packet_of(p, 0x0f25, 35, 1, 0, 0);
     CHECK(delivery_route(p, size, &route) == 0);
     /* a hit: once, in no order */
     size = packet_of(p, 0x0f23, 32, 0, 0, 0);

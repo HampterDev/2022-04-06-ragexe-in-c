@@ -49,7 +49,7 @@
 /* The bytes of the world's arena: the core's header, the bodies and a ring of sixteen events. */
 #define PREDICTED_ARENA 1464u
 
-/* ZC_OWN_BODY, 0x0F25, little-endian and packed, 32 bytes and the state:
+/* ZC_OWN_BODY, 0x0F25, little-endian and packed, 36 bytes and the state:
  *
  *   off size field
  *     0    2 id            0x0F25
@@ -62,9 +62,11 @@
  *    24    4 placement     the number of the player's placement on a map the body is of
  *    28    4 arrival       the low 32 bits of the server's clock when the request the body names
  *                          arrived; 0 when the body names none anew
- *    32    n state         the body (body_state): BODY_STATE_SIZE bytes of this version
+ *    32    4 outside       how many inputs the server's game put to the body that this core does
+ *                          not make itself, counted from the placement on
+ *    36    n state         the body (body_state): BODY_STATE_SIZE bytes of this version
  */
-#define PREDICTED_PACKET_HEAD 32u
+#define PREDICTED_PACKET_HEAD 36u
 
 struct PredictedBody {
     uint64_t tick;
@@ -72,6 +74,7 @@ struct PredictedBody {
     uint32_t penalty_ms;
     uint32_t placement;
     uint32_t arrival;
+    uint32_t outside;
     uint16_t request;
     uint16_t request_steps;
     unsigned char state[BODY_STATE_SIZE]; /* zero when the version is not this core's */
@@ -130,6 +133,7 @@ struct Predicted {
     uint32_t unexplained; /* of those, the ones without a request or a record to explain them */
     uint64_t suspect_tick;     /* while `suspect`: the tick of a word that may be one of them */
     uint32_t own_id;      /* the own body's id, as the server's word has it */
+    uint32_t word_names[3]; /* the bodies the last word's own body names: attack, swing, intent targets */
     uint32_t placement;   /* the number of the placement the player is in (while `placed`) */
     uint32_t way_left;    /* while `way_new`: the clock the request a word answered left at, */
     uint32_t way_arrival; /* and the server's clock when it arrived there */
@@ -162,13 +166,15 @@ void predicted_init(struct Predicted *predicted, int32_t width, int32_t height);
  * PREDICTED_REFUSED is returned. */
 int predicted_confirm(struct Predicted *predicted, const struct BodyGround *ground, const struct PredictedBody *body);
 
-/* A record of the world came, of the server's tick `tick`: a unit's move, act or vitals, a hit,
- * a coming or a going. A word that differs from what was predicted for its tick counts as
- * `unexplained` when it answers no request, no waiting request was due by its tick, no record
- * came since the last word, and none of its tick or before comes until the next word (which
- * travels first and may overtake it): such a word is a fault in a rule or in the prediction.
- * It is counted when the next word comes. */
-void predicted_heard(struct Predicted *predicted, uint64_t tick);
+/* A record of the body `id` came, of the server's tick `tick`: its move or act record, its coming
+ * or its going. Only a body the own body names counts (its attack's, its swing's or its intent's
+ * target, as the last word has them or as predicted now). A word that differs from what was
+ * predicted for its tick counts as `unexplained` when it answers no request, no waiting request
+ * was due by its tick, its `outside` is the last word's (the server's game put nothing to the
+ * body in between), no such record came since the last word, and none of its tick or before
+ * comes until the next word (which travels first and may overtake it). It is counted when the
+ * next word comes. */
+void predicted_heard(struct Predicted *predicted, uint32_t id, uint64_t tick);
 
 /* The number of the player's placement on this map (ZC_HOLD_BACK). A word kept aside of that
  * placement is taken now, and what predicted_confirm says of it is returned; otherwise

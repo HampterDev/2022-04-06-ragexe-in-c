@@ -48,6 +48,7 @@ static size_t packet_of(unsigned char *out, const struct PredictedBody *body, si
     put32(out + 20, body->penalty_ms);
     put32(out + 24, body->placement);
     put32(out + 28, body->arrival);
+    put32(out + 32, body->outside);
     memcpy(out + PREDICTED_PACKET_HEAD, body->state, state_size < BODY_STATE_SIZE ? state_size : BODY_STATE_SIZE);
     return PREDICTED_PACKET_HEAD + state_size;
 }
@@ -135,12 +136,13 @@ static void test_read(void)
     body.penalty_ms = 150;
     body.placement = 0x89abcdefu;
     body.arrival = 0x01234567u;
+    body.outside = 0x0badcafeu;
     for (i = 0; i < (int)BODY_STATE_SIZE; i++)
         body.state[i] = (unsigned char)(i * 7 + 1);
     size = packet_of(packet, &body, BODY_STATE_SIZE);
-    CHECK(size == 256 && predicted_read(packet, size, &read) == 1);
+    CHECK(size == 260 && predicted_read(packet, size, &read) == 1);
     CHECK(read.version == BODY_RULES_VERSION && read.tick == 0x12a05f2a0ull && read.request == 0xbeef);
-    CHECK(read.placement == 0x89abcdefu && read.arrival == 0x01234567u);
+    CHECK(read.placement == 0x89abcdefu && read.arrival == 0x01234567u && read.outside == 0x0badcafeu);
     CHECK(read.request_steps == 17 && read.penalty_ms == 150 && memcmp(read.state, body.state, BODY_STATE_SIZE) == 0);
     /* shorter than it says, longer than it says, shorter than its head */
     memset(&read, 0xEE, sizeof read);
@@ -1673,53 +1675,75 @@ static void test_way_up_samples(void)
 }
 
 /* The server tells a player's body again when two seconds passed without a word of it. A body
-   that the server changed behind the client's back, with no word, request or record, is so
-   put right within the two seconds: the word told again differs, and the world runs on as the
-   server's. Nothing explained it, which is counted when the next word comes. A record that came
-   before the word explains it, and so does one of its tick or before that comes after it (the
-   word travels first); one of a later tick does not. */
+   that the server changed behind the client's back is so put right within the two seconds: the
+   word told again differs, and the world runs on as the server's. Whether that word is counted:
+   not when its `outside` moved (the server's game put something to the body), nor when a record
+   of a body the own body names explains it (one of the word's tick or before may come after the
+   word, which travels first); a record of another unit explains nothing, and what is left is
+   counted when the next word comes. */
+enum { TOLD_NOTHING, TOLD_OUTSIDE, TOLD_OTHER_BEFORE, TOLD_NAMED_AFTER, TOLD_NAMED_LATER, TOLD_OTHER_AFTER, TOLD_CASES };
+
 static void test_told_again(void)
 {
     static struct Predicted predicted;
     static uint64_t arena[(SERVER_ARENA + 7) / 8];
     const uint64_t T = 0x12a05f200ull;
+    const uint32_t OTHER = 77;
     struct BodyWorld *server;
     struct BodyInput in;
-    struct BodyEvent event;
     struct PredictedBody word;
     unsigned char state[BODY_STATE_SIZE], theirs[BODY_STATE_SIZE];
-    int heard;
+    int told, attacks, counted;
 
-    /* 0: no record; 1: one before the word; 2: one of its tick after it; 3: one of a later tick after it */
-    for (heard = 0; heard <= 3; heard++) {
+    for (told = 0; told < TOLD_CASES; told++) {
+        attacks = told == TOLD_NAMED_AFTER || told == TOLD_NAMED_LATER || told == TOLD_OTHER_AFTER;
         server = begin(&predicted, arena, T, 10, 10, 30, 30);
         CHECK(predicted_run(&predicted, &ground, T + 400));
-        /* behind the client's back: the server's body is put on another cell */
-        in = input(T + 500, BODY_INPUT_PLACE, OWN_SLOT, OWN_ID);
-        in.x = 20;
-        in.y = 20;
-        CHECK(body_run(server, &ground, T + 500) == BODY_OK && body_input(server, &ground, &in) == BODY_OK);
-        while (body_take_event(server, &event)) {
+        /* behind the client's back: the server's body is put on another cell, or attacks the
+           monster, which it then names */
+        if (attacks) {
+            in = input(T + 500, BODY_INPUT_ATTACK, OWN_SLOT, OWN_ID);
+            in.target = MOB_SLOT;
+            in.target_id = MOB_ID;
+        } else {
+            in = input(T + 500, BODY_INPUT_PLACE, OWN_SLOT, OWN_ID);
+            in.x = 20;
+            in.y = 20;
         }
+        server_yes_to(server, T + 500);
+        CHECK(body_input(server, &ground, &in) == BODY_OK);
         /* the client's world is ahead of the server's word, as the own clock is */
         CHECK(predicted_run(&predicted, &ground, T + 2100));
-        CHECK(body_run(server, &ground, T + 2000) == BODY_OK);
+        server_yes_to(server, T + 2000);
         CHECK(predicted_state(&predicted, state) && body_state(server, OWN_SLOT, theirs) == BODY_OK && memcmp(state, theirs, sizeof state) != 0);
         /* told again two seconds after the last word */
         word = word_of(server, 17, 150);
-        if (heard == 1)
-            predicted_heard(&predicted, T + 1990);
+        if (told == TOLD_OUTSIDE)
+            word.outside = predicted.confirmed.outside + 1;
+        if (told == TOLD_OTHER_BEFORE)
+            predicted_heard(&predicted, OTHER, T + 1990);
         CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_DIFFERENT);
-        CHECK(predicted.unexplained == 0 && predicted.suspect == (heard != 1));
-        if (heard >= 2)
-            predicted_heard(&predicted, heard == 2 ? T + 2000 : T + 2001);
-        CHECK(predicted_run(&predicted, &ground, T + 2200) && body_run(server, &ground, T + 2200) == BODY_OK);
-        CHECK(predicted_state(&predicted, state) && body_state(server, OWN_SLOT, theirs) == BODY_OK && memcmp(state, theirs, sizeof state) == 0);
-        /* the next word told again is what was predicted */
-        CHECK(body_run(server, &ground, T + 4000) == BODY_OK && predicted_run(&predicted, &ground, T + 4100));
+        CHECK(predicted.unexplained == 0 && predicted.suspect == (told != TOLD_OUTSIDE));
+        if (told == TOLD_NAMED_AFTER)
+            predicted_heard(&predicted, MOB_ID, T + 2000);
+        if (told == TOLD_NAMED_LATER)
+            predicted_heard(&predicted, MOB_ID, T + 2001);
+        if (told == TOLD_OTHER_AFTER)
+            predicted_heard(&predicted, OTHER, T + 2000);
+        if (!attacks) {
+            server_yes_to(server, T + 2200);
+            CHECK(predicted_run(&predicted, &ground, T + 2200));
+            CHECK(predicted_state(&predicted, state) && body_state(server, OWN_SLOT, theirs) == BODY_OK
+                  && memcmp(state, theirs, sizeof state) == 0);
+        }
+        /* the next word: whatever it is, the last one is judged now */
+        server_yes_to(server, T + 2300);
+        CHECK(predicted_run(&predicted, &ground, T + 2400));
         word = word_of(server, 17, 150);
-        CHECK(predicted_confirm(&predicted, &ground, &word) == PREDICTED_SAME);
-        CHECK(predicted.unexplained == (uint32_t)(heard == 0 || heard == 3) && !predicted.suspect);
+        word.outside = predicted.confirmed.outside;
+        CHECK(predicted_confirm(&predicted, &ground, &word) != PREDICTED_REFUSED);
+        counted = told == TOLD_NOTHING || told == TOLD_OTHER_BEFORE || told == TOLD_NAMED_LATER || told == TOLD_OTHER_AFTER;
+        CHECK(predicted.unexplained == (uint32_t)counted);
     }
 }
 

@@ -34,9 +34,9 @@ void game_mode_own_body_intent(struct GameMode *self, unsigned number, int kind,
 /* Once a frame: the other bodies are said as they are seen, the world runs to the own clock,
    and the character is given the body's move when that is news. */
 void game_mode_own_body_frame(struct GameMode *self);
-/* A record of the world came (a unit's track, a hit, a coming or a going): a word of the own
-   body that differs from what was predicted has something to explain it (predicted_heard). */
-void game_mode_own_body_heard(DWORD tick);
+/* A record of the unit `id` came, of the server tick `tick` (its move or act record, its coming or
+   its going): of a body the own body names, it explains a word that differs (predicted_heard). */
+void game_mode_own_body_heard(unsigned id, DWORD tick);
 /* The body `id` went from the predicted world at the server tick `tick` (ZC_VIEW_STAMP). */
 void game_mode_own_body_gone(unsigned id, DWORD tick);
 /* The swing the own body has in its windup, as the world has it now: at whom, when it began

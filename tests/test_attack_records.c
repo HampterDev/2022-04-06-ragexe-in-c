@@ -161,8 +161,9 @@ void game_mode_own_body_gone(unsigned id, DWORD tick)
     (void)tick;
 }
 
-void game_mode_own_body_heard(DWORD tick)
+void game_mode_own_body_heard(unsigned id, DWORD tick)
 {
+    (void)id;
     (void)tick;
 }
 
