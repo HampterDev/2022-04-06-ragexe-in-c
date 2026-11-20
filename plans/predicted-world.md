@@ -114,7 +114,9 @@ sets, the three with loss included.
 
 What the count does not do: a record of a named body that comes after the next word does not
 explain the word it would have, which is then counted; and an input of the game's is said only as
-a count, not which one, so a word whose count moved is not judged at all.
+a count, not which one, so a word whose count moved is not judged at all. The server tells an
+answer of yes from the others by its value alone: an answer to one question that equals another
+question's yes is not counted.
 
 ## What goes away
 
