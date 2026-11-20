@@ -78,7 +78,7 @@ size_t wl_caster_runs(const struct SwRecord *records, size_t count, uint32_t *or
                       uint32_t *indices)
 {
     size_t from[257], n = 0, placed, i;
-    uint32_t at = 0, start = 0;
+    uint32_t at = 0;
     unsigned a;
 
     /* the records by array, in draw order within each (a counting sort) */
@@ -89,27 +89,30 @@ size_t wl_caster_runs(const struct SwRecord *records, size_t count, uint32_t *or
         from[a] += from[a - 1];
     for (i = 0; i < count; i++)
         order[from[records[i].textureArray]++] = (uint32_t)i;
-    /* from[a] is now where array a's records end; as many as fit */
-    for (placed = 0; placed < count && records[order[placed]].indexCount <= WL_SECTION_INDICES - at; placed++)
-        at += records[order[placed]].indexCount;
-    at = 0;
-    for (a = 0, i = 0; a < 256 && i < placed; a++) {
-        size_t end = from[a] < placed ? from[a] : placed;
+    /* as many as fit, a run for each stretch of them with one caster's array */
+    for (placed = 0; placed < count && records[order[placed]].indexCount <= WL_SECTION_INDICES - at; placed++) {
+        const struct SwRecord *r = &records[order[placed]];
 
-        if (end == i)
-            continue;
-        out[n].first = (uint32_t)i;
-        out[n].count = (uint32_t)(end - i);
-        out[n].start = start;
-        for (; i < end; i++)
-            at += records[order[i]].indexCount;
-        out[n].indices = at - start;
-        start = at;
-        n++;
+        if (!placed || wl_caster_array(r) != wl_caster_array(&records[order[placed - 1]])) {
+            if (n)
+                out[n - 1].indices = at - out[n - 1].start;
+            out[n].first = (uint32_t)placed;
+            out[n].start = at;
+            n++;
+        }
+        out[n - 1].count = (uint32_t)(placed + 1 - out[n - 1].first);
+        at += r->indexCount;
     }
+    if (n)
+        out[n - 1].indices = at - out[n - 1].start;
     *held = placed;
     *indices = at;
     return n;
+}
+
+uint8_t wl_caster_array(const struct SwRecord *record)
+{
+    return record->pass == SW_PASS_GROUND ? SW_NO_ARRAY : record->textureArray;
 }
 
 void wl_slot(const float *local, int parent, int animated, int world, struct WlSlot *out)

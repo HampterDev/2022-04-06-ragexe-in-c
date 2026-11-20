@@ -19867,3 +19867,135 @@ only extended, so a player several monsters hit was held again by hits the fork 
 such hold is one more time the predicted body runs ahead of the server's until its next word. A hold of 0 ms is none, as in the fork. The client puts no
 hold into its own world: the holds come with the server's word of the body, so only the copy
 changed.
+
+## The shadow passes made cheaper (2026-11-20)
+
+On the GPU line after phase 8 (`a1b38b95`). In the light load scenes the frame is the GPU's, and its
+shadows' passes take a large part of it. Each pass was timed with GPU timestamps written after it
+(a query pool through a patched SDL in a measuring build, read for the measured frames only, which
+leaves the frame's own time as it is). Three passes did work they need not do; two are cheaper
+now, and the third keeps its cost, for the reason below.
+
+**Casters without `discard` where nothing is discarded.** A fragment shader that can discard turns
+the GPU's early depth test off for every fragment it draws. The shadow pass's (`world_caster.hlsl`)
+discards the texels the opaque lists' alpha test drops, which only the models' textured records
+have: the ground casts without its texture, and a record without a texture has no alpha. The pass
+now has two pipelines: one whose fragment shader tests the alpha, and one whose shader cannot
+discard (`world_caster_solid.hlsl`), sharing the vertex shader and what it hands on
+(`world_caster.hlsli`; one shader object serves both pipelines). The casters are ordered by texture
+array and in draw order within each, and `wl_caster_runs` (`render/world_layout.c`) cuts a run
+wherever `wl_caster_array` changes, the texture array whose alpha decides a record's texels or
+none: within an array the models of the opaque passes, the ground and the models of the alpha
+passes follow one another, so an array has at most three runs. No record moves, so the draws keep
+their order and with it which caster wins where two meet at the same depth, and the maps are the
+same to the bit. The smaller runs also spread the casters' cull over more groups of threads. The
+models' textured casters still turn the early depth test off, and most of the shadow pass's time is
+theirs.
+
+**A cheaper `shadow_extents`.** Every thread took one pixel, cut the four slices from the range
+again and merged each point into the group's extents with shared-memory atomics, up to 16 a pixel.
+A group of 8 by 8 threads now takes a tile of 32 by 32 pixels (`render/shadow_fit_gpu_tile.h`,
+which the C that dispatches the passes and the shaders both include), each thread every eighth
+pixel across and down from its own, so that a row of threads reads a row of pixels. A thread keeps
+its 16 values (the least and greatest x and y of four cascades) in registers over its 16 pixels;
+the group writes them to shared memory 17 words apart, reduces each value over four parts of the
+threads and then over the parts, and merges them into the fit's state with a global atomic each,
+none where a value stayed empty. Thread 0 cuts the slices once and hands them on in shared memory.
+`shadow_range` takes the same tiles: a thread keeps its nearest and farthest depth in registers,
+does two shared atomics if it found any, and the group two global ones. The least and the greatest
+of integers are the same in any order, so the state is the reference's to the bit, as
+`test_shadow_fit_gpu` holds it on 360 fits, every slice reached in 172 to 298 of them, a target
+size that is no multiple of the tile, one pixel alone, the last pixel alone in a tile half outside
+the targets, and none.
+
+**An empty cascade is still drawn.** Where nothing receives in a slice, its cascade's box is
+empty, the cull keeps no caster and its draws draw nothing, but its pass still begins and clears the
+layer and its depth: about 0.05 ms (0.060 in the Orc Dungeon, 0.048 in Prontera, of which 0.04 are
+the clears). Which cascades are empty is known only on the GPU, after the fit, and SDL's API
+decides a pass and its clears when the pass is recorded, with no conditional rendering; leaving
+them out would take the fit's count back to the CPU, a frame late and so for the wrong frame.
+
+**What it gives.** The measuring build of `a1b38b95` (before) and of this change (after),
+`RAGEXE_MSAA=4`, each scene's clients run one right after the other in rounds by turns; rounds in
+which other work on the machine slowed the GPU line's clients by more than 4 % against their best
+were left out, which kept 5 to 9 rounds a scene. GPU time a frame from the timestamps, median over
+the measured frames, before and after:
+
+| pass | `mvp_randgris` | `mvp_baphomet` | `aoe_orc_dungeon` | `town_prontera` | `woe_emperium` |
+|---|---|---|---|---|---|
+| depth pass | 0.166 / 0.166 | 0.156 / 0.156 | 0.132 / 0.131 | 0.159 / 0.159 | 0.100 / 0.101 |
+| range | 0.093 / 0.058 | 0.090 / 0.055 | 0.093 / 0.053 | 0.093 / 0.052 | 0.077 / 0.039 |
+| extents | 0.408 / 0.200 | 0.382 / 0.189 | 0.430 / 0.222 | 0.430 / 0.221 | 0.335 / 0.134 |
+| cascades' fit | 0.012 / 0.012 | 0.012 / 0.013 | 0.013 / 0.013 | 0.012 / 0.012 | 0.012 / 0.012 |
+| casters' cull | 0.115 / 0.082 | 0.038 / 0.024 | 0.024 / 0.019 | 0.069 / 0.055 | 0.019 / 0.018 |
+| casters' compaction | 0.078 / 0.078 | 0.031 / 0.031 | 0.027 / 0.027 | 0.075 / 0.075 | 0.028 / 0.028 |
+| cascade 0 | 0.336 / 0.307 | 0.291 / 0.285 | 0.060 / 0.060 | 0.048 / 0.048 | 0.047 / 0.048 |
+| cascade 1 | 0.332 / 0.307 | 0.276 / 0.273 | 0.283 / 0.276 | 0.319 / 0.313 | 0.171 / 0.171 |
+| cascade 2 | 0.328 / 0.311 | 0.300 / 0.283 | 0.290 / 0.276 | 0.346 / 0.340 | 0.158 / 0.159 |
+| cascade 3 | 0.301 / 0.286 | 0.300 / 0.286 | 0.285 / 0.272 | 0.368 / 0.363 | 0.153 / 0.154 |
+| the shadows' passes | 2.170 / 1.806 | 1.877 / 1.595 | 1.637 / 1.349 | 1.918 / 1.637 | 1.101 / 0.863 |
+| the frame's GPU time | 5.544 / 5.185 | 5.557 / 5.266 | 2.793 / 2.501 | 3.545 / 3.263 | 13.085 / 12.836 |
+
+The fit's two reductions take 0.23 to 0.25 ms less in every scene, half of what they took; the
+cascades 0.09 ms less in Randgris, 0.03 to 0.04 in Baphomet's fight and the Orc Dungeon, less in
+Prontera and nothing in the Emperium room; the casters' cull up to 0.03. The median frame on the
+wall clock (`load.py`'s `frame_ms`) in the same rounds, of `a1b38b95`'s client, the measuring builds
+before and after, and Direct3D 9's (`ragexe_scenes_ft.exe`, whose rounds spread by up to 1.8 ms in
+Prontera, 1.1 to 1.6 elsewhere, so its medians say less); and in three rounds of their own by turns,
+`a1b38b95`'s client against this one, unmodified:
+
+| scene | `a1b38b95` | before | after | Direct3D 9 | `a1b38b95` | this client |
+|---|---|---|---|---|---|---|
+| `mvp_randgris` | 5.51 | 5.52 | 5.16 | 4.14 | 5.51 | 5.19 |
+| `mvp_baphomet` | 5.54 | 5.57 | 5.28 | 4.96 | 5.56 | 5.29 |
+| `aoe_orc_dungeon` | 2.77 | 2.79 | 2.50 | 2.30 | 2.77 | 2.48 |
+| `town_prontera` | 3.49 | 3.52 | 3.21 | 12.17 | 3.50 | 3.21 |
+| `woe_emperium` | 18.84 | 18.80 | 18.70 | 27.65 | | |
+
+The frame is 0.27 to 0.36 ms shorter where the GPU bounds it, in the three fights and Prontera's
+street, where it was the GPU's before too (3.55 ms of GPU time in a 3.52 ms frame); in the Emperium
+room it is the CPU's, and the difference lies within the rounds' spread (18.35 to 19.03 ms).
+Direct3D 9's frame is still the shorter in Randgris's and Baphomet's fights and the Orc Dungeon,
+where its shadows lengthen its frame by 0.71, 0.93 and 1.33 ms (its median frame with and without
+`RAGEXE_SHADOWS=0`, three rounds by turns with the other clients).
+
+**Checked.** The scene set's captures (19 scripts, 40 captures) at `RAGEXE_MSAA=1` and 4, with and
+without shadows, and every load scene's at 1 (13 captures), `a1b38b95`'s scene client and this one
+one right after the other: every capture the same to the pixel but one of `arrive_castle`, 198
+pixels apart, whose three runs after it by turns all gave `a1b38b95`'s picture (the line's own
+difference, below). The counters are the same but for the draws: in the scene
+set 4 more in 38 captures (a run more in each cascade) and 20 more in `two_pass_alpha` and
+`two_pass_alpha_fewer`; in the load scenes 4 more in nine, 24 more in the castle's arrival, the
+choke and the Emperium room, and the same in Lutie's snow, whose frames differ by a texture bind
+or a draw in a few frames, as the line's do from themselves. `test_world_layout` holds the casters'
+order and runs to the rule above on fuzzed records and on an array whose ground lies between its
+models. `test_gfx_gpu_passes` includes `render/gfx_gpu.c` and watches the SDL calls that record
+the shadow pass: in a frame whose world holds, in one texture array, a model of an opaque pass, the
+textured ground and a model of an alpha pass, then a model of a second array and one without a
+texture, every draw into each cascade has its run's pipeline and, when it tests the alpha, its
+run's texture array; drawing every run with the alpha-tested pipeline, giving the ground's run its
+texture array, or binding a texture only when the pipeline changes each fail it. `test_gfx_gpu`
+draws a textured caster whose texture drops half its texels, one without a texture and the ground
+in one cascade, at 1 and 4 samples; `test_shadow_fit_gpu_packing` the tiles' groups to the largest
+sizes, and `test_shadow_fit_gpu` that the passes' groups are the tiles the C dispatches. The
+validation layer with synchronization validation over the GPU tests, the scene set at both sample
+counts and six load scenes, `bombers_ifrit` among them: not one message in 62 logs. `build.bat
+check` and the whole suite (`tests\build.bat` with `ORACLE_EXE`): 346 tests and the oracle's 7 pass.
+
+**A picture of the line's that is not always the same.** `bombers_ifrit`'s captures differ from run
+to run in some runs, in `a1b38b95`'s client as in this one, while the machine's GPU is loaded:
+with a second scene client looping another scene beside it, 4 of 40 runs of `a1b38b95`'s and 1 of
+40 of this client's, run by turns. Each time a sliver of 10 to 75 pixels at another place, inside an
+effect's or a figure's area. It needs the shadows: with `RAGEXE_SHADOWS=0` no run of 38 differed. It
+is not in the shadow passes' output: in the measuring build, the four shadow maps, the fit's
+state and result, the indirect draws, the compacted indices the draws read, the records, the slots,
+the frame's animated matrices and every stream of the captured frame (its draw records, quads,
+offsets, uniforms, texels and draws) came out bit for bit the same in good runs and in differing
+ones. It comes with the main thread running ahead of the GPU: when the main thread waited each frame
+for the frame's picture, 16 runs gave every one of the scene's 918 frames the same; when only the
+render thread waited for the GPU after each submit, 17 of 64 runs differed, and when the main thread
+also waited for each frame's submit, 1 of 9. Leaving out SDL's defragmentation of GPU memory did not
+change it (3 of 11), and GPU-assisted validation with synchronization validation finds nothing in
+the scene. Its cause is not found; it is a bug of the line, not of this change.
+
+Not checked: the shaders' MSL on Metal, Linux, and any GPU but a GTX 970.

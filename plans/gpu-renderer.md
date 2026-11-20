@@ -138,12 +138,14 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   every other surface is a texture of its own.
 - **Measured:** each scene capture writes its frame's counters (`tests/scenes/README.md`).
   `prontera_crowd` made 1,174 draws (1,954 calls) and `camera_level_view` 3,345 with Direct3D 9;
-  they make 613 and 574, of them 318 and 317 for the shadows (the depth pass and the casters, an
+  they make 617 and 578, of them 322 and 321 for the shadows (the depth pass and the casters, an
   indirect draw a run in each cascade). `docs/custom-review.md` has the baseline and each phase's
   CPU times. The load scenes (`tests/scenes/load.py`, `RAGEXE_MSAA=4`, three rounds by turns, a GTX
-  970 at 1,600 by 900; `docs/custom-review.md`, "The frame recorded on a render thread"), the
-  median frame in ms of this client, of the line before phase 8 (with the CPU fixes) and of
-  Direct3D 9, and the parts of this client's frame that the next phases take from:
+  970 at 1,600 by 900), the median frame in ms of this client, of the line before phase 8 (with the
+  CPU fixes) and of Direct3D 9, and the parts of this client's frame that the next phases take
+  from. The rows marked * are from the rounds of `docs/custom-review.md`, "The shadow passes made
+  cheaper", for this client and its parts, and of "The frame recorded on a render thread" for the
+  line and Direct3D 9; every other row is from the latter's rounds:
 
   | scene | this client | the line | Direct3D 9 | draw scene | present | texels |
   |---|---|---|---|---|---|---|
@@ -152,18 +154,19 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   | `arrive_castle` | 14.62 | 16.27 | 20.51 | 5.03 | 0.02 | 0.55 |
   | `bombers_ifrit` | 10.74 | 11.60 | 15.02 | 3.58 | 0.01 | 0.13 |
   | `arrive_prontera` | 3.54 | 3.93 | 12.25 | 0.91 | 0.01 | 0.16 |
-  | `town_prontera` | 3.52 | 3.65 | 12.06 | 0.81 | 0.01 | 0.07 |
-  | `mvp_randgris` | 5.50 | 5.53 | 4.08 | 0.69 | 3.17 | 0.03 |
+  | `town_prontera` * | 3.21 | 3.65 | 12.06 | 0.81 | 0.01 | 0.07 |
+  | `mvp_randgris` * | 5.19 | 5.53 | 4.08 | 0.81 | 1.81 | 0.04 |
   | `snow_lutie` | 3.38 | 3.38 | 7.01 | 0.43 | 1.77 | 0.03 |
-  | `mvp_baphomet` | 5.54 | 5.54 | 4.70 | 0.84 | 2.84 | 0.04 |
-  | `aoe_orc_dungeon` | 2.78 | 2.78 | 2.32 | 0.16 | 2.23 | 0.00 |
+  | `mvp_baphomet` * | 5.29 | 5.54 | 4.70 | 0.89 | 1.78 | 0.04 |
+  | `aoe_orc_dungeon` * | 2.48 | 2.78 | 2.32 | 0.16 | 1.87 | 0.00 |
 
   `texels` is the textures' pixels widened to B8G8R8A8 as they go up (`texels_ms`), which Direct3D 9
   did not do. The frame is about seven tenths of Direct3D 9's in the crowds and under a third of it
   in Prontera.
   Presenting no longer records the frame on the main thread; in Randgris's, Baphomet's and the Orc
-  Dungeon's fights it is the wait for the GPU, whose shadows' passes the frame is bound by there
-  (*Risks*), and only there is Direct3D 9's frame the shorter. The first
+  Dungeon's fights it is the wait for the GPU. There and in Prontera's street the frame lasts as long
+  as the GPU's work on it, whose shadows' passes take 1.35 to 1.81 ms (*Risks*), and only in the
+  three fights is Direct3D 9's frame the shorter. The first
   frame of an arrival takes 230 ms in the castle and 138 in Prontera (Direct3D 9: 212 and 130),
   most of it handling the packets of the crowd (133 and 99 ms), 17 and 12 ms widening texels.
 
@@ -321,7 +324,10 @@ it is given; the GPU fits to what the frame shows (sample distribution shadow ma
    multisampled main pass keeps its own depth.
 2. A compute pass reduces those to the nearest and farthest depth on screen within the shadows'
    reach; a second cuts a range kept from frame to frame into four slices that grow geometrically
-   and reduces each slice's pixels to their extent across the light.
+   and reduces each slice's pixels to their extent across the light. Both take the screen a tile
+   of 32 by 32 pixels a group of 64 threads, each thread reducing its 16 pixels in its registers
+   and the group its threads' in shared memory, so that the fit's state takes a few atomics a tile;
+   the second cuts the slices once a group.
 3. A third turns those into the four cascades' matrices, rounding each square up and snapping its
    centre to whole texels, with the light's depth range from the box the world's own draw records
    lie in (the animated ones in the frame's pose). Snapping holds edges still only while a square
@@ -337,9 +343,16 @@ it is given; the GPU fits to what the frame shows (sample distribution shadow ma
    the ground's baked shadows, as does one whose shadow passes could not be recorded; a device that
    cannot make the fit's pipelines or buffers draws without shadows.
 4. The cull pass picks each cascade's casters from the draw records, a group of threads to each run
-   of records of one texture array in each cascade, and compacts them into a section of the frame's
-   index buffer of their own; the shadow pass draws them into the four layers of one array, an
-   indirect draw a run.
+   of casters in each cascade, and compacts them into a section of the frame's index buffer of
+   their own; the shadow pass draws them into the four layers of one array, an indirect draw a run.
+   The casters are ordered by texture array and in draw order within each, and a run is a stretch
+   of that order whose texels one alpha test decides: the models' textured records, which drop the
+   texels the opaque lists' alpha test drops, are drawn by a pipeline whose fragment shader can
+   discard, and the ground and the records without a texture by one that cannot, which keeps the
+   GPU's early depth test for them. The order is the draws' own whichever pipeline draws a run, so
+   the maps are the same to the bit. A shader that can discard turns that test off for every
+   fragment it draws, so the models' textured casters keep most of the shadow pass's time
+   (*Risks*, "The shadows' GPU time").
 
 `render/shadow_fit.c` is the fit's reference in C, which the tests hold the shaders to: the range,
 the range kept and, given the same split, the extents, the squares and the texels their centres lie
@@ -796,9 +809,16 @@ recorded.
   is what the frame waits for: with shadows the main thread waited 1.9 ms a frame for the GPU in
   Randgris's fight, 2.7 in Baphomet's and 3.2 in the Orc Dungeon before phase 8, and 0.1 to 0.5
   without them, which shortens those frames by 2.3 to 3.2 ms (`docs/custom-review.md`, "The frame
-  recorded on a render thread"). The GPU's own time was not measured; the shadows' share is
-  inferred from those frames. There the frame is the GPU's: neither a render thread nor more frames
-  in flight shortens it, only less GPU work in the shadows' passes.
+  recorded on a render thread"). There the frame is the GPU's: neither a render thread nor more
+  frames in flight shortens it, only less GPU work in the shadows' passes. Timed pass by pass
+  (`docs/custom-review.md`, "The shadow passes made cheaper"), those passes take 1.35 to 1.81 ms of
+  the GPU's frame in the light scenes and Prontera's street: the depth pass 0.13 to 0.17, the fit
+  0.26 to 0.29, the casters' cull and compaction 0.05 to 0.16, and the four cascades 0.88 to 1.21,
+  most of it the models' alpha-tested casters, whose shader turns the early depth test off. Direct3D
+  9's shadows lengthen its frame by 0.7 ms in Randgris's fight, 0.9 in Baphomet's and 1.3 in the Orc
+  Dungeon (with and without `RAGEXE_SHADOWS=0`, the same review entry). Each cascade's pass costs
+  about 0.05 ms for beginning and clearing even where nothing is drawn into it, which only the CPU
+  could skip, and it never sees the cascades.
 - **SDL's descriptor caches.** SDL's Vulkan driver gives each command buffer a cache of descriptor
   sets and gets it back only once it finds the command buffer finished, and every texture it makes
   holds one for a while; a command buffer that finds none given back fills an empty one, a

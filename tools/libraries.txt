@@ -142,9 +142,10 @@ paths   render/shadow_fit.*
 library shadow-fit-gpu
 note    The shadow fit as the device's compute passes read and write it, as pure packing
         (render/shadow_fit_gpu.c): their constants, the state and the history they keep and the
-        cascades they leave, which the device and the tests pack and read alike.
+        cascades they leave, which the device and the tests pack and read alike, and the tiles
+        the passes take the screen in, which their shaders include too.
 uses    shadow-fit
-paths   render/shadow_fit_gpu.*
+paths   render/shadow_fit_gpu.* render/shadow_fit_gpu_tile.h
 
 library atlas-index
 note    The sprite atlas's cells by what they hold, as pure logic (render/atlas_index.c): a sprite

@@ -159,13 +159,32 @@ static void test_state_and_read(void)
     }
 }
 
+/* the range's and the extents' groups: a tile each, the last one partly outside the targets, to the
+   largest size without wrapping */
+static void test_groups(void)
+{
+    uint32_t g[2];
+
+    shadow_fit_gpu_groups(0, 0, g);
+    assert(g[0] == 0 && g[1] == 0);
+    shadow_fit_gpu_groups(1, SHADOW_FIT_GPU_TILE, g);
+    assert(g[0] == 1 && g[1] == 1);
+    shadow_fit_gpu_groups(SHADOW_FIT_GPU_TILE + 1, 2 * SHADOW_FIT_GPU_TILE, g);
+    assert(g[0] == 2 && g[1] == 2);
+    shadow_fit_gpu_groups(1601, 901, g);
+    assert(g[0] == 51 && g[1] == 29);
+    shadow_fit_gpu_groups(0xffffffffu, 0xffffffe0u, g);
+    assert(g[0] == 0x8000000u && g[1] == 0x7ffffffu);
+}
+
 int main(void)
 {
     test_layouts();
     test_frame();
     test_order();
     test_state_and_read();
+    test_groups();
     puts("shadow fit packing: the shaders' layouts, a frame's constants, floats ordered as uints and back, the "
-         "state of nothing seen, and the passes' results read back passed");
+         "state of nothing seen, the passes' results read back and their groups passed");
     return 0;
 }

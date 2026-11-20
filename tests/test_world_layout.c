@@ -1,8 +1,9 @@
 /* custom: the static world as the device's shaders read it (render/world_layout.h): every field of
    a record packed where world.hlsli, world_cull.hlsl and world_compact.hlsl read it and back, ids no
    record has left alone; the view's runs the cull compacts, every pass's, each behind the one before
-   and none past a section's indices; the casters' runs, a run for each texture array in their
-   order, each record in one of them in draw order, behind one another; the chunks the compaction
+   and none past a section's indices; the casters' order, by texture array and in draw order within
+   each, and their runs, a run for each stretch of it with one caster's array (the ground and the
+   records without a texture none), behind one another; the chunks the compaction
    copies, every index of every record in one chunk, in order, up to a record of 2^32 - 1 indices;
    where the cull's data and its output lie, and the commands of each view; the slots' links; the
    projection a view-space point lands on the screen through, at the pixel renderer_project_vertex
@@ -116,7 +117,9 @@ static void test_runs(void)
         for (i = 0; i < n; i++) {
             random_record(&records[i], (uint32_t)i);
             records[i].indexCount = next() % 64 * 3;
-            records[i].textureArray = (uint8_t)(next() % 3);
+            records[i].textureArray = (uint8_t)(next() % 4);
+            if (records[i].textureArray == 3)
+                records[i].textureArray = SW_NO_ARRAY;
             records[i].lightmapArray = (uint8_t)(next() % 2);
         }
         sw_records_sort(records, (size_t)n);
@@ -129,14 +132,16 @@ static void test_runs(void)
             at += runs[i].indices;
         }
         assert(total == at);
-        /* the casters' runs: one a texture array, in the arrays' order, each record once, in draw
-           order within its run, the runs' indices one behind the other and as many as the view's */
+        /* the casters' order: each record once, by texture array in the arrays' order, in draw order
+           within each; their runs: the stretches of that order with one caster's array, the runs'
+           indices one behind the other and as many as the view's */
         ncasters = wl_caster_runs(records, (size_t)n, order, &held, casters, &casterTotal);
         assert(held == (size_t)n && casterTotal == total);
         memset(seen, 0, sizeof seen);
         at = 0;
         for (i = 0; i < (int)ncasters; i++) {
             uint32_t k, sum = 0;
+            uint8_t array = wl_caster_array(&records[order[casters[i].first]]);
 
             assert(casters[i].first == placed && casters[i].count && casters[i].start == at);
             for (k = casters[i].first; k < casters[i].first + casters[i].count; k++) {
@@ -144,12 +149,17 @@ static void test_runs(void)
 
                 assert(!seen[order[k]]);
                 seen[order[k]] = 1;
-                assert(r->textureArray == records[order[casters[i].first]].textureArray);
-                assert(k == casters[i].first || order[k] > order[k - 1]);
+                assert(wl_caster_array(r) == array);
+                if (k) {
+                    const struct SwRecord *b = &records[order[k - 1]];
+
+                    assert(b->textureArray < r->textureArray
+                           || (b->textureArray == r->textureArray && order[k] > order[k - 1]));
+                }
                 sum += r->indexCount;
             }
             if (i)
-                assert(records[order[casters[i].first]].textureArray > records[order[casters[i - 1].first]].textureArray);
+                assert(wl_caster_array(&records[order[casters[i - 1].first]]) != array);
             assert(casters[i].indices == sum);
             placed += casters[i].count;
             at += sum;
@@ -214,6 +224,30 @@ static void test_runs(void)
         heavy[2].textureArray = 1;
         assert(wl_caster_runs(heavy, 3, order, &held, casters, &indices) == 2 && held == 2);
         assert(indices == WL_SECTION_INDICES && order[0] == 1 && order[1] == 0 && casters[1].start == 9);
+    }
+    /* the caster's array: a model's record's texture array, none for the ground or without a
+       texture; an array's ground between its models splits its run in three, and the ground of one
+       array and the untextured models after it are one run */
+    {
+        static const uint8_t passes[5] = {SW_PASS_OPAQUE_CLAMP, SW_PASS_GROUND, SW_PASS_ALPHA_CLAMP,
+                                          SW_PASS_OPAQUE_WRAP, SW_PASS_GROUND};
+        static const uint8_t arrays[5] = {4, 4, 4, SW_NO_ARRAY, 7};
+        struct SwRecord r[5];
+        uint32_t indices;
+        size_t held;
+
+        memset(r, 0, sizeof r);
+        for (i = 0; i < 5; i++) {
+            r[i].pass = passes[i];
+            r[i].textureArray = arrays[i];
+            r[i].indexCount = 3;
+            assert(wl_caster_array(&r[i]) == (passes[i] == SW_PASS_GROUND ? SW_NO_ARRAY : arrays[i]));
+        }
+        assert(wl_caster_runs(r, 5, order, &held, casters, &indices) == 4 && held == 5 && indices == 15);
+        assert(order[0] == 0 && order[1] == 1 && order[2] == 2 && order[3] == 4 && order[4] == 3);
+        for (i = 0; i < 3; i++)
+            assert(casters[i].first == (uint32_t)i && casters[i].count == 1 && casters[i].start == (uint32_t)i * 3);
+        assert(casters[3].first == 3 && casters[3].count == 2 && casters[3].start == 9 && casters[3].indices == 6);
     }
 }
 

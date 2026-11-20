@@ -118,14 +118,22 @@ size_t wl_chunks(const struct SwRecord *records, size_t count, struct WlChunk *o
    it. Answers n; *indices takes the indices they hold together, at most WL_SECTION_INDICES: the
    runs that would pass it, and those after them, are left out. */
 size_t wl_runs(const struct SwDrawRun *runs, size_t count, struct WlRun *out, uint32_t *indices);
-/* The casters' runs of the records in draw order, out[0..n): a run for each texture array the
-   records have (SW_NO_ARRAY too), in the order of the arrays, its records in draw order, since a
-   caster's pipeline knows nothing else of a record (world_caster.hlsl). order[0..held) takes each
-   run's records' places in draw order, one run after the other, each run's indices placed behind
-   the run's before it. Answers n; *held takes the records placed and *indices the indices they hold
-   together, at most WL_SECTION_INDICES: the records that would pass it are left out. */
+/* The casters' order and runs of the records in draw order: order[0..held) takes the records'
+   places in draw order, by texture array (SW_NO_ARRAY too) in the order of the arrays and in draw
+   order within each, which is the order the shadow pass draws them in, since a caster's pipeline
+   knows nothing else of a record (world_caster.hlsl); out[0..n) a run for each stretch of that
+   order with one caster's array (wl_caster_array), so that a run binds one texture and one
+   pipeline, each run's indices placed behind the run's before it; order and out must hold `count`
+   entries, as many runs as records at most. Answers n; *held takes the
+   records placed and *indices the indices they hold together, at most WL_SECTION_INDICES: the
+   records that would pass it are left out. */
 size_t wl_caster_runs(const struct SwRecord *records, size_t count, uint32_t *order, size_t *held, struct WlRun *out,
                       uint32_t *indices);
+/* The texture array whose alpha drops a caster's texels in the shadow pass (world_caster.hlsl):
+   a model's record's own; SW_NO_ARRAY, none, for the ground, which casts without its texture, and
+   for a record without one. The shadow pass draws the casters of SW_NO_ARRAY without the alpha test
+   (world_caster_solid.hlsl), which keeps the GPU's early depth test. */
+uint8_t wl_caster_array(const struct SwRecord *record);
 void wl_slot(const float *local, int parent, int animated, int world, struct WlSlot *out);
 void wl_cull_layout(size_t records, size_t runs, size_t casterRuns, size_t orderCount, size_t chunks,
                     struct WlCullLayout *out);

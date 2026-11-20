@@ -62,6 +62,12 @@ void shadow_fit_gpu_state(uint32_t *state)
         state[SHADOW_FIT_GPU_EXTENTS + i] = shadow_fit_gpu_order(i & 2 ? -HUGE_VALF : HUGE_VALF);
 }
 
+void shadow_fit_gpu_groups(uint32_t width, uint32_t height, uint32_t groups[2])
+{
+    groups[0] = width / SHADOW_FIT_GPU_TILE + (width % SHADOW_FIT_GPU_TILE != 0);
+    groups[1] = height / SHADOW_FIT_GPU_TILE + (height % SHADOW_FIT_GPU_TILE != 0);
+}
+
 void shadow_fit_gpu_read(const uint32_t *state, const struct ShadowFitGpuCascades *result, struct ShadowFitGpuRead *out)
 {
     int c, a;

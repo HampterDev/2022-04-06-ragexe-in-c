@@ -1,12 +1,15 @@
 // A shadow caster's depth from the light: the static world's records a cascade's cull kept
 // (world_cull.hlsl), drawn into that cascade's map through their slot's place in the world
 // (world_transform.hlsl) and the cascade's light space as the shadow fit left it on the GPU
-// (cascades.hlsli), their depth negative for a model's; texels the opaque lists' alpha test (0xcf)
-// drops cast nothing, and the ground casts without its texture. One pipeline draws every record of
-// a texture array, whatever its pass and cull mode: casters are drawn from both sides.
+// (cascades.hlsli), their depth negative for a model's. The vertex shader serves both of the
+// shadow pass's pipelines (world_caster.hlsli); the fragment shader here is the one of the casters
+// whose texels the opaque lists' alpha test (0xcf) drops, the models' textured records. One
+// pipeline draws every record of a run, whatever its pass and cull mode: casters are drawn from
+// both sides.
 #include "records.hlsli"
 #include "world.hlsli"
 #include "cascades.hlsli"
+#include "world_caster.hlsli"
 
 StructuredBuffer<WorldRecord> records : register(t0, space0);
 StructuredBuffer<float4> placed : register(t1, space0);  // a slot's 4x3 in three float4 (render/gfx.h)
@@ -28,15 +31,6 @@ struct CasterIn
     [[vk::location(2)]] uint record : TEXCOORD2;
 };
 
-struct CasterOut
-{
-    float4 position : SV_Position;
-    [[vk::location(0)]] float depth : TEXCOORD0;
-    [[vk::location(1)]] float2 uv : TEXCOORD1;
-    // the texture's layer, whether the record has a texture, whether it is a model's
-    [[vk::location(2)]] nointerpolation uint3 layer : TEXCOORD2;
-};
-
 CasterOut vs_main(CasterIn i)
 {
     WorldRecord rec = records[i.record];
@@ -52,8 +46,7 @@ CasterOut vs_main(CasterIn i)
     float4 uvU = uvSlot != WORLD_NO_UV ? uvs[uvSlot * 2] : float4(1, 0, 0, 0);
     float4 uvV = uvSlot != WORLD_NO_UV ? uvs[uvSlot * 2 + 1] : float4(0, 1, 0, 0);
     o.uv = world_turn(i.uv, uvU, uvV);
-    bool ground = record_pass(rec) == WORLD_PASS_GROUND;
-    o.layer = uint3(rec.data.x & 0xffff, record_textured(rec) && !ground ? 1u : 0u, ground ? 0u : 1u);
+    o.layer = uint2(rec.data.x & 0xffff, record_pass(rec) != WORLD_PASS_GROUND ? 1u : 0u);
     return o;
 }
 
@@ -61,7 +54,7 @@ float4 fs_main(CasterOut i) : SV_Target0
 {
     // the opaque lists' alpha test, on the alpha rounded to 0 to 255 as theirs (records.hlsli,
     // alpha_passes) and the depth pass's (world_depth.hlsl) round it
-    if (i.layer.y != 0 && floor(colourMaps.Sample(colourSampler, float3(i.uv, i.layer.x)).a * 255 + 0.5) < 207.0)
+    if (floor(colourMaps.Sample(colourSampler, float3(i.uv, i.layer.x)).a * 255 + 0.5) < 207.0)
         discard;
-    return float4(i.depth * (i.layer.z != 0 ? -1 : 1), 0, 0, 1);
+    return caster_depth(i);
 }

@@ -855,10 +855,13 @@ the same multiple of its near one, and takes each slice's extent across the ligh
 lookups and the planes of its box. The range and the squares are
 kept in a buffer of the device's until the world is made again, so that the camera's moves seldom
 move a slice or resize a square (`render/shadow_fit.h` gives the rules). The cull pass then culls
-the casters' runs (the records grouped by texture array) against each cascade's box as
-`sw_cull_cascade` does, the compaction gives each cascade's kept records their places in a section
-of their own, and the shadow pass draws them into the four layers of one R32F array, a draw a
-texture array a layer. Every draw of the world reads the fit's result, which also says how many
+the casters' runs against each cascade's box as `sw_cull_cascade` does (the records ordered by
+texture array and in draw order within each, a run each stretch of that order that one texture's
+alpha test decides or none does, `wl_caster_runs`), the compaction gives each cascade's kept records
+their places in a section of their own, and the shadow pass draws them into the four layers of one
+R32F array, a draw a run a layer: the models' textured records with a pipeline that drops their
+texels by the alpha test, the ground and the records without a texture with one that cannot drop
+any, which keeps the GPU's early depth test. Every draw of the world reads the fit's result, which also says how many
 cascades receive: where nothing within reach receives, the ground keeps its baked shadows, as it
 does on a frame whose shadow passes could not be recorded. Shadows are optional: a device that
 cannot make the fit's pipelines, buffers or shadow maps draws without them, and one that cannot
@@ -896,14 +899,16 @@ bones, which the shim samples no animation for, is not drawn.
 The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, which builds their vertices
 from their records, `instances.hlsli`; `skin.hlsl` for Granny's actors, `skin.hlsli`; `world.hlsl`
 for the static world's records with their shadows, `world_depth.hlsl` for their depth on screen that
-the shadow fit takes, `world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the
+the shadow fit takes, `world_caster.hlsl` for its casters in the shadow maps and
+`world_caster_solid.hlsl` for the casters without an alpha test, `water.hlsl` for the
 water, which draws its pixels as the quads draw theirs (`quad.hlsli`: the texture stages'
 combinations, an atlas layer, the vertex fog and the alpha test); `rows.hlsl` for the screen wobble,
 and the compute passes `world_transform.hlsl`, `world_cull.hlsl` and `world_compact.hlsl`;
 `shadow_range.hlsl`, `shadow_extents.hlsl` and `shadow_cascades.hlsl`, the shadow fit; and what they
 share in `records.hlsli`, `quad.hlsli`, `instances.hlsli`, `skin.hlsli`, `world.hlsli`,
 `water.hlsli`, `projection.hlsli` (the client's 4x3 matrices and its projection of a point),
-`shadow_fit.hlsli` and `cascades.hlsli` (the fit's result, as the world's shaders read it); test
+`shadow_fit.hlsli`, `cascades.hlsli` (the fit's result, as the world's shaders read it) and
+`world_caster.hlsli`; test
 programs' own shaders in `tests/shaders`).
 The shaders are plain arithmetic: they give the floats of the C code they stand for within a
 tolerance, not to the bit (`plans/gpu-renderer.md`, Decisions). A vertex lies within 1/16 of a
