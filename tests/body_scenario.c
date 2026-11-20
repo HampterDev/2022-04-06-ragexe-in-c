@@ -130,8 +130,11 @@ static void make_input(struct BodyScenario *scenario, uint64_t tick, int keep, s
         input->x = (int16_t)(scenario->x[input->slot] + (int)(next(scenario) % 13u) - 6);
         input->y = (int16_t)(scenario->y[input->slot] + (int)(next(scenario) % 13u) - 6);
     }
-    if (input->kind == BODY_INPUT_DELAY)
+    if (input->kind == BODY_INPUT_DELAY) {
         input->value = (uint16_t)(next(scenario) % 16u == 0 ? 60000u : next(scenario) % 600u);
+        /* a flinch or a skill's hold, and now and then a kind the core does not know */
+        input->dir = (uint8_t)(next(scenario) % 16u == 0 ? 2u + next(scenario) % 7u : next(scenario) % 2u);
+    }
     else if (input->kind == BODY_INPUT_WALK)
         input->value = (uint16_t)(next(scenario) % 4u == 0 ? 1u + next(scenario) % 12u : 0u);
     else if (input->kind == BODY_INPUT_NEAR || input->kind == BODY_INPUT_CHASE)
@@ -574,7 +577,10 @@ void body_scenario_run(struct BodyScenario *scenario, void *arena, void *work, u
                     scenario->intent[input.slot] = 0;
                 } else if (input.kind == BODY_INPUT_REQUEST) {
                     request_put(scenario, &input);
-                } else if (input.kind == BODY_INPUT_DELAY && input.tick + input.value > scenario->hold[input.slot]) {
+                } else if (input.kind == BODY_INPUT_DELAY && input.dir == BODY_HOLD_EXTEND
+                           && input.tick + input.value > scenario->hold[input.slot]) {
+                    /* a skill's hold is always taken; whether a flinch is depends on holds the
+                       scenario does not see (a swing's), so it does not raise the bound */
                     scenario->hold[input.slot] = input.tick + input.value;
                 } else if (input.kind == BODY_INPUT_FIGHTER) {
                     scenario->adelay[input.slot] = input.value;

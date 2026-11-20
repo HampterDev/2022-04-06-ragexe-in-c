@@ -1948,15 +1948,30 @@ static int input_stop(struct BodyWorld *world, struct Body *body, const struct B
     return BODY_OK;
 }
 
-/* The move clock goes to the end of the hold when that is later. A step under way lands no
- * earlier, which is a new record: on its cell from now, landing when the hold ends. */
+/* unit_set_walkdelay, as far as the clock goes: a flinch only when the clock ran out a hold's
+ * length ago ("immune to being stopped for double the flinch time"), a skill's or an attack's
+ * hold only later. */
+uint64_t body_hold_until(uint64_t can_move, uint64_t tick, uint32_t delay, int kind)
+{
+    if (delay == 0)
+        return can_move;
+    if (kind == BODY_HOLD_FLINCH)
+        return can_move + delay > tick ? can_move : tick + delay;
+    if (kind == BODY_HOLD_EXTEND)
+        return can_move > tick + delay ? can_move : tick + delay;
+    return can_move;
+}
+
+/* The move clock goes where body_hold_until puts it. A step under way lands no earlier than the
+ * hold's end, which is a new record: on its cell from now, landing when the hold ends. */
 static int input_delay(struct BodyWorld *world, struct Body *body, const struct BodyInput *input)
 {
-    uint64_t until = input->tick + input->value;
+    uint64_t until;
     int held;
 
-    if (input->value > BODY_MAX_DELAY_MS)
+    if (input->value > BODY_MAX_DELAY_MS || input->dir > BODY_HOLD_EXTEND)
         return BODY_BAD_VALUE;
+    until = body_hold_until(body->can_move, input->tick, input->value, input->dir);
     if (until <= body->can_move)
         return BODY_OK;
     held = body->move.steps > 0 && landing(&body->move) < until;

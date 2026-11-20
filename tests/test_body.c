@@ -151,6 +151,15 @@ static struct BodyInput input(uint64_t tick, int kind, int slot, uint32_t id, in
     return in;
 }
 
+/* The body `id` in `slot` takes no step for `ms` from `tick`, by a hold of the kind `kind`. */
+static struct BodyInput hold(uint64_t tick, int slot, uint32_t id, int ms, int kind)
+{
+    struct BodyInput in = input(tick, BODY_INPUT_DELAY, slot, id, 0, 0, ms);
+
+    in.dir = (uint8_t)kind;
+    return in;
+}
+
 /* The body `id` in `slot` is to walk after the body `target_id` in slot `target` until it is
  * within `range` cells of it. */
 static struct BodyInput chase(uint64_t tick, int slot, uint32_t id, int target, uint32_t target_id, int range)
@@ -986,7 +995,7 @@ static void test_attack_lands_step(void)
 
     /* a first step that a hit holds back has not been taken: the body stands at once */
     world = fight_world(0, 3, 2, &size);
-    CHECK(apply(world, input(1000, BODY_INPUT_DELAY, 1, 7, 0, 0, 300)) == BODY_OK);
+    CHECK(apply(world, hold(1000, 1, 7, 300, BODY_HOLD_FLINCH)) == BODY_OK);
     CHECK(apply(world, input(1000, BODY_INPUT_WALK, 1, 7, 2, 6, 0)) == BODY_OK);
     while (body_take_event(world, &(struct BodyEvent){0})) {
     }
@@ -1213,17 +1222,18 @@ static void test_swing_cancel_frees_walk(void)
 
     /* a hold the swing found (a hit, until 1200) holds on: the walk starts when that is over */
     world = fight_world(300, 3, 2, &size);
-    CHECK(apply(world, input(1000, BODY_INPUT_DELAY, 1, 7, 0, 0, 200)) == BODY_OK);
+    CHECK(apply(world, hold(1000, 1, 7, 200, BODY_HOLD_FLINCH)) == BODY_OK);
     CHECK(apply(world, attack(1000, 1, 7, 3, 9, 0)) == BODY_OK && apply(world, answer(1000, 1, 7, YES)) == BODY_OK);
     CHECK(body_world_check(world, size) == BODY_OK);
     CHECK(apply(world, input(1100, BODY_INPUT_SWING_CANCEL, 1, 7, 0, 0, 0)) == BODY_OK);
     CHECK(apply(world, input(1100, BODY_INPUT_WALK, 1, 7, 2, 6, 0)) == BODY_OK);
     CHECK(body_move(world, 1, &move) == BODY_OK && move.at_tick == 1100 && move.land_ms == 100 + 100);
     free(world);
-    /* so does one that came in the windup and lasts longer than the attack motion (until 1700) */
+    /* so does a skill's hold that came in the windup and lasts longer than the attack motion
+       (until 1700); a hit then is no flinch, the swing holds the body already */
     world = fight_world(300, 3, 2, &size);
     CHECK(apply(world, attack(1000, 1, 7, 3, 9, 0)) == BODY_OK && apply(world, answer(1000, 1, 7, YES)) == BODY_OK);
-    CHECK(apply(world, input(1050, BODY_INPUT_DELAY, 1, 7, 0, 0, 650)) == BODY_OK);
+    CHECK(apply(world, hold(1050, 1, 7, 650, BODY_HOLD_EXTEND)) == BODY_OK);
     CHECK(apply(world, input(1100, BODY_INPUT_SWING_CANCEL, 1, 7, 0, 0, 0)) == BODY_OK);
     CHECK(apply(world, input(1100, BODY_INPUT_WALK, 1, 7, 2, 6, 0)) == BODY_OK);
     CHECK(body_move(world, 1, &move) == BODY_OK && move.at_tick == 1100 && move.land_ms == 600 + 100);
@@ -1404,12 +1414,12 @@ static void test_monster_attack(void)
         CHECK(body_move(world, 1, &move) == BODY_OK && move.at_tick == 1100 && move.land_ms == (holds ? 400 + 100 : 100));
         free(world);
     }
-    /* a boss's swing ended by a command gives back no hold it did not put: a hit's until 1500,
+    /* a boss's swing ended by a command gives back no hold it did not put: a skill's until 1500,
        the end of its attack motion, holds on */
     world = monster_world(0, 3, 2, &size);
     CHECK(apply(world, attack(1000, 1, 7, 3, 9, 0)) == BODY_OK && apply(world, answer(1000, 1, 7, YES)) == BODY_OK);
     CHECK(apply(world, answer(1000, 1, 7, BODY_ANSWER_BEGIN)) == BODY_OK);
-    CHECK(apply(world, input(1100, BODY_INPUT_DELAY, 1, 7, 0, 0, 400)) == BODY_OK);
+    CHECK(apply(world, hold(1100, 1, 7, 400, BODY_HOLD_EXTEND)) == BODY_OK);
     CHECK(apply(world, input(1200, BODY_INPUT_SWING_CANCEL, 1, 7, 0, 0, 0)) == BODY_OK);
     CHECK(apply(world, input(1200, BODY_INPUT_WALK, 1, 7, 2, 6, 0)) == BODY_OK);
     CHECK(body_move(world, 1, &move) == BODY_OK && move.at_tick == 1200 && move.land_ms == 300 + 100);
@@ -2667,28 +2677,76 @@ static void test_delay(void)
     /* a step under way lands when the hold ends, which is a new record */
     CHECK(apply(world, input(1000, BODY_INPUT_WALK, 1, 7, 5, 2, 0)) == BODY_OK);
     CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1000, 2, 2));
-    CHECK(apply(world, input(1050, BODY_INPUT_DELAY, 1, 7, 0, 0, 300)) == BODY_OK);
+    CHECK(apply(world, hold(1050, 1, 7, 300, BODY_HOLD_EXTEND)) == BODY_OK);
     CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1050, 2, 2) && no_event(world));
     CHECK(body_move(world, 1, &move) == BODY_OK && move.at_tick == 1050 && move.x == 2 && move.land_ms == 300 && move.steps == 3);
     CHECK(body_next_due(world, &due) == 1 && due == 1350);
     /* a hold that ends sooner changes nothing; one that ends before the step lands, neither */
-    CHECK(apply(world, input(1060, BODY_INPUT_DELAY, 1, 7, 0, 0, 100)) == BODY_OK && no_event(world));
+    CHECK(apply(world, hold(1060, 1, 7, 100, BODY_HOLD_EXTEND)) == BODY_OK && no_event(world));
     CHECK(body_next_due(world, &due) == 1 && due == 1350);
-    CHECK(refused(world, size, input(1060, BODY_INPUT_DELAY, 1, 7, 0, 0, BODY_MAX_DELAY_MS + 1), BODY_BAD_VALUE));
+    CHECK(refused(world, size, hold(1060, 1, 7, BODY_MAX_DELAY_MS + 1, BODY_HOLD_EXTEND), BODY_BAD_VALUE));
     CHECK(body_run(world, &ground, 1350) == BODY_OK && event_is(world, BODY_EVENT_CELL, 1, 1350, 3, 2));
     /* the steps after it take their own time again */
     CHECK(body_next_due(world, &due) == 1 && due == 1450);
-    CHECK(apply(world, input(1360, BODY_INPUT_DELAY, 1, 7, 0, 0, 50)) == BODY_OK && no_event(world));
+    CHECK(apply(world, hold(1360, 1, 7, 50, BODY_HOLD_EXTEND)) == BODY_OK && no_event(world));
     CHECK(body_next_due(world, &due) == 1 && due == 1450);
 
     /* a body that stands is held too: asked to walk, it stands until the hold ends and then
      * takes its first step */
     CHECK(apply(world, input(1360, BODY_INPUT_STOP, 1, 7, 0, 0, 0)) == BODY_OK);
     CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1360, 3, 2));
-    CHECK(apply(world, input(1400, BODY_INPUT_DELAY, 1, 7, 0, 0, 400)) == BODY_OK && no_event(world));
+    CHECK(apply(world, hold(1400, 1, 7, 400, BODY_HOLD_EXTEND)) == BODY_OK && no_event(world));
     CHECK(apply(world, input(1500, BODY_INPUT_WALK, 1, 7, 3, 4, 0)) == BODY_OK);
     CHECK(body_move(world, 1, &move) == BODY_OK && move.at_tick == 1500 && move.land_ms == 300 + 100 && move.path[0] == NORTH);
     CHECK(body_next_due(world, &due) == 1 && due == 1900);
+    CHECK(body_world_check(world, size) == BODY_OK);
+    free(world);
+}
+
+/* unit_set_walkdelay's kinds: a flinch holds a body that has not been held for the flinch's own
+ * length, a skill's or an attack's hold only puts the end later */
+static void test_hold_kinds(void)
+{
+    size_t size;
+    struct BodyWorld *world = walker_world(8, &size);
+    uint64_t due;
+
+    /* the rule alone */
+    CHECK(body_hold_until(0, 1000, 300, BODY_HOLD_FLINCH) == 1300);
+    CHECK(body_hold_until(1300, 1200, 300, BODY_HOLD_FLINCH) == 1300);  /* held still */
+    CHECK(body_hold_until(1300, 1599, 300, BODY_HOLD_FLINCH) == 1300);  /* within double the flinch */
+    CHECK(body_hold_until(1300, 1600, 300, BODY_HOLD_FLINCH) == 1900);  /* the window is over */
+    CHECK(body_hold_until(1300, 1200, 50, BODY_HOLD_EXTEND) == 1300);   /* would end sooner */
+    CHECK(body_hold_until(1300, 1200, 100, BODY_HOLD_EXTEND) == 1300);  /* ends as it is */
+    CHECK(body_hold_until(1300, 1200, 400, BODY_HOLD_EXTEND) == 1600);
+    CHECK(body_hold_until(1300, 1200, 0, BODY_HOLD_EXTEND) == 1300 && body_hold_until(0, 1200, 0, BODY_HOLD_FLINCH) == 0);
+    CHECK(body_hold_until(0, 1200, 300, 2) == 0 && body_hold_until(0, 1200, 300, -1) == 0);
+
+    /* two hits inside the window hold once */
+    CHECK(apply(world, input(1000, BODY_INPUT_WALK, 1, 7, 5, 2, 0)) == BODY_OK);
+    CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1000, 2, 2));
+    CHECK(apply(world, hold(1050, 1, 7, 300, BODY_HOLD_FLINCH)) == BODY_OK);
+    CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1050, 2, 2) && no_event(world));
+    CHECK(body_next_due(world, &due) == 1 && due == 1350);
+    CHECK(apply(world, hold(1100, 1, 7, 300, BODY_HOLD_FLINCH)) == BODY_OK && no_event(world));
+    CHECK(body_next_due(world, &due) == 1 && due == 1350);
+    CHECK(body_run(world, &ground, 1350) == BODY_OK && event_is(world, BODY_EVENT_CELL, 1, 1350, 3, 2));
+    /* held no longer, but within a flinch's length of the hold's end: no hold */
+    CHECK(apply(world, hold(1400, 1, 7, 100, BODY_HOLD_FLINCH)) == BODY_OK && no_event(world));
+    CHECK(body_next_due(world, &due) == 1 && due == 1450);
+    CHECK(body_run(world, &ground, 1450) == BODY_OK && event_is(world, BODY_EVENT_CELL, 1, 1450, 4, 2));
+    /* a hit after the window holds again: the step under way lands when the hold ends */
+    CHECK(apply(world, hold(1500, 1, 7, 100, BODY_HOLD_FLINCH)) == BODY_OK);
+    CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1500, 4, 2) && no_event(world));
+    CHECK(body_next_due(world, &due) == 1 && due == 1600);
+    /* a skill's hold only extends: one that would end sooner changes nothing, a longer one holds */
+    CHECK(apply(world, hold(1520, 1, 7, 50, BODY_HOLD_EXTEND)) == BODY_OK && no_event(world));
+    CHECK(body_next_due(world, &due) == 1 && due == 1600);
+    CHECK(apply(world, hold(1520, 1, 7, 200, BODY_HOLD_EXTEND)) == BODY_OK);
+    CHECK(event_is(world, BODY_EVENT_MOVE, 1, 1520, 4, 2) && no_event(world));
+    CHECK(body_next_due(world, &due) == 1 && due == 1720);
+    /* a hold of no kind the core knows is refused */
+    CHECK(refused(world, size, hold(1520, 1, 7, 200, 2), BODY_BAD_VALUE));
     CHECK(body_world_check(world, size) == BODY_OK);
     free(world);
 }
@@ -3302,6 +3360,7 @@ int main(int argc, char **argv)
     test_request_sees();
     test_state();
     test_delay();
+    test_hold_kinds();
     test_stop_speed_place();
     test_push_time();
     test_same_tick();

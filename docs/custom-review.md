@@ -19856,3 +19856,14 @@ motion scenes (`tests/scenes/motion`, whose player walks by `ZC_NOTIFY_PLAYERMOV
 load scenes (`tests/scenes/load`) stage their walks and attacks with the same kind of packets;
 staging them with the netcode's records is open. Not checked: the Linux, macOS and Android builds;
 the client in a shown window; play by a person.
+
+## A hit holds a player as the fork's unit_set_walkdelay does (2026-11-20)
+
+The copy of the server's body core here is at rules version 15. Its hold input says the hold's
+kind, the fork's two types of `unit_set_walkdelay`: a hit's flinch holds a body only when it has
+not been held for the flinch's own length before now ("immune to being stopped for double the
+flinch time"), and a skill's or an attack's hold only puts the end later. Before, every hold
+only extended, so a player several monsters hit was held again by hits the fork lets pass; each
+such hold is one more time the predicted body runs ahead of the server's until its next word. A hold of 0 ms is none, as in the fork. The client puts no
+hold into its own world: the holds come with the server's word of the body, so only the copy
+changed.
