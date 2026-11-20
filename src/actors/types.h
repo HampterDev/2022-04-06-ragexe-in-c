@@ -284,13 +284,6 @@ struct ActorSkillUse {
     int attacked_mt;
 };
 
-struct GameActorMove {
-    unsigned start_tick;
-    int src_x, src_y;
-    int sub_x, sub_y;
-    int dst_x, dst_y;
-};
-
 struct GroundSkillInfo {
     int skill_id;
     int start_time;
@@ -368,8 +361,6 @@ struct Player {
     CPC_MEMBERS
     int requested_cell_x;
     int requested_cell_y;
-    unsigned move_request_tick;
-    int move_request_pending;
     int owed_walk;
     int target_aid;
     int skill_id;

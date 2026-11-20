@@ -52,7 +52,6 @@ unsigned char player_on_process(struct GameObject *object)
     struct Player *self = (struct Player *)object;
 
     struct GameActor *actor = (struct GameActor *)self;
-    struct GameActorMove req;
     struct UIWindow *wnd;
     unsigned char result;
     struct GameMode *mode;
@@ -68,13 +67,6 @@ unsigned char player_on_process(struct GameObject *object)
     if (self->argb != 0xffffffff)
         render_object_modify_argb((struct RenderObject *)self, 8, 8, 8, 8);
     mode = game_current_mode();
-    if (self->move_request_pending && platform_ticks_ms() > self->move_request_tick + (g_session1.averagePing >> 1)) {
-        game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &req.src_x, &req.src_y, &req.sub_x, &req.sub_y);
-        req.start_tick = session_get_server_time(&g_session1);
-        req.dst_x = self->requested_cell_x;
-        req.dst_y = self->requested_cell_y;
-        render_object_send(self, NULL, 0, (intptr_t)&req, 0, 0, 0);
-    }
     /* The walk the player asked for since the last frame leaves now, and is in the predicted
        world and drawn in this frame (game/own_actor.c). Of several clicks of one frame the
        newest is the one that counts. Nothing spaces the requests: a click is not held back
@@ -249,12 +241,6 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
     switch ((int)msg) {
     case 0x8:
         actor_set_state(self, 0);
-        break;
-    case 0x9:
-        self->move_request_pending = 1;
-        self->move_request_tick = platform_ticks_ms();
-        self->requested_cell_x = p1;
-        self->requested_cell_y = p2;
         break;
     case 0xa:
         self->asked_walk = 0;
@@ -447,8 +433,6 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->roty = (float)((g_session1.playerDir + 4) * 45);
     self->aid = g_session1.ownAid;
     self->guild_id = g_guildInfo.guild_id;
-    self->move_request_tick = 0;
-    self->move_request_pending = 0;
     self->target_aid = 0;
     self->pickable = 1;
     self->skill_id = 0;
