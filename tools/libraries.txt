@@ -72,6 +72,20 @@ note    The parts of a texture written since it went up, as pure logic (render/d
 uses    base
 paths   render/dirty_rects.*
 
+library frame-ring
+note    The frames one thread records and another submits, as pure logic (render/frame_ring.c): the
+        slot of the ring each frame's packet lives in, when the recording thread may fill a slot
+        again, and which frame the submitting thread waits for on the GPU first. Uses nothing else of
+        the client.
+uses
+paths   render/frame_ring.*
+
+library render-thread
+note    The render thread (render/render_thread.c): a thread of SDL's that runs the frames another
+        thread records, one at a time and in the order they are handed over, by the ring's rules.
+uses    frame-ring
+paths   render/render_thread.*
+
 library quads
 note    The client's quads and triangles as instances, as pure logic (render/quads.c): what an
         instance holds, and the record of each that the quad shader makes its vertices from, made
@@ -185,7 +199,7 @@ note    The 3D device, textures and surfaces, the renderer and its lists, text a
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
 uses    fileio display-options texel-convert dirty-rects draw-modes quads screen-wobble font-finder world-layout
-        shadow-fit-gpu skin-layout atlas-index
+        shadow-fit-gpu skin-layout atlas-index render-thread
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 

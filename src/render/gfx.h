@@ -50,9 +50,11 @@ int gfx_create_screen(struct C3dDevice *d);
 int gfx_create_zbuffer(struct C3dDevice *d);
 int gfx_get_caps(struct gfx_caps *out);
 int gfx_close(struct C3dDevice *d);
-/* custom: the frame into the window, which the device claims at the first present while it is
-   shown; a window never shown (the scene harness's) has no swapchain, and its frames are drawn and
-   read (gfx_read_frame), not shown. */
+/* custom: ends the frame: what was recorded goes to the device's render thread, which records it
+   into the GPU's command buffer and submits it while the next frame is recorded, and the window
+   shows the frame before, the last one the render thread finished; the device claims the window at
+   the first present while it is shown. A window never shown (the scene harness's) has no
+   swapchain, and its frames are drawn and read (gfx_read_frame), not shown. */
 int gfx_present(int vsync);
 void gfx_set_mipmaps(int on);
 
@@ -375,9 +377,10 @@ int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *conte
 /* custom: the screen's picture as drawn so far, a rectangle of it or the whole without one, as
    B8G8R8A8 rows `pitch` bytes apart into out, alpha 255: downloaded from the GPU when asked, with
    what was recorded before it drawn first, the CPU waiting for both. Called after gfx_present it
-   reads the frame just presented (screenshots, the scene harness's captures). 0, or -1 for a
-   rectangle that is empty or reaches outside the screen, a pitch narrower than its rows, or a
-   download that failed. */
+   reads the frame just ended (screenshots, the scene harness's captures), which the window shows
+   only at the next present. 0, or -1 for a rectangle that is empty or reaches outside the screen,
+   a pitch narrower than its rows, or a download that failed (or a frame that could not go to the
+   GPU). */
 int gfx_read_frame(const RECT *r, void *out, size_t pitch);
 
 /* custom: for the tests, a mipmap level of a texture as the device holds it (its own texture, or its

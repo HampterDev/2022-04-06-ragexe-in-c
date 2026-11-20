@@ -9,18 +9,28 @@
    storage buffer: a quad's through its own record in the frame's quads, a Granny actor's through
    its pose's header there, a draw of the static world's as a uniform, the wobble's through an
    instance-rate attribute that holds its index) in a list of passes, and what it draws and the
-   texels of the textures it uses since they changed go into one staging area. The client's quads
-   and triangles are instances (render/quads.h): a record each in the frame's quads, which the quad
-   shader makes the vertices of, batched into draws while what they are drawn with stays the same;
-   the sprite atlas's pages are layers of texture arrays, which draws batch across. Granny's models
-   stay on the GPU once a draw has taken them up, and their actors are skinned by the skin shader in
-   the poses the frame's quads hold (gfx_draw_skin). When the frame is presented, or the screen's
-   picture is read (gfx_read_frame), one command buffer copies all of that through one transfer
-   buffer in one copy pass and replays the passes. Textures keep their pixels on the CPU in the
-   client's own format, so that the model loader's thread creates, locks and fills them without
-   calling SDL; the main thread widens them to B8G8R8A8 when a draw first uses them after a change.
-   Render targets live on the GPU, and nothing of them comes back to the CPU but the screen's
-   picture when it is read.
+   texels of the textures it uses since they changed are written once, into transfer buffers the
+   frame's copy pass reads. The client's quads and triangles are instances (render/quads.h): a
+   record each in the frame's quads, which the quad shader makes the vertices of, batched into
+   draws while what they are drawn with stays the same; the sprite atlas's pages are layers of
+   texture arrays, which draws batch across. Granny's models stay on the GPU once a draw has taken
+   them up, and their actors are skinned by the skin shader in the poses the frame's quads hold
+   (gfx_draw_skin). Textures keep their pixels on the CPU in the client's own format, so that the
+   model loader's thread creates, locks and fills them without calling SDL; the main thread widens
+   them to B8G8R8A8 when a draw first uses them after a change. Render targets live on the GPU, and
+   nothing of them comes back to the CPU but the screen's picture when it is read.
+
+   custom: a frame is recorded into a packet of its own, one of a ring (render/frame_ring.h), and
+   handed whole to the device's render thread (render/render_thread.h, frame_run) when it is
+   presented or the screen's picture is read (flush): the render thread records it into one command
+   buffer, one copy pass and the passes, and submits it, while the main thread records the next. A
+   packet holds every GPU object its passes use as they were when it was handed over, so that the
+   render thread reads nothing the main thread changes; what the main thread gives up goes once the
+   next frame handed over has been submitted (retire). The main thread presents: it puts the screen,
+   as the frame the render thread last finished left it, into the window's picture. Command
+   buffers are recorded one at a time, the render thread's and the main thread's own alike
+   (commands_take), as SDL moves textures and buffers in memory when a command buffer is
+   submitted.
 
    custom: the static world (gfx_world_*) stays on the GPU from frame to frame: its meshes in shared
    vertex and index buffers, its textures in texture arrays, its draw records, transform slots and
@@ -39,7 +49,9 @@
 #include "render/gfx.h"
 #include "render/device.h"
 #include "render/dirty_rects.h"
+#include "render/frame_ring.h"
 #include "render/present_fit.h"
+#include "render/render_thread.h"
 #include "render/screen_wobble.h"
 #include "render/texel_convert.h"
 #include "render/world_layout.h"
@@ -58,6 +70,7 @@
 #include "render/shaders/water.h"
 #include "render/shaders/skin.h"
 #include "render/shaders/rows.h"
+#include "core/compiler.h"
 #include "diag/perf.h"
 #include "platform/clock.h"
 #include <SDL3/SDL.h>
@@ -161,10 +174,11 @@ struct gfx_skin {
 };
 
 /* a model whose buffers the frame's upload fills, its vertices and then its indices at `at` of the
-   models' part of the transfer buffer */
+   frame's texels, staged when a draw first takes it (skin_ready) */
 struct skin_upload {
     struct gfx_skin *model;
-    uint32_t at;
+    SDL_GPUBuffer *vertices, *indices;
+    uint32_t at, vertexBytes, indexBytes;
 };
 
 /* One recorded draw: of the frame's quads (PROG_QUAD, `count` instances from `record`, the first's
@@ -173,7 +187,8 @@ struct skin_upload {
    water's cells (PROG_WATER, `instances` of them from firstInstance of the frame's), the wobble's
    (`count` vertices, its draw record `record`), or of a Granny model's (PROG_SKIN, `count` of its
    indices from firstIndex in `instances` poses, their headers' places among the quads' offsets
-   from firstInstance); a world's draw is of the world of `generation` (gfx_world_generation). */
+   from firstInstance, the model's buffers skinVertices and skinIndices); a world's draw is of the
+   world of `generation` (gfx_world_generation). */
 struct gpu_draw {
     SDL_GPUGraphicsPipeline *pipeline;
     int program;
@@ -183,11 +198,11 @@ struct gpu_draw {
     int32_t baseVertex;
     uint32_t instances, firstInstance;
     uint32_t record;
-    uint32_t uniform[4];    /* what the world's programs take as their uniform: the draw's record
-                               (the water: its record, the waves' count and the cells', where its
-                               sines start) */
+    uint32_t uniform[4];    /* what the world's programs take as their uniform: the world's, its
+                               draw's record among the frame's uniforms; the water's, its record,
+                               the waves' count and the cells', and its view among the frame's */
     int generation;
-    struct gfx_skin *skin;
+    SDL_GPUBuffer *skinVertices, *skinIndices;
     /* the world's programs: the texture arrays bind[0] and bind[1] read (SW_NO_ARRAY: white), whose
        textures run_pass takes as they are once the flush has made and grown them (world_array) */
     uint8_t arrays[2];
@@ -199,8 +214,12 @@ enum { STEP_PASS, STEP_UPLOADS, STEP_COPY };
    after the frame's first draws; or a copy between GPU textures. */
 struct gpu_step {
     int kind;
-    /* STEP_PASS */
+    /* STEP_PASS: the target, and what the render thread draws into, taken from it when the pass
+       begins: its texture or the screen's multisampled one with the texture to resolve into, its
+       depth, its size */
     struct gfx_surface *target;
+    SDL_GPUTexture *colour, *resolve, *depth;
+    int width, height;
     SDL_GPULoadOp loadColour, loadDepth;
     SDL_FColor clearColour;
     float clearDepth;
@@ -220,7 +239,9 @@ struct gpu_step {
 struct gpu_upload {
     struct gfx_surface *surface;  /* a texture or system surface whose pixels go up */
     SDL_GPUTexture *tex;
-    struct gpu_array *array;  /* the layered texture's array, of which it is layer `layer` */
+    /* the layered texture's array, of which it is layer `layer`, and the array's size and levels */
+    SDL_GPUTexture *array;
+    uint32_t arrayW, arrayH, arrayLevels;
     uint32_t layer;
     int scratch;       /* tex is the layer's scratch texture */
     int fromLayer;     /* copies the layer's top level into its scratch texture, not texels */
@@ -229,12 +250,27 @@ struct gpu_upload {
     int mips;
 };
 
+/* Bytes a frame writes; a stream that goes up (`staged`) lives in a transfer buffer of its own,
+   mapped while the frame is recorded, so that what the frame writes is what the copy pass reads. */
 struct bytes {
     unsigned char *data;
     size_t size, capacity;
+    int staged;
+    SDL_GPUTransferBuffer *buffer;
+    int quiet;  /* frames in a row that needed a quarter of its transfer buffer at most */
 };
 
-#define FRAMES_IN_FLIGHT 2
+/* GPU objects given up while a frame was recorded, which earlier frames may still record into
+   their command buffers: released once the frame is submitted (release_retired) */
+struct retired {
+    SDL_GPUTexture *texture;
+    SDL_GPUBuffer *buffer;
+};
+
+/* the frame's per-frame buffers, which its lists go into */
+struct frame_buffers {
+    SDL_GPUBuffer *records, *rows, *quads, *offsets, *instances;
+};
 
 /* A pipeline: its program and what it holds of a mode and of the target. */
 struct pipe_desc {
@@ -256,6 +292,98 @@ struct draw_state {
     unsigned char combine, depth, alphaTest, alphaRef, fog, colour, address[2], filter, lightmap, into;
 };
 
+/* a run of the view's records as the depth pass draws it */
+struct world_run {
+    uint8_t pass, cull, textureArray;
+};
+
+/* The static world as a frame hands it to the render thread (world_hand_over): its buffers and
+   arrays as they are when the frame goes, what went into the frame's texels for them and where,
+   and what its compute and shadow passes are given. */
+struct world_frame {
+    int on, generation;
+    SDL_GPUBuffer *vertices, *ids, *indices, *recordBuffer, *cullData, *draws, *drawn, *slotBuffer, *views, *placed,
+        *animatedBuffer, *uvBuffer, *cellBuffer, *waveBuffer, *instanceBuffer, *fitState, *fitHistory, *fitResult;
+    SDL_GPUTexture *white, *arrays[SW_NO_ARRAY];
+    uint32_t narrays;
+    /* staged in the frame's texels; the fit's state goes up where stateUp, its history where
+       historyDue */
+    int whiteDue, recordsChanged, slotsChanged, cellsChanged, frameDue, fitStateDue, stateUp, historyDue;
+    uint32_t whiteAt, recordsAt, slotsAt, cellsAt, frameAt, fitStateAt;
+    uint32_t idBytes, cullBytes, slotBytes, cellBytes, animatedBytes, uvBytes, waveBytes, instanceBytes;
+    /* the compute passes, where `compute`; the shadows, given (shadowSet) and drawn (`shadows`) */
+    int compute, shadowSet, shadows;
+    struct GfxWorldView camera;
+    struct SwFrustum frustum;
+    struct GfxShadow shadow;
+    int screenW, screenH;
+    uint32_t slotCount, recordCount, sectionIndices;
+    size_t nindirect, ncasterRuns, nchunks;
+    struct WlCullLayout cullLayout;
+    struct WlDrawLayout drawLayout;
+    struct world_run *runs;  /* the view's runs, nindirect */
+    size_t runCapacity;
+    uint8_t *casterArrays;   /* the texture array of each of the casters' runs, ncasterRuns */
+    size_t casterArrayCapacity;
+    SDL_GPUTexture *fitFront, *fitBack, *fitDepth, *shadowMaps, *shadowDepth;
+    int fitW, fitH;
+};
+
+/* How a frame went: drawn, not handed over whole (its uploads put back at once), or not submitted
+   by the render thread (its uploads put back when it is retired). */
+enum { FRAME_DRAWN, FRAME_DROPPED, FRAME_UNSUBMITTED };
+
+/* A frame's packet, a slot of the ring (render/frame_ring.h): what the main thread records, which
+   it hands to the render thread (frame_run) whole, and takes back once the render thread has
+   submitted it (frame_retire). While the render thread has it, the main thread writes none of it,
+   and the render thread reads nothing of the main thread's but the device's fixed objects. */
+struct gpu_frame {
+    unsigned number;  /* G.frame while it was recorded */
+    struct gpu_step *steps;
+    size_t nsteps, stepCapacity;
+    struct gpu_draw *draws;
+    size_t ndraws, drawCapacity;
+    struct gpu_upload *uploads;
+    size_t nuploads, uploadCapacity, frameUploads;  /* frameUploads: those of the first copy pass */
+    /* what goes up: the draw records, the wobble's tables of rows, the instances' records with the
+       matrices and vertices they name (render/quads.h), the row each record starts at, and the
+       texels with everything else; and, kept on the CPU, the views the water draws with and the
+       world's draws' records, which they take as uniforms */
+    struct bytes records, rows, quads, offsets, texels;
+    struct bytes views, uniforms;
+    /* the surfaces it draws with, which a release while it is recorded leaves until it is handed
+       over (frame_unpin) */
+    struct gfx_surface **pins;
+    size_t npins, pinCapacity;
+    struct skin_upload *skinUploads;
+    size_t nskinUploads, skinUploadCapacity;
+    /* blocks of CLEAR_TEXELS like texels among the staged ones (clear_texels): the texel and the
+       block's offset plus one, 0 for none */
+    struct { uint32_t texel; long at; } clearBlocks[2];
+    /* the GPU objects given up while it was recorded, which the render thread releases once it has
+       submitted it */
+    struct retired *retired;
+    size_t nretired, retiredCapacity;
+    /* handed over with it: its buffers, the identity instances where they go up with it (at that
+       offset of its texels, -1 for none), the world, a download of the screen (gfx_read_frame) */
+    struct frame_buffers buffers;
+    long instancesAt;
+    uint32_t instanceCount;
+    struct world_frame world;
+    struct {
+        SDL_GPUTexture *texture;
+        SDL_GPUTransferBuffer *buffer;
+        int x, y, w, h;
+        unsigned char *out;
+        size_t pitch;
+    } download;
+    int drawsScreen;  /* a pass of it draws into the screen */
+    /* the render thread's: the frame's fence, how it went, whether the world's compute passes and
+       its shadows were recorded, and whether the download reached `out` */
+    SDL_GPUFence *fence;
+    int state, computed, shadowFailed, downloaded;
+};
+
 static struct {
     SDL_Window *window;
     SDL_GPUDevice *dev;
@@ -263,8 +391,9 @@ static struct {
     SDL_Mutex *lock;
     SDL_AtomicInt contentTick;
     struct gfx_surface *handles;
-    SDL_GPUTexture **deadTextures;
-    size_t deadCount, deadCapacity;
+    /* GPU objects given up since the last frame was handed over, which goes with the next */
+    struct retired *retiring;
+    size_t nretiring, retiringCapacity;
 
     /* the screen holds the picture (resolved when multisampled); target is where draws go */
     struct gfx_surface *screen, *target;
@@ -313,7 +442,8 @@ static struct {
     SDL_GPUTexture *white;
     SDL_GPUTexture *frameCopy;  /* the screen's picture as the wobble found it (gfx_wobble) */
     int frameCopyW, frameCopyH;
-    SDL_GPUBuffer *records, *rows, *quads, *offsets, *instances;
+    /* the frames' buffers as large as the frames have needed, which each frame takes as it goes */
+    struct frame_buffers buffers;
     uint32_t recordsSize, rowsSize, quadsSize, offsetsSize, instanceCount;
     SDL_GPUBuffer *corners, *triangles;  /* quad_corners and quad_triangles, uploaded once */
     struct gpu_array *arrays;  /* every array of layered textures */
@@ -336,8 +466,7 @@ static struct {
     int matrixIndex[2];
     /* the Granny models given since their draw was last made (batch_flush, skin_batch_join): the
        draw's record, the model and the textures, the range drawn and the poses that draw it, whose
-       headers' places among the quads' offsets begin at firstInstance; every model, and those whose
-       buffers the frame's upload fills, from their own arrays (skinBytes of them) */
+       headers' places among the quads' offsets begin at firstInstance; every model */
     struct {
         int open;
         uint32_t record, firstInstance, prims, bytes;
@@ -346,36 +475,20 @@ static struct {
         struct SkinBatch range;
     } skinBatch;
     struct gfx_skin *skins;
-    struct skin_upload *skinUploads;
-    size_t nskinUploads, skinUploadCapacity;
-    uint32_t skinBytes;
-    SDL_GPUTransferBuffer *upload, *download;
-    /* the frames the GPU may still be drawing: at most FRAMES_IN_FLIGHT, also where no swapchain
-       paces them (a hidden window), so that the CPU does not run ahead and the cycled buffers do
-       not pile up */
-    SDL_GPUFence *inFlight[FRAMES_IN_FLIGHT];
-    int inFlightNext;
+    /* where a frame's download of the screen goes (gfx_read_frame) */
+    SDL_GPUTransferBuffer *download;
+    uint32_t downloadSize;
     Uint64 presentedNs;  /* when the window last took a picture */
-    uint32_t uploadSize, downloadSize;
-    int stagingQuiet;  /* flushes in a row that needed a quarter of the transfer buffer at most */
+    int screenShown;     /* a frame drawn into the screen as it is has been submitted */
 
-    /* the frame being recorded */
+    /* the frames: the ring's packets and the render thread that submits them (frame_run); the
+       number of the frame being recorded, which pins what it draws with, and the packet it is
+       recorded into */
+    struct gpu_frame frames[FRAME_RING_SLOTS];
+    struct RenderThread *thread;
+    SDL_Mutex *recording;  /* held while a command buffer is recorded (commands_take) */
     unsigned frame;
-    struct gpu_step *steps;
-    size_t nsteps, stepCapacity;
-    struct gpu_draw *draws;
-    size_t ndraws, drawCapacity;
-    struct gpu_upload *uploads;
-    size_t nuploads, uploadCapacity, frameUploads;  /* frameUploads: those of the first copy pass */
-    struct bytes drawRecords, viewRecords, rowTables, texels;
-    /* the instances' records with the matrices and vertices they name (render/quads.h), and the row
-       each record starts at */
-    struct bytes quadData, quadOffsets;
-    struct gfx_surface **pins;
-    size_t npins, pinCapacity;
-    /* blocks of CLEAR_TEXELS like texels among this frame's staged ones (clear_texels): the texel
-       and the block's offset plus one, 0 for none */
-    struct { uint32_t texel; long at; } clearBlocks[2];
+    struct gpu_frame *f;
     /* the surfaces and Granny models held, one reference each, until gfx_release_holds (gfx_hold,
        gfx_hold_skin) */
     struct gfx_surface **holds;
@@ -486,12 +599,11 @@ static struct {
     SDL_GPUBuffer *cellBuffer, *waveBuffer, *instanceBuffer;
     uint32_t cellBufferSize, waveSize, instanceSize;
     /* the frame: given (gfx_world_frame) until it is presented, with its shadows where shadowSet;
-       its compute passes due, and run in this flush; and whether this flush's shadow passes could
-       not all be recorded, after which its draws of the world receive none (run_pass) */
+       its matrices, waves and water staged, and its compute passes due */
     struct GfxWorldView camera;
     struct SwFrustum frustum;
     struct GfxShadow shadow;
-    int frameSet, shadowSet, frameDue, computeDue, computed, shadowFailed;
+    int frameSet, shadowSet, frameDue, computeDue;
     uint32_t frameAt, waveCount;
     struct bytes animated, uvs, waves, instances;
     SDL_GPUBuffer *animatedBuffer, *uvBuffer;
@@ -504,9 +616,11 @@ static struct {
     SDL_GPUBuffer *fitState, *fitHistory, *fitResult;
     int historyDue, fitStateDue;
     uint32_t fitStateAt;
-    /* the shadows the GPU fitted last (gfx_read_shadow_fit), where fitted */
+    /* the shadows the GPU fitted last (gfx_read_shadow_fit), where fitted: by a frame from
+       fittedFrom on, the first recorded since the client last gave the world's frame */
     struct GfxShadow fitted;
     int fittedSet;
+    unsigned fittedFrom;
 } W;
 
 static struct PresentCover present_cover;
@@ -551,15 +665,86 @@ static int grow(void **items, size_t *capacity, size_t need, size_t size)
     return 1;
 }
 
-/* `size` bytes at an `align`-aligned offset of b, zeroed; answers the offset, or -1 */
-static long bytes_add(struct bytes *b, size_t size, size_t align)
+/* the smallest transfer buffer a frame's stream is given */
+#define STAGE_MIN 65536u
+/* a stream's transfer buffer of more than 4 MB whose frames have needed a quarter of it at most
+   this many times in a row is made again as small as they need (frame_begin); each packet keeps
+   its own, so that is this many of its frames, one in FRAME_RING_SLOTS of the client's */
+#define STAGING_QUIET 120
+
+/* A staged stream's transfer buffer, unmapped and released; it is the frame's own, which neither
+   the GPU nor the render thread has while the main thread records into it. */
+static void stage_release(struct bytes *b)
+{
+    if (b->buffer && G.dev) {
+        if (b->data)
+            SDL_UnmapGPUTransferBuffer(G.dev, b->buffer);
+        SDL_ReleaseGPUTransferBuffer(G.dev, b->buffer);
+    }
+    b->buffer = NULL;
+    b->data = NULL;
+    b->capacity = 0;
+}
+
+/* b made to hold `need` bytes, with what the frame wrote into it so far: a staged stream's transfer
+   buffer made again larger and mapped, other bytes grown on the CPU. 0 where it cannot be. Kept out
+   of bytes_at, which every record of a frame goes through: inlined there, its locals and calls
+   cost each of those calls a frame the size of this function's. */
+static RAGE_NOINLINE int bytes_grow(struct bytes *b, size_t need)
+{
+    SDL_GPUTransferBufferCreateInfo info;
+    SDL_GPUTransferBuffer *made;
+    unsigned char *data = NULL;
+    size_t c = b->capacity ? b->capacity : STAGE_MIN;
+    if (!b->staged)
+        return grow((void **)&b->data, &b->capacity, need, 1);
+    while (c < need) {
+        if (c > UINT32_MAX / 2)
+            return 0;
+        c *= 2;
+    }
+    SDL_zero(info);
+    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    info.size = (Uint32)c;
+    made = G.dev ? SDL_CreateGPUTransferBuffer(G.dev, &info) : NULL;
+    if (made && !(data = SDL_MapGPUTransferBuffer(G.dev, made, false)))
+        SDL_ReleaseGPUTransferBuffer(G.dev, made);
+    if (!data) {
+        SDL_Log("gfx: a transfer buffer of %u bytes: %s", (unsigned)c, SDL_GetError());
+        return 0;
+    }
+    if (b->size)
+        memcpy(data, b->data, b->size);
+    stage_release(b);
+    b->buffer = made;
+    b->data = data;
+    b->capacity = c;
+    return 1;
+}
+
+/* `size` bytes at an `align`-aligned offset of b, zeroed, or with `zero` 0 left for the caller to
+   write whole (the padding before them zeroed); answers the offset, or -1 */
+static long bytes_at(struct bytes *b, size_t size, size_t align, int zero)
 {
     size_t at = (b->size + align - 1) & ~(align - 1);
-    if (!grow((void **)&b->data, &b->capacity, at + size, 1))
+    if (at + size > b->capacity && !bytes_grow(b, at + size))
         return -1;
-    memset(b->data + b->size, 0, at + size - b->size);
+    if (zero)
+        memset(b->data + b->size, 0, at + size - b->size);
+    else if (at > b->size)
+        memset(b->data + b->size, 0, at - b->size);
     b->size = at + size;
     return (long)at;
+}
+
+static long bytes_add(struct bytes *b, size_t size, size_t align)
+{
+    return bytes_at(b, size, align, 1);
+}
+
+static long bytes_take(struct bytes *b, size_t size, size_t align)
+{
+    return bytes_at(b, size, align, 0);
 }
 
 /* ---- surfaces ---- */
@@ -590,27 +775,43 @@ static struct gfx_surface *new_handle(int kind, int w, int h, int fmt)
     return s;
 }
 
-/* A GPU texture goes after the next flush, since the frame recorded so far may use it; the model
-   loader's thread may give one up too. */
-static void retire_texture(SDL_GPUTexture *tex)
+/* A GPU object given up while frames recorded before may still use it goes with the next frame
+   handed over, and the render thread releases it once that frame is submitted (frame_run): by then
+   every frame that could record it into a command buffer has, and SDL keeps what a submitted
+   command buffer uses until the GPU is done with it. The model loader's thread may give a texture
+   up too. */
+static void retire(SDL_GPUTexture *texture, SDL_GPUBuffer *buffer)
 {
-    if (!tex)
+    if (!texture && !buffer)
         return;
     lock_handles();
-    if (grow((void **)&G.deadTextures, &G.deadCapacity, G.deadCount + 1, sizeof *G.deadTextures))
-        G.deadTextures[G.deadCount++] = tex;
+    if (grow((void **)&G.retiring, &G.retiringCapacity, G.nretiring + 1, sizeof *G.retiring)) {
+        G.retiring[G.nretiring].texture = texture;
+        G.retiring[G.nretiring].buffer = buffer;
+        G.nretiring++;
+    }
     unlock_handles();
 }
 
-static void collect_dead_textures(void)
+static void retire_texture(SDL_GPUTexture *texture)
+{
+    retire(texture, NULL);
+}
+
+static void retire_buffer(SDL_GPUBuffer *buffer)
+{
+    retire(NULL, buffer);
+}
+
+static void release_retired(struct retired *list, size_t n)
 {
     size_t i;
-    lock_handles();
-    for (i = 0; i < G.deadCount; i++)
-        if (G.dev)
-            SDL_ReleaseGPUTexture(G.dev, G.deadTextures[i]);
-    G.deadCount = 0;
-    unlock_handles();
+    for (i = 0; i < n; i++) {
+        if (list[i].texture)
+            SDL_ReleaseGPUTexture(G.dev, list[i].texture);
+        if (list[i].buffer)
+            SDL_ReleaseGPUBuffer(G.dev, list[i].buffer);
+    }
 }
 
 static void batch_flush(void);
@@ -674,6 +875,9 @@ static int batch_reads(const struct gfx_surface *s)
     return 0;
 }
 
+/* A surface the frame being recorded draws with goes when the frame is handed over (frame_unpin);
+   the render thread reads no surface, only the GPU objects the frame's packet holds, and those go
+   later (retire). */
 static void free_handle(struct gfx_surface *s)
 {
     int i, pinned;
@@ -734,16 +938,18 @@ void gfx_release_holds(void)
     }
 }
 
+/* s stays until the frame being recorded is handed over (frame_unpin). */
 static void pin(struct gfx_surface *s)
 {
+    struct gpu_frame *f = G.f;
     if (!s || s->pinned == G.frame)
         return;
-    if (!grow((void **)&G.pins, &G.pinCapacity, G.npins + 1, sizeof *G.pins))
+    if (!grow((void **)&f->pins, &f->pinCapacity, f->npins + 1, sizeof *f->pins))
         return;
     lock_handles();
     s->pinned = G.frame;
     unlock_handles();
-    G.pins[G.npins++] = s;
+    f->pins[f->npins++] = s;
 }
 
 static void whole_rect(RECT *r, const struct gfx_surface *s)
@@ -774,6 +980,61 @@ static void mark_dirty(struct gfx_surface *s, const RECT *r)
     unlock_handles();
 }
 
+/* Command buffers are recorded one at a time. SDL 3.4's Vulkan driver moves textures and buffers
+   to other memory when a command buffer is submitted (on every submit while no window is claimed,
+   on those that present while one is), copying their contents in the command buffer submitted and
+   pointing their handles at the new memory, and leaves only those with an upload or download
+   pending where they are. A render pass or a bind takes a texture's or a buffer's memory as it is
+   recorded, so a submit while another command buffer is being recorded could leave that one's
+   earlier passes drawing into the old memory and its later ones reading the new. So the render
+   thread holds the device's recording from acquiring a frame's command buffer to submitting it,
+   and the main thread while it records and submits one of its own and while SDL makes a texture,
+   for which SDL submits a command buffer of its own. Acquiring a command buffer or a swapchain
+   texture names no texture or buffer of the device's and needs no hold. SDL's mutexes may be taken
+   again by the thread holding them. */
+static void commands_take(void)
+{
+    SDL_LockMutex(G.recording);
+}
+
+static void commands_give(void)
+{
+    SDL_UnlockMutex(G.recording);
+}
+
+/* A command buffer of the main thread's, recorded while it is held; NULL where it could not be had. */
+static SDL_GPUCommandBuffer *main_commands(void)
+{
+    SDL_GPUCommandBuffer *cmd;
+    commands_take();
+    cmd = SDL_AcquireGPUCommandBuffer(G.dev);
+    if (!cmd)
+        commands_give();
+    return cmd;
+}
+
+/* Submits a command buffer of main_commands, with a fence where `fence` is given; 0 where it could
+   not be submitted. */
+static int main_submit(SDL_GPUCommandBuffer *cmd, SDL_GPUFence **fence)
+{
+    int ok;
+    if (fence)
+        ok = (*fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd)) != NULL;
+    else
+        ok = SDL_SubmitGPUCommandBuffer(cmd);
+    commands_give();
+    return ok;
+}
+
+static SDL_GPUTexture *make_texture(const SDL_GPUTextureCreateInfo *info)
+{
+    SDL_GPUTexture *t;
+    commands_take();
+    t = SDL_CreateGPUTexture(G.dev, info);
+    commands_give();
+    return t;
+}
+
 static SDL_GPUTexture *new_texture(int w, int h, int levels, SDL_GPUTextureUsageFlags usage)
 {
     SDL_GPUTextureCreateInfo info;
@@ -786,7 +1047,7 @@ static SDL_GPUTexture *new_texture(int w, int h, int levels, SDL_GPUTextureUsage
     info.layer_count_or_depth = 1;
     info.num_levels = (Uint32)levels;
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-    return SDL_CreateGPUTexture(G.dev, &info);
+    return make_texture(&info);
 }
 
 /* A target's texture (MARGIN). */
@@ -799,10 +1060,11 @@ static SDL_GPUTexture *new_target_texture(int w, int h)
 
 static struct gpu_step *add_step(int kind)
 {
+    struct gpu_frame *f = G.f;
     struct gpu_step *s;
-    if (!grow((void **)&G.steps, &G.stepCapacity, G.nsteps + 1, sizeof *G.steps))
+    if (!grow((void **)&f->steps, &f->stepCapacity, f->nsteps + 1, sizeof *f->steps))
         return NULL;
-    s = &G.steps[G.nsteps++];
+    s = &f->steps[f->nsteps++];
     memset(s, 0, sizeof *s);
     s->kind = kind;
     return s;
@@ -810,7 +1072,29 @@ static struct gpu_step *add_step(int kind)
 
 static struct gpu_step *last_step(void)
 {
-    return G.nsteps ? &G.steps[G.nsteps - 1] : NULL;
+    return G.f->nsteps ? &G.f->steps[G.f->nsteps - 1] : NULL;
+}
+
+static int pass_has_depth(const struct gpu_step *p)
+{
+    return !p->target ? 1 : p->target == G.screen && G.depth != NULL;
+}
+
+static int pass_samples(const struct gpu_step *p)
+{
+    return p->target && p->target == G.screen && G.msaa ? (int)G.samples : (int)SDL_GPU_SAMPLECOUNT_1;
+}
+
+/* What the render thread draws a pass into (run_pass), from its target as it is when the pass
+   begins: a target's textures change only where everything recorded before has gone (gfx_resize). */
+static void pass_targets(struct gpu_step *s)
+{
+    int ms = s->target == G.screen && G.msaa;
+    s->colour = ms ? G.msaa : s->target->tex;
+    s->resolve = ms && !s->unresolve ? s->target->tex : NULL;
+    s->depth = pass_has_depth(s) ? G.depth : NULL;
+    s->width = s->target->width;
+    s->height = s->target->height;
 }
 
 /* The pass the next draw goes into: the current target's. */
@@ -827,41 +1111,40 @@ static struct gpu_step *current_pass(void)
     s->unresolve = G.unresolving;
     s->loadColour = SDL_GPU_LOADOP_LOAD;
     s->loadDepth = SDL_GPU_LOADOP_LOAD;
-    s->first = (uint32_t)G.ndraws;
+    s->first = (uint32_t)G.f->ndraws;
+    pass_targets(s);
     pin(s->target);
     return s;
 }
 
-static int pass_has_depth(const struct gpu_step *p)
-{
-    return !p->target ? 1 : p->target == G.screen && G.depth != NULL;
-}
-
-static int pass_samples(const struct gpu_step *p)
-{
-    return p->target && p->target == G.screen && G.msaa ? (int)G.samples : (int)SDL_GPU_SAMPLECOUNT_1;
-}
-
 static struct gpu_draw *add_draw(struct gpu_step *pass)
 {
+    struct gpu_frame *f = G.f;
     struct gpu_draw *d;
-    if (!grow((void **)&G.draws, &G.drawCapacity, G.ndraws + 1, sizeof *G.draws))
+    if (!grow((void **)&f->draws, &f->drawCapacity, f->ndraws + 1, sizeof *f->draws))
         return NULL;
-    d = &G.draws[G.ndraws++];
+    d = &f->draws[f->ndraws++];
     memset(d, 0, sizeof *d);
     pass->count++;
     return d;
 }
 
-static uint32_t add_record(struct GpuDraw **out)
+/* A draw record among the frame's (`records`, which the shaders read), or among its uniforms
+   (`uniforms`, which the world's draws push). */
+static uint32_t add_record_to(struct bytes *b, struct GpuDraw **out)
 {
-    long at = bytes_add(&G.drawRecords, sizeof(struct GpuDraw), 16);
+    long at = bytes_add(b, sizeof(struct GpuDraw), 16);
     if (at < 0) {
         *out = NULL;
         return 0;
     }
-    *out = (struct GpuDraw *)(G.drawRecords.data + at);
+    *out = (struct GpuDraw *)(b->data + at);
     return (uint32_t)(at / (long)sizeof(struct GpuDraw));
+}
+
+static uint32_t add_record(struct GpuDraw **out)
+{
+    return add_record_to(&G.f->records, out);
 }
 
 /* ---- textures for draws ---- */
@@ -908,7 +1191,7 @@ static struct gpu_array *place_layer(struct gfx_surface *s)
         info.layer_count_or_depth = (Uint32)a->capacity;
         info.num_levels = (Uint32)s->levels;
         info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-        a->tex = a->taken ? SDL_CreateGPUTexture(G.dev, &info) : NULL;
+        a->tex = a->taken ? make_texture(&info) : NULL;
         if (!a->tex) {
             SDL_Log("gfx: an array of %d layers of %dx%d: %s", a->capacity, s->width, s->height, SDL_GetError());
             free(a->taken);
@@ -962,15 +1245,15 @@ static int stage_texels(struct gfx_surface *s, const RECT *r, uint32_t *offset)
     int64_t start;
     if (w <= 0 || h <= 0 || !s->pixels)
         return 0;
-    at = bytes_add(&G.texels, (size_t)w * h * 4, 16);
+    at = bytes_take(&G.f->texels, (size_t)w * h * 4, 16);
     if (at < 0)
         return 0;
     src = s->pixels + (size_t)r->top * s->width * bytes + (size_t)r->left * bytes;
     start = platform_stopwatch_ns();
     if (s->kind == K_SYSMEM)
-        texel_rows_keyed_to_bgra(src, (long)s->width * 4, w, h, s->key, G.texels.data + at, (long)w * 4);
+        texel_rows_keyed_to_bgra(src, (long)s->width * 4, w, h, s->key, G.f->texels.data + at, (long)w * 4);
     else
-        texel_rows_to_bgra(s->fmt, src, (long)s->width * bytes, w, h, G.texels.data + at, (long)w * 4);
+        texel_rows_to_bgra(s->fmt, src, (long)s->width * bytes, w, h, G.f->texels.data + at, (long)w * 4);
     g_perf.texelsNs += platform_stopwatch_ns() - start;
     *offset = (uint32_t)at;
     return 1;
@@ -991,21 +1274,22 @@ static int clip_rect(RECT *r, const struct gfx_surface *s)
 static struct gpu_upload *add_upload(struct gfx_surface *s, SDL_GPUTexture *tex, uint32_t x, uint32_t y, uint32_t w,
                                      uint32_t h, uint32_t offset, int mips)
 {
+    struct gpu_frame *f = G.f;
     struct gpu_upload *u;
     int late = s->pinned == G.frame;
-    if (!grow((void **)&G.uploads, &G.uploadCapacity, G.nuploads + 1, sizeof *G.uploads))
+    if (!grow((void **)&f->uploads, &f->uploadCapacity, f->nuploads + 1, sizeof *f->uploads))
         return NULL;
     if (!late) {
         /* the first copy pass's uploads stay at the front of the list */
-        memmove(G.uploads + G.frameUploads + 1, G.uploads + G.frameUploads,
-                (G.nuploads - G.frameUploads) * sizeof *G.uploads);
-        u = &G.uploads[G.frameUploads++];
-        G.nuploads++;
+        memmove(f->uploads + f->frameUploads + 1, f->uploads + f->frameUploads,
+                (f->nuploads - f->frameUploads) * sizeof *f->uploads);
+        u = &f->uploads[f->frameUploads++];
+        f->nuploads++;
         {
             size_t i;
-            for (i = 0; i < G.nsteps; i++)
-                if (G.steps[i].kind == STEP_UPLOADS)
-                    G.steps[i].first++;
+            for (i = 0; i < f->nsteps; i++)
+                if (f->steps[i].kind == STEP_UPLOADS)
+                    f->steps[i].first++;
         }
     } else {
         struct gpu_step *step = last_step();
@@ -1013,14 +1297,17 @@ static struct gpu_upload *add_upload(struct gfx_surface *s, SDL_GPUTexture *tex,
             step = add_step(STEP_UPLOADS);
             if (!step)
                 return NULL;
-            step->first = (uint32_t)G.nuploads;
+            step->first = (uint32_t)f->nuploads;
         }
         step->count++;
-        u = &G.uploads[G.nuploads++];
+        u = &f->uploads[f->nuploads++];
     }
     u->surface = s;
     u->tex = tex;
-    u->array = s->layered ? s->array : NULL;
+    u->array = s->layered ? s->array->tex : NULL;
+    u->arrayW = (uint32_t)s->width;
+    u->arrayH = (uint32_t)s->height;
+    u->arrayLevels = (uint32_t)s->levels;
     u->layer = s->layered ? (uint32_t)s->layer : 0;
     u->scratch = s->layered && tex != s->array->tex;
     u->fromLayer = 0;
@@ -1053,27 +1340,28 @@ static int upload_rect(struct gfx_surface *s, SDL_GPUTexture *tex, RECT r)
    without memory for them. */
 static int clear_texels(struct gfx_surface *s, SDL_GPUTexture *tex)
 {
+    struct gpu_frame *f = G.f;
     uint32_t texel = texel_unpack(s->fmt, 0), rows, y;
     long at;
     int i;
     if (s->width > CLEAR_TEXELS)
         return 0;
-    for (i = 0; i < 2 && !(G.clearBlocks[i].at && G.clearBlocks[i].texel == texel); i++)
+    for (i = 0; i < 2 && !(f->clearBlocks[i].at && f->clearBlocks[i].texel == texel); i++)
         ;
     if (i == 2) {
         uint32_t *block;
         long k;
-        i = G.clearBlocks[0].at ? 1 : 0;
-        at = bytes_add(&G.texels, CLEAR_TEXELS * 4, 16);
+        i = f->clearBlocks[0].at ? 1 : 0;
+        at = bytes_take(&f->texels, CLEAR_TEXELS * 4, 16);
         if (at < 0)
             return 0;
-        block = (uint32_t *)(G.texels.data + at);
+        block = (uint32_t *)(f->texels.data + at);
         for (k = 0; k < CLEAR_TEXELS; k++)
             block[k] = texel;
-        G.clearBlocks[i].texel = texel;
-        G.clearBlocks[i].at = at + 1;
+        f->clearBlocks[i].texel = texel;
+        f->clearBlocks[i].at = at + 1;
     }
-    at = G.clearBlocks[i].at - 1;
+    at = f->clearBlocks[i].at - 1;
     rows = CLEAR_TEXELS / (uint32_t)s->width;
     for (y = 0; y < (uint32_t)s->height; y += rows) {
         uint32_t h = (uint32_t)s->height - y < rows ? (uint32_t)s->height - y : rows;
@@ -1649,10 +1937,10 @@ static void view_fog(float *fog)
 static int add_view(const float *toClip)
 {
     struct GpuView *view;
-    long at = bytes_add(&G.viewRecords, sizeof *view, 16);
+    long at = bytes_add(&G.f->views, sizeof *view, 16);
     if (at < 0)
         return -1;
-    view = (struct GpuView *)(G.viewRecords.data + at);
+    view = (struct GpuView *)(G.f->views.data + at);
     memcpy(view->toClip, toClip, sizeof view->toClip);
     return (int)(at / (long)sizeof *view);
 }
@@ -1737,7 +2025,7 @@ static int quad_draw(int mode, const struct draw_state *s, struct gfx_surface *c
     memcpy(d->bind, bind, sizeof bind);
     d->count = count;
     d->record = first;
-    r = (struct GpuDraw *)(G.drawRecords.data + (size_t)record * sizeof *r);
+    r = (struct GpuDraw *)(G.f->records.data + (size_t)record * sizeof *r);
     fill_state(r, pass, s, stages, 1, alpha_to_coverage(draw_mode(mode), (int)pass_samples(pass), flat));
     if (array)
         r->stages[1] |= 4;
@@ -1786,7 +2074,7 @@ static int batch_join(int flat)
         return 0;
     G.batch.open = 1;
     G.batch.flat = flat;
-    G.batch.first = (uint32_t)(G.quadOffsets.size / 4);
+    G.batch.first = (uint32_t)(G.f->offsets.size / 4);
     G.batch.count = G.batch.prims = G.batch.bytes = 0;
     G.batch.tex[0] = t0;
     G.batch.tex[1] = t1;
@@ -1819,16 +2107,16 @@ static int batch_header(struct QuadHeader *h, int matrix)
    number of 16-byte rows, drawing `prims` triangles. */
 static void batch_add(const uint32_t *words, int n, uint32_t prims)
 {
-    long at = bytes_add(&G.quadData, (size_t)n * 4, 16), offset;
+    long at = bytes_take(&G.f->quads, (size_t)n * 4, 16), offset;
     if (at < 0)
         return;
-    offset = bytes_add(&G.quadOffsets, 4, 4);
+    offset = bytes_take(&G.f->offsets, 4, 4);
     if (offset < 0) {
-        G.quadData.size = (size_t)at;
+        G.f->quads.size = (size_t)at;
         return;
     }
-    memcpy(G.quadData.data + at, words, (size_t)n * 4);
-    *(uint32_t *)(G.quadOffsets.data + offset) = (uint32_t)(at / 16);
+    memcpy(G.f->quads.data + at, words, (size_t)n * 4);
+    *(uint32_t *)(G.f->offsets.data + offset) = (uint32_t)(at / 16);
     G.batch.count++;
     G.batch.prims += prims;
     G.batch.bytes += (uint32_t)n * 4 + 4;
@@ -1852,10 +2140,10 @@ static int quad_matrix(const float *view, const float *proj, const float *centre
     m[15] = centre[1];
     if (G.matrixIndex[kind] >= 0 && !memcmp(m, G.matrix[kind], sizeof m))
         return G.matrixIndex[kind];
-    at = bytes_add(&G.quadData, sizeof m, 16);
+    at = bytes_take(&G.f->quads, sizeof m, 16);
     if (at < 0)
         return -1;
-    memcpy(G.quadData.data + at, m, sizeof m);
+    memcpy(G.f->quads.data + at, m, sizeof m);
     memcpy(G.matrix[kind], m, sizeof m);
     G.matrixIndex[kind] = (int)(at / 16);
     g_perf.instanceBytes += sizeof m;
@@ -1874,10 +2162,10 @@ static int corner_set(struct GfxCornerSet *set)
         return set->row;
     matrix = quad_matrix(c->view, c->proj, c->centre);
     n = matrix < 0 ? 0 : quad_corner_words(c, (uint32_t)matrix, words);
-    at = n ? bytes_add(&G.quadData, (size_t)n * 4, 16) : -1;
+    at = n ? bytes_take(&G.f->quads, (size_t)n * 4, 16) : -1;
     if (at < 0)
         return -1;
-    memcpy(G.quadData.data + at, words, (size_t)n * 4);
+    memcpy(G.f->quads.data + at, words, (size_t)n * 4);
     g_perf.instanceBytes += (unsigned)n * 4;
     set->frame = G.frame;
     set->row = (int)(at / 16);
@@ -1922,10 +2210,10 @@ static uint32_t vertex_records(const struct TexDrawVertex *v, int n, int strip, 
         batch_add(words, m, 2);
         return G.batch.count - before;
     }
-    at = bytes_add(&G.quadData, (size_t)n * sizeof *v, 16);
+    at = bytes_take(&G.f->quads, (size_t)n * sizeof *v, 16);
     if (at < 0)
         return 0;
-    memcpy(G.quadData.data + at, v, (size_t)n * sizeof *v);
+    memcpy(G.f->quads.data + at, v, (size_t)n * sizeof *v);
     G.batch.bytes += (uint32_t)n * sizeof *v;
     for (i = 0; i < count; i++) {
         m = quad_vertex_words(n, strip, (uint32_t)(at / 4), i, h, words);
@@ -1964,7 +2252,7 @@ static int own_quad(int mode, const struct draw_state *s, struct gfx_surface *te
     if (!r)
         return 0;
     /* the batch's count and bytes take the quad, and are begun again for the next batch */
-    first = (uint32_t)(G.quadOffsets.size / 4);
+    first = (uint32_t)(G.f->offsets.size / 4);
     G.batch.count = G.batch.prims = G.batch.bytes = 0;
     if (!vertex_records(v, 4, 1, &h))
         return 0;
@@ -2034,15 +2322,11 @@ gfx_skin *gfx_create_skin(const struct SkinVertex *vertices, uint32_t vertexCoun
     return k;
 }
 
-/* its buffers given up; the frames submitted may still draw with them, which SDL waits for */
+/* its buffers given up; the frames handed over may still draw with them (retire) */
 static void skin_buffers_release(struct gfx_skin *k)
 {
-    if (G.dev) {
-        if (k->vertexBuffer)
-            SDL_ReleaseGPUBuffer(G.dev, k->vertexBuffer);
-        if (k->indexBuffer)
-            SDL_ReleaseGPUBuffer(G.dev, k->indexBuffer);
-    }
+    retire_buffer(k->vertexBuffer);
+    retire_buffer(k->indexBuffer);
     k->vertexBuffer = k->indexBuffer = NULL;
 }
 
@@ -2086,18 +2370,23 @@ void gfx_skin_release(gfx_skin *k)
         skin_destroy(k);
 }
 
-/* The model's buffers on the GPU, made the first time a draw takes it and filled from its arrays by
-   the frame's upload (the model stays pinned until then); 0 where they cannot be made, which is not
-   tried again with this device. */
+/* The model's buffers on the GPU, made the first time a draw takes it and filled from its arrays,
+   staged among the frame's texels now, by the frame's upload (the model stays pinned until the
+   frame is handed over); 0 where they cannot be made, which is not tried again with this device. */
 static int skin_ready(struct gfx_skin *k)
 {
+    struct gpu_frame *f = G.f;
+    struct skin_upload *u;
     SDL_GPUBufferCreateInfo info;
     size_t vbytes = (size_t)k->vertexCount * sizeof *k->vertices, ibytes = (size_t)k->indexCount * sizeof *k->indices;
-    size_t at = ((size_t)G.skinBytes + 15) & ~(size_t)15;
+    long at;
     if (k->vertexBuffer)
         return 1;
-    if (k->failed || at > UINT32_MAX || vbytes + ibytes > UINT32_MAX - at
-        || !grow((void **)&G.skinUploads, &G.skinUploadCapacity, G.nskinUploads + 1, sizeof *G.skinUploads))
+    if (k->failed || vbytes + ibytes > UINT32_MAX
+        || !grow((void **)&f->skinUploads, &f->skinUploadCapacity, f->nskinUploads + 1, sizeof *f->skinUploads))
+        return 0;
+    at = bytes_take(&f->texels, vbytes + ibytes, 16);
+    if (at < 0 || (unsigned long)at > UINT32_MAX)
         return 0;
     SDL_zero(info);
     info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
@@ -2111,11 +2400,18 @@ static int skin_ready(struct gfx_skin *k)
                 SDL_GetError());
         skin_buffers_release(k);
         k->failed = 1;
+        f->texels.size = (size_t)at;
         return 0;
     }
-    G.skinBytes = (uint32_t)(at + vbytes + ibytes);
-    G.skinUploads[G.nskinUploads].model = k;
-    G.skinUploads[G.nskinUploads++].at = (uint32_t)at;
+    memcpy(f->texels.data + at, k->vertices, vbytes);
+    memcpy(f->texels.data + at + vbytes, k->indices, ibytes);
+    u = &f->skinUploads[f->nskinUploads++];
+    u->model = k;
+    u->vertices = k->vertexBuffer;
+    u->indices = k->indexBuffer;
+    u->at = (uint32_t)at;
+    u->vertexBytes = (uint32_t)vbytes;
+    u->indexBytes = (uint32_t)ibytes;
     k->pinned = G.frame;
     g_perf.vertexBytes += (unsigned)(vbytes + ibytes);
     return 1;
@@ -2124,12 +2420,12 @@ static int skin_ready(struct gfx_skin *k)
 int gfx_skin_pose(const float (*rows)[4], size_t count)
 {
     long at;
-    if (!rows || !count || count > UINT32_MAX / 16)
+    if (!G.dev || !rows || !count || count > UINT32_MAX / 16)
         return -1;
-    at = bytes_add(&G.quadData, count * 16, 16);
+    at = bytes_take(&G.f->quads, count * 16, 16);
     if (at < 0)
         return -1;
-    memcpy(G.quadData.data + at, rows, count * 16);
+    memcpy(G.f->quads.data + at, rows, count * 16);
     g_perf.instanceBytes += (unsigned)(count * 16);
     return (int)(at / 16);
 }
@@ -2138,19 +2434,19 @@ int gfx_skin_pose(const float (*rows)[4], size_t count)
    the quads' offsets, which the draw's instances read one after the other. */
 static int skin_instance(int pose)
 {
-    long at = bytes_add(&G.quadData, 16, 16), offset;
+    long at = bytes_add(&G.f->quads, 16, 16), offset;
     uint32_t *h;
     if (at < 0)
         return 0;
-    offset = bytes_add(&G.quadOffsets, 4, 4);
+    offset = bytes_take(&G.f->offsets, 4, 4);
     if (offset < 0) {
-        G.quadData.size = (size_t)at;
+        G.f->quads.size = (size_t)at;
         return 0;
     }
-    h = (uint32_t *)(G.quadData.data + at);
+    h = (uint32_t *)(G.f->quads.data + at);
     h[0] = (uint32_t)pose;
     h[1] = G.skinBatch.record;
-    *(uint32_t *)(G.quadOffsets.data + offset) = (uint32_t)(at / 16);
+    *(uint32_t *)(G.f->offsets.data + offset) = (uint32_t)(at / 16);
     G.skinBatch.bytes += 20;
     return 1;
 }
@@ -2179,12 +2475,13 @@ static void skin_flush(void)
     d->program = PROG_SKIN;
     d->pipeline = pipe;
     memcpy(d->bind, bind, sizeof bind);
-    d->skin = G.skinBatch.model;
+    d->skinVertices = G.skinBatch.model->vertexBuffer;
+    d->skinIndices = G.skinBatch.model->indexBuffer;
     d->firstIndex = G.skinBatch.range.first;
     d->count = G.skinBatch.range.count;
     d->instances = G.skinBatch.range.instances;
     d->firstInstance = G.skinBatch.firstInstance;
-    r = (struct GpuDraw *)(G.drawRecords.data + (size_t)G.skinBatch.record * sizeof *r);
+    r = (struct GpuDraw *)(G.f->records.data + (size_t)G.skinBatch.record * sizeof *r);
     fill_state(r, pass, &G.state, G.skinBatch.tex, 1,
                alpha_to_coverage(draw_mode(G.mode), (int)pass_samples(pass), 0));
     G.skinBatch.model->pinned = G.frame;
@@ -2223,7 +2520,7 @@ void gfx_draw_skin(gfx_skin *k, uint32_t first, uint32_t count, int pose)
         G.skinBatch.model = k;
         G.skinBatch.tex[0] = t0;
         G.skinBatch.tex[1] = t1;
-        G.skinBatch.firstInstance = (uint32_t)(G.quadOffsets.size / 4);
+        G.skinBatch.firstInstance = (uint32_t)(G.f->offsets.size / 4);
         G.skinBatch.prims = G.skinBatch.bytes = 0;
         if (!skin_instance(pose))
             return;
@@ -2264,9 +2561,6 @@ struct GpuWaterFrame {
 /* the stream that takes the world's meshes and textures up (world_stream): its transfer buffer
    holds this much, or one texture where that is larger */
 #define STREAM_BYTES (32u << 20)
-/* a staging transfer buffer this much larger than the frames' uploads have been for a while is
-   made again as small as they need */
-#define STAGING_QUIET 120
 
 _Static_assert(GFX_SHADOW_CASCADES == WL_CASCADES, "the cull compacts every cascade's casters");
 _Static_assert(GFX_SHADOW_CASCADES == SHADOW_FIT_CASCADES && GFX_SHADOW_SIZE == SHADOW_FIT_SIZE,
@@ -2303,8 +2597,8 @@ static int world_buffer(SDL_GPUBuffer **buffer, uint32_t *size, uint32_t need, u
         c->from = *buffer;
         c->to = grown;
         c->size = keep;
-    } else if (*buffer) {
-        SDL_ReleaseGPUBuffer(G.dev, *buffer);
+    } else {
+        retire_buffer(*buffer);
     }
     *buffer = grown;
     *size = s;
@@ -2329,18 +2623,14 @@ static void world_release(void)
     SDL_GPUBuffer **buffers[] = { &W.vertices, &W.ids, &W.indices, &W.recordBuffer, &W.cullData, &W.draws, &W.drawn,
                                   &W.slotBuffer, &W.views, &W.placed, &W.animatedBuffer, &W.uvBuffer, &W.cellBuffer,
                                   &W.waveBuffer, &W.instanceBuffer };
-    if (G.dev) {
-        for (i = 0; i < sizeof buffers / sizeof buffers[0]; i++)
-            if (*buffers[i])
-                SDL_ReleaseGPUBuffer(G.dev, *buffers[i]);
-        for (i = 0; i < W.narrays; i++)
-            if (W.arrays[i].tex)
-                SDL_ReleaseGPUTexture(G.dev, W.arrays[i].tex);
-        for (i = 0; i < W.ncopies; i++)
-            SDL_ReleaseGPUBuffer(G.dev, W.copies[i].from);
-        for (i = 0; i < W.narrayCopies; i++)
-            SDL_ReleaseGPUTexture(G.dev, W.arrayCopies[i].from);
-    }
+    for (i = 0; i < sizeof buffers / sizeof buffers[0]; i++)
+        retire_buffer(*buffers[i]);
+    for (i = 0; i < W.narrays; i++)
+        retire_texture(W.arrays[i].tex);
+    for (i = 0; i < W.ncopies; i++)
+        retire_buffer(W.copies[i].from);
+    for (i = 0; i < W.narrayCopies; i++)
+        retire_texture(W.arrayCopies[i].from);
     for (i = 0; i < W.ntextureUploads; i++)
         gfx_release(W.textureUploads[i].surface);
     for (i = 0; i < sizeof buffers / sizeof buffers[0]; i++)
@@ -2356,7 +2646,7 @@ static void world_release(void)
     W.nruns = W.nindirect = W.ncasterRuns = W.orderHeld = W.nchunks = 0;
     W.sectionIndices = 0;
     W.recordsChanged = W.slotsChanged = W.cellsChanged = 0;
-    W.computeDue = W.computed = 0;
+    W.computeDue = 0;
     /* the shadows' squares go with the world they were fitted to; nothing staged for them is
        uploaded from a flush that never went up */
     W.historyDue = 1;
@@ -2570,6 +2860,7 @@ void gfx_world_frame(const struct GfxWorldFrame *frame)
     long at;
     size_t i;
     W.frameSet = W.shadowSet = W.fittedSet = 0;
+    W.fittedFrom = G.frame;
     if (!world_on() || !frame)
         return;
     W.camera = frame->camera;
@@ -2606,11 +2897,11 @@ void gfx_world_frame(const struct GfxWorldFrame *frame)
     }
 }
 
-/* the array a record's texture or lightmap lies in, white where it has none or its array could not
-   be made */
-static SDL_GPUTexture *world_array(uint8_t array)
+/* the array a record's texture or lightmap lies in as the frame was handed over, white where it has
+   none or its array could not be made */
+static SDL_GPUTexture *world_array(const struct world_frame *wf, uint8_t array)
 {
-    return array < W.narrays && W.arrays[array].tex ? W.arrays[array].tex : W.white;
+    return array < wf->narrays && wf->arrays[array] ? wf->arrays[array] : wf->white;
 }
 
 /* the pipeline cull of a record's flags */
@@ -2627,13 +2918,13 @@ static int world_ready(void)
            && W.slotCount;
 }
 
-/* The draw record of a draw of the world's records in the current mode, which its draws push as
-   their uniform (push_uniforms). */
+/* The draw record of a draw of the world's records in the current mode, among the frame's
+   uniforms, which its draws push (push_uniforms). */
 static uint32_t world_record(struct gpu_step *pass, const struct GfxWorldDraw *draw, struct GpuDraw **out)
 {
     struct gfx_surface *none[2] = { NULL, NULL };
     struct GpuDraw *r;
-    uint32_t at = add_record(&r);
+    uint32_t at = add_record_to(&G.f->uniforms, &r);
     *out = r;
     if (!r)
         return 0;
@@ -2779,7 +3070,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
     d->record = add_record(&r);
     if (!r) {
         step->count--;
-        G.ndraws--;
+        G.f->ndraws--;
         return;
     }
     fill_state(r, step, &G.state, G.stageTex, 1, alpha_to_coverage(draw_mode(G.mode), (int)pass_samples(step), 0));
@@ -2794,6 +3085,7 @@ void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
     d->uniform[0] = d->record;
     d->uniform[1] = W.waveCount;
     d->uniform[2] = W.cellCount;
+    d->uniform[3] = (uint32_t)view;
     g_perf.draws++;
     g_perf.prims += (unsigned)count * 2;
     g_perf.vertexBytes += (unsigned)count * WATER_INSTANCE;
@@ -2851,7 +3143,7 @@ static void world_arrays(void)
         info.height = a->height;
         info.layer_count_or_depth = capacity;
         info.num_levels = a->levels;
-        made = SDL_CreateGPUTexture(G.dev, &info);
+        made = make_texture(&info);
         if (made && a->tex && !grow((void **)&W.arrayCopies, &W.arrayCopyCapacity, W.narrayCopies + 1,
                                     sizeof *W.arrayCopies)) {
             SDL_ReleaseGPUTexture(G.dev, made);
@@ -2860,8 +3152,7 @@ static void world_arrays(void)
         if (!made) {
             SDL_Log("gfx: the world's texture array %u (%ux%u, %u layers): %s", (unsigned)i, a->width, a->height,
                     capacity, SDL_GetError());
-            if (a->tex)
-                SDL_ReleaseGPUTexture(G.dev, a->tex);
+            retire_texture(a->tex);
             a->tex = NULL;
             a->failed = 1;
             continue;
@@ -2927,13 +3218,14 @@ static void stream_copies(SDL_GPUCopyPass *copy)
     }
 }
 
+/* what the copies moved over goes; the frames handed over may still read it (retire) */
 static void stream_release_copies(void)
 {
     size_t i;
     for (i = 0; i < W.ncopies; i++)
-        SDL_ReleaseGPUBuffer(G.dev, W.copies[i].from);
+        retire_buffer(W.copies[i].from);
     for (i = 0; i < W.narrayCopies; i++)
-        SDL_ReleaseGPUTexture(G.dev, W.arrayCopies[i].from);
+        retire_texture(W.arrayCopies[i].from);
     W.ncopies = W.narrayCopies = 0;
 }
 
@@ -3055,7 +3347,7 @@ static int world_stream(int textures)
                                            : NULL;
             made = made && (scratch[i - textureFrom] || !a->tex || a->levels == 1);
         }
-        cmd = made ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+        cmd = made ? main_commands() : NULL;
         if (!cmd) {
             for (i = textureFrom; i < texture; i++)
                 if (scratch[i - textureFrom])
@@ -3090,7 +3382,7 @@ static int world_stream(int textures)
         }
         if (copy)
             SDL_EndGPUCopyPass(copy);
-        W.streamFence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
+        main_submit(cmd, &W.streamFence);
         /* released as soon as the batch no longer needs them */
         for (i = textureFrom; i < texture; i++)
             if (scratch[i - textureFrom])
@@ -3129,9 +3421,10 @@ failed:
     return 0;
 }
 
-/* What goes up with this flush besides the stream, staged in G.texels: the white texel, the records,
-   slots and cells that changed, the frame's matrices, waves and water instances, the shadow fit's
-   state and its squares cleared with the world; and the buffers they go into. 0 without memory. */
+/* What goes up with the frame besides the stream, staged in its texels: the white texel, the
+   records, slots and cells that changed, the frame's matrices, waves and water instances, the
+   shadow fit's state and its squares cleared with the world; and the buffers they go into. 0
+   without memory. */
 static int world_prepare(void)
 {
     long at;
@@ -3146,16 +3439,16 @@ static int world_prepare(void)
         info.width = info.height = 1;
         info.layer_count_or_depth = 1;
         info.num_levels = 1;
-        W.white = SDL_CreateGPUTexture(G.dev, &info);
+        W.white = make_texture(&info);
         if (!W.white)
             return 0;
         W.whiteDue = 1;
     }
     if (W.whiteDue) {
-        at = bytes_add(&G.texels, 4, 16);
+        at = bytes_take(&G.f->texels, 4, 16);
         if (at < 0)
             return 0;
-        memset(G.texels.data + at, 0xff, 4);
+        memset(G.f->texels.data + at, 0xff, 4);
         W.whiteAt = (uint32_t)at;
     }
     if (W.recordsChanged) {
@@ -3174,10 +3467,10 @@ static int world_prepare(void)
             || !world_buffer(&W.drawn, &W.drawnSize, (W.sectionIndices ? W.sectionIndices : 1) * 4 * WL_SECTIONS, 0,
                              SDL_GPU_BUFFERUSAGE_INDEX | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE))
             return 0;
-        at = bytes_add(&G.texels, idBytes + (size_t)W.cullLayout.words * 4, 16);
+        at = bytes_add(&G.f->texels, idBytes + (size_t)W.cullLayout.words * 4, 16);
         if (at < 0)
             return 0;
-        p = G.texels.data + at;
+        p = G.f->texels.data + at;
         memcpy(p, W.byId, idBytes);
         p += idBytes;
         memcpy(p, W.cull, cullBytes);
@@ -3197,21 +3490,21 @@ static int world_prepare(void)
                              SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ
                                  | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
             return 0;
-        at = bytes_add(&G.texels, (size_t)W.slotCount * sizeof *W.slots, 16);
+        at = bytes_take(&G.f->texels, (size_t)W.slotCount * sizeof *W.slots, 16);
         if (at < 0)
             return 0;
-        memcpy(G.texels.data + at, W.slots, (size_t)W.slotCount * sizeof *W.slots);
+        memcpy(G.f->texels.data + at, W.slots, (size_t)W.slotCount * sizeof *W.slots);
         W.slotsAt = (uint32_t)at;
     }
     if (W.cellsChanged) {
         if (!world_buffer(&W.cellBuffer, &W.cellBufferSize, W.cellCount * (uint32_t)sizeof *W.cells + sizeof W.sines,
                           0, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
             return 0;
-        at = bytes_add(&G.texels, (size_t)W.cellCount * sizeof *W.cells + sizeof W.sines, 16);
+        at = bytes_take(&G.f->texels, (size_t)W.cellCount * sizeof *W.cells + sizeof W.sines, 16);
         if (at < 0)
             return 0;
-        memcpy(G.texels.data + at, W.cells, (size_t)W.cellCount * sizeof *W.cells);
-        memcpy(G.texels.data + at + (size_t)W.cellCount * sizeof *W.cells, W.sines, sizeof W.sines);
+        memcpy(G.f->texels.data + at, W.cells, (size_t)W.cellCount * sizeof *W.cells);
+        memcpy(G.f->texels.data + at + (size_t)W.cellCount * sizeof *W.cells, W.sines, sizeof W.sines);
         W.cellsAt = (uint32_t)at;
     }
     if (W.frameSet && (W.computeDue || W.instances.size)) {
@@ -3223,14 +3516,14 @@ static int world_prepare(void)
             || (W.instances.size && !world_buffer(&W.instanceBuffer, &W.instanceSize, (uint32_t)W.instances.size, 0,
                                                   SDL_GPU_BUFFERUSAGE_VERTEX)))
             return 0;
-        at = bytes_add(&G.texels, W.animated.size + W.uvs.size + W.waves.size + W.instances.size, 16);
+        at = bytes_take(&G.f->texels, W.animated.size + W.uvs.size + W.waves.size + W.instances.size, 16);
         if (at < 0)
             return 0;
-        memcpy(G.texels.data + at, W.animated.data, W.animated.size);
-        memcpy(G.texels.data + at + W.animated.size, W.uvs.data, W.uvs.size);
-        memcpy(G.texels.data + at + W.animated.size + W.uvs.size, W.waves.data, W.waves.size);
+        memcpy(G.f->texels.data + at, W.animated.data, W.animated.size);
+        memcpy(G.f->texels.data + at + W.animated.size, W.uvs.data, W.uvs.size);
+        memcpy(G.f->texels.data + at + W.animated.size + W.uvs.size, W.waves.data, W.waves.size);
         if (W.instances.size)
-            memcpy(G.texels.data + at + W.animated.size + W.uvs.size + W.waves.size, W.instances.data,
+            memcpy(G.f->texels.data + at + W.animated.size + W.uvs.size + W.waves.size, W.instances.data,
                    W.instances.size);
         W.frameAt = (uint32_t)at;
         W.frameDue = 1;
@@ -3241,10 +3534,10 @@ static int world_prepare(void)
     W.fitStateDue = W.fitState && ((W.shadowSet && W.computeDue) || W.historyDue);
     if (W.fitStateDue) {
         uint32_t *s;
-        at = bytes_add(&G.texels, (SHADOW_FIT_GPU_STATE + SHADOW_FIT_GPU_HISTORY) * 4, 16);
+        at = bytes_add(&G.f->texels, (SHADOW_FIT_GPU_STATE + SHADOW_FIT_GPU_HISTORY) * 4, 16);
         if (at < 0)
             return 0;
-        s = (uint32_t *)(G.texels.data + at);
+        s = (uint32_t *)(G.f->texels.data + at);
         shadow_fit_gpu_state(s);
         memset(s + SHADOW_FIT_GPU_STATE, 0, SHADOW_FIT_GPU_HISTORY * 4);
         W.fitStateAt = (uint32_t)at;
@@ -3252,78 +3545,183 @@ static int world_prepare(void)
     return 1;
 }
 
-static void upload_buffer(SDL_GPUCopyPass *copy, uint32_t from, SDL_GPUBuffer *buffer, uint32_t offset,
+static int shadow_prepare(void);
+
+/* The world as the frame hands it to the render thread: its buffers and arrays as they are now,
+   what world_prepare staged and where, whether its compute passes and shadows are recorded, and
+   what those read of it. Where they are, the shadow passes' draws are counted here, in the frame
+   they belong to (diag/perf.h). 0 without memory for the runs. */
+static int world_hand_over(struct gpu_frame *f)
+{
+    struct world_frame *wf = &f->world;
+    size_t i;
+    wf->on = world_on();
+    wf->generation = W.generation;
+    wf->vertices = W.vertices;
+    wf->ids = W.ids;
+    wf->indices = W.indices;
+    wf->recordBuffer = W.recordBuffer;
+    wf->cullData = W.cullData;
+    wf->draws = W.draws;
+    wf->drawn = W.drawn;
+    wf->slotBuffer = W.slotBuffer;
+    wf->views = W.views;
+    wf->placed = W.placed;
+    wf->animatedBuffer = W.animatedBuffer;
+    wf->uvBuffer = W.uvBuffer;
+    wf->cellBuffer = W.cellBuffer;
+    wf->waveBuffer = W.waveBuffer;
+    wf->instanceBuffer = W.instanceBuffer;
+    wf->fitState = W.fitState;
+    wf->fitHistory = W.fitHistory;
+    wf->fitResult = W.fitResult;
+    wf->white = W.white;
+    wf->narrays = (uint32_t)W.narrays;
+    for (i = 0; i < W.narrays; i++)
+        wf->arrays[i] = W.arrays[i].tex;
+    wf->whiteDue = wf->on && W.whiteDue;
+    wf->recordsChanged = wf->on && W.recordsChanged;
+    wf->slotsChanged = wf->on && W.slotsChanged;
+    wf->cellsChanged = wf->on && W.cellsChanged;
+    wf->frameDue = wf->on && W.frameDue;
+    wf->fitStateDue = wf->on && W.fitStateDue;
+    wf->stateUp = W.shadowSet && W.computeDue;
+    wf->historyDue = W.historyDue;
+    wf->whiteAt = W.whiteAt;
+    wf->recordsAt = W.recordsAt;
+    wf->slotsAt = W.slotsAt;
+    wf->cellsAt = W.cellsAt;
+    wf->frameAt = W.frameAt;
+    wf->fitStateAt = W.fitStateAt;
+    wf->idBytes = W.idCount * (uint32_t)sizeof *W.byId;
+    wf->cullBytes = W.cullLayout.words * 4;
+    wf->slotBytes = W.slotCount * (uint32_t)sizeof *W.slots;
+    wf->cellBytes = W.cellCount * (uint32_t)sizeof *W.cells + (uint32_t)sizeof W.sines;
+    wf->animatedBytes = (uint32_t)W.animated.size;
+    wf->uvBytes = (uint32_t)W.uvs.size;
+    wf->waveBytes = (uint32_t)W.waves.size;
+    wf->instanceBytes = (uint32_t)W.instances.size;
+    wf->compute = wf->on && W.computeDue && W.frameSet && W.slotCount && W.recordCount && W.transform
+                  && W.cullPipeline && W.compactPipeline && G.screen && W.slotBuffer && W.animatedBuffer && W.views
+                  && W.placed && W.cullData && W.draws && W.indices && W.drawn && W.fitResult;
+    wf->shadowSet = wf->compute && W.shadowSet;
+    wf->shadows = wf->shadowSet && shadow_prepare() && W.uvBuffer && W.recordBuffer && W.vertices
+                  && W.ids;
+    /* the water's draws take the frame's camera, with the compute passes or without */
+    wf->camera = W.camera;
+    if (!wf->compute)
+        return 1;
+    wf->frustum = W.frustum;
+    wf->shadow = W.shadow;
+    wf->screenW = G.screen->width;
+    wf->screenH = G.screen->height;
+    wf->slotCount = W.slotCount;
+    wf->recordCount = W.recordCount;
+    wf->sectionIndices = W.sectionIndices;
+    wf->nindirect = W.nindirect;
+    wf->ncasterRuns = W.ncasterRuns;
+    wf->nchunks = W.nchunks;
+    wf->cullLayout = W.cullLayout;
+    wf->drawLayout = W.drawLayout;
+    if (!wf->shadows)
+        return 1;
+    if (!grow((void **)&wf->runs, &wf->runCapacity, W.nindirect + 1, sizeof *wf->runs)
+        || !grow((void **)&wf->casterArrays, &wf->casterArrayCapacity, W.ncasterRuns + 1, 1))
+        return 0;
+    for (i = 0; i < W.nindirect; i++) {
+        wf->runs[i].pass = W.runs[i].pass;
+        wf->runs[i].cull = W.runs[i].cull;
+        wf->runs[i].textureArray = W.runs[i].textureArray;
+    }
+    memcpy(wf->casterArrays, W.casterArrays, W.ncasterRuns);
+    wf->fitFront = G.fitFront;
+    wf->fitBack = G.fitBack;
+    wf->fitDepth = G.fitDepth;
+    wf->shadowMaps = G.shadowMaps;
+    wf->shadowDepth = G.shadowDepth;
+    wf->fitW = G.fitW;
+    wf->fitH = G.fitH;
+    /* the depth pass's draws, a run each, and the shadow pass's, a run of the casters' each in
+       every cascade */
+    g_perf.draws += (unsigned)(W.nindirect + W.ncasterRuns * GFX_SHADOW_CASCADES);
+    g_perf.indirectDraws += (unsigned)(W.nindirect + W.ncasterRuns * GFX_SHADOW_CASCADES);
+    return 1;
+}
+
+static void upload_buffer(SDL_GPUCopyPass *copy, SDL_GPUTransferBuffer *from, uint32_t at, SDL_GPUBuffer *buffer,
                           uint32_t size, int cycle)
 {
     SDL_GPUTransferBufferLocation src;
     SDL_GPUBufferRegion dst;
-    if (!size || !buffer)
+    if (!size || !buffer || !from)
         return;
-    src.transfer_buffer = G.upload;
-    src.offset = from;
+    src.transfer_buffer = from;
+    src.offset = at;
     dst.buffer = buffer;
-    dst.offset = offset;
+    dst.offset = 0;
     dst.size = size;
     SDL_UploadToGPUBuffer(copy, &src, &dst, cycle);
 }
 
-/* The copy pass's part of the world: what world_prepare staged. */
-static void world_copy(SDL_GPUCopyPass *copy, uint32_t base)
+/* The copy pass's part of the world: what world_prepare staged among the frame's texels. */
+static void world_copy(SDL_GPUCopyPass *copy, const struct gpu_frame *f)
 {
-    if (!world_on())
+    const struct world_frame *wf = &f->world;
+    SDL_GPUTransferBuffer *texels = f->texels.buffer;
+    if (!wf->on || !texels)
         return;
-    if (W.whiteDue) {
+    if (wf->whiteDue) {
         SDL_GPUTextureTransferInfo src;
         SDL_GPUTextureRegion dst;
         SDL_zero(src);
         SDL_zero(dst);
-        src.transfer_buffer = G.upload;
-        src.offset = base + W.whiteAt;
-        dst.texture = W.white;
+        src.transfer_buffer = texels;
+        src.offset = wf->whiteAt;
+        dst.texture = wf->white;
         dst.w = dst.h = dst.d = 1;
         SDL_UploadToGPUTexture(copy, &src, &dst, false);
     }
-    if (W.recordsChanged) {
-        uint32_t at = base + W.recordsAt, ids = W.idCount * (uint32_t)sizeof *W.byId;
-        upload_buffer(copy, at, W.recordBuffer, 0, ids, 1);
-        upload_buffer(copy, at + ids, W.cullData, 0, W.cullLayout.words * 4, 1);
+    if (wf->recordsChanged) {
+        upload_buffer(copy, texels, wf->recordsAt, wf->recordBuffer, wf->idBytes, 1);
+        upload_buffer(copy, texels, wf->recordsAt + wf->idBytes, wf->cullData, wf->cullBytes, 1);
     }
-    if (W.slotsChanged)
-        upload_buffer(copy, base + W.slotsAt, W.slotBuffer, 0, W.slotCount * (uint32_t)sizeof *W.slots, 1);
-    if (W.cellsChanged)
-        upload_buffer(copy, base + W.cellsAt, W.cellBuffer, 0,
-                      W.cellCount * (uint32_t)sizeof *W.cells + (uint32_t)sizeof W.sines, 1);
-    if (W.frameDue) {
-        uint32_t at = base + W.frameAt;
-        upload_buffer(copy, at, W.animatedBuffer, 0, (uint32_t)W.animated.size, 1);
-        at += (uint32_t)W.animated.size;
-        upload_buffer(copy, at, W.uvBuffer, 0, (uint32_t)W.uvs.size, 1);
-        at += (uint32_t)W.uvs.size;
-        upload_buffer(copy, at, W.waveBuffer, 0, (uint32_t)W.waves.size, 1);
-        at += (uint32_t)W.waves.size;
-        upload_buffer(copy, at, W.instanceBuffer, 0, (uint32_t)W.instances.size, 1);
+    if (wf->slotsChanged)
+        upload_buffer(copy, texels, wf->slotsAt, wf->slotBuffer, wf->slotBytes, 1);
+    if (wf->cellsChanged)
+        upload_buffer(copy, texels, wf->cellsAt, wf->cellBuffer, wf->cellBytes, 1);
+    if (wf->frameDue) {
+        uint32_t at = wf->frameAt;
+        upload_buffer(copy, texels, at, wf->animatedBuffer, wf->animatedBytes, 1);
+        at += wf->animatedBytes;
+        upload_buffer(copy, texels, at, wf->uvBuffer, wf->uvBytes, 1);
+        at += wf->uvBytes;
+        upload_buffer(copy, texels, at, wf->waveBuffer, wf->waveBytes, 1);
+        at += wf->waveBytes;
+        upload_buffer(copy, texels, at, wf->instanceBuffer, wf->instanceBytes, 1);
     }
-    if (W.fitStateDue) {
-        if (W.shadowSet && W.computeDue)
-            upload_buffer(copy, base + W.fitStateAt, W.fitState, 0, SHADOW_FIT_GPU_STATE * 4, 1);
+    if (wf->fitStateDue) {
+        if (wf->stateUp)
+            upload_buffer(copy, texels, wf->fitStateAt, wf->fitState, SHADOW_FIT_GPU_STATE * 4, 1);
         /* the history is read and written by the fit itself from frame to frame: cleared in place,
            never cycled away */
-        if (W.historyDue)
-            upload_buffer(copy, base + W.fitStateAt + SHADOW_FIT_GPU_STATE * 4, W.fitHistory, 0,
+        if (wf->historyDue)
+            upload_buffer(copy, texels, wf->fitStateAt + SHADOW_FIT_GPU_STATE * 4, wf->fitHistory,
                           SHADOW_FIT_GPU_HISTORY * 4, 0);
     }
 }
 
-static void world_shadows(SDL_GPUCommandBuffer *cmd);
+static void world_shadows(SDL_GPUCommandBuffer *cmd, struct gpu_frame *f);
 static int flush_only(void);
 
-/* The frame's compute passes: the slots' views; the view's cull of the runs, which gives each run's
-   kept records their places in the view's section of the frame's buffer of indices and writes the
-   run's one indirect draw; and the compaction, which copies the kept records' indices to their
-   places. Sets W.computed where they ran, without which nothing of the world is drawn; then, in a
-   frame with shadows, those (world_shadows). */
-static void world_compute(SDL_GPUCommandBuffer *cmd)
+/* The frame's compute passes, where the frame was handed over with them (world_hand_over): the
+   slots' views; the view's cull of the runs, which gives each run's kept records their places in
+   the view's section of the frame's buffer of indices and writes the run's one indirect draw; and
+   the compaction, which copies the kept records' indices to their places. Sets f->computed where
+   they were recorded, without which nothing of the world is drawn; then, in a frame with shadows,
+   those (world_shadows). */
+static void world_compute(SDL_GPUCommandBuffer *cmd, struct gpu_frame *f)
 {
+    const struct world_frame *wf = &f->world;
     struct WlTransformFrame transform;
     struct WlCullFrame cull;
     struct WlCompactFrame compact;
@@ -3332,83 +3730,83 @@ static void world_compute(SDL_GPUCommandBuffer *cmd)
     SDL_GPUStorageBufferReadWriteBinding rw[2];
     SDL_GPUBuffer *read[3];
     SDL_GPUComputePass *pass;
-    W.shadowFailed = 0;
-    if (!world_on() || !W.computeDue || !W.frameSet || !W.slotCount || !W.recordCount || !W.transform
-        || !W.cullPipeline || !W.compactPipeline || !G.screen || !W.slotBuffer || !W.animatedBuffer || !W.views
-        || !W.placed || !W.cullData || !W.draws || !W.indices || !W.drawn || !W.fitResult)
+    f->computed = f->shadowFailed = 0;
+    if (!wf->compute)
         return;
-    wl_projection(projection, W.camera.proj, W.camera.centre, W.camera.nearZ, W.camera.depthScale,
-                  G.screen->width, G.screen->height);
-    wl_transform_frame(W.camera.view, projection, W.slotCount, &transform);
+    wl_projection(projection, wf->camera.proj, wf->camera.centre, wf->camera.nearZ, wf->camera.depthScale,
+                  wf->screenW, wf->screenH);
+    wl_transform_frame(wf->camera.view, projection, wf->slotCount, &transform);
     SDL_zero(rw);
-    rw[0].buffer = W.views;
+    rw[0].buffer = wf->views;
     rw[0].cycle = true;
-    rw[1].buffer = W.placed;
+    rw[1].buffer = wf->placed;
     rw[1].cycle = true;
     pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
     if (!pass)
         return;
     SDL_BindGPUComputePipeline(pass, W.transform);
-    read[0] = W.slotBuffer;
-    read[1] = W.animatedBuffer;
+    read[0] = wf->slotBuffer;
+    read[1] = wf->animatedBuffer;
     SDL_BindGPUComputeStorageBuffers(pass, 0, read, 2);
     SDL_PushGPUComputeUniformData(cmd, 0, &transform, sizeof transform);
-    SDL_DispatchGPUCompute(pass, (W.slotCount + 63) / 64, 1, 1);
+    SDL_DispatchGPUCompute(pass, (wf->slotCount + 63) / 64, 1, 1);
     SDL_EndGPUComputePass(pass);
-    if (W.nindirect) {
-        wl_cull_frame(&W.frustum, (uint32_t)W.nindirect, &W.cullLayout, &W.drawLayout, W.nindirect, W.recordCount,
-                      W.sectionIndices, &cull, groups);
+    if (wf->nindirect) {
+        wl_cull_frame(&wf->frustum, (uint32_t)wf->nindirect, &wf->cullLayout, &wf->drawLayout, wf->nindirect,
+                      wf->recordCount, wf->sectionIndices, &cull, groups);
         SDL_zero(rw);
-        rw[0].buffer = W.draws;
+        rw[0].buffer = wf->draws;
         rw[0].cycle = true;
         pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
         if (!pass)
             return;
         SDL_BindGPUComputePipeline(pass, W.cullPipeline);
-        read[0] = W.cullData;
-        read[1] = W.placed;
-        read[2] = W.fitResult;
+        read[0] = wf->cullData;
+        read[1] = wf->placed;
+        read[2] = wf->fitResult;
         SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
         SDL_PushGPUComputeUniformData(cmd, 0, &cull, sizeof cull);
         SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
         SDL_EndGPUComputePass(pass);
-        wl_compact_frame((uint32_t)W.nchunks, 0, 1, &W.cullLayout, &W.drawLayout, W.recordCount, &compact, groups);
+        wl_compact_frame((uint32_t)wf->nchunks, 0, 1, &wf->cullLayout, &wf->drawLayout, wf->recordCount, &compact,
+                         groups);
         if (groups[0]) {
             SDL_zero(rw);
-            rw[0].buffer = W.drawn;
+            rw[0].buffer = wf->drawn;
             rw[0].cycle = true;
             pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
             if (!pass)
                 return;
             SDL_BindGPUComputePipeline(pass, W.compactPipeline);
-            read[0] = W.cullData;
-            read[1] = W.draws;
-            read[2] = W.indices;
+            read[0] = wf->cullData;
+            read[1] = wf->draws;
+            read[2] = wf->indices;
             SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
             SDL_PushGPUComputeUniformData(cmd, 0, &compact, sizeof compact);
             SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
             SDL_EndGPUComputePass(pass);
         }
     }
-    W.computed = 1;
-    if (W.shadowSet)
-        world_shadows(cmd);
+    f->computed = 1;
+    if (wf->shadowSet)
+        world_shadows(cmd, f);
 }
 
-/* Whether a recorded draw of the world's may be replayed: it is of the world as it is now, and what
-   it reads is there. */
-static int world_drawable(const struct gpu_draw *d)
+/* Whether a recorded draw of the world's may be replayed: it is of the world as the frame handed it
+   over, and what it reads is there. */
+static int world_drawable(const struct gpu_frame *f, const struct gpu_draw *d)
 {
-    if (d->generation != W.generation || !world_on())
+    const struct world_frame *wf = &f->world;
+    if (d->generation != wf->generation || !wf->on)
         return 0;
     if (d->program == PROG_WATER)
-        return W.cellBuffer && W.waveBuffer && W.instanceBuffer;
-    if (!W.computed || !W.recordBuffer || !W.vertices || !W.ids || !W.uvBuffer || !W.views)
+        return wf->cellBuffer && wf->waveBuffer && wf->instanceBuffer;
+    if (!f->computed || !wf->recordBuffer || !wf->vertices || !wf->ids || !wf->uvBuffer || !wf->views)
         return 0;
-    return d->indirect ? W.drawn && W.draws : W.indices != NULL;
+    return d->indirect ? wf->drawn && wf->draws : wf->indices != NULL;
 }
 
-/* After a flush: what went up has gone up. */
+/* After a frame is handed over: what goes up with it is no longer due. */
 static void world_flushed(void)
 {
     W.recordsChanged = W.slotsChanged = W.cellsChanged = 0;
@@ -3416,6 +3814,20 @@ static void world_flushed(void)
     if (W.fitStateDue)
         W.historyDue = 0;
     W.fitStateDue = 0;
+}
+
+/* A frame the render thread could not submit: what it was to take up of the world goes up with the
+   next, unless the world has been made again since. */
+static void world_unflushed(const struct world_frame *wf)
+{
+    if (!wf->on || wf->generation != W.generation)
+        return;
+    W.recordsChanged |= wf->recordsChanged;
+    W.slotsChanged |= wf->slotsChanged;
+    W.cellsChanged |= wf->cellsChanged;
+    W.whiteDue |= wf->whiteDue;
+    if (wf->fitStateDue)
+        W.historyDue |= wf->historyDue;
 }
 
 /* ---- shadows ---- */
@@ -3450,10 +3862,10 @@ static void shadows_off(const char *what)
     G.shadowState = -1;
 }
 
+/* a texture of the shadows' given up; the frames handed over may still draw with it (retire) */
 static void release_texture(SDL_GPUTexture **t)
 {
-    if (*t)
-        SDL_ReleaseGPUTexture(G.dev, *t);
+    retire_texture(*t);
     *t = NULL;
 }
 
@@ -3475,12 +3887,12 @@ static int shadow_prepare(void)
         info.width = info.height = GFX_SHADOW_SIZE + MARGIN;
         info.layer_count_or_depth = GFX_SHADOW_CASCADES;
         info.num_levels = 1;
-        G.shadowMaps = SDL_CreateGPUTexture(G.dev, &info);
+        G.shadowMaps = make_texture(&info);
         info.type = SDL_GPU_TEXTURETYPE_2D;
         info.format = G.depthFormat;
         info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
         info.layer_count_or_depth = 1;
-        G.shadowDepth = SDL_CreateGPUTexture(G.dev, &info);
+        G.shadowDepth = make_texture(&info);
         if (!G.shadowMaps || !G.shadowDepth) {
             shadows_off("shadow maps");
             release_texture(&G.shadowMaps);
@@ -3502,11 +3914,11 @@ static int shadow_prepare(void)
         info.height = (Uint32)(G.screen->height + MARGIN);
         info.layer_count_or_depth = 1;
         info.num_levels = 1;
-        G.fitFront = SDL_CreateGPUTexture(G.dev, &info);
-        G.fitBack = SDL_CreateGPUTexture(G.dev, &info);
+        G.fitFront = make_texture(&info);
+        G.fitBack = make_texture(&info);
         info.format = G.depthFormat;
         info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
-        G.fitDepth = SDL_CreateGPUTexture(G.dev, &info);
+        G.fitDepth = make_texture(&info);
         if (!G.fitFront || !G.fitBack || !G.fitDepth) {
             SDL_Log("gfx: the shadow fit's depth targets at %dx%d: %s; no shadows at this size", G.screen->width,
                     G.screen->height, SDL_GetError());
@@ -3529,7 +3941,7 @@ static int shadow_prepare(void)
    targets of view depth, the opaque passes' and the ground's first. Single-sampled, so that the
    compute passes can read what it draws, and at the main pass's viewport, so that a texel is a
    pixel of the screen. 0 where it could not be recorded. */
-static int depth_pass(SDL_GPUCommandBuffer *cmd)
+static int depth_pass(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
 {
     SDL_GPUColorTargetInfo colour[2];
     SDL_GPUDepthStencilTargetInfo depth;
@@ -3543,11 +3955,11 @@ static int depth_pass(SDL_GPUCommandBuffer *cmd)
     SDL_zero(colour);
     SDL_zero(depth);
     for (i = 0; i < 2; i++) {
-        colour[i].texture = i ? G.fitBack : G.fitFront;
+        colour[i].texture = i ? wf->fitBack : wf->fitFront;
         colour[i].load_op = SDL_GPU_LOADOP_CLEAR;
         colour[i].store_op = SDL_GPU_STOREOP_STORE;
     }
-    depth.texture = G.fitDepth;
+    depth.texture = wf->fitDepth;
     depth.clear_depth = 1.0f;
     depth.load_op = SDL_GPU_LOADOP_CLEAR;
     depth.store_op = SDL_GPU_STOREOP_DONT_CARE;
@@ -3557,27 +3969,27 @@ static int depth_pass(SDL_GPUCommandBuffer *cmd)
     if (!pass)
         return 0;
     viewport.x = viewport.y = 0.5f;
-    viewport.w = (float)G.fitW;
-    viewport.h = (float)G.fitH;
+    viewport.w = (float)wf->fitW;
+    viewport.h = (float)wf->fitH;
     viewport.min_depth = 0.0f;
     viewport.max_depth = 1.0f;
     SDL_SetGPUViewport(pass, &viewport);
     scissor.x = scissor.y = 0;
-    scissor.w = G.fitW;
-    scissor.h = G.fitH;
+    scissor.w = wf->fitW;
+    scissor.h = wf->fitH;
     SDL_SetGPUScissor(pass, &scissor);
     SDL_zero(binding);
-    binding[0].buffer = W.vertices;
-    binding[1].buffer = W.ids;
+    binding[0].buffer = wf->vertices;
+    binding[1].buffer = wf->ids;
     SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
-    binding[0].buffer = W.drawn;
+    binding[0].buffer = wf->drawn;
     SDL_BindGPUIndexBuffer(pass, &binding[0], SDL_GPU_INDEXELEMENTSIZE_32BIT);
-    read[0] = W.recordBuffer;
-    read[1] = W.views;
-    read[2] = W.uvBuffer;
+    read[0] = wf->recordBuffer;
+    read[1] = wf->views;
+    read[2] = wf->uvBuffer;
     SDL_BindGPUVertexStorageBuffers(pass, 0, read, 3);
-    for (i = 0; i < W.nindirect; i++) {
-        const struct SwDrawRun *run = &W.runs[i];
+    for (i = 0; i < wf->nindirect; i++) {
+        const struct world_run *run = &wf->runs[i];
         SDL_GPUGraphicsPipeline *pipe = G.depthPipeline[run->pass <= SW_PASS_GROUND][world_cull(run->cull) - CULL_NONE];
         SDL_GPUTextureSamplerBinding texture;
         int wrap = run->pass == SW_PASS_OPAQUE_WRAP || run->pass == SW_PASS_ALPHA_WRAP;
@@ -3585,31 +3997,29 @@ static int depth_pass(SDL_GPUCommandBuffer *cmd)
             SDL_BindGPUGraphicsPipeline(pass, pipe);
             bound = pipe;
         }
-        texture.texture = world_array(run->textureArray);
+        texture.texture = world_array(wf, run->textureArray);
         texture.sampler = G.samplers[wrap][DRAW_FILTER_MIPMAPS];
         SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
-        SDL_DrawGPUIndexedPrimitivesIndirect(pass, W.draws, wl_view_command((uint32_t)i) * INDIRECT_SIZE, 1);
-        g_perf.draws++;
-        g_perf.indirectDraws++;
+        SDL_DrawGPUIndexedPrimitivesIndirect(pass, wf->draws, wl_view_command((uint32_t)i) * INDIRECT_SIZE, 1);
     }
     SDL_EndGPURenderPass(pass);
     return 1;
 }
 
 /* The fit (shadow_range, shadow_extents and shadow_cascades.hlsl) of the depth pass's targets into
-   W.fitResult, from and into the squares and the range of the frames before. 0 where it could not
+   wf->fitResult, from and into the squares and the range of the frames before. 0 where it could not
    be recorded. */
-static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct ShadowFitGpuFrame *u)
+static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf, const struct ShadowFitGpuFrame *u)
 {
     const struct GpuComputeCode *code[2] = { &shadow_range_cs, &shadow_extents_cs };
     SDL_GPUComputePipeline *pipes[2] = { W.fitRange, W.fitExtents };
     SDL_GPUStorageBufferReadWriteBinding rw[2];
-    SDL_GPUTexture *depths[2] = { G.fitFront, G.fitBack };
+    SDL_GPUTexture *depths[2] = { wf->fitFront, wf->fitBack };
     SDL_GPUComputePass *pass;
     int p;
     for (p = 0; p < 2; p++) {
         SDL_zero(rw);
-        rw[0].buffer = W.fitState;
+        rw[0].buffer = wf->fitState;
         pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 1);
         if (!pass)
             return 0;
@@ -3617,21 +4027,21 @@ static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct ShadowFitGpuFrame 
         SDL_BindGPUComputeStorageTextures(pass, 0, depths, 2);
         /* the extents cut the range into slices as the range kept from the frames before says */
         if (p == 1)
-            SDL_BindGPUComputeStorageBuffers(pass, 0, &W.fitHistory, 1);
+            SDL_BindGPUComputeStorageBuffers(pass, 0, &wf->fitHistory, 1);
         SDL_PushGPUComputeUniformData(cmd, 0, u, sizeof *u);
         SDL_DispatchGPUCompute(pass, (u->size[0] + code[p]->threads[0] - 1) / code[p]->threads[0],
                                (u->size[1] + code[p]->threads[1] - 1) / code[p]->threads[1], 1);
         SDL_EndGPUComputePass(pass);
     }
     SDL_zero(rw);
-    rw[0].buffer = W.fitHistory;
-    rw[1].buffer = W.fitResult;
+    rw[0].buffer = wf->fitHistory;
+    rw[1].buffer = wf->fitResult;
     rw[1].cycle = true;
     pass = SDL_BeginGPUComputePass(cmd, NULL, 0, rw, 2);
     if (!pass)
         return 0;
     SDL_BindGPUComputePipeline(pass, W.fitCascades);
-    SDL_BindGPUComputeStorageBuffers(pass, 0, &W.fitState, 1);
+    SDL_BindGPUComputeStorageBuffers(pass, 0, &wf->fitState, 1);
     SDL_PushGPUComputeUniformData(cmd, 0, u, sizeof *u);
     SDL_DispatchGPUCompute(pass, 1, 1, 1);
     SDL_EndGPUComputePass(pass);
@@ -3641,7 +4051,7 @@ static int fit_passes(SDL_GPUCommandBuffer *cmd, const struct ShadowFitGpuFrame 
 /* Each cascade's casters: the cull of the casters' runs against the boxes the fit left, and their
    indices compacted into the cascades' sections, after the view's. 0 where it could not be
    recorded. */
-static int caster_cull(SDL_GPUCommandBuffer *cmd)
+static int caster_cull(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
 {
     struct WlCullFrame cull;
     struct WlCompactFrame compact;
@@ -3649,34 +4059,34 @@ static int caster_cull(SDL_GPUCommandBuffer *cmd)
     SDL_GPUBuffer *read[3];
     SDL_GPUComputePass *pass;
     uint32_t groups[2];
-    wl_cull_frame(NULL, (uint32_t)W.ncasterRuns, &W.cullLayout, &W.drawLayout, W.nindirect, W.recordCount,
-                  W.sectionIndices, &cull, groups);
+    wl_cull_frame(NULL, (uint32_t)wf->ncasterRuns, &wf->cullLayout, &wf->drawLayout, wf->nindirect, wf->recordCount,
+                  wf->sectionIndices, &cull, groups);
     SDL_zero(rw);
-    rw.buffer = W.draws;
+    rw.buffer = wf->draws;
     pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
     if (!pass)
         return 0;
     SDL_BindGPUComputePipeline(pass, W.cullPipeline);
-    read[0] = W.cullData;
-    read[1] = W.placed;
-    read[2] = W.fitResult;
+    read[0] = wf->cullData;
+    read[1] = wf->placed;
+    read[2] = wf->fitResult;
     SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
     SDL_PushGPUComputeUniformData(cmd, 0, &cull, sizeof cull);
     SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
     SDL_EndGPUComputePass(pass);
-    wl_compact_frame((uint32_t)W.nchunks, 1, WL_CASCADES, &W.cullLayout, &W.drawLayout, W.recordCount, &compact,
+    wl_compact_frame((uint32_t)wf->nchunks, 1, WL_CASCADES, &wf->cullLayout, &wf->drawLayout, wf->recordCount, &compact,
                      groups);
     if (!groups[0])
         return 1;
     SDL_zero(rw);
-    rw.buffer = W.drawn;
+    rw.buffer = wf->drawn;
     pass = SDL_BeginGPUComputePass(cmd, NULL, 0, &rw, 1);
     if (!pass)
         return 0;
     SDL_BindGPUComputePipeline(pass, W.compactPipeline);
-    read[0] = W.cullData;
-    read[1] = W.draws;
-    read[2] = W.indices;
+    read[0] = wf->cullData;
+    read[1] = wf->draws;
+    read[2] = wf->indices;
     SDL_BindGPUComputeStorageBuffers(pass, 0, read, 3);
     SDL_PushGPUComputeUniformData(cmd, 0, &compact, sizeof compact);
     SDL_DispatchGPUCompute(pass, groups[0], groups[1], 1);
@@ -3687,7 +4097,7 @@ static int caster_cull(SDL_GPUCommandBuffer *cmd)
 /* The shadow pass (world_caster.hlsl): each cascade's casters into its layer of the maps, a draw a
    texture array. The maps are a texel wider and taller than GFX_SHADOW_SIZE (MARGIN), drawn at the
    same half-pixel viewport as every pass. 0 where it could not be recorded. */
-static int caster_pass(SDL_GPUCommandBuffer *cmd)
+static int caster_pass(SDL_GPUCommandBuffer *cmd, const struct world_frame *wf)
 {
     SDL_GPUBufferBinding binding[2];
     SDL_GPUBuffer *read[4];
@@ -3711,12 +4121,12 @@ static int caster_pass(SDL_GPUCommandBuffer *cmd)
         size_t k;
         SDL_zero(colour);
         SDL_zero(depth);
-        colour.texture = G.shadowMaps;
+        colour.texture = wf->shadowMaps;
         colour.layer_or_depth_plane = (Uint32)c;
         colour.clear_color.r = colour.clear_color.g = colour.clear_color.b = colour.clear_color.a = 1.0f;
         colour.load_op = SDL_GPU_LOADOP_CLEAR;
         colour.store_op = SDL_GPU_STOREOP_STORE;
-        depth.texture = G.shadowDepth;
+        depth.texture = wf->shadowDepth;
         depth.clear_depth = 1.0f;
         depth.load_op = SDL_GPU_LOADOP_CLEAR;
         depth.store_op = SDL_GPU_STOREOP_DONT_CARE;
@@ -3729,26 +4139,24 @@ static int caster_pass(SDL_GPUCommandBuffer *cmd)
         SDL_SetGPUScissor(pass, &scissor);
         SDL_BindGPUGraphicsPipeline(pass, G.casterPipeline);
         SDL_zero(binding);
-        binding[0].buffer = W.vertices;
-        binding[1].buffer = W.ids;
+        binding[0].buffer = wf->vertices;
+        binding[1].buffer = wf->ids;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
-        binding[0].buffer = W.drawn;
+        binding[0].buffer = wf->drawn;
         SDL_BindGPUIndexBuffer(pass, &binding[0], SDL_GPU_INDEXELEMENTSIZE_32BIT);
-        read[0] = W.recordBuffer;
-        read[1] = W.placed;
-        read[2] = W.uvBuffer;
-        read[3] = W.fitResult;
+        read[0] = wf->recordBuffer;
+        read[1] = wf->placed;
+        read[2] = wf->uvBuffer;
+        read[3] = wf->fitResult;
         SDL_BindGPUVertexStorageBuffers(pass, 0, read, 4);
         SDL_PushGPUVertexUniformData(cmd, 0, uniform, sizeof uniform);
-        for (k = 0; k < W.ncasterRuns; k++) {
+        for (k = 0; k < wf->ncasterRuns; k++) {
             SDL_GPUTextureSamplerBinding texture;
-            texture.texture = world_array(W.casterArrays[k]);
+            texture.texture = world_array(wf, wf->casterArrays[k]);
             texture.sampler = stage_sampler(&caster, 0);
             SDL_BindGPUFragmentSamplers(pass, 0, &texture, 1);
             SDL_DrawGPUIndexedPrimitivesIndirect(
-                pass, W.draws, wl_caster_command(W.nindirect, W.ncasterRuns, c, (uint32_t)k) * INDIRECT_SIZE, 1);
-            g_perf.draws++;
-            g_perf.indirectDraws++;
+                pass, wf->draws, wl_caster_command(wf->nindirect, wf->ncasterRuns, c, (uint32_t)k) * INDIRECT_SIZE, 1);
         }
         SDL_EndGPURenderPass(pass);
     }
@@ -3757,20 +4165,21 @@ static int caster_pass(SDL_GPUCommandBuffer *cmd)
 
 /* The frame's shadows, before its own passes: the depth pass, the fit, the casters' cull and the
    shadow pass, each only once the one before it was recorded. The fit's result stays on the GPU,
-   where every draw of the world reads it; where a step could not be recorded, the flush's draws of
-   the world receive no shadows (W.shadowFailed, run_pass) and keep the ground's baked ones. */
-static void world_shadows(SDL_GPUCommandBuffer *cmd)
+   where every draw of the world reads it; where what they need was not there when the frame was
+   handed over (world_hand_over) or a step could not be recorded, the frame's draws of the world
+   receive no shadows (f->shadowFailed, run_pass) and keep the ground's baked ones. */
+static void world_shadows(SDL_GPUCommandBuffer *cmd, struct gpu_frame *f)
 {
+    const struct world_frame *wf = &f->world;
     struct ShadowFitGpuFrame u;
-    W.shadowFailed = 1;
-    if (!shadow_prepare() || !W.uvBuffer || !W.recordBuffer || !W.vertices || !W.ids)
+    f->shadowFailed = 1;
+    if (!wf->shadows)
         return;
-    shadow_fit_gpu_frame(&W.shadow.fit, G.fitW, G.fitH, W.shadow.ambient, W.shadow.darkness, &u);
-    if (!depth_pass(cmd) || !fit_passes(cmd, &u) || (W.ncasterRuns && !caster_cull(cmd)) || !caster_pass(cmd))
+    shadow_fit_gpu_frame(&wf->shadow.fit, wf->fitW, wf->fitH, wf->shadow.ambient, wf->shadow.darkness, &u);
+    if (!depth_pass(cmd, wf) || !fit_passes(cmd, wf, &u) || (wf->ncasterRuns && !caster_cull(cmd, wf))
+        || !caster_pass(cmd, wf))
         return;
-    W.shadowFailed = 0;
-    W.fitted = W.shadow;
-    W.fittedSet = 1;
+    f->shadowFailed = 0;
 }
 
 static void download_buffer(SDL_GPUCopyPass *copy, SDL_GPUBuffer *buffer, uint32_t size, SDL_GPUTransferBuffer *to,
@@ -3831,7 +4240,7 @@ int gfx_read_shadow_fit(struct GfxShadowFitRead *out)
     info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
     info.size = depthBytes * 2 + (uint32_t)sizeof state + (uint32_t)sizeof g;
     down = SDL_CreateGPUTransferBuffer(G.dev, &info);
-    cmd = down ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+    cmd = down ? main_commands() : NULL;
     if (!cmd) {
         if (down)
             SDL_ReleaseGPUTransferBuffer(G.dev, down);
@@ -3845,8 +4254,8 @@ int gfx_read_shadow_fit(struct GfxShadowFitRead *out)
     download_buffer(copy, W.fitState, (uint32_t)sizeof state, down, depthBytes * 2);
     download_buffer(copy, W.fitResult, (uint32_t)sizeof g, down, depthBytes * 2 + (uint32_t)sizeof state);
     SDL_EndGPUCopyPass(copy);
-    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
-    if (fence && SDL_WaitForGPUFences(G.dev, true, &fence, 1) && (p = SDL_MapGPUTransferBuffer(G.dev, down, false))) {
+    if (main_submit(cmd, &fence) && SDL_WaitForGPUFences(G.dev, true, &fence, 1)
+        && (p = SDL_MapGPUTransferBuffer(G.dev, down, false))) {
         if (depths) {
             memcpy(out->front, p, depthBytes);
             memcpy(out->back, p + depthBytes, depthBytes);
@@ -3866,8 +4275,10 @@ int gfx_read_shadow_fit(struct GfxShadowFitRead *out)
     return 0;
 }
 
-/* ---- the frame's replay ---- */
+/* ---- the frame's buffers, on the main thread ---- */
 
+/* A buffer of the frames'at least `need` bytes; one made larger goes once the frames handed over
+   are done with it (retire). */
 static int ensure_buffer(SDL_GPUBuffer **buffer, uint32_t *size, uint32_t need, SDL_GPUBufferUsageFlags usage)
 {
     SDL_GPUBufferCreateInfo info;
@@ -3876,8 +4287,7 @@ static int ensure_buffer(SDL_GPUBuffer **buffer, uint32_t *size, uint32_t need, 
         return 1;
     while (s < need)
         s *= 2;
-    if (*buffer)
-        SDL_ReleaseGPUBuffer(G.dev, *buffer);
+    retire_buffer(*buffer);
     SDL_zero(info);
     info.usage = usage;
     info.size = s;
@@ -3886,97 +4296,87 @@ static int ensure_buffer(SDL_GPUBuffer **buffer, uint32_t *size, uint32_t need, 
     return *buffer != NULL;
 }
 
-/* The identity instance buffer (0, 1, 2, ...): a draw's first instance is its record. */
+/* The identity instance buffer (0, 1, 2, ...): a draw's first instance is its record. Where it is
+   made larger, its ids are staged among the frame's texels: answers their offset, -1 where it is
+   large enough already, -2 where it could not be made. */
 static long instances_needed(uint32_t records)
 {
     uint32_t count = G.instanceCount ? G.instanceCount : 4096, i;
     long at;
     uint32_t *ids;
     uint32_t size = 0;
-    if (G.instances && records <= G.instanceCount)
+    if (G.buffers.instances && records <= G.instanceCount)
         return -1;
     while (count < records)
         count *= 2;
-    if (G.instances)
-        SDL_ReleaseGPUBuffer(G.dev, G.instances);
-    G.instances = NULL;
+    retire_buffer(G.buffers.instances);
+    G.buffers.instances = NULL;
     G.instanceCount = 0;
-    if (!ensure_buffer(&G.instances, &size, count * 4, SDL_GPU_BUFFERUSAGE_VERTEX))
+    if (!ensure_buffer(&G.buffers.instances, &size, count * 4, SDL_GPU_BUFFERUSAGE_VERTEX))
         return -2;
-    at = bytes_add(&G.texels, (size_t)count * 4, 16);
+    at = bytes_take(&G.f->texels, (size_t)count * 4, 16);
     if (at < 0)
         return -2;
-    ids = (uint32_t *)(G.texels.data + at);
+    ids = (uint32_t *)(G.f->texels.data + at);
     for (i = 0; i < count; i++)
         ids[i] = i;
     G.instanceCount = count;
     return at;
 }
 
-static void copy_into(SDL_GPUCopyPass *copy, uint32_t from, SDL_GPUBuffer *buffer, uint32_t size)
+/* ---- the frame's replay, on the render thread ---- */
+
+/* A stream of the frame's into a buffer of its own, whole. */
+static void copy_into(SDL_GPUCopyPass *copy, const struct bytes *from, SDL_GPUBuffer *buffer)
 {
     SDL_GPUTransferBufferLocation src;
     SDL_GPUBufferRegion dst;
-    if (!size)
+    if (!from->size || !from->buffer || !buffer)
         return;
-    src.transfer_buffer = G.upload;
-    src.offset = from;
+    src.transfer_buffer = from->buffer;
+    src.offset = 0;
     dst.buffer = buffer;
     dst.offset = 0;
-    dst.size = size;
+    dst.size = (Uint32)from->size;
     SDL_UploadToGPUBuffer(copy, &src, &dst, true);
 }
 
-/* The vertices and indices of the Granny models whose buffers the frame fills, each where
-   skin_ready placed it, into the models' part of the mapped transfer buffer */
-static void skin_stage(unsigned char *at)
+/* The Granny models whose buffers the frame fills, from their vertices and indices staged among its
+   texels (skin_ready). */
+static void skin_copy(SDL_GPUCopyPass *copy, const struct gpu_frame *f)
 {
     size_t i;
-    for (i = 0; i < G.nskinUploads; i++) {
-        const struct gfx_skin *k = G.skinUploads[i].model;
-        size_t vbytes = (size_t)k->vertexCount * sizeof *k->vertices;
-        memcpy(at + G.skinUploads[i].at, k->vertices, vbytes);
-        memcpy(at + G.skinUploads[i].at + vbytes, k->indices, (size_t)k->indexCount * sizeof *k->indices);
-    }
-}
-
-/* The Granny models whose buffers the frame fills, from their vertices and indices put into the
-   transfer buffer after `base` (skin_stage). */
-static void skin_copy(SDL_GPUCopyPass *copy, uint32_t base)
-{
-    size_t i;
-    for (i = 0; i < G.nskinUploads; i++) {
-        const struct gfx_skin *k = G.skinUploads[i].model;
-        uint32_t vbytes = k->vertexCount * (uint32_t)sizeof *k->vertices;
+    for (i = 0; i < f->nskinUploads; i++) {
+        const struct skin_upload *u = &f->skinUploads[i];
         SDL_GPUTransferBufferLocation src;
         SDL_GPUBufferRegion dst;
-        src.transfer_buffer = G.upload;
-        src.offset = base + G.skinUploads[i].at;
-        dst.buffer = k->vertexBuffer;
+        src.transfer_buffer = f->texels.buffer;
+        src.offset = u->at;
+        dst.buffer = u->vertices;
         dst.offset = 0;
-        dst.size = vbytes;
+        dst.size = u->vertexBytes;
         SDL_UploadToGPUBuffer(copy, &src, &dst, false);
-        src.offset += vbytes;
-        dst.buffer = k->indexBuffer;
-        dst.size = k->indexCount * (uint32_t)sizeof *k->indices;
+        src.offset += u->vertexBytes;
+        dst.buffer = u->indices;
+        dst.size = u->indexBytes;
         SDL_UploadToGPUBuffer(copy, &src, &dst, false);
     }
 }
 
 /* answers whether a texture uploaded wants its mipmaps made */
-static int run_uploads(SDL_GPUCopyPass *copy, size_t first, size_t count, uint32_t base)
+static int run_uploads(SDL_GPUCopyPass *copy, const struct gpu_frame *f, size_t first, size_t count)
 {
     size_t i;
     int mips = 0;
     for (i = first; i < first + count; i++) {
-        struct gpu_upload *u = &G.uploads[i];
+        const struct gpu_upload *u = &f->uploads[i];
         SDL_GPUTextureTransferInfo src;
         SDL_GPUTextureRegion dst;
         if (u->fromLayer) {
             SDL_GPUTextureLocation from, to;
             SDL_zero(from);
             SDL_zero(to);
-            from.texture = u->array->tex;
+            from.texture = u->array;
             from.layer = u->layer;
             to.texture = u->tex;
             SDL_CopyGPUTextureToTexture(copy, &from, &to, u->w, u->h, 1, false);
@@ -3988,8 +4388,8 @@ static int run_uploads(SDL_GPUCopyPass *copy, size_t first, size_t count, uint32
         }
         SDL_zero(src);
         SDL_zero(dst);
-        src.transfer_buffer = G.upload;
-        src.offset = base + u->offset;
+        src.transfer_buffer = f->texels.buffer;
+        src.offset = u->offset;
         src.pixels_per_row = u->w;
         src.rows_per_layer = u->h;
         dst.texture = u->tex;
@@ -4032,21 +4432,20 @@ static void copy_levels(SDL_GPUCopyPass *copy, SDL_GPUTexture *scratch, SDL_GPUT
 /* The lower levels of each texture uploaded that wants them, made from the top one by SDL; then a
    layer's scratch texture, every level of it, into the layer (copy_levels), once, for the record
    that asked for its levels. */
-static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
+static void make_mipmaps(SDL_GPUCommandBuffer *cmd, const struct gpu_frame *f, size_t first, size_t count)
 {
     SDL_GPUCopyPass *copy = NULL;
     size_t i;
     for (i = first; i < first + count; i++)
-        if (G.uploads[i].mips)
-            SDL_GenerateMipmapsForGPUTexture(cmd, G.uploads[i].tex);
+        if (f->uploads[i].mips)
+            SDL_GenerateMipmapsForGPUTexture(cmd, f->uploads[i].tex);
     for (i = first; i < first + count; i++) {
-        const struct gpu_upload *u = &G.uploads[i];
+        const struct gpu_upload *u = &f->uploads[i];
         if (!u->scratch || !u->mips)
             continue;
         if (!copy && !(copy = SDL_BeginGPUCopyPass(cmd)))
             return;
-        copy_levels(copy, u->tex, u->array->tex, u->layer, (uint32_t)u->array->width, (uint32_t)u->array->height,
-                    (uint32_t)u->array->levels);
+        copy_levels(copy, u->tex, u->array, u->layer, u->arrayW, u->arrayH, u->arrayLevels);
     }
     if (copy)
         SDL_EndGPUCopyPass(copy);
@@ -4063,48 +4462,50 @@ static void make_mipmaps(SDL_GPUCommandBuffer *cmd, size_t first, size_t count)
    the draw records, its cells with the sines and its waves, and its cells' instances;
    the wobble the records and its rows, and the records' instances. (The depth pass and the shadow
    pass bind their own: depth_pass, caster_pass.) */
-static void bind_program(SDL_GPURenderPass *pass, int program)
+static void bind_program(SDL_GPURenderPass *pass, const struct gpu_frame *f, int program)
 {
+    const struct frame_buffers *b = &f->buffers;
+    const struct world_frame *wf = &f->world;
     SDL_GPUBuffer *vertex[4], *fragment[1];
     SDL_GPUBufferBinding binding[2];
     Uint32 nv = 0;
-    fragment[0] = G.records;
+    fragment[0] = b->records;
     SDL_zero(binding);
     switch (program) {
     case PROG_QUAD:
-        vertex[nv++] = G.records;
-        vertex[nv++] = G.quads;
+        vertex[nv++] = b->records;
+        vertex[nv++] = b->quads;
         binding[0].buffer = G.corners;
-        binding[1].buffer = G.offsets;
+        binding[1].buffer = b->offsets;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
         binding[0].buffer = G.triangles;
         SDL_BindGPUIndexBuffer(pass, &binding[0], SDL_GPU_INDEXELEMENTSIZE_16BIT);
         break;
     case PROG_WORLD:
-        vertex[nv++] = W.recordBuffer;
-        vertex[nv++] = W.views;
-        vertex[nv++] = W.fitResult;
-        vertex[nv++] = W.uvBuffer;
-        fragment[0] = W.fitResult;
-        binding[0].buffer = W.vertices;
-        binding[1].buffer = W.ids;
+        vertex[nv++] = wf->recordBuffer;
+        vertex[nv++] = wf->views;
+        vertex[nv++] = wf->fitResult;
+        vertex[nv++] = wf->uvBuffer;
+        fragment[0] = wf->fitResult;
+        binding[0].buffer = wf->vertices;
+        binding[1].buffer = wf->ids;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 2);
         break;
     case PROG_WATER:
-        vertex[nv++] = G.records;
-        vertex[nv++] = W.cellBuffer;
-        vertex[nv++] = W.waveBuffer;
-        binding[0].buffer = W.instanceBuffer;
+        vertex[nv++] = b->records;
+        vertex[nv++] = wf->cellBuffer;
+        vertex[nv++] = wf->waveBuffer;
+        binding[0].buffer = wf->instanceBuffer;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 1);
         break;
     case PROG_SKIN:
-        vertex[nv++] = G.records;
-        vertex[nv++] = G.quads;
+        vertex[nv++] = b->records;
+        vertex[nv++] = b->quads;
         break;
     default:
-        vertex[nv++] = G.records;
-        fragment[0] = G.rows;
-        binding[0].buffer = G.instances;
+        vertex[nv++] = b->records;
+        fragment[0] = b->rows;
+        binding[0].buffer = b->instances;
         SDL_BindGPUVertexBuffers(pass, 0, binding, 1);
         break;
     }
@@ -4112,29 +4513,31 @@ static void bind_program(SDL_GPURenderPass *pass, int program)
     SDL_BindGPUFragmentStorageBuffers(pass, 0, fragment, 1);
 }
 
-/* The uniform a world program's draw takes: its draw record itself; the water's its record, the
-   frame's waves and cells, and the frame's view, which its quads are tested in, and that view to
-   clip space (its draw record's view). */
-static void push_uniforms(SDL_GPUCommandBuffer *cmd, const struct gpu_draw *d)
+/* The uniform a world program's draw takes: its draw record itself, from the frame's uniforms; the
+   water's its record, the frame's waves and cells, and the frame's view, which its quads are tested
+   in, and that view to clip space (one of the frame's views). */
+static void push_uniforms(SDL_GPUCommandBuffer *cmd, const struct gpu_frame *f, const struct gpu_draw *d)
 {
-    const struct GpuDraw *r = (const struct GpuDraw *)G.drawRecords.data + d->uniform[0];
+    const struct GpuDraw *r;
     if (d->program == PROG_WATER) {
+        const struct GfxWorldView *camera = &f->world.camera;
+        const struct GpuView *v = (const struct GpuView *)f->views.data + d->uniform[3];
         struct GpuWaterFrame u;
-        const struct GpuView *v = (const struct GpuView *)G.viewRecords.data + r->mode[3];
         memset(&u, 0, sizeof u);
         u.frame[0] = d->uniform[0];
         u.frame[1] = d->uniform[1];
         u.frame[2] = d->uniform[2];
-        memcpy(u.view, W.camera.view, sizeof u.view);
-        u.screen[0] = W.camera.proj[0];
-        u.screen[1] = W.camera.proj[1];
-        u.screen[2] = W.camera.centre[0];
-        u.screen[3] = W.camera.centre[1];
+        memcpy(u.view, camera->view, sizeof u.view);
+        u.screen[0] = camera->proj[0];
+        u.screen[1] = camera->proj[1];
+        u.screen[2] = camera->centre[0];
+        u.screen[3] = camera->centre[1];
         memcpy(u.toClip, v->toClip, sizeof u.toClip);
         SDL_PushGPUVertexUniformData(cmd, 0, &u, sizeof u);
         return;
     }
-    if (W.shadowFailed && r->mesh[3]) {
+    r = (const struct GpuDraw *)f->uniforms.data + d->uniform[0];
+    if (f->shadowFailed && r->mesh[3]) {
         /* the frame's shadows were not all drawn: the draw receives none (world.hlsl, receiving) */
         struct GpuDraw unshadowed = *r;
         unshadowed.mesh[3] = 0;
@@ -4146,30 +4549,28 @@ static void push_uniforms(SDL_GPUCommandBuffer *cmd, const struct gpu_draw *d)
     SDL_PushGPUFragmentUniformData(cmd, 0, r, sizeof *r);
 }
 
-static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
+static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_frame *f, const struct gpu_step *s)
 {
     SDL_GPUColorTargetInfo colour;
     SDL_GPUDepthStencilTargetInfo depth;
     SDL_GPURenderPass *pass;
     SDL_GPUBufferBinding binding;
     SDL_GPUGraphicsPipeline *bound = NULL;
-    int program = -1, ms = s->target == G.screen && G.msaa, hasDepth = pass_has_depth(s);
-    SDL_GPUBuffer *indices = NULL;
-    const struct gfx_skin *skin = NULL;
+    int program = -1;
+    SDL_GPUBuffer *indices = NULL, *skin = NULL;
     uint32_t pushed[4];
     int pushedAny = 0;
     SDL_GPUTextureSamplerBinding textures[3];
     SDL_Rect scissor;
-    int w = s->target->width, h = s->target->height;
     SDL_GPUViewport viewport;
     uint32_t i;
     int j;
     SDL_zero(colour);
     SDL_zero(depth);
     SDL_zero(textures);
-    colour.texture = ms ? G.msaa : s->target->tex;
-    if (ms && !s->unresolve) {
-        colour.resolve_texture = s->target->tex;
+    colour.texture = s->colour;
+    if (s->resolve) {
+        colour.resolve_texture = s->resolve;
         colour.store_op = SDL_GPU_STOREOP_RESOLVE_AND_STORE;
     } else {
         colour.store_op = SDL_GPU_STOREOP_STORE;
@@ -4178,15 +4579,15 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
         return;
     colour.load_op = s->loadColour;
     colour.clear_color = s->clearColour;
-    if (hasDepth) {
-        depth.texture = G.depth;
+    if (s->depth) {
+        depth.texture = s->depth;
         depth.load_op = s->loadDepth;
         depth.clear_depth = s->clearDepth;
         depth.store_op = SDL_GPU_STOREOP_STORE;
         depth.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
         depth.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
     }
-    pass = SDL_BeginGPURenderPass(cmd, &colour, 1, hasDepth ? &depth : NULL);
+    pass = SDL_BeginGPURenderPass(cmd, &colour, 1, s->depth ? &depth : NULL);
     if (!pass) {
         SDL_Log("gfx: SDL_BeginGPURenderPass: %s", SDL_GetError());
         return;
@@ -4194,28 +4595,28 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     /* the target moved by half a pixel, to where Direct3D 9's pixel centres were (MARGIN); the
        wobble's covers the whole target, every sample of its first column and row too */
     viewport.x = viewport.y = s->whole ? 0.0f : 0.5f;
-    viewport.w = (float)w;
-    viewport.h = (float)h;
+    viewport.w = (float)s->width;
+    viewport.h = (float)s->height;
     viewport.min_depth = 0.0f;
     viewport.max_depth = 1.0f;
     SDL_SetGPUViewport(pass, &viewport);
     scissor.x = scissor.y = 0;
-    scissor.w = w;
-    scissor.h = h;
+    scissor.w = s->width;
+    scissor.h = s->height;
     SDL_SetGPUScissor(pass, &scissor);
     for (i = s->first; i < s->first + s->count; i++) {
-        const struct gpu_draw *d = &G.draws[i];
+        const struct gpu_draw *d = &f->draws[i];
         int world = d->program == PROG_WORLD || d->program == PROG_WATER;  /* of gfx_world_* */
         int nbind = d->program == PROG_ROWS ? 1 : 3;
         SDL_GPUTextureSamplerBinding bind[3];
-        if (!d->pipeline || (world && !world_drawable(d)))
+        if (!d->pipeline || (world && !world_drawable(f, d)))
             continue;
         memcpy(bind, d->bind, sizeof bind);
         if (d->program == PROG_WORLD) {
             for (j = 0; j < 2; j++)
-                bind[j].texture = world_array(d->arrays[j]);
+                bind[j].texture = world_array(&f->world, d->arrays[j]);
             /* the shadow passes not all recorded: no maps, and no shadows (push_uniforms) */
-            if (W.shadowFailed)
+            if (f->shadowFailed)
                 bind[2].texture = G.noShadow;
         }
         if (d->pipeline != bound) {
@@ -4223,26 +4624,26 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
             bound = d->pipeline;
         }
         if (d->program != program) {
-            bind_program(pass, d->program);
+            bind_program(pass, f, d->program);
             program = d->program;
             memset(textures, 0, sizeof textures);
             pushedAny = 0;
             indices = NULL;
             skin = NULL;
         }
-        if (d->program == PROG_SKIN && d->skin != skin) {
+        if (d->program == PROG_SKIN && d->skinVertices != skin) {
             SDL_GPUBufferBinding vertices[2];
             SDL_zero(vertices);
-            vertices[0].buffer = d->skin->vertexBuffer;
-            vertices[1].buffer = G.offsets;
+            vertices[0].buffer = d->skinVertices;
+            vertices[1].buffer = f->buffers.offsets;
             SDL_BindGPUVertexBuffers(pass, 0, vertices, 2);
-            binding.buffer = d->skin->indexBuffer;
+            binding.buffer = d->skinIndices;
             binding.offset = 0;
             SDL_BindGPUIndexBuffer(pass, &binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-            skin = d->skin;
+            skin = d->skinVertices;
         }
         if (d->program == PROG_WORLD) {
-            SDL_GPUBuffer *want = d->indirect ? W.drawn : W.indices;
+            SDL_GPUBuffer *want = d->indirect ? f->world.drawn : f->world.indices;
             if (want != indices) {
                 binding.buffer = want;
                 binding.offset = 0;
@@ -4255,7 +4656,7 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
             SDL_BindGPUFragmentSamplers(pass, 0, textures, (Uint32)nbind);
         }
         if (world && (!pushedAny || memcmp(pushed, d->uniform, sizeof pushed))) {
-            push_uniforms(cmd, d);
+            push_uniforms(cmd, f, d);
             memcpy(pushed, d->uniform, sizeof pushed);
             pushedAny = 1;
         }
@@ -4269,7 +4670,7 @@ static void run_pass(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
         } else if (d->program == PROG_SKIN) {
             SDL_DrawGPUIndexedPrimitives(pass, d->count, d->instances, d->firstIndex, 0, d->firstInstance);
         } else if (d->indirect) {
-            SDL_DrawGPUIndexedPrimitivesIndirect(pass, W.draws, d->firstIndex * INDIRECT_SIZE, 1);
+            SDL_DrawGPUIndexedPrimitivesIndirect(pass, f->world.draws, d->firstIndex * INDIRECT_SIZE, 1);
         } else {
             SDL_DrawGPUIndexedPrimitives(pass, d->count, 1, d->firstIndex, d->baseVertex, 0);
         }
@@ -4315,6 +4716,141 @@ static void run_copy(SDL_GPUCommandBuffer *cmd, const struct gpu_step *s)
     }
 }
 
+/* The download of a rectangle of the screen the frame asks for (gfx_read_frame), after its steps. */
+static void download_screen(SDL_GPUCommandBuffer *cmd, const struct gpu_frame *f)
+{
+    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
+    SDL_GPUTextureRegion src;
+    SDL_GPUTextureTransferInfo dst;
+    if (!copy)
+        return;
+    SDL_zero(src);
+    SDL_zero(dst);
+    src.texture = f->download.texture;
+    src.x = (Uint32)f->download.x;
+    src.y = (Uint32)f->download.y;
+    src.w = (Uint32)f->download.w;
+    src.h = (Uint32)f->download.h;
+    src.d = 1;
+    dst.transfer_buffer = f->download.buffer;
+    dst.pixels_per_row = (Uint32)f->download.w;
+    dst.rows_per_layer = (Uint32)f->download.h;
+    SDL_DownloadFromGPUTexture(copy, &src, &dst);
+    SDL_EndGPUCopyPass(copy);
+}
+
+/* A frame into one command buffer, submitted with a fence: one copy pass of what it staged (its
+   streams, the world's part, the Granny models it fills, the textures it changed before its first
+   draw), the textures' mipmaps, the world's compute and shadow passes, then its steps, and the
+   download it asks for, holding the device's recording (commands_take). 0 where it could not be
+   submitted. */
+static int frame_record(struct gpu_frame *f)
+{
+    SDL_GPUCommandBuffer *cmd;
+    SDL_GPUCopyPass *copy;
+    size_t i;
+    int mips;
+    commands_take();
+    cmd = SDL_AcquireGPUCommandBuffer(G.dev);
+    if (!cmd) {
+        SDL_Log("gfx: SDL_AcquireGPUCommandBuffer: %s", SDL_GetError());
+        commands_give();
+        return 0;
+    }
+    copy = SDL_BeginGPUCopyPass(cmd);
+    copy_into(copy, &f->records, f->buffers.records);
+    copy_into(copy, &f->rows, f->buffers.rows);
+    copy_into(copy, &f->quads, f->buffers.quads);
+    copy_into(copy, &f->offsets, f->buffers.offsets);
+    if (f->instancesAt >= 0) {
+        SDL_GPUTransferBufferLocation src;
+        SDL_GPUBufferRegion dst;
+        src.transfer_buffer = f->texels.buffer;
+        src.offset = (Uint32)f->instancesAt;
+        dst.buffer = f->buffers.instances;
+        dst.offset = 0;
+        dst.size = f->instanceCount * 4;
+        SDL_UploadToGPUBuffer(copy, &src, &dst, false);
+    }
+    world_copy(copy, f);
+    skin_copy(copy, f);
+    mips = run_uploads(copy, f, 0, f->frameUploads);
+    SDL_EndGPUCopyPass(copy);
+    if (mips)
+        make_mipmaps(cmd, f, 0, f->frameUploads);
+    world_compute(cmd, f);
+    for (i = 0; i < f->nsteps; i++) {
+        const struct gpu_step *s = &f->steps[i];
+        if (s->kind == STEP_PASS) {
+            run_pass(cmd, f, s);
+        } else if (s->kind == STEP_UPLOADS) {
+            SDL_GPUCopyPass *late = SDL_BeginGPUCopyPass(cmd);
+            mips = run_uploads(late, f, s->first, s->count);
+            SDL_EndGPUCopyPass(late);
+            if (mips)
+                make_mipmaps(cmd, f, s->first, s->count);
+        } else if (s->kind == STEP_COPY) {
+            run_copy(cmd, s);
+        }
+    }
+    if (f->download.out)
+        download_screen(cmd, f);
+    f->fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
+    commands_give();
+    if (!f->fence) {
+        SDL_Log("gfx: SDL_SubmitGPUCommandBufferAndAcquireFence: %s", SDL_GetError());
+        return 0;
+    }
+    return 1;
+}
+
+/* Waits for the GPU to finish a frame submitted. */
+static void frame_wait(struct gpu_frame *f)
+{
+    if (!f->fence)
+        return;
+    SDL_WaitForGPUFences(G.dev, true, &f->fence, 1);
+    SDL_ReleaseGPUFence(G.dev, f->fence);
+    f->fence = NULL;
+}
+
+/* The render thread's part of a frame (render/render_thread.h). First it waits for the GPU to
+   finish the frame FRAME_RING_IN_FLIGHT before: so the main thread runs ahead of the GPU by that
+   and the frame it records at most, also where no swapchain paces the frames (a hidden window),
+   and SDL's Vulkan driver, which gives each command buffer a cache of descriptor sets and takes it
+   back only once it finds that command buffer finished, gives the frame the cache of the one it
+   waited for (one that finds none given back makes a descriptor pool for every kind of binding the
+   frame binds, which the driver can take 15 ms and more over). Then the frame is recorded and
+   submitted, unless the main thread could not hand it over whole; what was given up while it was
+   recorded is released; and a download it asks for is waited for and copied out to the main
+   thread, which waits for it. */
+static void frame_run(void *context, int slot, int wait)
+{
+    struct gpu_frame *f = &G.frames[slot];
+    (void)context;
+    if (wait >= 0)
+        frame_wait(&G.frames[wait]);
+    if (f->state == FRAME_DRAWN && !frame_record(f))
+        f->state = FRAME_UNSUBMITTED;
+    release_retired(f->retired, f->nretired);
+    f->nretired = 0;
+    if (f->download.out && f->fence) {
+        const unsigned char *p = NULL;
+        int y;
+        frame_wait(f);
+        p = SDL_MapGPUTransferBuffer(G.dev, f->download.buffer, false);
+        if (p) {
+            for (y = 0; y < f->download.h; y++)
+                memcpy(f->download.out + (size_t)y * f->download.pitch, p + (size_t)y * f->download.w * 4,
+                       (size_t)f->download.w * 4);
+            SDL_UnmapGPUTransferBuffer(G.dev, f->download.buffer);
+            f->downloaded = 1;
+        }
+    }
+}
+
+/* ---- handing frames over, on the main thread ---- */
+
 /* Whether a frame shown without waiting may ask for the window's next picture: once a refresh of
    the window's display (60 Hz where its mode does not say) has passed since the last one, when SDL's
    acquire, which waits for the presentation engine, no longer has to. */
@@ -4325,123 +4861,125 @@ static int present_due(void)
     return SDL_GetTicksNS() - G.presentedNs >= (Uint64)(1e9 / hz);
 }
 
-/* The screen into the window's next picture, fitted (present_fit). With `wait` the frame waits for
-   one; without, it is drawn but not shown unless present_due, as Direct3D 9's flip without waiting
-   (D3DPRESENT_DONOTWAIT) left a frame the screen had no room for. */
-static void present_into(SDL_GPUCommandBuffer *cmd, int wait)
+/* A present in two halves, in a command buffer of the main thread's own, which SDL wants for a
+   swapchain: present_begin takes the window's next picture, which with `wait` waits for one, while
+   the render thread still records and submits the frame handed over before; present_end, once
+   that frame is back, blits the screen into it, fitted (present_fit). The screen then holds the
+   last frame the render thread finished, and the frame being handed over is shown at the next
+   present, as Direct3D 9's driver queued a frame. Without `wait` the screen is not shown unless
+   present_due, as Direct3D 9's flip without waiting (D3DPRESENT_DONOTWAIT) left a frame the screen
+   had no room for. Nothing is shown until a frame drawn into the screen as it is now has been
+   submitted. */
+struct present {
+    SDL_GPUCommandBuffer *cmd;
+    SDL_GPUTexture *swap;
+    Uint32 w, h;
+};
+
+/* 0 where nothing is to be shown */
+static int present_begin(int wait, struct present *p)
 {
-    SDL_GPUTexture *swap = NULL;
-    Uint32 w = 0, h = 0;
+    SDL_zerop(p);
+    if (!G.claimed || !G.screen || !G.screen->tex || !G.screenShown || (!wait && !present_due()))
+        return 0;
+    p->cmd = SDL_AcquireGPUCommandBuffer(G.dev);
+    if (!p->cmd) {
+        SDL_Log("gfx: SDL_AcquireGPUCommandBuffer: %s", SDL_GetError());
+        return 0;
+    }
+    if (!(wait ? SDL_WaitAndAcquireGPUSwapchainTexture(p->cmd, G.window, &p->swap, &p->w, &p->h)
+               : SDL_AcquireGPUSwapchainTexture(p->cmd, G.window, &p->swap, &p->w, &p->h))) {
+        SDL_CancelGPUCommandBuffer(p->cmd);
+        p->cmd = NULL;
+        return 0;
+    }
+    if (p->swap)
+        G.presentedNs = SDL_GetTicksNS();
+    return 1;
+}
+
+static void present_end(const struct present *p)
+{
+    SDL_GPUTexture *swap = p->swap;
+    Uint32 w = p->w, h = p->h;
     int fx, fy, fw, fh, pw = 0, ph = 0;
     struct PresentCover cover = present_cover;
     SDL_GPUBlitInfo blit;
-    if (!G.claimed || !G.screen || !G.screen->tex || (!wait && !present_due()))
-        return;
-    if (!(wait ? SDL_WaitAndAcquireGPUSwapchainTexture(cmd, G.window, &swap, &w, &h)
-               : SDL_AcquireGPUSwapchainTexture(cmd, G.window, &swap, &w, &h))
-        || !swap)
-        return;
-    G.presentedNs = SDL_GetTicksNS();
-    /* the cover is in window points, the swapchain in pixels */
-    SDL_GetWindowSize(G.window, &pw, &ph);
-    if (pw > 0 && pw != (int)w) {
-        cover.left = (int)((long long)cover.left * w / pw);
-        cover.right = (int)((long long)cover.right * w / pw);
-    }
-    if (ph > 0 && ph != (int)h) {
-        cover.top = (int)((long long)cover.top * h / ph);
-        cover.bottom = (int)((long long)cover.bottom * h / ph);
-        cover.lift = (int)((long long)cover.lift * h / ph);
-    }
-    present_fit((int)w, (int)h, G.screen->width, G.screen->height, &cover, &fx, &fy, &fw, &fh);
-    SDL_zero(blit);
-    blit.source.texture = G.screen->tex;
-    blit.source.w = (Uint32)G.screen->width;
-    blit.source.h = (Uint32)G.screen->height;
-    blit.destination.texture = swap;
-    blit.destination.x = (Uint32)(fx > 0 ? fx : 0);
-    blit.destination.y = (Uint32)(fy > 0 ? fy : 0);
-    blit.destination.w = (Uint32)fw;
-    blit.destination.h = (Uint32)fh;
-    blit.load_op = fx || fy || fw != (int)w || fh != (int)h ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_DONT_CARE;
-    blit.clear_color.a = 1.0f;
-    /* filtered only where it shrinks: a filtered enlargement would read the texture's margin past
-       the picture's last row and column (MARGIN) */
-    blit.filter = fw < G.screen->width || fh < G.screen->height ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
-    SDL_BlitGPUTexture(cmd, &blit);
-}
-
-static void frame_reset(void)
-{
-    struct gfx_skin *k, *next;
-    size_t i;
-    for (k = G.skins; k; k = next) {
-        next = k->next;
-        if (k->dead)
-            skin_destroy(k);
-    }
-    for (i = 0; i < G.npins; i++) {
-        struct gfx_surface *s = G.pins[i];
-        int dead;
-        lock_handles();
-        s->pinned = 0;
-        dead = s->dead;
-        unlock_handles();
-        if (dead)
-            destroy_handle(s);
-    }
-    G.npins = 0;
-    G.nsteps = G.ndraws = G.nuploads = G.frameUploads = 0;
-    G.drawRecords.size = G.viewRecords.size = G.rowTables.size = 0;
-    G.texels.size = G.quadData.size = G.quadOffsets.size = 0;
-    memset(G.clearBlocks, 0, sizeof G.clearBlocks);
-    G.nskinUploads = G.skinBytes = 0;
-    G.batch.open = G.skinBatch.open = 0;
-    G.cameraView = G.matrixIndex[0] = G.matrixIndex[1] = -1;
-    W.instances.size = 0;
-    W.computeDue = W.frameDue = W.computed = 0;
-    G.frame++;
-    if (!G.frame)
-        G.frame = 1;
-}
-
-/* Waits for the GPU to finish the frame submitted FRAMES_IN_FLIGHT submissions ago, or for all of
-   them. */
-static void wait_frames(int all)
-{
-    int i;
-    for (i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        SDL_GPUFence **f = &G.inFlight[(G.inFlightNext + i) % FRAMES_IN_FLIGHT];
-        if (*f && (all || i == 0)) {
-            SDL_WaitForGPUFences(G.dev, true, f, 1);
-            SDL_ReleaseGPUFence(G.dev, *f);
-            *f = NULL;
+    commands_take();
+    if (swap) {
+        /* the cover is in window points, the swapchain in pixels */
+        SDL_GetWindowSize(G.window, &pw, &ph);
+        if (pw > 0 && pw != (int)w) {
+            cover.left = (int)((long long)cover.left * w / pw);
+            cover.right = (int)((long long)cover.right * w / pw);
         }
+        if (ph > 0 && ph != (int)h) {
+            cover.top = (int)((long long)cover.top * h / ph);
+            cover.bottom = (int)((long long)cover.bottom * h / ph);
+            cover.lift = (int)((long long)cover.lift * h / ph);
+        }
+        present_fit((int)w, (int)h, G.screen->width, G.screen->height, &cover, &fx, &fy, &fw, &fh);
+        SDL_zero(blit);
+        blit.source.texture = G.screen->tex;
+        blit.source.w = (Uint32)G.screen->width;
+        blit.source.h = (Uint32)G.screen->height;
+        blit.destination.texture = swap;
+        blit.destination.x = (Uint32)(fx > 0 ? fx : 0);
+        blit.destination.y = (Uint32)(fy > 0 ? fy : 0);
+        blit.destination.w = (Uint32)fw;
+        blit.destination.h = (Uint32)fh;
+        blit.load_op = fx || fy || fw != (int)w || fh != (int)h ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_DONT_CARE;
+        blit.clear_color.a = 1.0f;
+        /* filtered only where it shrinks: a filtered enlargement would read the texture's margin
+           past the picture's last row and column (MARGIN) */
+        blit.filter = fw < G.screen->width || fh < G.screen->height ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
+        SDL_BlitGPUTexture(p->cmd, &blit);
     }
+    if (!main_submit(p->cmd, NULL))
+        SDL_Log("gfx: SDL_SubmitGPUCommandBuffer: %s", SDL_GetError());
 }
 
-/* What a flush also does: end the frame (gfx_present), showing the screen where the window is
-   claimed (claim_window), waiting for the window's next picture or not; and download a rectangle of
-   the screen (gfx_read_frame). */
-struct flush_extra {
-    int present, wait;
-    SDL_GPUTexture *download;
-    int x, y, w, h;
-    unsigned char *out;  /* B8G8R8A8 rows */
-    size_t pitch;        /* bytes from one row of out to the next */
-};
+/* The surface or Granny model an upload of a frame named, if it is alive still: a frame taken back
+   after the render thread could not submit it may name some that went when it was handed over, so
+   they are looked for among the live ones by their address, which one made since may have taken
+   (it then goes up again, which does no harm). */
+static struct gfx_surface *live_surface(const struct gfx_surface *s)
+{
+    struct gfx_surface *h;
+    lock_handles();
+    for (h = G.handles; h && h != s; h = h->next)
+        ;
+    unlock_handles();
+    return h;
+}
 
-/* A flush whose command buffer did not reach the GPU: the textures it was to fill go up with the
-   next one, and so do the world's records, slots and cells, which stay changed (world_flushed), and
-   the Granny models it was to fill, whose buffers are made again. */
-static void requeue_uploads(long instances)
+static struct gfx_skin *live_skin(const struct gfx_skin *k)
+{
+    struct gfx_skin *h;
+    lock_handles();
+    for (h = G.skins; h && h != k; h = h->next)
+        ;
+    unlock_handles();
+    return h;
+}
+
+/* The uploads of a frame that did not reach the GPU go up with a later one: the textures it was to
+   fill, the Granny models it was to fill, whose buffers are made again, and the identity instances
+   it was to make. `live` where the frame has not been handed over yet, so that what it names is all
+   alive. */
+static void requeue_uploads(struct gpu_frame *f, int live)
 {
     size_t i;
-    for (i = 0; i < G.nskinUploads; i++)
-        skin_buffers_release(G.skinUploads[i].model);
-    for (i = 0; i < G.nuploads; i++) {
-        const struct gpu_upload *u = &G.uploads[i];
-        struct gfx_surface *s = u->surface;
+    for (i = 0; i < f->nskinUploads; i++) {
+        struct gfx_skin *k = live ? f->skinUploads[i].model : live_skin(f->skinUploads[i].model);
+        if (k && k->vertexBuffer == f->skinUploads[i].vertices)
+            skin_buffers_release(k);
+    }
+    for (i = 0; i < f->nuploads; i++) {
+        const struct gpu_upload *u = &f->uploads[i];
+        struct gfx_surface *s = live ? u->surface : live_surface(u->surface);
+        if (!s)
+            continue;
         if (u->w && u->h && !u->fromLayer) {
             RECT r;
             r.left = (LONG)u->x;
@@ -4456,47 +4994,191 @@ static void requeue_uploads(long instances)
             unlock_handles();
         }
     }
-    if (instances >= 0) {
-        SDL_ReleaseGPUBuffer(G.dev, G.instances);
-        G.instances = NULL;
+    if (f->instancesAt >= 0 && G.buffers.instances == f->buffers.instances) {
+        retire_buffer(G.buffers.instances);
+        G.buffers.instances = NULL;
         G.instanceCount = 0;
     }
 }
 
-static uint32_t align16(uint32_t v)
+/* What the frame being handed over pinned may go now: the render thread reads no surface or
+   model, only the GPU objects the packet holds, which go once the frame is submitted (retire). */
+static void frame_unpin(struct gpu_frame *f)
 {
-    return (v + 15u) & ~15u;
+    struct gfx_skin *k, *next;
+    size_t i;
+    for (k = G.skins; k; k = next) {
+        next = k->next;
+        if (k->dead)
+            skin_destroy(k);
+    }
+    for (i = 0; i < f->npins; i++) {
+        struct gfx_surface *s = f->pins[i];
+        int dead;
+        lock_handles();
+        s->pinned = 0;
+        dead = s->dead;
+        unlock_handles();
+        if (dead)
+            destroy_handle(s);
+    }
+    f->npins = 0;
 }
 
-/* Submits everything recorded since the last flush in one command buffer: one transfer buffer,
-   one copy pass, then the steps. */
+/* A frame back from the render thread (frame_ring_retire): what it could not submit goes up with a
+   later frame, its shadows are the ones the GPU fitted last, and a frame drawn into the screen may
+   be shown. Answers whether it could not be submitted. */
+static int frame_retire(struct gpu_frame *f)
+{
+    if (f->state == FRAME_UNSUBMITTED) {
+        requeue_uploads(f, 0);
+        world_unflushed(&f->world);
+        return 1;
+    }
+    if (f->state != FRAME_DRAWN)
+        return 0;
+    if (f->drawsScreen)
+        G.screenShown = 1;
+    if (f->world.shadowSet && !f->shadowFailed && (int)(f->number - W.fittedFrom) >= 0) {
+        W.fitted = f->world.shadow;
+        W.fittedSet = 1;
+    }
+    return 0;
+}
+
+/* Takes back every frame handed over, waiting for those the render thread has not finished yet;
+   answers whether one of them could not be submitted. */
+static int retire_frames(void)
+{
+    int slot, lost = 0;
+    while ((slot = render_thread_retire(G.thread)) >= 0)
+        lost |= frame_retire(&G.frames[slot]);
+    return lost;
+}
+
+/* the frame's streams that go up */
+#define FRAME_STREAMS 5
+static void frame_streams(struct gpu_frame *f, struct bytes **out)
+{
+    out[0] = &f->records;
+    out[1] = &f->rows;
+    out[2] = &f->quads;
+    out[3] = &f->offsets;
+    out[4] = &f->texels;
+}
+
+/* The next frame's packet, in the slot the ring gives: every frame before the one just handed over
+   has been taken back (flush), so the ring has one free. Its lists are emptied and its streams'
+   transfer buffers mapped, each made again small where its frames have needed a quarter of it at
+   most for a while. */
+static void frame_begin(void)
+{
+    struct gpu_frame *f;
+    struct bytes *streams[FRAME_STREAMS];
+    int i;
+    f = G.f = &G.frames[render_thread_begin(G.thread)];
+    if (!++G.frame)
+        G.frame = 1;
+    f->number = G.frame;
+    f->nsteps = f->ndraws = f->nuploads = f->frameUploads = 0;
+    f->nskinUploads = 0;
+    f->views.size = f->uniforms.size = 0;
+    memset(f->clearBlocks, 0, sizeof f->clearBlocks);
+    memset(&f->download, 0, sizeof f->download);
+    f->instancesAt = -1;
+    f->state = FRAME_DRAWN;
+    f->drawsScreen = f->downloaded = 0;
+    frame_streams(f, streams);
+    for (i = 0; i < FRAME_STREAMS; i++) {
+        struct bytes *b = streams[i];
+        b->staged = 1;
+        b->size = 0;
+        if (b->quiet >= STAGING_QUIET) {
+            stage_release(b);
+            b->quiet = 0;
+        }
+        if (b->buffer && !(b->data = SDL_MapGPUTransferBuffer(G.dev, b->buffer, false)))
+            stage_release(b);
+    }
+    G.batch.open = G.skinBatch.open = 0;
+    G.cameraView = G.matrixIndex[0] = G.matrixIndex[1] = -1;
+    W.instances.size = 0;
+    W.computeDue = W.frameDue = 0;
+}
+
+/* The frame as the main thread hands it over: its streams unmapped, what was given up while it was
+   recorded going with it, how it went. */
+static void hand_over(struct gpu_frame *f, int state)
+{
+    struct bytes *streams[FRAME_STREAMS];
+    struct retired *list;
+    size_t capacity;
+    int i;
+    frame_streams(f, streams);
+    for (i = 0; i < FRAME_STREAMS; i++) {
+        struct bytes *b = streams[i];
+        if (!b->buffer)
+            continue;
+        SDL_UnmapGPUTransferBuffer(G.dev, b->buffer);
+        b->data = NULL;
+        if (b->capacity > (4u << 20) && b->size <= b->capacity / 4)
+            b->quiet++;
+        else
+            b->quiet = 0;
+    }
+    lock_handles();
+    list = f->retired;
+    capacity = f->retiredCapacity;
+    f->retired = G.retiring;
+    f->nretired = G.nretiring;
+    f->retiredCapacity = G.retiringCapacity;
+    G.retiring = list;
+    G.retiringCapacity = capacity;
+    G.nretiring = 0;
+    unlock_handles();
+    f->state = state;
+    render_thread_post(G.thread);
+}
+
+/* What a flush also does: end the frame (gfx_present), showing the screen where the window is
+   claimed (claim_window), waiting for the window's next picture or not; and download a rectangle of
+   the screen (gfx_read_frame). */
+struct flush_extra {
+    int present, wait;
+    SDL_GPUTexture *download;
+    int x, y, w, h;
+    unsigned char *out;  /* B8G8R8A8 rows */
+    size_t pitch;        /* bytes from one row of out to the next */
+};
+
+/* Hands everything recorded since the last flush over to the render thread, which submits it in one
+   command buffer (frame_record), and begins the next frame. First the frame handed over before is
+   taken back, once the render thread has finished it, so that nothing it reads changes while the
+   frame's buffers are made large enough and the world's arrays, stream and staging are done; the
+   frame takes the buffers, the world and its download as they are then. The window's next picture
+   is waited for while the render thread finishes that frame, and shows it (present_begin). A frame
+   the render thread could not submit puts back what it was to take up, which the frame being
+   handed over was recorded without: that one is dropped as well, and the next is recorded with
+   them. A download is waited for. */
 static int flush(const struct flush_extra *extra)
 {
-    SDL_GPUCommandBuffer *cmd;
-    SDL_GPUCopyPass *copy;
-    SDL_GPUFence *fence;
-    uint32_t oRecords, oRows, oQuads, oOffsets, oTexels, oSkins, total;
-    long instances;
-    unsigned char *mapped;
+    struct gpu_frame *f = G.f;
+    struct present present;
+    long instances = -1;
+    int ok = 1, download, presenting, lost;
     size_t i;
-    int ok = 1, downloaded = 0, shrink = 0;
     batch_flush();
     if (!G.dev)
         return 0;
-    if (!G.nsteps && !G.nuploads && !G.nskinUploads && !W.nmeshUploads && !W.ntextureUploads && !extra->present
-        && !extra->download) {
-        frame_reset();
+    if (!f->nsteps && !f->nuploads && !f->nskinUploads && !W.nmeshUploads && !W.ntextureUploads && !extra->present
+        && !extra->download)
         return 1;
-    }
-    /* The frame FRAMES_IN_FLIGHT submissions ago is waited for before anything here takes a command
-       buffer. SDL's Vulkan backend gives each command buffer a cache of descriptor sets, and takes
-       it back only once it finds that command buffer finished, at a wait or a submit that presents.
-       A command buffer that finds no cache given back starts an empty one, which makes a
-       descriptor pool for every kind of binding the frame binds (28 with shadows), and the driver
-       can take 15 ms and more over those. Every texture made between frames holds a cache for a
-       while, as SDL_CreateGPUTexture sets the texture's layout in a command buffer of its own;
-       waiting first gives the frame the cache of the frame it waited for. */
-    wait_frames(0);
+    presenting = extra->present && present_begin(extra->wait, &present);
+    lost = retire_frames();
+    if (presenting)
+        present_end(&present);
+    if (lost)
+        goto failed;
     /* the world's arrays as large as their layers, its meshes and textures up through the stream,
        then what goes with the frame */
     if (world_on()) {
@@ -4507,118 +5189,36 @@ static int flush(const struct flush_extra *extra)
             world_failed("buffers");
     }
     /* every storage buffer holds one record at least */
-    if (!G.drawRecords.size)
-        bytes_add(&G.drawRecords, sizeof(struct GpuDraw), 16);
-    if (!G.quadData.size)
-        bytes_add(&G.quadData, 16, 16);
-    if (!G.quadOffsets.size)
-        bytes_add(&G.quadOffsets, 4, 4);
-    instances = instances_needed((uint32_t)(G.drawRecords.size / sizeof(struct GpuDraw)));
-    oRecords = 0;
-    oRows = align16(oRecords + (uint32_t)G.drawRecords.size);
-    oQuads = align16(oRows + (uint32_t)G.rowTables.size);
-    oOffsets = align16(oQuads + (uint32_t)G.quadData.size);
-    oTexels = align16(oOffsets + (uint32_t)G.quadOffsets.size);
-    oSkins = align16(oTexels + (uint32_t)G.texels.size);
-    total = oSkins + G.skinBytes;
-    /* a transfer buffer far larger than the frames have needed for a while is made again as large
-       as they need, and the staging texels' memory given back */
-    if (G.upload && G.uploadSize > (4u << 20) && total <= G.uploadSize / 4) {
-        if (++G.stagingQuiet >= STAGING_QUIET) {
-            SDL_ReleaseGPUTransferBuffer(G.dev, G.upload);
-            G.upload = NULL;
-            G.uploadSize = 0;
-            G.stagingQuiet = 0;
-            shrink = 1;
-        }
-    } else {
-        G.stagingQuiet = 0;
-    }
-    if (instances == -2
-        || !ensure_buffer(&G.records, &G.recordsSize, (uint32_t)G.drawRecords.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
-        || (G.rowTables.size
-            && !ensure_buffer(&G.rows, &G.rowsSize, (uint32_t)G.rowTables.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
-        || !ensure_buffer(&G.quads, &G.quadsSize, (uint32_t)G.quadData.size, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
-        || !ensure_buffer(&G.offsets, &G.offsetsSize, (uint32_t)G.quadOffsets.size, SDL_GPU_BUFFERUSAGE_VERTEX)) {
+    if (!f->records.size)
+        bytes_add(&f->records, sizeof(struct GpuDraw), 16);
+    if (!f->quads.size)
+        bytes_add(&f->quads, 16, 16);
+    if (!f->offsets.size)
+        bytes_add(&f->offsets, 4, 4);
+    instances = instances_needed((uint32_t)(f->records.size / sizeof(struct GpuDraw)));
+    f->instancesAt = instances;
+    f->instanceCount = G.instanceCount;
+    f->buffers.instances = G.buffers.instances;
+    if (instances == -2 || !f->records.size || !f->quads.size || !f->offsets.size
+        || !ensure_buffer(&G.buffers.records, &G.recordsSize, (uint32_t)f->records.size,
+                          SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
+        || (f->rows.size
+            && !ensure_buffer(&G.buffers.rows, &G.rowsSize, (uint32_t)f->rows.size,
+                              SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ))
+        || !ensure_buffer(&G.buffers.quads, &G.quadsSize, (uint32_t)f->quads.size,
+                          SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ)
+        || !ensure_buffer(&G.buffers.offsets, &G.offsetsSize, (uint32_t)f->offsets.size, SDL_GPU_BUFFERUSAGE_VERTEX)) {
         SDL_Log("gfx: frame buffers: %s", SDL_GetError());
         goto failed;
     }
-    if (!G.upload || total > G.uploadSize) {
-        SDL_GPUTransferBufferCreateInfo info;
-        uint32_t size = G.upload ? G.uploadSize : 1u << 20;
-        while (size < total)
-            size *= 2;
-        if (G.upload)
-            SDL_ReleaseGPUTransferBuffer(G.dev, G.upload);
-        SDL_zero(info);
-        info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-        info.size = size;
-        G.upload = SDL_CreateGPUTransferBuffer(G.dev, &info);
-        G.uploadSize = G.upload ? size : 0;
-        if (!G.upload) {
-            SDL_Log("gfx: transfer buffer of %u bytes: %s", size, SDL_GetError());
-            goto failed;
-        }
-    }
-    mapped = SDL_MapGPUTransferBuffer(G.dev, G.upload, true);
-    if (!mapped)
+    f->buffers = G.buffers;
+    if (!world_hand_over(f))
         goto failed;
-    memcpy(mapped + oRecords, G.drawRecords.data, G.drawRecords.size);
-    if (G.rowTables.size)
-        memcpy(mapped + oRows, G.rowTables.data, G.rowTables.size);
-    memcpy(mapped + oQuads, G.quadData.data, G.quadData.size);
-    memcpy(mapped + oOffsets, G.quadOffsets.data, G.quadOffsets.size);
-    if (G.texels.size)
-        memcpy(mapped + oTexels, G.texels.data, G.texels.size);
-    skin_stage(mapped + oSkins);
-    SDL_UnmapGPUTransferBuffer(G.dev, G.upload);
-
-    cmd = SDL_AcquireGPUCommandBuffer(G.dev);
-    if (!cmd) {
-        SDL_Log("gfx: SDL_AcquireGPUCommandBuffer: %s", SDL_GetError());
-        goto failed;
-    }
-    copy = SDL_BeginGPUCopyPass(cmd);
-    copy_into(copy, oRecords, G.records, (uint32_t)G.drawRecords.size);
-    copy_into(copy, oRows, G.rows, (uint32_t)G.rowTables.size);
-    copy_into(copy, oQuads, G.quads, (uint32_t)G.quadData.size);
-    copy_into(copy, oOffsets, G.offsets, (uint32_t)G.quadOffsets.size);
-    if (instances >= 0) {
-        SDL_GPUTransferBufferLocation src;
-        SDL_GPUBufferRegion dst;
-        src.transfer_buffer = G.upload;
-        src.offset = oTexels + (uint32_t)instances;
-        dst.buffer = G.instances;
-        dst.offset = 0;
-        dst.size = G.instanceCount * 4;
-        SDL_UploadToGPUBuffer(copy, &src, &dst, false);
-    }
-    world_copy(copy, oTexels);
-    skin_copy(copy, oSkins);
-    if (run_uploads(copy, 0, G.frameUploads, oTexels)) {
-        SDL_EndGPUCopyPass(copy);
-        make_mipmaps(cmd, 0, G.frameUploads);
-    } else {
-        SDL_EndGPUCopyPass(copy);
-    }
-    world_compute(cmd);
-    for (i = 0; i < G.nsteps; i++) {
-        const struct gpu_step *s = &G.steps[i];
-        if (s->kind == STEP_PASS) {
-            run_pass(cmd, s);
-        } else if (s->kind == STEP_UPLOADS) {
-            SDL_GPUCopyPass *late = SDL_BeginGPUCopyPass(cmd);
-            int mips = run_uploads(late, s->first, s->count, oTexels);
-            SDL_EndGPUCopyPass(late);
-            if (mips)
-                make_mipmaps(cmd, s->first, s->count);
-        } else if (s->kind == STEP_COPY) {
-            run_copy(cmd, s);
-        }
-    }
+    for (i = 0; i < f->nsteps; i++)
+        if ((f->steps[i].kind == STEP_PASS && f->steps[i].target == G.screen)
+            || (f->steps[i].kind == STEP_COPY && G.screen && f->steps[i].dst == G.screen->tex))
+            f->drawsScreen = 1;
     if (extra->download) {
-        SDL_GPUTextureRegion src;
-        SDL_GPUTextureTransferInfo dst;
         uint32_t need = (uint32_t)extra->w * (uint32_t)extra->h * 4;
         if (!G.download || need > G.downloadSize) {
             SDL_GPUTransferBufferCreateInfo info;
@@ -4631,79 +5231,59 @@ static int flush(const struct flush_extra *extra)
             G.downloadSize = G.download ? need : 0;
         }
         if (G.download) {
-            copy = SDL_BeginGPUCopyPass(cmd);
-            SDL_zero(src);
-            SDL_zero(dst);
-            src.texture = extra->download;
-            src.x = (Uint32)extra->x;
-            src.y = (Uint32)extra->y;
-            src.w = (Uint32)extra->w;
-            src.h = (Uint32)extra->h;
-            src.d = 1;
-            dst.transfer_buffer = G.download;
-            dst.pixels_per_row = (Uint32)extra->w;
-            dst.rows_per_layer = (Uint32)extra->h;
-            SDL_DownloadFromGPUTexture(copy, &src, &dst);
-            SDL_EndGPUCopyPass(copy);
-            downloaded = 1;
-        }
-    }
-    if (extra->present)
-        present_into(cmd, extra->wait);
-    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
-    if (!fence) {
-        SDL_Log("gfx: SDL_SubmitGPUCommandBufferAndAcquireFence: %s", SDL_GetError());
-        goto failed;
-    }
-    if (extra->download) {
-        const unsigned char *p = NULL;
-        int y;
-        if (downloaded && SDL_WaitForGPUFences(G.dev, true, &fence, 1))
-            p = SDL_MapGPUTransferBuffer(G.dev, G.download, false);
-        if (p) {
-            for (y = 0; y < extra->h; y++)
-                memcpy(extra->out + (size_t)y * extra->pitch, p + (size_t)y * extra->w * 4, (size_t)extra->w * 4);
-            SDL_UnmapGPUTransferBuffer(G.dev, G.download);
+            f->download.texture = extra->download;
+            f->download.buffer = G.download;
+            f->download.x = extra->x;
+            f->download.y = extra->y;
+            f->download.w = extra->w;
+            f->download.h = extra->h;
+            f->download.out = extra->out;
+            f->download.pitch = extra->pitch;
         } else {
             ok = 0;
         }
-        SDL_ReleaseGPUFence(G.dev, fence);
-        /* the queue finished everything submitted before it */
-        wait_frames(1);
-    } else {
-        G.inFlight[G.inFlightNext] = fence;
-        G.inFlightNext = (G.inFlightNext + 1) % FRAMES_IN_FLIGHT;
     }
     world_flushed();
     W.failures = 0;
+    download = f->download.out != NULL;
+    frame_unpin(f);
+    hand_over(f, FRAME_DRAWN);
     /* the world's frame lasts until the frame is shown */
     if (extra->present)
         W.frameSet = W.shadowSet = 0;
-    frame_reset();
-    if (shrink) {
-        free(G.texels.data);
-        G.texels.data = NULL;
-        G.texels.capacity = 0;
+    /* the frame comes back with its download (frame_run) */
+    if (download) {
+        retire_frames();
+        ok = f->downloaded;
     }
-    collect_dead_textures();
+    frame_begin();
     return ok;
 
 failed:
-    requeue_uploads(instances);
-    frame_reset();
+    requeue_uploads(f, 1);
+    frame_unpin(f);
+    hand_over(f, FRAME_DROPPED);
+    frame_begin();
     return 0;
 }
 
+/* Hands over what was recorded and waits for the render thread to submit it, and every frame
+   before: what the main thread records into a command buffer of its own after this reaches the
+   GPU after them. 0 where it did not. */
 static int flush_only(void)
 {
     struct flush_extra extra;
+    int ok;
     SDL_zero(extra);
-    return flush(&extra);
+    ok = flush(&extra);
+    if (retire_frames())
+        ok = 0;
+    return ok;
 }
 
 /* The screen's picture, a rectangle of it or the whole without one, downloaded after everything
-   recorded before it (render/gfx.h): the frame's work is submitted with the download, and the CPU
-   waits for both. */
+   recorded before it (render/gfx.h): the frame's work is handed over with the download, and the
+   main thread waits for the render thread to submit it and for the GPU to finish it. */
 int gfx_read_frame(const RECT *r, void *out, size_t pitch)
 {
     struct flush_extra extra;
@@ -4753,7 +5333,7 @@ static int read_level(SDL_GPUTexture *tex, uint32_t layer, uint32_t levels, int 
     info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
     info.size = w * h * 4;
     down = SDL_CreateGPUTransferBuffer(G.dev, &info);
-    cmd = down ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+    cmd = down ? main_commands() : NULL;
     if (!cmd) {
         if (down)
             SDL_ReleaseGPUTransferBuffer(G.dev, down);
@@ -4773,8 +5353,8 @@ static int read_level(SDL_GPUTexture *tex, uint32_t layer, uint32_t levels, int 
     copy = SDL_BeginGPUCopyPass(cmd);
     SDL_DownloadFromGPUTexture(copy, &src, &dst);
     SDL_EndGPUCopyPass(copy);
-    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
-    if (fence && SDL_WaitForGPUFences(G.dev, true, &fence, 1) && (p = SDL_MapGPUTransferBuffer(G.dev, down, false))) {
+    if (main_submit(cmd, &fence) && SDL_WaitForGPUFences(G.dev, true, &fence, 1)
+        && (p = SDL_MapGPUTransferBuffer(G.dev, down, false))) {
         memcpy(out, p, (size_t)w * h * 4);
         SDL_UnmapGPUTransferBuffer(G.dev, down);
         ok = 1;
@@ -4938,7 +5518,7 @@ static int upload_constants(void)
     if (!buffer)
         return 0;
     p = SDL_MapGPUTransferBuffer(G.dev, buffer, false);
-    cmd = p ? SDL_AcquireGPUCommandBuffer(G.dev) : NULL;
+    cmd = p ? main_commands() : NULL;
     if (p) {
         memcpy(p, white, sizeof white);
         memcpy(p + 16, quad_corners, sizeof quad_corners);
@@ -4969,11 +5549,15 @@ static int upload_constants(void)
         }
         SDL_EndGPUCopyPass(copy);
     }
-    ok = cmd && SDL_SubmitGPUCommandBuffer(cmd);
+    ok = cmd && main_submit(cmd, NULL);
     SDL_ReleaseGPUTransferBuffer(G.dev, buffer);
     return ok;
 }
 
+static void destroy_device(void);
+
+/* The device with everything it keeps, whole or not at all: a setup that fails lets go what it
+   made. */
 static int create_device(void)
 {
     const char *debug = SDL_getenv("RAGEXE_GPU_DEBUG");
@@ -4983,6 +5567,10 @@ static int create_device(void)
     int i;
     if (G.dev)
         return 1;
+    if (!G.recording && !(G.recording = SDL_CreateMutex())) {
+        SDL_Log("gfx: SDL_CreateMutex: %s", SDL_GetError());
+        return 0;
+    }
     G.vsCode[PROG_QUAD] = &quad_vs;
     G.fsCode[PROG_QUAD] = &quad_fs;
     G.vsCode[PROG_WORLD] = &world_vs;
@@ -5026,6 +5614,7 @@ static int create_device(void)
             continue;
         }
         SDL_Log("gfx: SDL_CreateGPUShader: %s", SDL_GetError());
+        destroy_device();
         return 0;
     }
     G.depthFormat = SDL_GPUTextureSupportsFormat(G.dev, SDL_GPU_TEXTUREFORMAT_D24_UNORM, SDL_GPU_TEXTURETYPE_2D,
@@ -5044,9 +5633,9 @@ static int create_device(void)
     info.width = info.height = 1;
     info.layer_count_or_depth = 1;
     info.num_levels = 1;
-    G.noShadow = SDL_CreateGPUTexture(G.dev, &info);
+    G.noShadow = make_texture(&info);
     info.format = TARGET_FORMAT;
-    G.noAtlas = SDL_CreateGPUTexture(G.dev, &info);
+    G.noAtlas = make_texture(&info);
     W.transform = make_compute(&world_transform_cs);
     W.cullPipeline = make_compute(&world_cull_cs);
     W.compactPipeline = make_compute(&world_compact_cs);
@@ -5076,11 +5665,17 @@ static int create_device(void)
     if (!G.pointClamp || !G.white || !G.noShadow || !G.noAtlas || !make_samplers() || !upload_constants()
         || !W.transform || !W.cullPipeline || !W.compactPipeline || !W.fitResult) {
         SDL_Log("gfx: device resources: %s", SDL_GetError());
+        destroy_device();
         return 0;
     }
-    G.frame = 1;
-    G.cameraView = G.matrixIndex[0] = G.matrixIndex[1] = -1;
+    G.thread = render_thread_start(frame_run, NULL);
+    if (!G.thread) {
+        SDL_Log("gfx: the render thread: %s", SDL_GetError());
+        destroy_device();
+        return 0;
+    }
     W.generation++;
+    frame_begin();
     return 1;
 }
 
@@ -5145,7 +5740,7 @@ static SDL_GPUTexture *new_samples_texture(int w, int h, int depth)
     info.layer_count_or_depth = 1;
     info.num_levels = 1;
     info.sample_count = G.samples;
-    return SDL_CreateGPUTexture(G.dev, &info);
+    return make_texture(&info);
 }
 
 /* The screen: d->target, the one surface the client draws the frame into and the window shows, a
@@ -5160,6 +5755,7 @@ int gfx_create_screen(struct C3dDevice *d)
     if (!screen)
         return GFX_E_PRIMARY;
     G.screen = screen;
+    G.screenShown = 0;
     G.samples = SDL_GPU_SAMPLECOUNT_1;
     screen->tex = new_target_texture(d->width, d->height);
     if (!screen->tex)
@@ -5212,16 +5808,29 @@ int gfx_get_caps(struct gfx_caps *out)
 
 int gfx_close(struct C3dDevice *d)
 {
-    struct gfx_surface *s, *next;
-    struct gfx_skin *k;
-    int i;
     if (G.dev)
         flush_only();
     if (d->target) { gfx_release(d->target); d->target = NULL; }
     if (d->save)   { gfx_release(d->save);   d->save = NULL; }
     G.target = G.screen = NULL;
+    destroy_device();
+    d->dev = NULL;
+    return 0;
+}
+
+/* The device and everything made with it let go: a device whole, every frame handed over taken
+   back (flush_only), or what a setup that failed had made (create_device). */
+static void destroy_device(void)
+{
+    struct gfx_surface *s, *next;
+    struct gfx_skin *k;
+    int i;
     if (G.dev) {
-        wait_frames(1);
+        /* the render thread ends, and the GPU finishes the frames it submitted */
+        render_thread_stop(G.thread);
+        G.thread = NULL;
+        for (i = 0; i < FRAME_RING_SLOTS; i++)
+            frame_wait(&G.frames[i]);
         SDL_WaitForGPUIdle(G.dev);
         lock_handles();
         for (s = G.handles; s; s = next) {
@@ -5245,9 +5854,24 @@ int gfx_close(struct C3dDevice *d)
             k->failed = 0;
         }
         unlock_handles();
-        collect_dead_textures();
         /* the world is made again for the next device (gfx_world_generation) */
         world_release();
+        lock_handles();
+        release_retired(G.retiring, G.nretiring);
+        G.nretiring = 0;
+        unlock_handles();
+        for (i = 0; i < FRAME_RING_SLOTS; i++) {
+            struct bytes *streams[FRAME_STREAMS];
+            int j;
+            frame_streams(&G.frames[i], streams);
+            for (j = 0; j < FRAME_STREAMS; j++) {
+                stage_release(streams[j]);
+                streams[j]->size = 0;
+                streams[j]->quiet = 0;
+            }
+            release_retired(G.frames[i].retired, G.frames[i].nretired);
+            G.frames[i].nretired = 0;
+        }
         if (W.streamFence) {
             SDL_WaitForGPUFences(G.dev, true, &W.streamFence, 1);
             SDL_ReleaseGPUFence(G.dev, W.streamFence);
@@ -5305,15 +5929,14 @@ int gfx_close(struct C3dDevice *d)
         if (G.fitDepth) SDL_ReleaseGPUTexture(G.dev, G.fitDepth);
         if (G.depth) SDL_ReleaseGPUTexture(G.dev, G.depth);
         if (G.msaa) SDL_ReleaseGPUTexture(G.dev, G.msaa);
-        if (G.records) SDL_ReleaseGPUBuffer(G.dev, G.records);
-        if (G.rows) SDL_ReleaseGPUBuffer(G.dev, G.rows);
+        if (G.buffers.records) SDL_ReleaseGPUBuffer(G.dev, G.buffers.records);
+        if (G.buffers.rows) SDL_ReleaseGPUBuffer(G.dev, G.buffers.rows);
         if (G.frameCopy) SDL_ReleaseGPUTexture(G.dev, G.frameCopy);
-        if (G.quads) SDL_ReleaseGPUBuffer(G.dev, G.quads);
-        if (G.offsets) SDL_ReleaseGPUBuffer(G.dev, G.offsets);
+        if (G.buffers.quads) SDL_ReleaseGPUBuffer(G.dev, G.buffers.quads);
+        if (G.buffers.offsets) SDL_ReleaseGPUBuffer(G.dev, G.buffers.offsets);
         if (G.corners) SDL_ReleaseGPUBuffer(G.dev, G.corners);
         if (G.triangles) SDL_ReleaseGPUBuffer(G.dev, G.triangles);
-        if (G.instances) SDL_ReleaseGPUBuffer(G.dev, G.instances);
-        if (G.upload) SDL_ReleaseGPUTransferBuffer(G.dev, G.upload);
+        if (G.buffers.instances) SDL_ReleaseGPUBuffer(G.dev, G.buffers.instances);
         if (G.download) SDL_ReleaseGPUTransferBuffer(G.dev, G.download);
         if (G.claimed)
             SDL_ReleaseWindowFromGPUDevice(G.dev, G.window);
@@ -5338,21 +5961,20 @@ int gfx_close(struct C3dDevice *d)
     G.frameCopyW = G.frameCopyH = 0;
     G.fitFront = G.fitBack = G.fitDepth = NULL;
     G.fitW = G.fitH = G.fitFailedW = G.fitFailedH = 0;
-    G.records = G.rows = G.quads = G.offsets = NULL;
-    G.instances = NULL;
+    memset(&G.buffers, 0, sizeof G.buffers);
     G.corners = G.triangles = NULL;
     G.recordsSize = G.rowsSize = G.quadsSize = G.offsetsSize = 0;
     G.instanceCount = 0;
-    G.upload = G.download = NULL;
-    G.uploadSize = G.downloadSize = 0;
+    G.download = NULL;
+    G.downloadSize = 0;
+    G.screenShown = 0;
+    G.f = NULL;
     G.shadowState = 0;
-    d->dev = NULL;
-    return 0;
 }
 
 /* The present mode follows RAGEXE_VSYNC (claim_window). Without vsync the frame never waits for
    the window: it is drawn but not shown unless a refresh has passed since the last picture
-   (present_into). A window not claimed shows nothing; the frame is drawn and ends all the same. */
+   (present_begin). A window not claimed shows nothing; the frame is drawn and ends all the same. */
 int gfx_present(int vsync)
 {
     struct flush_extra extra;
@@ -5367,9 +5989,9 @@ int gfx_present(int vsync)
     return 0;
 }
 
-/* custom: the screen, its multisampled picture and depth at w by h, for a window resized to that;
-   the swapchain follows the window by itself. Without memory for them it answers -1 and keeps the
-   old ones. */
+/* custom: the screen, its multisampled picture and depth at w by h, for a window resized to that,
+   once everything recorded before has been handed over and submitted; the swapchain follows the
+   window by itself. Without memory for them it answers -1 and keeps the old ones. */
 int gfx_resize(int w, int h)
 {
     SDL_GPUTexture *screen, *msaa = NULL, *depth = NULL;
@@ -5392,20 +6014,21 @@ int gfx_resize(int w, int h)
                 SDL_ReleaseGPUTexture(G.dev, made[i]);
         return -1;
     }
-    SDL_ReleaseGPUTexture(G.dev, G.screen->tex);
+    retire_texture(G.screen->tex);
     G.screen->tex = screen;
     if (G.msaa) {
-        SDL_ReleaseGPUTexture(G.dev, G.msaa);
+        retire_texture(G.msaa);
         G.msaa = msaa;
     }
     if (G.depth) {
-        SDL_ReleaseGPUTexture(G.dev, G.depth);
+        retire_texture(G.depth);
         G.depth = depth;
     }
     G.screen->version = next_version();
     G.screen->width = w;
     G.screen->height = h;
     G.viewsTargetW = G.viewsTargetH = 0;
+    G.screenShown = 0;
     return 0;
 }
 
@@ -5787,25 +6410,25 @@ int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *conte
         || !frame_copy_ready())
         return 0;
     /* what the frame holds with the draws batched so far, to take back to */
-    nsteps = G.nsteps;
-    ndraws = G.ndraws;
-    nrecords = G.drawRecords.size;
-    nrows = G.rowTables.size;
-    at = bytes_add(&G.rowTables, (size_t)screen->height * sizeof *table, 16);
+    nsteps = G.f->nsteps;
+    ndraws = G.f->ndraws;
+    nrecords = G.f->records.size;
+    nrows = G.f->rows.size;
+    at = bytes_add(&G.f->rows, (size_t)screen->height * sizeof *table, 16);
     copy = at >= 0 ? add_step(STEP_COPY) : NULL;
     pass = copy ? add_step(STEP_PASS) : NULL;
     d = pass ? add_draw(pass) : NULL;
     if (d)
         d->record = add_record(&r);
     if (!r) {
-        G.nsteps = nsteps;
-        G.ndraws = ndraws;
-        G.drawRecords.size = nrecords;
-        G.rowTables.size = nrows;
+        G.f->nsteps = nsteps;
+        G.f->ndraws = ndraws;
+        G.f->records.size = nrecords;
+        G.f->rows.size = nrows;
         return 0;
     }
     /* add_step may have moved the steps */
-    copy = &G.steps[nsteps];
+    copy = &G.f->steps[nsteps];
     pin(screen);
     copy->src = screen->tex;
     copy->dst = G.frameCopy;
@@ -5816,6 +6439,7 @@ int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *conte
     pass->loadColour = SDL_GPU_LOADOP_LOAD;
     pass->loadDepth = SDL_GPU_LOADOP_LOAD;
     pass->first = (uint32_t)ndraws;
+    pass_targets(pass);
     d->program = PROG_ROWS;
     d->pipeline = G.rowsPipeline;
     d->bind[0].texture = G.frameCopy;
@@ -5823,7 +6447,7 @@ int gfx_wobble(const struct WobbleRow *rows, int count, void (*fill)(void *conte
     d->count = 3;
     r->mode[3] = (uint32_t)(at / (long)sizeof *table);
     fill(context);
-    table = (uint32_t *)(G.rowTables.data + at);
+    table = (uint32_t *)(G.f->rows.data + at);
     for (y = 0; y < screen->height; y++) {
         int source = y, shift = 0;
         if (y < count && rows[y].source >= 0 && rows[y].source < screen->height && rows[y].shift >= 0) {

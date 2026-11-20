@@ -1,11 +1,12 @@
 # One renderer on SDL's GPU API
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
-resolution. Phases 2 to 7 are done on Windows: phase 5 draws the static world from records the GPU
+resolution. Phases 2 to 8 are done on Windows: phase 5 draws the static world from records the GPU
 culls and fits its shadows and culls their casters on the GPU, phase 6 draws sprites, effects and
-the UI as instances and skins Granny's actors on the GPU, and phase 7 holds every shader to a
+the UI as instances and skins Granny's actors on the GPU, phase 7 holds every shader to a
 tolerance of the CPU's floats instead of their bits, sends a texture's changed rectangles alone and
-measured the result on the load scenes. On Linux, in WSL, the client and its tests build with GCC
+measured the result on the load scenes, and phase 8 records and submits each frame on a render
+thread of the device's own. On Linux, in WSL, the client and its tests build with GCC
 and pass, the device's own tests of phases 2 to 5 and of phase 6's instances among them on Mesa's
 lavapipe (Granny's skinning and phase 7's shaders have not run there), and the scene harness of
 phases 2 to 4 has run there, but no one has played on it. The Android client of phase 2 builds for
@@ -14,7 +15,7 @@ SwiftShader); no map has been drawn on Android. The macOS client has not been bu
 and no Metal compiler has seen its shaders. The CPU's own searches that phase 7's profile found (the
 sprite atlas's walk, robes looked for on disk, Lua per layer, effects' owners found by walking the
 lists) are fixed on the line, and the load scenes were measured again (*Where the renderer stands*).
-Phase 8 is next.
+Phase 9 is next.
 File references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
@@ -49,8 +50,18 @@ File references drift as the code changes. Sizes are judgement, not measurement.
 ## Where the renderer stands
 
 - **One backend behind `render/gfx.h`:** `render/gfx_gpu.c` on SDL's GPU API, Vulkan or Metal, on
-  every platform (phase 2). It records a frame and submits it in one command buffer with one upload,
-  through the shaders of `src/render/shaders` that `tools/shaders` compiles offline.
+  every platform (phase 2). A frame goes to the GPU in one command buffer with one upload, through
+  the shaders of `src/render/shaders` that `tools/shaders` compiles offline.
+- **A render thread of the device's own** (phase 8). The main thread records a frame into a packet,
+  one of a ring of four (`render/frame_ring.c`), its records written once into transfer buffers of
+  the packet's own, and at the frame's end hands the packet over whole, with every GPU object its
+  passes use as they are then; the render thread (`render/render_thread.c`) records it into the
+  command buffer and submits it while the main thread records the next. A GPU object the main
+  thread gives up goes once the next frame handed over is submitted. The main thread presents: it
+  takes the window's picture while the render thread finishes the frame before, then puts the
+  screen, as that frame left it, into it, so a frame is shown at the next present. Command buffers
+  are recorded one at a time, the render thread's and the main thread's, as SDL moves memory at a
+  submit (*Risks*, "Threads").
 - **Draw modes, not render states** (phase 3). `render/draw_modes.c` names each way the client
   draws: blending, depth test and write, alpha test, fog, the texture stages' combination and their
   sampling, as the Direct3D 9 client set them for each list. The device makes every mode's
@@ -130,27 +141,31 @@ File references drift as the code changes. Sizes are judgement, not measurement.
   they make 613 and 574, of them 318 and 317 for the shadows (the depth pass and the casters, an
   indirect draw a run in each cascade). `docs/custom-review.md` has the baseline and each phase's
   CPU times. The load scenes (`tests/scenes/load.py`, `RAGEXE_MSAA=4`, three rounds by turns, a GTX
-  970 at 1,600 by 900; `docs/custom-review.md`, "The CPU fixes on the GPU line"), the median frame
-  in ms of this client with the CPU fixes, phase 7's and Direct3D 9's, and the parts of this
-  client's frame that the next phases take from:
+  970 at 1,600 by 900; `docs/custom-review.md`, "The frame recorded on a render thread"), the
+  median frame in ms of this client, of the line before phase 8 (with the CPU fixes) and of
+  Direct3D 9, and the parts of this client's frame that the next phases take from:
 
-  | scene | this client | phase 7 | Direct3D 9 | draw scene | present | texels |
+  | scene | this client | the line | Direct3D 9 | draw scene | present | texels |
   |---|---|---|---|---|---|---|
-  | `woe_emperium` | 20.44 | 30.70 | 29.21 | 5.29 | 1.92 | 0.22 |
-  | `woe_choke` | 17.58 | 23.78 | 23.45 | 4.58 | 1.75 | 0.19 |
-  | `arrive_castle` | 17.63 | 23.00 | 21.70 | 5.29 | 2.18 | 0.54 |
-  | `bombers_ifrit` | 12.20 | 16.48 | 16.15 | 3.73 | 0.80 | 0.13 |
-  | `arrive_prontera` | 4.58 | 11.87 | 13.41 | 1.00 | 0.84 | 0.16 |
-  | `town_prontera` | 4.67 | 11.33 | 12.85 | 0.99 | 0.88 | 0.08 |
-  | `mvp_randgris` | 5.89 | 5.91 | 4.48 | 0.99 | 3.10 | 0.03 |
-  | `snow_lutie` | 3.61 | 5.58 | 7.72 | 0.48 | 1.65 | 0.03 |
-  | `mvp_baphomet` | 5.96 | 6.26 | 5.32 | 1.03 | 2.61 | 0.04 |
-  | `aoe_orc_dungeon` | 2.91 | 3.01 | 2.35 | 0.16 | 2.34 | 0.00 |
+  | `woe_emperium` | 18.18 | 20.23 | 27.04 | 5.28 | 0.02 | 0.22 |
+  | `woe_choke` | 15.31 | 16.95 | 22.80 | 4.55 | 0.02 | 0.20 |
+  | `arrive_castle` | 14.62 | 16.27 | 20.51 | 5.03 | 0.02 | 0.55 |
+  | `bombers_ifrit` | 10.74 | 11.60 | 15.02 | 3.58 | 0.01 | 0.13 |
+  | `arrive_prontera` | 3.54 | 3.93 | 12.25 | 0.91 | 0.01 | 0.16 |
+  | `town_prontera` | 3.52 | 3.65 | 12.06 | 0.81 | 0.01 | 0.07 |
+  | `mvp_randgris` | 5.50 | 5.53 | 4.08 | 0.69 | 3.17 | 0.03 |
+  | `snow_lutie` | 3.38 | 3.38 | 7.01 | 0.43 | 1.77 | 0.03 |
+  | `mvp_baphomet` | 5.54 | 5.54 | 4.70 | 0.84 | 2.84 | 0.04 |
+  | `aoe_orc_dungeon` | 2.78 | 2.78 | 2.32 | 0.16 | 2.23 | 0.00 |
 
-  The frame is two thirds of Direct3D 9's in the crowds and a third of it in Prontera; in the three
-  light scenes it is longer, by presenting (2.3 to 3.1 ms against Direct3D 9's 0.15 to 0.3). The
-  first frame of an arrival takes 251 ms in the castle and 174 in Prontera (Direct3D 9: 226 and
-  137), most of it handling the packets of the crowd (106 to 134 ms), 16 and 12 ms widening texels.
+  `texels` is the textures' pixels widened to B8G8R8A8 as they go up (`texels_ms`), which Direct3D 9
+  did not do. The frame is about seven tenths of Direct3D 9's in the crowds and under a third of it
+  in Prontera.
+  Presenting no longer records the frame on the main thread; in Randgris's, Baphomet's and the Orc
+  Dungeon's fights it is the wait for the GPU, whose shadows' passes the frame is bound by there
+  (*Risks*), and only there is Direct3D 9's frame the shorter. The first
+  frame of an arrival takes 230 ms in the castle and 138 in Prontera (Direct3D 9: 212 and 130),
+  most of it handling the packets of the crowd (133 and 99 ms), 17 and 12 ms widening texels.
 
 ## The floor
 
@@ -227,17 +242,20 @@ Nothing below this floor is supported by a second path.
   (`SDL_GenerateMipmapsForGPUTexture`). No texture is locked or read back by the CPU; images the CPU
   reads (`render/cdcbitmap.c`) are read from their CPU copy.
 - **One upload per frame.** Everything the CPU writes for a frame (dynamic vertices, instance data,
-  per-draw constants, changed texture tiles) goes into one transfer buffer that cycles, copied in
-  one copy pass at the start of the frame's command buffer, and made again smaller after a while
-  where it grew for a burst. The static world's meshes and textures, hundreds of MB on a map's first
+  per-draw constants, changed texture tiles) is written once into the transfer buffers of the
+  frame's packet, mapped while the frame is recorded, copied in one copy pass at the start of the
+  frame's command buffer, and made again smaller after a while where they grew for a burst. A
+  packet is filled again only once the GPU has finished the frame it held. The static world's
+  meshes and textures, hundreds of MB on a map's first
   frame, go up through a stream of their own instead: a transfer buffer of 32 MB (or the largest
   texture) filled a batch at a time, each batch in a command buffer of its own that is waited for
   before the next, the textures' pixels widened straight from their surfaces.
-- **Only the main thread talks to the GPU.** The model loader thread (`world/models.c`) creates and
-  uploads textures today (`texture_cache_get` to `gfx_create_texture` and `texture_upload_pixels`),
-  which Direct3D 9's `MULTITHREADED` device serialises. SDL documents no thread safety for creating
-  resources and filling transfer buffers, so the loader only prepares pixels on the CPU, as the GL
-  backend does, and the main thread places them in their texture array layer in the frame's upload.
+- **The main thread makes, the render thread records.** The model loader thread (`world/models.c`)
+  creates and fills textures (`texture_cache_get` to `gfx_create_texture` and
+  `texture_upload_pixels`) as pixels on the CPU only; the main thread makes every GPU object and
+  stages the frame's uploads, and the device's render thread records and submits the frames. SDL
+  documents no thread safety for making objects while another thread records; its Vulkan and Metal
+  drivers lock what the two share (*Risks*).
 - **Static data is resident.** A map's ground and model meshes share one vertex and one index
   buffer, filled when the map loads and as streamed models arrive, each mesh behind the ones placed
   with its 16-bit indices and a base vertex. Map textures and lightmap pages live in texture arrays,
@@ -378,8 +396,13 @@ deleted.
 
 ### A frame
 
-1. Copy pass: the frame's upload (the static world's meshes and textures went up before, through
-   their stream).
+The main thread records frame n into its packet. At its end it waits for the render thread to
+finish frame n - 1, sends the static world's new meshes and textures up through their stream, makes
+the frame's buffers large enough, puts the screen (frame n - 1) into the window's picture and hands
+frame n over; then it records frame n + 1. The render thread waits for the GPU to finish frame
+n - 2, records frame n into one command buffer and submits it:
+
+1. Copy pass: the frame's upload, from the packet's transfer buffers.
 2. Compute: every slot's view, then cull the draw records for the view, compacting each run into
    one indirect draw.
 3. Depth pass (single-sample, view depth): the receivers the view's cull kept.
@@ -388,7 +411,8 @@ deleted.
 6. Main pass (multisampled, with its own depth): indirect draws of the ground and models, then
    water, then the alpha-blended models, instanced sprites and effects in the queues' order,
    resolved.
-7. The wobble pass when it runs, then the 2D pass onto the swapchain, then present.
+7. The wobble pass when it runs, then the 2D pass onto the screen, which the main thread shows at
+   the next present.
 
 ## Phases
 
@@ -639,29 +663,39 @@ recorded.
   Emperium room). Those are fixed since, outside the renderer (`docs/custom-review.md`, the two
   entries after phase 7's), and the load scenes measured again (*Where the renderer stands*).
 
-### Phase 8: the frame recorded off the main thread (medium)
+### Phase 8: the frame recorded off the main thread (done)
 
-- What it takes from the main thread: presenting, which records the frame's passes into Vulkan's
-  command buffer and copies the frame's records into the transfer buffer: 1.9 ms of the Emperium
-  room's frame of 20.4 with the CPU fixes, 0.9 in Prontera's of 4.7, 0.8 among the bombers, where
-  Direct3D 9's driver did that work on a thread of its own (0.2 to 0.7 ms); and the records' second
-  copy (0.6 ms in the Emperium room in phase 7's profile), since the frame's quads are written into
-  memory of the device's, zeroed first, and copied again. With the CPU's searches gone it is the
-  largest part of the GPU client's frame that Direct3D 9 does not pay, and in the light load scenes
-  (Randgris, Baphomet, the Orc Dungeon), where presenting takes 2.3 to 3.1 ms against 0.15 to 0.3,
-  the only part by which their frame is longer than Direct3D 9's; whether that time is recording
-  or waiting for the GPU is to be profiled first.
-- A render thread of the device's own acquires the frame's command buffer, records the passes and
-  submits them, from a copy of what the frame recorded (its steps, draws and uploads), while the
-  main thread goes on to the next frame; the records are written once, into the transfer buffer
-  the frame's copy pass reads, mapped when the frame begins. SDL lets a command buffer be used only
-  on the thread that acquired it and the swapchain be acquired only on the window's thread, so the
-  render thread draws the screen's texture and the main thread's present puts the last finished
-  screen into the swapchain; a frame is shown a frame after it is recorded, as Direct3D 9's driver
-  queued frames.
-- Checked: the scene set's captures the line's to the pixel (the GPU's work is the same), the
-  validation layer's synchronization checks, and the load scenes' presenting time on the main
-  thread.
+- What presenting was, profiled first (`docs/custom-review.md`, "The frame recorded on a render
+  thread"): in the crowds and in Prontera, recording the passes into Vulkan's command buffer (1.3 ms
+  in the Emperium room, 0.4 in Prontera), the world's compute and shadow passes (0.2, 0.3) and
+  copying the frame's records into the transfer buffer (0.3, 0.1), never waiting; in the light
+  scenes (Randgris, Baphomet, the Orc Dungeon), waiting for the GPU, 1.9 to 3.2 ms a frame, which
+  the shadows' passes take as far as the frames without shadows tell (*Risks*, "The shadows' GPU
+  time").
+- A render thread of the device's own (`render/render_thread.c`, the library `render-thread`)
+  records each frame into the command buffer and submits it, while the main thread records the next;
+  the frames are packets in a ring of four (`render/frame_ring.c`, the library `frame-ring`, pure),
+  each written once into transfer buffers of its own, handed over whole with every GPU object its
+  passes use, and filled again once the GPU has finished it. GPU objects given up go once the next
+  frame handed over is submitted. The main thread presents the last finished screen, waiting for the
+  window's picture while the render thread finishes that frame, so a frame is shown at the next
+  present; screenshots and captures read the frame just drawn. Command buffers are recorded one at a
+  time, the render thread's and the main thread's (the present, the static world's stream, the
+  reads, and the one SDL submits for each texture it makes), since SDL moves textures and buffers in
+  memory at a submit (*Risks*, "Threads"). A device is made whole or not at all, and a frame the
+  render thread could not submit takes the next one with it, which was recorded on its uploads. The
+  single-threaded flush, its one transfer buffer and the copy of the records into it are gone.
+- Checked: the scene set's captures at 1 and 4 samples, with and without shadows, and the load
+  scenes' at one sample, the line's (`f555328e`) to the pixel, with the same counters but for the
+  draws of a few frames of three load scenes, one more or one fewer, which the line differs by from
+  itself where its memory lies otherwise (`docs/custom-review.md`); the validation layer with
+  synchronization validation over the GPU tests, the scene set at both sample counts and three load
+  scenes, without a message; the load scenes measured (*Where the renderer stands*): presenting
+  takes the main thread 0.01 or 0.02 ms in the crowds and in Prontera where it took 0.75 to 2.0, and
+  the frame is 0.1 to 2.0 ms shorter there, `renderer_draw_scene` within 0.15 ms of the line's; a
+  device test makes its setup fail at each step and frames fail on either thread, and watches that
+  no command buffer is submitted while the render thread records one; in the light scenes the frame
+  is the line's, bound by the GPU.
 
 ### Phase 9: effect primitives and particles as parametric instances (large)
 
@@ -758,7 +792,13 @@ recorded.
   17 % larger.
 - **The shadows' GPU time.** The depth pass and the fit run every frame at the screen's size: on a
   GTX 970 at 1600 by 900 the frame's wait (`present_ms`) grew by about 0.6 ms against the CPU fit,
-  while the CPU's time in `view_on_render` fell by 0.15 to 0.3 ms.
+  while the CPU's time in `view_on_render` fell by 0.15 to 0.3 ms. In the light load scenes the GPU
+  is what the frame waits for: with shadows the main thread waited 1.9 ms a frame for the GPU in
+  Randgris's fight, 2.7 in Baphomet's and 3.2 in the Orc Dungeon before phase 8, and 0.1 to 0.5
+  without them, which shortens those frames by 2.3 to 3.2 ms (`docs/custom-review.md`, "The frame
+  recorded on a render thread"). The GPU's own time was not measured; the shadows' share is
+  inferred from those frames. There the frame is the GPU's: neither a render thread nor more frames
+  in flight shortens it, only less GPU work in the shadows' passes.
 - **SDL's descriptor caches.** SDL's Vulkan driver gives each command buffer a cache of descriptor
   sets and gets it back only once it finds the command buffer finished, and every texture it makes
   holds one for a while; a command buffer that finds none given back fills an empty one, a
@@ -779,9 +819,21 @@ recorded.
   divides less exactly than NVIDIA's driver moves more of them; Metal's fast-math MSL has not been
   tried. The static world's vertices likewise land within the tolerance of Direct3D 9's, not on
   its bits: the GPU computes the views and multiplies the points in its own floats.
-- **Threads.** The loader thread's texture creation moves to the main thread's upload (see *Memory
-  and uploads*); SDL's drivers lock creation internally, but the API does not promise it, so the
-  plan does not lean on it.
+- **Threads.** The main thread makes GPU objects while the render thread records and submits a
+  frame. SDL's API promises no thread safety for that; its Vulkan and Metal drivers lock what the
+  two share (command buffer pools, allocators, the lists of objects to release, submission). The
+  render thread reads nothing the main thread changes: a frame's packet holds every object its
+  passes use, and an object given up goes only once the next frame handed over is submitted. SDL's
+  Vulkan driver moves textures and buffers to other memory at a submit (every submit while no
+  window is claimed, the submits that present while one is), skipping only allocations with an
+  upload or download pending in some command buffer, and never a transfer buffer (each its own
+  allocation), so a packet's transfer buffers stay where they were mapped; a render pass or bind
+  takes an object's memory as it is recorded, so a submit while another command buffer is recorded
+  could split that one's passes between old and new memory. Command buffers are therefore recorded
+  one at a time under one mutex: the render thread's frame from acquire to submit, the main
+  thread's own and each texture SDL makes (it submits one for it). The test
+  `test_gfx_gpu_faults` watches that no submit falls inside the render thread's recording. A
+  later SDL that moves memory elsewhere, or other drivers' rules, need the same look.
 - **Upstream picks.** Reconstruction fixes to `main`'s Win32 and Direct3D 9 code no longer apply
   here; each is recorded as not needed, and fixes above `gfx.h` and the window layer still pick as
   before.

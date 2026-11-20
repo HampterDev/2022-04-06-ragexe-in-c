@@ -2107,6 +2107,63 @@ static void check_wobble_frame(struct C3dDevice *d, gfx_surface *sys, gfx_surfac
         }
 }
 
+/* the second table of check_wobble_twice: row y from row (5y + 1) mod H, moved right by 3 (y mod 4) */
+static void fill_other_rows(void *context)
+{
+    struct TestRows *t = context;
+    int y;
+    for (y = 0; y < t->count; y++) {
+        t->rows[y].source = (y * 5 + 1) % H;
+        t->rows[y].shift = (y % 4) * 3;
+    }
+    t->fills++;
+}
+
+/* Two wobbles in one frame, each with a table of its own: the second's table lies after the first's
+   among the frame's tables, so each draw must find its own record (through the identity instances
+   the frame's upload fills). */
+static void check_wobble_twice(struct C3dDevice *d, gfx_surface *sys)
+{
+    static DWORD after[W * H], first[W * H];
+    static int edge[W * H];
+    struct WobbleRow rows[H], other[H];
+    struct TestRows t, u;
+    int x, y;
+    t.rows = rows;
+    t.count = H - 2;
+    t.fills = 0;
+    u.rows = other;
+    u.count = H;
+    u.fills = 0;
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
+    assert(gfx_blit(d->target, NULL, sys, NULL) == 0);
+    assert(gfx_wobble(rows, t.count, fill_test_rows, &t) == 1);
+    assert(gfx_wobble(other, u.count, fill_other_rows, &u) == 1);
+    gfx_end_scene();
+    read_screen(d, after);
+    for (y = 0; y < H; y++)
+        for (x = 0; x < W; x++) {
+            int sx = x, sy = y;
+            if (y < t.count && x >= rows[y].shift) {
+                sx = x - rows[y].shift;
+                sy = rows[y].source;
+            }
+            first[y * W + x] = wobble_pattern(sx, sy);
+            edge[y * W + x] = sx == 0 || sy == 0;
+        }
+    for (y = 0; y < H; y++)
+        for (x = 0; x < W; x++) {
+            int sx = x, sy = y;
+            if (x >= other[y].shift) {
+                sx = x - other[y].shift;
+                sy = other[y].source;
+            }
+            if (multisampled && (sx == 0 || sy == 0 || edge[sy * W + sx]))
+                continue;
+            assert(after[y * W + x] == first[sy * W + sx]);
+        }
+}
+
 /* The screen wobble (gfx_wobble) in a frame as the client records it: the picture drawn in a pass
    that resolves, the wobble, and a quad after it, in one command buffer, read once at the end. Each
    row is drawn again from its source row moved right by its shift, the pixels left of the shift
@@ -2133,6 +2190,7 @@ static void check_wobble(struct C3dDevice *d)
     gfx_unlock(sys);
     for (round = 0; round < 2; round++)
         check_wobble_frame(d, sys, round ? other : NULL);
+    check_wobble_twice(d, sys);
     gfx_release(other);
     gfx_release(sys);
 }
@@ -2849,7 +2907,8 @@ int main(int argc, char **argv)
            "array and a second, a layer given up and taken, arrays of 16 MB), only the texels written going up "
            "(plain and layered, with and without mipmaps, more cells than rectangles kept; a texture not yet "
            "sent cleared on the GPU but where it was written), lists of triangles, "
-           "render targets and their edges, a window's target read 1:1 (%s), the wobble in a frame, modes kept from targets "
+           "render targets and their edges, a window's target read 1:1 (%s), the wobble in a frame and twice in "
+           "one, modes kept from targets "
            "they do not draw into, modes counted, system surface blits, copies between targets and out of "
            "bounds, frames read whole and in part, Granny's models skinned, batched and held, the world's records, transform "
            "slots, texture-coordinate "

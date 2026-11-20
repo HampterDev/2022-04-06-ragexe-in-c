@@ -55,8 +55,9 @@ enum perf_phase {
    - textureBytes: the texels written by texture_upload_pixels, surface_fill_pixels and
      texture_draw_sprite_frame (the sprite atlas), at the texture's or surface's own depth.
    - drawSceneNs, viewRenderNs and presentNs: the time spent in renderer_draw_scene, in
-     view_on_render and in presenting the frame (c3d_device_show_frame), where the device submits
-     the frame's recorded draws and waits while the GPU is two frames behind.
+     view_on_render and in presenting the frame (c3d_device_show_frame), where the device waits
+     for its render thread to finish the frame before, which waits while the GPU is two frames
+     behind that one, and hands the frame's recorded draws to it.
    - The game's own work in a frame, timed the same way: packetsNs, handling the map server's
      packets (game_mode_poll_network_msg: actors appearing and moving, skills launching their
      effects); effectsNs, stepping the effect manager's effects (effect_mgr_process); actorsNs,

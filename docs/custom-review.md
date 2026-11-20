@@ -17409,3 +17409,278 @@ and 12 ms of an arrival's first frame, beside 106 and 134 ms of packets that no 
 
 Not checked: Linux, macOS and Android were not built; the frame time on the GPU was not measured;
 the effect gallery did not run; no one played.
+
+## The frame recorded on a render thread (2026-11-20)
+
+Phase 8 of `plans/gpu-renderer.md`, on the GPU line after the CPU fixes (`f555328e`). Presenting
+recorded the frame's passes into the GPU's command buffer, copied the frame's records into the
+transfer buffer and submitted it, all on the main thread; a thread of the device's own does that
+now, while the main thread records the next frame.
+
+**What presenting was.** A CPU profile of `f555328e` (VSDiagnostics' sampler at 4 kHz on a
+`build.bat dbg` build, one run of each scene cut to its 600 measured frames, `RAGEXE_MSAA=4`) gives
+the time presenting spent on the CPU; sampling sees no waits, so a build with wall-clock timers
+around the fence wait, the preparation, the command buffer's acquire, the recording and the submit
+(a measuring copy, not in the tree) gave the rest. The main thread, ms a frame:
+
+| | `woe_emperium` | `town_prontera` | `mvp_randgris` |
+|---|---|---|---|
+| frame (median) | 21.6 | 5.4 | 6.0 |
+| presenting (`present_ms`, mean) | 2.05 | 1.00 | 2.95 |
+| of it on the CPU | 2.02 | 0.98 | 1.18 |
+| recording the passes (`run_pass`) | 1.33 | 0.42 | 0.76 |
+| the compute and shadow passes recorded | 0.20 | 0.30 | 0.16 |
+| the records copied into the transfer buffer | 0.31 | 0.11 | 0.07 |
+| SDL's own bookkeeping (fences, command buffers) | 0.11 | 0.11 | 0.11 |
+| the rest (acquire, uploads, reset) | 0.07 | 0.04 | 0.08 |
+
+The waits come from a second run of each scene with the timed build, whose figures are its own
+and do not add up with the sampled run's (the timers' means over frames 300 to 800):
+
+| | `woe_emperium` | `town_prontera` | `mvp_randgris` |
+|---|---|---|---|
+| presenting (`present_ms`, mean) | 2.23 | 0.97 | 3.14 |
+| waiting for the GPU (the fence of the frame two before) | 0.01 | 0.02 | 1.92 |
+| recording the frame | 1.92 | 0.77 | 0.96 |
+
+In the crowds and in Prontera presenting was recording and copying. In the light scenes it was
+waiting for the GPU: the main thread waited 1.9 ms a frame in Randgris's fight, 2.7 in
+Baphomet's and 3.2 in the Orc Dungeon, and 0.1, 0.3 and 0.5 with `RAGEXE_SHADOWS=0`, which
+shortens those frames from 6.1, 7.9 and 4.2 ms to 3.8, 4.7 and 1.2 (with one sample the wait
+stays, 1.7 ms in Randgris). The GPU's time was not measured; that the GPU bounds those frames, and
+that the shadows' passes take about 2.3 to 3.2 ms of each, is inferred from the wait and from how
+much shorter the frames are without shadows. Then the frame is the GPU's: neither a thread that
+records nor more frames in flight nor another present mode shortens it, only less GPU work in the
+shadows would.
+
+**The design.** A frame is recorded into a packet of its own, a slot of a ring of four, and handed
+over whole at its end; the render thread records it into one command buffer and submits it.
+
+- *What it takes from whom.* id Software's split of the renderer into a front end that builds a
+  frame's commands into frame data and a back end that executes the previous frame's while the next
+  is built (id Tech 4's SMP renderer, its frame data double-buffered and swapped at the frame's
+  end): the packet holds everything its passes read, the swap is the one moment the threads meet,
+  and the back end runs one frame behind. bgfx's API thread and render thread: `bgfx::frame()`
+  waits for the render thread to finish the frame before, swaps and wakes it, two semaphores and
+  no lock on the frame's data, and handles freed in a frame are destroyed once the render thread
+  has executed it; the client's transient data (bgfx's transient buffers) is written by the
+  producer into the memory the frame is submitted from. Unreal's RHI thread: resources given up on
+  the rendering thread are deleted only after the RHI thread has passed the point where commands
+  recorded before could use them, and a read-back flushes and waits. Vulkan's frames in flight
+  (Khronos' samples): per-frame resources, here the transfer buffers, in a ring, reused once the
+  frame's fence has passed.
+- *The ring* (`render/frame_ring.c`, the library `frame-ring`, pure). Frame n lives in slot n % 4.
+  The main thread begins, posts and retires (takes back) frames; the render thread takes and
+  finishes them, one at a time and in order, and before it records frame n it waits for the GPU to
+  finish frame n - 2 (`FRAME_RING_IN_FLIGHT`, as before). The main thread may begin a frame only
+  once at most one frame is out, so the slot it fills held a frame whose GPU work the render thread
+  has waited for: four slots are one being recorded, one being submitted and two on the GPU.
+- *The thread* (`render/render_thread.c`, the library `render-thread`): one of SDL's threads, the
+  ring's counts kept under a mutex taken a few times a frame, and a condition each way for the side
+  that waits. The frames' data is never under a lock: a slot belongs to one side at a time.
+- *Records written once.* The frame's draw records, the wobble's tables, the instances' records and
+  their offsets, and the texels (with everything else that goes up: the world's records, slots,
+  cells and frame, the identity instances, the Granny models filled, the clearing blocks) are each
+  a stream in a transfer buffer of the packet's own, mapped while the frame is recorded and
+  unmapped when it is handed over, grown by a larger one with what was written copied over, and
+  made again small after 120 of its packet's frames in a row (480 of the client's) that needed a
+  quarter of one larger than 4 MB. What a caller
+  writes whole is not zeroed first. Every record goes through one small function that takes its
+  bytes from a stream (`bytes_at`, two calls or more for each quad drawn); a
+  stream's growth, which makes and maps a larger transfer buffer, is a function the compiler may
+  not inline into it (`RAGE_NOINLINE`): inlined, its locals and calls gave each of those calls a
+  stack frame, seven saved registers and a stack cookie, which a back-to-back CPU profile against
+  the line found as 0.34 ms of the Emperium room's `renderer_draw_scene` in that function alone. The world's draws' records, which they take as uniforms and no
+  shader reads from a buffer, are kept on the CPU, and so are the views the water draws with.
+- *Hand-over.* At a frame's end the main thread takes back the frame before once the render thread
+  has finished it (so that nothing the render thread reads changes now), grows the texture arrays,
+  sends the static world's stream up, stages the world's part, makes the frame's buffers large
+  enough, and hands the packet over with every GPU object its passes use as they are then: the
+  frame's buffers, the world's buffers and arrays and what its compute and shadow passes are given,
+  each pass's colour, resolve and depth textures and size (taken when the pass begins), each
+  upload's texture and array, each Granny draw's buffers. The shadow passes' draws, which the
+  render thread records, are counted then (`diag/perf.h`), in the frame they belong to.
+- *Giving up.* A GPU object the main thread gives up (a texture released, an array emptied, a
+  buffer or array grown, the world made again, the shadows' targets at a new size, the screen
+  resized, a scratch texture of a layer's mipmaps) goes with the next frame handed over and is
+  released by the render thread once that frame is submitted: every frame that could record it has
+  been recorded by then, and SDL keeps what a submitted command buffer uses. A surface or Granny
+  model given up while the frame being recorded draws with it goes when that frame is handed over,
+  as it went when the frame was submitted before: the render thread reads none, only the GPU
+  objects the packet holds.
+- *Presenting.* SDL lets the swapchain be acquired only on the window's thread, so the main thread
+  presents, in a command buffer of its own: at a frame's end it first takes the window's next
+  picture, which with vsync waits for one, while the render thread still records and submits the
+  frame before and the GPU draws; once that frame is back it puts the screen, as that frame left
+  it, into the picture, and then hands the new frame over. A frame is shown at the next present, as
+  Direct3D 9's driver queued a frame. Nothing is shown until a frame drawn into the screen as it is
+  has been submitted (the first, and the first after a resize). The new frame is not handed over
+  before the present: the present's submit is one at which SDL moves memory (below), so it must
+  not fall while the render thread records, and a frame handed over first would then wait for it,
+  or be shown at its own present or the next depending on which thread came first.
+- *Command buffers one at a time.* SDL 3.4's Vulkan driver moves textures and buffers to other
+  memory when a command buffer is submitted (`VULKAN_Submit` runs `VULKAN_INTERNAL_DefragmentMemory`
+  on every submit while no window is claimed, and on the submits that present while one is): it
+  copies an allocation's contents in the command buffer being submitted and points the textures'
+  and buffers' handles at the new memory, leaving only allocations with an upload or download
+  pending in some command buffer, and never a transfer buffer (each its own allocation). A render
+  pass or a bind takes a texture's or buffer's memory as it is recorded, so a submit on the main
+  thread while the render thread records a frame, which `SDL_CreateGPUTexture` makes too (SDL
+  submits a command buffer for every texture it makes), could leave that frame's earlier passes
+  drawing into the old memory and its later ones and the screen's read reading the new: in the
+  scene harness, the GPU tests and the headless playground (no window), and in a client before its
+  window is claimed. So command buffers are recorded one at a time, under one mutex of the
+  device's: the render thread holds it from acquiring a frame's command buffer to submitting it
+  (not while it waits for the GPU), the main thread while it records and submits one of its own
+  (the present's blit, the static world's stream, the reads) and while SDL makes a texture. The
+  main thread then waits at most for the render thread's recording, about 1 to 2 ms, never for its
+  wait on the GPU, and only in a frame that makes a texture before that recording is done; the
+  textures stay the main thread's to make when a draw first needs them, and SDL's API has no way to
+  keep an object where it is.
+- *Failures.* The device is made whole or not at all: a setup that cannot make one of its objects
+  or its thread lets go of what it made. A frame the main thread cannot hand over whole (a buffer
+  it needs cannot be made) puts back its uploads at once. A frame the render thread cannot submit
+  puts them back when it is taken back, at the next frame's end; that next frame was recorded on
+  the uploads having gone up, so it is dropped as well, and the one after is recorded with them.
+- *Across the hand-off.* A read of the screen (`gfx_read_frame`: screenshots, the harness's
+  captures) hands the frame over with a download of it, which the render thread waits for and
+  copies out while the main thread waits, so it reads the frame just drawn, as before; the other
+  reads (`gfx_read_shadow_fit`, `gfx_read_texture_level`) wait for every frame handed over to be
+  submitted first. The wobble's copy of the screen and the copies between targets are steps of the
+  frame with their textures; the copy texture made again at a new size is given up as above. The
+  composited windows' targets are pinned by the frames that draw into them. Textures changed after a
+  frame's first draw go up between its passes, as before. The static world's stream stays on the
+  main thread, its batches in command buffers of its own that it waits for; what it grows is given
+  up as above. A resize hands over and waits for what was recorded, then makes the screen's
+  textures again. Closing the device hands over and waits, stops the thread (which runs whatever was
+  handed over), waits for every frame's fence and the GPU, and releases everything. A frame while
+  the window is minimised is recorded and submitted as any other, and the present finds no picture
+  to put it in.
+- *One path.* The single-threaded flush, the one transfer buffer that every frame's bytes were
+  copied into, the device's list of fences and the dead textures collected after each flush are
+  gone; there is no switch back.
+
+Tests. `test_frame_ring` (pure) explores every ordering of the three parties over twelve frames:
+the main thread beginning, posting and retiring whenever the ring lets it, the render thread taking
+a frame, waiting for the GPU to finish the frame the ring names, recording it and finishing it, and
+the GPU finishing the frames submitted in order. In every reachable state a slot is filled again
+only once its last frame was retired and finished on the GPU, the render thread takes the frames in
+order and only once posted and finds the frame it waits for still in the slot the ring names (its
+fence lives there), and something can always go on until every frame is back; besides, the calls
+with nothing to act on answer so and change nothing. Changing the rule for beginning a frame, or
+the frame waited for, fails it. `test_render_thread` runs the thread on 20,000 frames with no GPU:
+the main thread fills each packet with a pattern of its own, posts it and retires frames at random
+points, both sides pausing at random; the thread finds every packet as it was filled, in order, and
+the frame it waits for submitted, and the main thread never fills a slot whose frame has not been
+run and finished. `test_gfx_gpu`, `test_quad_instances` and `test_skin_instances` run the device
+with its thread as they did without it. `test_gfx_gpu_faults` includes `render/gfx_gpu.c` with the
+SDL calls it makes passed through the test, which can fail them and watches them: each of the 37
+objects the device's setup makes failing in turn, and the render thread failing to start, leave
+the device whole or absent and nothing made kept, and the device made next draws; with the render
+thread's passes slowed by a millisecond each and a texture made on the main thread every frame, no
+command buffer is submitted or texture made on the main thread while the render thread records one,
+and the frames read show their textures; after a frame the render thread could not submit, and
+after one dropped on the main thread for a buffer that could not be made, every frame read shows the
+texture those frames were to take up. With the device's recording not held it fails at its check
+of the main thread's submits; without dropping the frame after one not submitted, at its first read;
+without a failed setup letting go, at its check that the device is whole or absent.
+`test_gfx_gpu` draws two wobbles in one frame besides, each with a table of its own, so that each
+draw must find its own record through the identity instances the frame's upload fills: with one
+wobble a frame, whose table lies at the start of the frame's tables, a draw that read another
+record's place found the same table.
+
+Captures: `f555328e`'s scene client and this one, one right after the other, with `RAGEXE_VSYNC=0`
+and SDL's dummy audio: the scene set (19 scripts, 40 captures) at `RAGEXE_MSAA=1` and 4, with and
+without shadows, and every load scene at `RAGEXE_MSAA=1` (13 captures). Every capture is the same to
+the pixel, and every counters file holds the same counts, but for one capture of `arrive_castle` by
+`f555328e` in the last comparison, 229 pixels apart from this client's: three more runs of each
+client, by turns, all gave this client's picture, as had the comparison before. The load scenes'
+frames, counted one by one (`frames.jsonl`), hold the same counts too but for the draws of a few
+frames, one or two more or fewer: in the last comparison 6 of `arrive_prontera`'s 300, 12 of
+`town_prontera`'s 600 and one of `woe_choke`'s, in the one before one frame each of
+`arrive_prontera` (frame 235) and `town_prontera` (115). The client batches by its textures' arrays
+in a way that depends on where its memory lies, which this change moves. `f555328e` built with 3,000
+small allocations made and kept when the device is made, and nothing else changed, differs from
+`f555328e` the same way (9 frames of `arrive_prontera`, 20 of `town_prontera`, among them the same
+frames), and `f555328e` run twice differs from itself in one frame of each, the same two frames 235
+and 115. The client also differs from itself now and then in what it draws: one of six runs of
+`f555328e` drew one sprite more in a frame of `woe_emperium` and its capture differed in 61 pixels,
+and one of thirteen runs of this client in a capture of 201 pixels (a damage number's digit placed
+otherwise), with the same counts. Neither comes from the render thread; neither is found yet.
+
+Validation: with the Khronos validation layer (synchronization validation on, and its other checks,
+thread safety among them) and SDL's debug checks (`RAGEXE_GPU_DEBUG=1`), `test_gfx_gpu` at 1 and 4
+samples and under the offscreen video driver, `test_gfx_gpu_faults` (its 41 devices, the failed
+setups among them), `test_quad_instances` (20,000 records a kind) and
+`test_skin_instances` at both sample counts, every scene of the scene set at 1 and 4 samples and
+three load scenes (`woe_emperium`, `arrive_prontera`, `mvp_randgris`, 120 measured frames each)
+run without a message but the layer's own note on its settings.
+
+**The load scenes**, `tests/scenes/load.py`, `RAGEXE_MSAA=4`, 600 measured frames (the arrivals
+300): this client, the line's (`f555328e`) and the Direct3D 9 baseline (`02fc9e5e` with
+`tests/scenes/load/d3d9_baseline.patch`, FreeType; its tree checked to be that commit with exactly
+the patch), three rounds, in each round every scene run once by each client one right after the other,
+the clients' order turned round from round to round; the frames pooled over the rounds; on a GTX
+970 at 1,600 by 900, the scene harness's window never shown, so that no frame waits for a
+swapchain (`RAGEXE_VSYNC=0` as well): presenting with vsync is not measured. `frame_ms` in ms, the
+worst frame with its round and its frame in the stretch:
+
+| scene | objects | this client | worst | the line | worst | Direct3D 9 | worst |
+|---|---|---|---|---|---|---|---|
+| `woe_emperium` | 14,975 | 18.18 | 29.7 (1.350) | 20.23 | 28.9 (3.356) | 27.04 | 40.6 (1.266) |
+| `woe_choke` | 11,290 | 15.31 | 24.1 (1.441) | 16.95 | 28.2 (1.189) | 22.80 | 44.7 (1.405) |
+| `arrive_castle` | 7,028 | 14.62 | 231.9 (3.1) | 16.27 | 259.1 (2.1) | 20.51 | 211.5 (1.1) |
+| `bombers_ifrit` | 5,559 | 10.74 | 18.2 (1.71) | 11.60 | 27.9 (2.88) | 15.02 | 21.0 (2.598) |
+| `arrive_prontera` | 243 | 3.54 | 146.8 (3.1) | 3.93 | 158.5 (2.1) | 12.25 | 130.2 (1.1) |
+| `town_prontera` | 243 | 3.52 | 6.6 (2.7) | 3.65 | 7.7 (3.161) | 12.06 | 15.4 (3.451) |
+| `mvp_randgris` | 2,041 | 5.50 | 25.6 (3.157) | 5.53 | 25.0 (2.157) | 4.08 | 8.7 (1.231) |
+| `snow_lutie` | 837 | 3.38 | 23.7 (2.203) | 3.38 | 22.6 (3.104) | 7.01 | 9.7 (2.147) |
+| `mvp_baphomet` | 2,160 | 5.54 | 21.9 (1.421) | 5.54 | 26.5 (2.49) | 4.70 | 8.7 (1.336) |
+| `aoe_orc_dungeon` | 731 | 2.78 | 22.5 (2.298) | 2.78 | 22.4 (2.142) | 2.32 | 4.1 (3.64) |
+
+The parts the change touches, and the texels widened (`texels_ms`, the textures' pixels into
+B8G8R8A8 as they go up, which Direct3D 9 did not do), medians (the worst for presenting), this
+client / the line / Direct3D 9, in ms:
+
+| scene | present | its worst | draw scene | view | texels |
+|---|---|---|---|---|---|
+| `woe_emperium` | 0.02 / 1.88 / 0.31 | 0.0 / 3.7 / 1.0 | 5.28 / 5.37 / 5.24 | 9.08 / 9.19 / 16.42 | 0.22 / 0.22 / 0 |
+| `woe_choke` | 0.02 / 1.69 / 0.65 | 0.0 / 2.7 / 1.7 | 4.55 / 4.40 / 5.25 | 7.70 / 7.71 / 12.70 | 0.20 / 0.19 / 0 |
+| `arrive_castle` | 0.02 / 2.04 / 0.32 | 0.0 / 23.6 / 0.9 | 5.03 / 4.88 / 4.33 | 6.72 / 6.80 / 12.43 | 0.55 / 0.54 / 0 |
+| `bombers_ifrit` | 0.01 / 0.75 / 0.53 | 0.0 / 17.6 / 1.3 | 3.58 / 3.59 / 3.19 | 4.91 / 4.99 / 6.90 | 0.13 / 0.13 / 0 |
+| `arrive_prontera` | 0.01 / 0.77 / 0.21 | 20.1 / 22.0 / 0.6 | 0.91 / 0.89 / 2.10 | 1.55 / 1.65 / 9.24 | 0.16 / 0.15 / 0 |
+| `town_prontera` | 0.01 / 0.76 / 0.21 | 1.9 / 1.6 / 1.0 | 0.81 / 0.76 / 2.03 | 1.53 / 1.55 / 9.18 | 0.07 / 0.07 / 0 |
+| `mvp_randgris` | 3.17 / 3.10 / 0.29 | 23.2 / 22.7 / 2.9 | 0.69 / 0.72 / 1.22 | 1.10 / 1.15 / 2.01 | 0.03 / 0.03 / 0 |
+| `snow_lutie` | 1.77 / 1.77 / 0.18 | 22.2 / 20.9 / 0.7 | 0.43 / 0.45 / 1.97 | 0.79 / 0.79 / 4.43 | 0.03 / 0.03 / 0 |
+| `mvp_baphomet` | 2.84 / 2.59 / 0.15 | 17.7 / 21.3 / 0.7 | 0.84 / 0.88 / 1.32 | 1.27 / 1.36 / 2.54 | 0.04 / 0.04 / 0 |
+| `aoe_orc_dungeon` | 2.23 / 2.23 / 0.21 | 22.1 / 21.8 / 2.3 | 0.16 / 0.15 / 1.00 | 0.26 / 0.26 / 0.58 | 0 / 0 / 0 |
+
+Presenting took the main thread 1.7 to 2.0 ms a frame in the crowds and 0.75 among the bombers and
+in Prontera; it takes 0.01 or 0.02 ms now, and its worst frame in the crowds and among the bombers
+is under 0.05 ms where the line's reached 2.7 to 23.6 (in an arrival's first frame in Prontera it
+still waits 20 ms for the render thread). The frame is 2.0 ms shorter in the Emperium room (18.2
+against 20.2 ms), 1.6 at the choke and arriving at the castle, 0.9 among the bombers, 0.4 arriving
+in Prontera and 0.1 in Prontera's street. `renderer_draw_scene` is the line's within 0.15 ms (5.28
+against 5.37 in the Emperium room, 4.55 against 4.40 at the choke). The main thread's waits for the
+render thread's recording when it makes a texture, timed in a separate build, are 0.02 ms a frame
+in the Emperium room and 0.03 among the bombers (two or three textures a frame) and 120 ms in all
+over the castle's arrival. In the light scenes nothing changes, as the profile said: presenting is
+the wait for the GPU, and the frames are the line's (5.50 against 5.53 ms in Randgris, 5.54 in
+Baphomet's fight, 3.38 in Lutie's snow and 2.78 in the Orc Dungeon on both); Direct3D 9's frame
+stays the shorter in Randgris, Baphomet and the Orc Dungeon. Each client's rounds' medians lie
+within 0.25 ms of each other in every scene but the line's choke and arrival at the castle (0.3 and
+0.4) and Direct3D 9's (0.5 and 0.3). The first frame of an arrival takes 230 ms in the castle and 138 in Prontera (the line's 248 and
+139, Direct3D 9's 212 and 130), most of it handling the packets of the crowd that appears (133 and
+99 ms), 17 and 12 ms widening texels.
+
+`build.bat check` passes (the include check over 1,877 files in 41 libraries, the link check over
+1,154 objects, the shaders' check), and so does the whole suite (`tests\build.bat` with
+`ORACLE_EXE`): 345 tests and the oracle's 7. On Linux, in WSL with GCC, the client, its scene
+harness and the tests of the ring and the thread build and pass, and `test_gfx_gpu` passes on Mesa's
+lavapipe at 1 and 4 samples under the offscreen video driver, whose window gets a swapchain there,
+so its frames are presented through the main thread's own command buffer. Not checked: presenting
+into a real window on Windows (the scene harness's window is never shown, and the GPU tests'
+offscreen window gets no swapchain from NVIDIA's driver), so the frame shown a present late has
+been seen by no one and the wait for the window's picture beside the render thread's work was
+never timed; `test_gfx_gpu_faults` runs on Windows only; macOS and Android were not built; the GPU's own time was not measured;
+no one played.

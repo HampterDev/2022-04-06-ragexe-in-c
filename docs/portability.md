@@ -650,7 +650,7 @@ shaders (the combination, the alpha test, the fog, the viewport scale; `struct G
 into a list of passes, one per target (the device records the depth pass and the shadow maps' pass
 itself, from the static world's records); what it draws, and the texels of the textures it uses
 that changed since they last went up, widened to B8G8R8A8 (`render/texel_convert.c`, the
-`texel-convert` library), go into one staging area. Every quad and triangle the client draws, the
+`texel-convert` library), go into the frame packet's transfer buffers (below). Every quad and triangle the client draws, the
 static world and Granny's actors aside, is an instance (`render/gfx.h`, `gfx_draw_quad` and
 `gfx_draw_vertices`): a record of the frame's quads (`render/quads.c`, the library `quads`) from
 which the quad shader's vertex shader makes the vertices the client's C code made before, within
@@ -675,14 +675,38 @@ instance gives. An array holds pages of one size and number of mipmap levels, as
 and no more than 64 (64 of the atlas's 256 by 256 pages; one of 2048 by 2048 or more, as large as
 it would be alone), another is made when it is full, and it goes with its last page: on a map
 change only the arrays holding the atlas's spare pages (up to 50, kept from map to map) stay. A
-texture or array the GPU has no memory for is not tried again: its quads read white. When the frame
-is presented, or the screen's picture is read (`gfx_read_frame`: screenshots and the scene harness's
-captures, after the frame is presented), one command buffer copies all of it through one transfer
-buffer in one copy pass (the static world's meshes and textures went up before it, through a stream
-of their own, below), runs the static world's compute passes (below) and replays the passes, then
-presents, fitted into the window by `present_fit`, or downloads the screen
-(`SDL_DownloadFromGPUTexture`) and waits for it. Nothing else is read back: a render target's pixels
-never reach the CPU (`gfx_lock` takes only textures and system surfaces, and `gfx_blit` copies from
+texture or array the GPU has no memory for is not tried again: its quads read white. A frame is
+recorded into a packet of its own, one of a ring of four (`render/frame_ring.c`, the library
+`frame-ring`): its lists of passes, draws and uploads, and its records, quads, offsets and texels,
+written once into transfer buffers of the packet's own, mapped while the frame is recorded. When
+the frame is presented, or the screen's picture is read (`gfx_read_frame`: screenshots and the
+scene harness's captures, after the frame has ended), the main thread waits for the render
+thread to finish the frame handed over before, makes the frame's buffers large enough (the static
+world's meshes and textures go up then, through a stream of their own, below), and hands the packet
+over with every GPU object its passes use as they are then; the render thread
+(`render/render_thread.c`, the library `render-thread`, one of SDL's threads) records it into one
+command buffer, one copy pass from the packet's transfer buffers, the static world's compute passes
+(below) and the passes, and submits it, while the main thread records the next frame. A GPU object
+the main thread gives up (a texture released, a buffer grown, the screen resized) goes with the next
+frame handed over and is released once the render thread has submitted that one, since a frame
+handed over before may still record it; a surface or Granny model given up while a frame draws with
+it goes when that frame is handed over, since the render thread reads none, only the GPU objects
+the packet holds. The main thread presents, in a command buffer of its own, which SDL wants on the
+window's thread: it takes the window's next picture (waiting for one with vsync) while the render
+thread finishes the frame handed over before, then puts the screen, as that frame left it, into the
+picture, fitted by `present_fit`, and only then hands the new frame over, so a frame is shown at the
+next present, as Direct3D 9's driver queued a frame; nothing is shown until a frame drawn into the
+screen as it is (after a resize) has been submitted. SDL's Vulkan driver moves textures and buffers
+to other memory when a command buffer is submitted (every submit while no window is claimed, the
+presenting ones while one is) and a pass takes an object's memory as it is recorded, so command
+buffers are recorded one at a time under a mutex of the device's: the render thread's frame from
+acquire to submit, the main thread's own (the present's blit, the static world's stream, the
+reads) and the one SDL submits for each texture it makes. A device is made whole or not at all, and
+a frame the render thread could not submit puts back its uploads and takes the next frame with it,
+which was recorded on them having gone up. A read of the screen hands the
+frame over with a download of it (`SDL_DownloadFromGPUTexture`), which the render thread waits for
+and copies out while the main thread waits, so it reads the frame just drawn. Nothing else is read
+back: a render target's pixels never reach the CPU (`gfx_lock` takes only textures and system surfaces, and `gfx_blit` copies from
 a target only into a target). The shaders read the records from storage buffers, at most four a
 shader stage, the least every Vulkan device takes (`STORAGE_BUFFERS_MAX`; SDL tells nothing of a
 device's limits, so the device refuses a shader that reads more, a compute pass's written buffers
@@ -695,8 +719,9 @@ the header of its own record, a Granny actor's draw through the header of its po
 draw of the static world takes its record as a uniform, the wobble finds its record through an
 instance-rate vertex attribute that holds its index (a draw's first instance), never through the
 instance ID. Textures keep their pixels on the CPU in the client's own format, so the model
-loader's thread creates, locks and fills them without calling SDL; the main thread uploads them
-when a draw first uses them after a change, as the rectangles that changed (`render/dirty_rects.c`,
+loader's thread creates, locks and fills them without calling SDL; the main thread stages them
+into the frame's texels when a draw first uses them after a change, and the render thread records
+their upload, as the rectangles that changed (`render/dirty_rects.c`,
 the library `dirty-rects`: a texture keeps up to eight apart, merging those that touch, and where
 there is no room the two whose union wastes least, so that the cells written on a sprite atlas's
 page go up each alone and not the page), and a texture changed after a draw used it in the same
@@ -722,14 +747,17 @@ SDL keeps the window (SDL 3.4's Vulkan driver answers a claim of a window whose 
 size, a minimized one on Windows, with success but keeps nothing of it); a claim that fails or is
 not kept is tried again at the next present (on Android the window has no surface while the app is
 in the background). A window never shown (the scene harness's) has no swapchain, its frames are
-drawn, end at each present and can be read all the same, and a fence on each frame keeps the CPU at
-most two frames ahead of the GPU with or without one. A frame waits on the fence of the frame two
-before it before it takes a command buffer: SDL's Vulkan driver gives each command buffer the
-descriptor sets of one it has found finished, and a command buffer that finds none, as after
-textures were made (SDL sets a new texture's layout in a command buffer of its own), makes a
-descriptor pool for each kind of binding the frame binds, which took NVIDIA's driver up to 19 ms
-with the shadows' passes. A transfer buffer far larger than the frames have needed for 120 flushes
-in a row is made again as large as they need, and the staging texels' memory given back. The
+drawn, end at each present and can be read all the same, and a fence on each frame keeps the render
+thread at most two frames ahead of the GPU, and the main thread one ahead of the render thread,
+with or without one. The render thread waits on the fence of the frame two before before it takes
+a command buffer: SDL's Vulkan driver gives each command buffer the descriptor sets of one it has
+found finished, and a command buffer that finds none, as after textures were made (SDL sets a new
+texture's layout in a command buffer of its own), makes a descriptor pool for each kind of binding
+the frame binds, which took NVIDIA's driver up to 19 ms with the shadows' passes. A packet's
+transfer buffer of more than 4 MB that its frames have filled a quarter of at most, 120 times in a
+row, is made again as large as they need. The main thread makes the GPU objects while the render
+thread records; SDL's Vulkan and Metal drivers lock what that shares (their command buffer pools,
+allocators and lists of objects to release), which SDL's API does not promise. The
 present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without waiting
 (`renderer_flip` without vsync, as the map loading screen's are) never waits for the window: SDL's
 acquire of a picture waits for the presentation engine even when told not to block, so such a

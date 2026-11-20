@@ -141,8 +141,9 @@ function(rage_link_client target)
 endfunction()
 
 # The client's window services and sound run on SDL; the window services take window coordinates
-# for pixels from the display options' library.
+# for pixels from the display options' library. The render thread is one of SDL's.
 rage_client_link(platform/window_sdl.c SDL3::SDL3 rage_client_display_options)
+rage_client_link(render/render_thread.c SDL3::SDL3)
 # The Granny shim reads the converted glTF files with cgltf, their images with stb_image, and finds
 # them by zlib's CRC-32.
 rage_client_link(resources/granny_gltf.c rage_cgltf rage_stb rage_zlib)
@@ -425,6 +426,7 @@ rage_test(display_options W4 CLIENT render/display_options.c)
 rage_test(present_fit W4)
 rage_test(texel_convert W4 CLIENT render/texel_convert.c)
 rage_test(dirty_rects W4 CLIENT render/dirty_rects.c)
+rage_test(frame_ring W4 CLIENT render/frame_ring.c)
 rage_test(draw_modes W4 CLIENT render/draw_modes.c)
 rage_test(quads W4 CLIENT render/quads.c)
 rage_test(skin_layout W4 CLIENT render/skin_layout.c)
@@ -499,6 +501,12 @@ if(TARGET SDL3::SDL3)
         std/std_sort.c ${platform_files} DEFINES ${audio_defines} LIBS rage_dr_mp3 rage_zlib SDL3::SDL3
         ARGS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures ${RAGE_AUDIO_GAME_DIR} ENVIRONMENT SDL_AUDIO_DRIVER=disk
         LABELS client-files)
+endif()
+
+# The render thread (render/render_thread.c) with real threads and no GPU, where SDL is part of the
+# build.
+if(TARGET SDL3::SDL3)
+    rage_test(render_thread W4 CLIENT render/frame_ring.c render/render_thread.c LIBS SDL3::SDL3)
 endif()
 
 # ---- Windows, 32- and 64-bit ----
@@ -815,12 +823,21 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
     # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/texel_convert.c
-        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c render/quads.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
+        render/frame_ring.c render/quads.c render/render_thread.c
         render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_present COMMAND test_gfx_gpu 1 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
     set_tests_properties(gfx_gpu gfx_gpu_msaa gfx_gpu_present PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
+    # The same with the SDL calls it makes failing on purpose and watched (tests/test_gfx_gpu_faults.c,
+    # which includes render/gfx_gpu.c); skipped without a GPU.
+    rage_test(gfx_gpu_faults src/render/texel_convert.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
+        render/frame_ring.c render/quads.c render/render_thread.c
+        render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/world_layout.c
+        LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(gfx_gpu_faults PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120)
     # The client's quads as instances (render/shaders/quad.hlsl) on this machine's GPU, against the
     # client's C code within the tolerance plans/gpu-renderer.md sets, and drawn through
     # render/gfx_gpu.c within the captures' budget; skipped without a GPU. Its arguments: RAGEXE_MSAA
@@ -828,8 +845,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(quad_instances tests/fixtures/quad_reference.c tests/picture_budget.c src/render/gfx_gpu.c
         src/render/texel_convert.c
         CLIENT actor/sprite_quad.c effects/particle.c effects/rag/effect_prim_draw.c effects/sprite_particle.c
-        platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c render/math3d.c
-        render/quads.c render/rp_project.c render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
+        platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
+        render/frame_ring.c render/math3d.c render/quads.c render/render_thread.c render/rp_project.c
+        render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
         render/skin_layout.c render/static_world.c render/world_layout.c world/ground_draw.c LIBS SDL3::SDL3
         ARGS 1 20261112 300000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(quad_instances_msaa COMMAND test_quad_instances 4 20261113 0 30
@@ -845,8 +863,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         "Game folder of test_static_world_maps's maps and test_skin_instances's converted Granny models")
     rage_test(skin_instances tests/fixtures/granny_reference.c tests/picture_budget.c src/render/gfx_gpu.c
         src/render/texel_convert.c
-        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c render/math3d.c
-        render/quads.c render/rp_project.c render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
+        render/frame_ring.c render/math3d.c render/quads.c render/render_thread.c render/rp_project.c
+        render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
         render/skin_layout.c render/static_world.c render/world_layout.c resources/granny_gltf.c
         resources/granny_mesh.c
         LIBS rage_cgltf rage_stb rage_zlib SDL3::SDL3 ARGS 1 ${RAGE_MAPS_GAME_DIR}/data/model/gltf 20261113 20 20
