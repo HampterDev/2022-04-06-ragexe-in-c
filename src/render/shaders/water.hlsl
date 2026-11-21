@@ -15,7 +15,7 @@ cbuffer WaterFrame : register(b0, space1)
 {
     uint4 frame;          // x: the draw's record, y: the waves the frame has, z: the cells
     WaterCamera camera;   // the view the CPU tested and keyed the quads in
-    float4x4 toClip;      // the camera's view to clip space (render/gfx_gpu.c, struct GpuView)
+    float4x4 toClip;      // the camera's view to clip space (render/gpu_world.c, struct GpuView)
 };
 
 WaterCell cell_at(uint i)
@@ -38,7 +38,7 @@ struct WaterIn
     [[vk::location(1)]] float4 diffuse : TEXCOORD1; // per instance: the bytes of its D3DCOLOR: b, g, r, a
 };
 
-// a quad's corners as triangles 0 1 2 and 2 1 3, as the client's quads are drawn (render/gfx_gpu.c,
+// a quad's corners as triangles 0 1 2 and 2 1 3, as the client's quads are drawn (render/gpu_device.c,
 // quad_triangles)
 static const uint strip[6] = {0, 1, 2, 2, 1, 3};
 

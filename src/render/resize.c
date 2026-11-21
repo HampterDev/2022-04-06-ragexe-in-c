@@ -161,7 +161,7 @@ void set_display(int fullscreen, int maximized, int w, int h)
     struct C3dDevice *d = &g_3dDevice;
     int wasFullscreen, wasMaximized, displayW, displayH, roomW, roomH;
 
-    if (!d->hwnd || !d->dev || w <= 0 || h <= 0)
+    if (!d->hwnd || !d->target || w <= 0 || h <= 0)
         return;
     g_windowMaximized = maximized != 0;
     wasFullscreen = platform_window_is_fullscreen(d->hwnd);
@@ -193,7 +193,7 @@ void display_follow_window(void)
 {
     struct C3dDevice *d = &g_3dDevice;
 
-    if (!d->hwnd || !d->dev)
+    if (!d->hwnd || !d->target)
         return;
     if (!platform_window_is_minimized(d->hwnd) && should_fit(d))
         fit_device(d);

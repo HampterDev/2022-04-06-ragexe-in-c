@@ -1,5 +1,5 @@
 /* Generated from world.hlsl by tools/shaders (tools/shaders/build.bat); do not edit.
-   source 4124d70280ba4e13
+   source 920894c392e43653
    tool a3b67884edaf75da
    tools: dxc dxcompiler.dll: 1.10 - 1.8.0.5123 (3f85295cf); dxil.dll: 1.8(1.8.2502.11); SPIRV-Cross C API 0.67.0 (Vulkan SDK 1.4.335.0)
    flags: -spirv -fspv-target-env=vulkan1.0 -fspv-entrypoint-name=main -O3 -Zpr -WX; MSL 2.1

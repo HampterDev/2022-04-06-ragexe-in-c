@@ -2367,7 +2367,7 @@ static float (*gpu_transforms(struct Map *map, const float *view))[12]
 }
 
 /* What the cull and the compaction read for the map's records, packed as the device packs them
-   (render/gfx_gpu.c, gfx_world_records): the words of the records, the view's runs, the casters'
+   (render/gpu_world.c, gfx_world_records): the words of the records, the view's runs, the casters'
    runs, their order and the chunks, laid out as `cull` says; the draws' layout; and the indices of
    a section. */
 struct CullData {
@@ -2429,7 +2429,7 @@ static void cull_data(struct Map *map, struct CullData *cd)
     memcpy(cd->words + cd->cull.chunks, cd->chunks, cd->nchunks * sizeof *cd->chunks);
 }
 
-/* The cull and the compaction as the device runs them (render/gfx_gpu.c, world_compute and
+/* The cull and the compaction as the device runs them (render/gpu_world.c, world_compute and
    caster_cull), of the view (boxes NULL) or of the cascades' boxes, their dispatches split as
    wl_groups splits them, or into rows of `across` groups where it is not 0: the draws' words (the
    commands and the places) and the indices drawn in every section. */

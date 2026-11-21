@@ -5,7 +5,7 @@
    (src/render/shaders/world.hlsli, world_cull.hlsl, world_compact.hlsl, world_transform.hlsl): its
    records by id and in draw order, the runs the cull compacts and the chunks the compaction copies,
    its transform slots, and the uniforms and dispatches of the frame's compute passes, packed from
-   the client's terms. Pure: render/gfx_gpu.c packs what it uploads with it, and
+   the client's terms. Pure: render/gpu_world.c packs what it uploads with it, and
    tests/test_static_world_maps.c packs the same bytes for the passes it runs on the GPU.
 
    The cull compacts the records for five views a frame: the camera's (the main pass and the depth

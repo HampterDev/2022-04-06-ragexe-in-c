@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 /* custom: the frame's shadow cascades fitted to what the frame shows (sample distribution shadow
-   maps, plans/gpu-renderer.md): the steps the GPU's compute passes take (render/gfx_gpu.c), as pure
+   maps, plans/gpu-renderer.md): the steps the GPU's compute passes take (render/gpu_world.c), as pure
    functions that the passes are checked against. SHADOW_FIT_CASCADES maps of SHADOW_FIT_SIZE texels
    square along the map's light, each covering a square across the light that is rounded up to whole
    8 units and moved by whole texels. The range of depths the view is cut into slices from, and each
@@ -26,7 +26,7 @@
    World and view space are the client's (render/gfx.h): +y is down, and view depth grows away from
    the camera. The receivers are the ground and the models, which the depth pass draws into two
    buffers of width * height view depths, row by row, at [j * width + i] for the window coordinates
-   (i, j), Direct3D 9's pixel centres (render/gfx_gpu.c, MARGIN): `front` holds the nearest receiver
+   (i, j), Direct3D 9's pixel centres (render/gpu_layer.h, GPU_MARGIN): `front` holds the nearest receiver
    the pixel shows and `back` the nearest one that is not blended, through which nothing behind it
    shows; 0 where it shows none. The pixel shows the receivers from front to back: front alone where
    back is 0 (blended faces before the sky) or no farther than front. What it shows from the near

@@ -1,9 +1,12 @@
-/* render/gfx_gpu.c through render/gfx.h on a real GPU, in a hidden window: what each draw puts on
-   the screen, downloaded through gfx_read_frame, and the window claimed and presented into where
+/* The graphics device (render/gpu_device.c) through render/gfx.h, with the static world attached
+   (render/gfx_world.h, render/gpu_world.c), on a real GPU, in a hidden window: what each draw puts
+   on the screen, downloaded through gfx_read_frame, and the window claimed and presented into where
    the video driver lets it be shown without showing anything (check_present). Skipped (77) where
    SDL finds no GPU device. The argument is RAGEXE_MSAA: the test runs once without multisampling
    and once with it. */
 #include "render/gfx.h"
+#include "render/gfx_world.h"
+#include "render/gpu_layer.h"
 #include "render/device.h"
 #include "render/screen_wobble.h"
 #include "render/skin_layout.h"
@@ -2175,7 +2178,7 @@ static void check_wobble_twice(struct C3dDevice *d, gfx_surface *sys)
    else is in place, and not at all for a wobble it cannot draw. Multisampled, the pixels that come
    from the picture's first column or row are left out: a GPU that clips to the viewport covers
    only some of their samples, which the passes' half-pixel viewport leaves out in part
-   (render/gfx_gpu.c, MARGIN). */
+   (render/gpu_layer.h, GPU_MARGIN). */
 static void check_wobble(struct C3dDevice *d)
 {
     gfx_surface *sys = gfx_create_surface(W, H), *other = gfx_create_render_target(4, 4);
@@ -2201,15 +2204,15 @@ static void check_wobble(struct C3dDevice *d)
    shows its own texel exactly, for a target of odd size, and nothing around the window changes: by
    the nearest texel, and filtered linearly in the interface's mode, as the client draws it. Mesa's
    lavapipe filters anisotropically even where a pixel covers one texel when the coordinates are a
-   target's, which the device scales to the target's part of its texture (render/gfx_gpu.c, MARGIN),
-   and mixes the neighbours in (docs/custom-review.md, "No read-backs"): there the linear read is
-   not compared. Answers whether it was. */
+   target's, which the device scales to the target's part of its texture (render/gpu_layer.h,
+   GPU_MARGIN), and mixes the neighbours in (docs/custom-review.md, "No read-backs"): there the
+   linear read is not compared. Answers whether it was. */
 static int check_window_target(struct C3dDevice *d)
 {
     enum { TW = 15, TH = 9, X = 21, Y = 13 };
     static DWORD all[W * H];
     gfx_surface *rt = gfx_create_render_target(TW, TH), *sys = gfx_create_surface(TW, TH);
-    const char *gpu = SDL_GetStringProperty(SDL_GetGPUDeviceProperties(d->dev), SDL_PROP_GPU_DEVICE_NAME_STRING, "");
+    const char *gpu = SDL_GetStringProperty(SDL_GetGPUDeviceProperties(gpu_dev()), SDL_PROP_GPU_DEVICE_NAME_STRING, "");
     int linear = !strstr(gpu, "llvmpipe");
     struct gfx_lock lk;
     struct TexDrawVertex v[4];
@@ -2266,7 +2269,7 @@ static int check_window_target(struct C3dDevice *d)
    swapchain was checked. */
 static int check_present(struct C3dDevice *d)
 {
-    SDL_GPUDevice *dev = d->dev;
+    SDL_GPUDevice *dev = gpu_dev();
     const char *driver = SDL_GetCurrentVideoDriver();
     int i;
     gfx_clear(GFX_CLEAR_TARGET, 0xff334455, 1.0f, NULL);
@@ -2750,13 +2753,15 @@ int main(int argc, char **argv)
     }
     d->width = W;
     d->height = H;
-    assert(gfx_open(d) == 0);
-    if (gfx_create_screen(d) != 0) {
+    assert(gfx_world_attach());
+    assert(gfx_open(d->hwnd) == 0);
+    d->target = gfx_create_screen(d->width, d->height);
+    if (!d->target) {
         fprintf(stderr, "skipped: no GPU device\n");
         return 77;
     }
     assert(gfx_get_caps(&g_gfxCaps) == 0);
-    assert(gfx_create_zbuffer(d) == 0);
+    assert(gfx_create_zbuffer() == 0);
 
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff102030, 1.0f, NULL);
     assert(screen_pixel(d, 0, 0) == 0x102030 && screen_pixel(d, W - 1, H - 1) == 0x102030);
@@ -2907,7 +2912,9 @@ int main(int argc, char **argv)
 
     check_resize(d);
     presented = check_present(d);
-    gfx_close(d);
+    gfx_close();
+    gfx_release(d->target);
+    d->target = NULL;
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     printf("gfx gpu (RAGEXE_MSAA=%s): clears, edges and flat quads, 8888/565/1555/4444 textures, texel centres, "

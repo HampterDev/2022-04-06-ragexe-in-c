@@ -1,5 +1,6 @@
-/* render/gfx_gpu.c on a real GPU, in a hidden window, with the draws of its shadow pass watched
-   through the SDL calls that record them: in a frame with shadows, each draw into each cascade is
+/* The static world's layer (render/gpu_world.c) of the graphics device (render/gpu_device.c) on a
+   real GPU, in a hidden window, with the draws of its shadow pass watched through the SDL calls
+   that record them: in a frame with shadows, each draw into each cascade is
    made with the pipeline its records need, the one that tests their texels' alpha for a run of the
    models' textured records and the one that does not for the ground and the records without a
    texture, and an alpha-tested draw reads its own run's texture array. The world holds, in one texture array, a model's record of an opaque pass, the
@@ -74,7 +75,9 @@ static void f_DrawGPUIndexedPrimitivesIndirect(SDL_GPURenderPass *pass, SDL_GPUB
 #define SDL_BindGPUGraphicsPipeline f_BindGPUGraphicsPipeline
 #define SDL_BindGPUFragmentSamplers f_BindGPUFragmentSamplers
 #define SDL_DrawGPUIndexedPrimitivesIndirect f_DrawGPUIndexedPrimitivesIndirect
-#include "../src/render/gfx_gpu.c"
+#include "../src/render/gpu_device.c"
+#include "render/device.h"
+#include "../src/render/gpu_world.c"
 
 struct perf_counters g_perf;
 struct C3dDevice g_3dDevice;
@@ -86,7 +89,7 @@ struct C3dDevice g_3dDevice;
 /* the shadow pass's draws */
 static int watched(SDL_GPUTexture *target)
 {
-    return target && target == G.shadowMaps;
+    return target && target == W.shadowMaps;
 }
 
 static const WORD quad[6] = { 0, 1, 2, 2, 1, 3 };
@@ -268,7 +271,7 @@ static void check_draws(int casters[2])
         assert(command >= W.nindirect && command < W.nindirect + W.ncasterRuns * GFX_SHADOW_CASCADES);
         for (j = 1; j < run->count; j++)
             assert(caster_tested(&sorted[W.order[run->first + j]]) == tested);
-        assert(d->pipeline == G.casterPipeline[tested]);
+        assert(d->pipeline == W.casterPipeline[tested]);
         assert(!tested || d->texture == W.arrays[r->textureArray].tex);
         casters[!tested]++;
     }
@@ -291,13 +294,15 @@ int main(void)
     }
     d->width = SCREEN_W;
     d->height = SCREEN_H;
-    assert(gfx_open(d) == 0);
-    if (gfx_create_screen(d) != 0) {
+    assert(gfx_world_attach());
+    assert(gfx_open(d->hwnd) == 0);
+    d->target = gfx_create_screen(d->width, d->height);
+    if (!d->target) {
         fprintf(stderr, "skipped: no GPU device\n");
         return 77;
     }
     assert(gfx_get_caps(&g_gfxCaps) == 0);
-    assert(gfx_create_zbuffer(d) == 0);
+    assert(gfx_create_zbuffer() == 0);
     if (!gfx_shadows_supported()) {
         fprintf(stderr, "skipped: the device draws no shadows\n");
         return 77;
@@ -315,7 +320,8 @@ int main(void)
     assert(W.ncasterRuns == 5 && casters[0] == 3 * GFX_SHADOW_CASCADES && casters[1] == 2 * GFX_SHADOW_CASCADES);
     gfx_release(half);
     gfx_release(other);
-    gfx_close(d);
+    gfx_close();
+    gfx_release(d->target);
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     printf("gfx gpu passes: %d shadow pass draws, %d of them alpha-tested, each with its run's pipeline and "

@@ -41,7 +41,7 @@ void display_follow_window(void);
 /* custom: the offset from a texel's corner at which a pixel centre reads that texel alone, in
    texels, for both coordinates: half a texel, where Direct3D 9 put pixel centres. The original
    measured it at startup by drawing sub-texel offsets and reading them back; the GPU device puts
-   pixel centres where Direct3D 9 did (render/gfx_gpu.c), so it is always half a texel. */
+   pixel centres where Direct3D 9 did (render/gpu_device.c), so it is always half a texel. */
 #define TEXEL_CENTRE 0.5f
 extern DWORD g_fogColor;
 extern float g_fogNear, g_fogFar;

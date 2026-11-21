@@ -4,7 +4,7 @@
 /* custom: the shadow fit (render/shadow_fit.h) as the device's compute passes read and write it
    (src/render/shaders/shadow_fit.hlsli and cascades.hlsli): the passes' constants, the state they
    reduce into, the history they keep from frame to frame, and the cascades they leave, packed from
-   and read back into the C's terms. Pure: render/gfx_gpu.c packs what it uploads and reads what it
+   and read back into the C's terms. Pure: render/gpu_world.c packs what it uploads and reads what it
    downloads with it, and tests/test_shadow_fit_gpu.c runs the passes on the same bytes. */
 
 #include "render/shadow_fit.h"

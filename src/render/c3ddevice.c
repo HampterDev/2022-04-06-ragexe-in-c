@@ -1,4 +1,5 @@
 #include "render/device.h"
+#include "render/gfx_world.h"
 #include "render/device_palette.h"
 #include "render/render_api.h"
 #include "diag/diag.h"
@@ -127,8 +128,14 @@ static int create_screen(struct C3dDevice *self)
     platform_client_rect(self->hwnd, &client);
     self->width = client.right;
     self->height = client.bottom;
-    hr = gfx_create_screen(self);
+    self->target = gfx_create_screen(self->width, self->height);
+    hr = self->target ? 0 : GFX_E_PRIMARY;
     if (self->target) {
+        /* the screen is B8G8R8A8 */
+        self->bpp = 32;
+        self->rMask = 0xff0000;
+        self->gMask = 0xff00;
+        self->bMask = 0xff;
         self->rShift = 0; self->rBits = 8;
         self->gShift = 0; self->gBits = 8;
         self->bShift = 0; self->bBits = 8;
@@ -139,17 +146,34 @@ static int create_screen(struct C3dDevice *self)
     return hr;
 }
 
+/* The device with the static world as a layer of it (render/gfx_world.h). */
 static int create_environment(struct C3dDevice *self)
 {
     int hr;
-    hr = gfx_open(self);
+    if (!gfx_world_attach())
+        return GFX_E_DDRAW_CREATE;
+    hr = gfx_open(self->hwnd);
     if (hr < 0)
         return hr;
     hr = create_screen(self);
     if (hr < 0)
         return hr;
     gfx_get_caps(&g_gfxCaps);
-    return gfx_create_zbuffer(self);
+    return gfx_create_zbuffer();
+}
+
+/* The device goes, after what was recorded, and with it the screen and the frame kept. */
+static void close_device(struct C3dDevice *self)
+{
+    gfx_close();
+    if (self->target) {
+        gfx_release(self->target);
+        self->target = NULL;
+    }
+    if (self->save) {
+        gfx_release(self->save);
+        self->save = NULL;
+    }
 }
 
 /* The window is in its display mode already (core/app_sdl.c, app_create_window). */
@@ -161,7 +185,7 @@ int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd)
         return GFX_E_INVALIDARG;
     hr = create_environment(self);
     if (hr < 0)
-        gfx_close(self);
+        close_device(self);
     return hr;
 }
 
@@ -222,7 +246,8 @@ void c3d_device_delete_renderer(struct C3dDevice *self, struct Renderer *r)
 
 int c3d_device_release_all(struct C3dDevice *self)
 {
-    return gfx_close(self);
+    close_device(self);
+    return 0;
 }
 
 void c3d_device_restore_frame(struct C3dDevice *self)

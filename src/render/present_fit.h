@@ -9,7 +9,7 @@ struct PresentCover {
 };
 
 /* core/app_sdl.c, which learns what covers the window from the system, tells the device, which
-   presents the scene around it (render/gfx_gpu.c). */
+   presents the scene around it (render/gpu_device.c). */
 void gfx_set_cover(const struct PresentCover *cover);
 
 /* Where the scene lands in a window of another size: as large as fits in the part of the window

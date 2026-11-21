@@ -149,6 +149,9 @@ endfunction()
 # for pixels from the display options' library. The render thread is one of SDL's.
 rage_client_link(platform/window_sdl.c SDL3::SDL3 rage_client_display_options)
 rage_client_link(render/render_thread.c SDL3::SDL3)
+# The graphics device and the static world's layer of it are SDL's GPU API's.
+rage_client_link(render/gpu_device.c SDL3::SDL3)
+rage_client_link(render/gpu_world.c SDL3::SDL3)
 # The Granny shim reads the converted glTF files with cgltf, their images with stb_image, and finds
 # them by zlib's CRC-32.
 rage_client_link(resources/granny_gltf.c rage_cgltf rage_stb rage_zlib)
@@ -838,29 +841,38 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         world/mode_dispatch.c world/mode_draw.c world/mode_lifetime.c)
     rage_test(gauge_sources tests/gauge_sources_support.c CLIENT ui/character/bar_graph.c
         ui/character/gauge_value.c ui/character/gauges.c ui/items/homun_bar.c)
-    # The GPU backend (render/gfx_gpu.c) on this machine's GPU, in a hidden window of the platform's
-    # video driver (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
+    # The graphics device (render/gpu_device.c) with the static world's layer attached
+    # (render/gpu_world.c) on this machine's GPU, in a hidden window of the platform's video driver
+    # (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
     # gfx_gpu_present runs under the offscreen video driver, which shows its window nowhere, so that
     # the window is claimed and presented into where that driver gives windows a swapchain (a Vulkan
     # with VK_EXT_headless_surface; NVIDIA's on Windows has none, and the test says so).
-    rage_test(gfx_gpu src/render/gfx_gpu.c src/render/texel_convert.c
+    rage_test(gfx_gpu src/render/texel_convert.c
         CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
-        render/frame_ring.c render/quads.c render/render_thread.c
+        render/frame_ring.c render/gpu_device.c render/gpu_world.c render/quads.c render/render_thread.c
         render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/world_layout.c
         LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_present COMMAND test_gfx_gpu 1 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
     set_tests_properties(gfx_gpu gfx_gpu_msaa gfx_gpu_present PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
-    # The same with the SDL calls it makes failing on purpose and watched (tests/test_gfx_gpu_faults.c,
-    # which includes render/gfx_gpu.c); skipped without a GPU.
+    # The same with the SDL calls they make failing on purpose and watched (tests/test_gfx_gpu_faults.c,
+    # which includes render/gpu_device.c and render/gpu_world.c); skipped without a GPU.
     rage_test(gfx_gpu_faults src/render/texel_convert.c
         CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
         render/frame_ring.c render/quads.c render/render_thread.c
         render/shadow_fit.c render/shadow_fit_gpu.c render/skin_layout.c render/static_world.c render/world_layout.c
         LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(gfx_gpu_faults PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120)
+    # The device's seam for its layers (render/gpu_layer.h): a layer's hooks in order over frames
+    # drawn and dropped and the device lost and made again; skipped without a GPU.
+    rage_test(gpu_layer src/render/texel_convert.c
+        CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
+        render/frame_ring.c render/gpu_device.c render/quads.c render/render_thread.c render/skin_layout.c
+        LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(gpu_layer PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     # The pipelines and textures the shadow pass draws each run with, watched through the SDL calls
-    # that record them (tests/test_gfx_gpu_passes.c, which includes render/gfx_gpu.c); skipped
+    # that record them (tests/test_gfx_gpu_passes.c, which includes render/gpu_device.c and
+    # render/gpu_world.c); skipped
     # without a GPU.
     rage_test(gfx_gpu_passes src/render/texel_convert.c
         CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
@@ -870,13 +882,13 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     set_tests_properties(gfx_gpu_passes PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     # The client's quads as instances (render/shaders/quad.hlsl) on this machine's GPU, against the
     # client's C code within the tolerance plans/gpu-renderer.md sets, and drawn through
-    # render/gfx_gpu.c within the captures' budget; skipped without a GPU. Its arguments: RAGEXE_MSAA
+    # render/gpu_device.c within the captures' budget; skipped without a GPU. Its arguments: RAGEXE_MSAA
     # for the pictures, the seed, records per kind of case, scenes drawn both ways.
-    rage_test(quad_instances tests/fixtures/quad_reference.c tests/picture_budget.c src/render/gfx_gpu.c
-        src/render/texel_convert.c
+    rage_test(quad_instances tests/fixtures/quad_reference.c tests/picture_budget.c src/render/texel_convert.c
         CLIENT actors/sprite_quad.c effects/particle.c effects/rag/effect_prim_draw.c effects/sprite_particle.c
         platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
-        render/frame_ring.c render/math3d.c render/quads.c render/render_thread.c render/rp_project.c
+        render/frame_ring.c render/gpu_device.c render/gpu_world.c render/math3d.c render/quads.c
+        render/render_thread.c render/rp_project.c
         render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
         render/skin_layout.c render/static_world.c render/world_layout.c world/ground_draw.c LIBS SDL3::SDL3
         ARGS 1 20261112 300000 30 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
@@ -884,17 +896,17 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(quad_instances quad_instances_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 180)
     # Granny's actors skinned by the device (render/shaders/skin.hlsl) on this machine's GPU against
-    # the CPU code they replaced, within a tolerance, and drawn through render/gfx_gpu.c, on the models
+    # the CPU code they replaced, within a tolerance, and drawn through render/gpu_device.c, on the models
     # tools/granny_export converted into the game folder (RAGE_MAPS_GAME_DIR, label client-files);
     # skipped without them or a GPU. Its arguments: RAGEXE_MSAA for the pictures, the folder, the seed,
     # fuzzed poses a model, scenes drawn both ways.
     get_filename_component(default_game "${PROJECT_SOURCE_DIR}/../client-files" ABSOLUTE)
     set(RAGE_MAPS_GAME_DIR "${default_game}" CACHE PATH
         "Game folder of test_static_world_maps's maps and test_skin_instances's converted Granny models")
-    rage_test(skin_instances tests/fixtures/granny_reference.c tests/picture_budget.c src/render/gfx_gpu.c
-        src/render/texel_convert.c
+    rage_test(skin_instances tests/fixtures/granny_reference.c tests/picture_budget.c src/render/texel_convert.c
         CLIENT platform/clock_win32.c platform/thread_win32.c render/dirty_rects.c render/draw_modes.c
-        render/frame_ring.c render/math3d.c render/quads.c render/render_thread.c render/rp_project.c
+        render/frame_ring.c render/gpu_device.c render/gpu_world.c render/math3d.c render/quads.c
+        render/render_thread.c render/rp_project.c
         render/rp_screen.c render/shadow_fit.c render/shadow_fit_gpu.c
         render/skin_layout.c render/static_world.c render/world_layout.c resources/granny_gltf.c
         resources/granny_mesh.c
@@ -1095,7 +1107,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         core/numeric.c core/utf8.c fileio/file.c fileio/resource_path.c platform/code_page_win32.c
         platform/filesystem_win32.c render/math3d.c resources/attr_queries.c std/container_memory.c
         std/string.c std/tree.c std/vec.c OBJECTS rage_test_weather_state_support)
-    rage_test(perf_overlay WE4013 GENERATED perf_overlay)
+    rage_test(perf_overlay WE4013 GENERATED perf_overlay CLIENT diag/perf_counters.c)
     rage_test(pet_accessory CLIENT contents/lua_memo.c platform/system_win32.c GENERATED pet_accessory LIBS rage_lua)
     rage_test(pet_actions GENERATED pet_actions)
     rage_test(pet_portrait GENERATED pet_portrait)

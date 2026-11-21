@@ -1,14 +1,14 @@
-// The draw records render/gfx_gpu.c writes for a frame (struct GpuDraw there, the same layout: only
-// 16-byte vectors and row-major matrices, compiled with -Zpr), read as storage buffers or, a draw
-// of the static world's, as its uniform. A quad's draw finds its record through the quad's record
-// in the frame's quads (instances.hlsli), a Granny actor's through its instance's header among the
-// frame's quads (skin.hlsl), the water's through its uniform, the wobble's through the
-// instance-rate attribute that holds its index.
+// The draw records render/gpu_device.c writes for a frame (render/gpu_layer.h, struct GpuDraw, the
+// same layout: only 16-byte vectors and row-major matrices, compiled with -Zpr), read as storage
+// buffers or, a draw of the static world's, as its uniform. A quad's draw finds its record through
+// the quad's record in the frame's quads (instances.hlsli), a Granny actor's through its instance's
+// header among the frame's quads (skin.hlsl), the water's through its uniform, the wobble's through
+// the instance-rate attribute that holds its index.
 
 struct Draw
 {
     uint4 mode;       // -, the alpha test (ALPHA_*), fog on, the water's view among the frame's,
-                      // which render/gfx_gpu.c hands it as its uniform (the wobble's: its first row
+                      // which render/gpu_world.c hands it as its uniform (the wobble's: its first row
                       // in the row tables, rows.hlsl)
     float4 target;    // the alpha test's reference (0 to 255), half the target's width and height, alpha
                       // to coverage
@@ -17,11 +17,11 @@ struct Draw
                       // 0 reads a layer of an atlas array (bit 2, quad.hlsli), the ground's lightmap, -
     float4 fog;       // the fog (render/gfx.h, GfxFog): the quads' start, end, origin and span
                       // (quad.hlsli, vertex_fog); the world's start and end as view depths and
-                      // 1 / (end - start) (render/gfx_gpu.c, view_fog)
+                      // 1 / (end - start) (render/gpu_world.c, view_fog)
     float4 fogColour;
     float4 colour;    // a world draw's colour (render/gfx.h, GfxWorldDraw)
     float4 uvScale;   // each stage's texture coordinates times this, and then at most uvLimit: a
-    float4 uvLimit;   // target's texture is wider than the target (render/gfx_gpu.c, MARGIN), and a
+    float4 uvLimit;   // target's texture is wider than the target (render/gpu_layer.h, GPU_MARGIN), and a
                       // clamped read stays off the margin
     uint4 mesh;       // a model, its ground light, -, whether the frame has shadows (cascades.hlsli)
 };

@@ -7,7 +7,7 @@
 uint32_t g_soundMode;
 
 /* custom: the display device's name and GUIDs (DEVICENAME, GUIDDEVICE, GUIDDRIVER) are no longer
-   read: SDL picks the GPU (render/gfx_gpu.c). */
+   read: SDL picks the GPU (render/gpu_device.c). */
 static void read_startup_dword(struct PlatformSettingsKey *key, const char *name, void *value)
 {
     BYTE bytes[4];

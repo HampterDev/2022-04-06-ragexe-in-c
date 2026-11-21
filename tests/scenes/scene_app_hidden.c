@@ -1,6 +1,6 @@
 /* Scene runs: the client's window is never shown, on every platform. The client keeps it for what
    it reads of it (its size in pixels, which the resize scene changes); the GPU device claims a
-   window, and makes a swapchain for it, only once it is shown (render/gfx_gpu.c), so a scene run
+   window, and makes a swapchain for it, only once it is shown (render/gpu_device.c), so a scene run
    has no swapchain at all: frames are drawn and the captures download them (gfx_read_frame). SDL's
    GPU drivers need no window, only a video driver that can make what a window would be presented
    through: Vulkan surfaces (Windows', X11's, Wayland's, the offscreen driver's) or Metal views

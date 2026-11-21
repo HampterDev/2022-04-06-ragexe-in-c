@@ -1,4 +1,4 @@
-// The receivers' depth pass (render/gfx_gpu.c): the static world's records the view's cull kept
+// The receivers' depth pass (render/gpu_world.c): the static world's records the view's cull kept
 // (world_cull.hlsl), drawn single-sampled into two targets of view depth, where the shadow fit
 // reads them (shadow_fit.hlsli): the first takes the nearest receiver of every pass, the second, in
 // the pipelines of the passes up to the ground, the nearest one that is not blended, through which

@@ -39,7 +39,7 @@
      On the CPU, which decides the lists' order and flatness, the rhw the lists sort sprites,
      particles, triangles and tiles by and whether a projected one is flat are the reference's to
      the bit.
-   - Pictures through render/gfx_gpu.c itself: scenes of sprites drawn as the instances the client
+   - Pictures through render/gpu_device.c itself: scenes of sprites drawn as the instances the client
      now makes them (from a layered texture, an array's layer) and as the reference's vertices (from
      a plain texture of the same texels), and of projected quads drawn as instances and as the
      vertices renderer_project_vertex makes, at the sample count asked for, within the captures'
@@ -60,6 +60,7 @@
 #include "render/texture_types.h"
 #include "render/quads.h"
 #include "render/gfx.h"
+#include "render/gpu_layer.h"
 #include "render/device.h"
 #include "resources/sprite.h"
 #include "resources/animation.h"
@@ -1662,7 +1663,7 @@ static int test_records(struct Batch *b, struct Case *cases, float *out, long pe
     return ok;
 }
 
-/* ---- pictures through render/gfx_gpu.c ---- */
+/* ---- pictures through render/gpu_device.c ---- */
 
 #define PICTURE_W 1280
 #define PICTURE_H 720
@@ -2009,7 +2010,7 @@ static int test_pictures(int scenes)
         gfx_release(layered[i]);
         gfx_release(plain[i]);
     }
-    printf("pictures through render/gfx_gpu.c: %d scenes of %d by %d, %ld pixels drawn; differing pixels, those "
+    printf("pictures through render/gpu_device.c: %d scenes of %d by %d, %ld pixels drawn; differing pixels, those "
            "more than a step apart, the largest group of those, those in groups of more than 16 off the edges and the "
            "largest difference: "
            "sprites blended %ld, %ld, %ld, %ld, %d; alpha-tested %ld, %ld, %ld, %ld, %d; projected quads additive %ld, "
@@ -2058,13 +2059,14 @@ int main(int argc, char **argv)
     }
     d->width = PICTURE_W;
     d->height = PICTURE_H;
-    need(gfx_open(d) == 0, "gfx_open");
-    if (gfx_create_screen(d) != 0) {
+    need(gfx_open(d->hwnd) == 0, "gfx_open");
+    d->target = gfx_create_screen(d->width, d->height);
+    if (!d->target) {
         printf("quad_instances: skipped: no GPU device\n");
         return 77;
     }
-    need(gfx_get_caps(&g_gfxCaps) == 0 && gfx_create_zbuffer(d) == 0, "the device's screen");
-    g_dev = (SDL_GPUDevice *)d->dev;
+    need(gfx_get_caps(&g_gfxCaps) == 0 && gfx_create_zbuffer() == 0, "the device's screen");
+    g_dev = gpu_dev();
     printf("quad_instances: %s on %s, seed %llu, RAGEXE_MSAA %s\n", SDL_GetGPUDeviceDriver(g_dev),
            SDL_GetStringProperty(SDL_GetGPUDeviceProperties(g_dev), SDL_PROP_GPU_DEVICE_NAME_STRING, "?"),
            (unsigned long long)seed, argc > 1 ? argv[1] : "unset");
@@ -2076,7 +2078,8 @@ int main(int argc, char **argv)
     if (scenes > 0)
         ok = test_pictures(scenes) && ok;
 
-    gfx_close(d);
+    gfx_close();
+    gfx_release(d->target);
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     printf("quad_instances: %s\n", ok ? "every vertex within the tolerance, every picture within the budget"

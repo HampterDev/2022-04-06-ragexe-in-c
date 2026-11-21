@@ -5,7 +5,7 @@
    what the two texture stages make of the textures and the vertex colour (enum DrawCombine),
    blending, the depth test and write, the alpha test, fog and how the stages sample; the device
    makes the pipelines of every mode once, when it knows the screen's samples and depth
-   (render/gfx_gpu.c, gfx_create_zbuffer). The modes are the
+   (render/gpu_device.c, gfx_create_zbuffer). The modes are the
    render states and texture stage states the Direct3D 9 client drew each of its lists with
    (render/crenderer.c, renderer_draw_lists), and those of the few things drawn outside them.
    Pure data and logic: it uses nothing else of the client. */
@@ -36,7 +36,7 @@ enum DrawMode {
     /* the rest */
     DRAW_COMPOSITE,         /* interface quads into a window's texture (render/render_clients.c) */
     DRAW_PANEL,             /* the frame-time overlay (diag/perf.c): its texture as it is, blended */
-    DRAW_BLIT,              /* a rectangle of a surface copied into a target (render/gfx_gpu.c) */
+    DRAW_BLIT,              /* a rectangle of a surface copied into a target (render/gpu_device.c) */
     DRAW_CLEAR,             /* a rectangle of a target cleared to the vertex colour and a depth */
     DRAW_CLEAR_COLOUR,      /* a rectangle of a target cleared to the vertex colour, its depth kept */
     DRAW_CLEAR_DEPTH,       /* a rectangle of a target's depth cleared, its colour kept */

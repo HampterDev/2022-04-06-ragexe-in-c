@@ -265,7 +265,7 @@ and each line of a measure's `<name>.frames.jsonl` is one too, of a frame of its
 | `objects_render_ms`, `effects_render_ms` | the parts of `view_render_ms` that build the world's objects' quads (`game_object_render`: sprites, shadows, names, damage numbers, Granny models' bones) and the effect manager's (`effect_mgr_render`: STR and RagEffect primitives, particles) |
 | `ui_ms` | drawing the windows (`ui_window_mgr_render`, `ui_window_mgr_render_windows`): shop signs, chat rooms and chat balloons among them |
 | `atlas_ms` | decoding sprite frames from their palette runs into the sprite atlas (`texture_draw_sprite_frame`) |
-| `texels_ms` | widening the client's texels to the GPU's B8G8R8A8 for an upload (`render/gfx_gpu.c`) |
+| `texels_ms` | widening the client's texels to the GPU's B8G8R8A8 for an upload (`render/gpu_device.c`, `render/gpu_world.c`) |
 
 Some times lie within others, so they do not add up to the frame:
 

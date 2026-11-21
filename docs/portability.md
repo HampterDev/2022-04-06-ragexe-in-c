@@ -605,12 +605,16 @@ game does not draw; it draws at the new size when the drag ends.
 
 ### Renderer
 
-`render/gfx_gpu.c` implements `render/gfx.h` on SDL 3's GPU API on every platform: Vulkan with
-SPIR-V shaders on Windows, Linux and Android, Metal with MSL on macOS, the one shader format of the
-platform handed to `SDL_CreateGPUDevice`, so that SDL has one driver to choose. Without a GPU device
-the client does not start ("Cannot init d3d OR grf file has problem.", with SDL's reason in the
-log). `tests/test_gfx_gpu.c` drives it through the gfx API and reads the screen's pixels back with
-`gfx_read_frame` (the tests `gfx_gpu`, `gfx_gpu_msaa` and `gfx_gpu_present`): clears, Direct3D 9's
+`render/gpu_device.c`, the graphics device (the library `gpu-device`), implements `render/gfx.h`
+on SDL 3's GPU API on every platform: Vulkan with SPIR-V shaders on Windows, Linux and Android,
+Metal with MSL on macOS, the one shader format of the platform handed to `SDL_CreateGPUDevice`, so
+that SDL has one driver to choose. Without a GPU device the client does not start ("Cannot init
+d3d OR grf file has problem.", with SDL's reason in the log). It knows nothing of maps or actors:
+the static world (`render/gpu_world.c`, the library `gpu-world`) is a layer of it, which records
+into the device's frames through the hooks it registers (`render/gpu_layer.h`, `gpu_add_layer`;
+`c3d_device_init` attaches it, and `tests/test_gpu_layer.c` checks the order the device calls them
+in). `tests/test_gfx_gpu.c` drives the two through the gfx API and reads the screen's pixels back
+with `gfx_read_frame` (the tests `gfx_gpu`, `gfx_gpu_msaa` and `gfx_gpu_present`): clears, Direct3D 9's
 pixel centres and top-left rule, every texture format, texel centres, culling, textures changed and
 released within a frame, the alpha test, the fog (the quads' at the first rhw of every step, and the
 one before it, against the original's CPU formula), blending, the effect modes' blending and the 16
@@ -810,7 +814,8 @@ every sample of each alpha-tested draw without blending, which the ground's and 
 with multisampling on their textures were read at each sample, where alpha to coverage reads them
 once a pixel.
 
-The static world (`render/gfx.h`, `gfx_world_*`; `render/static_world.c`, the library
+The static world (`render/gfx_world.h`, `gfx_world_*`, and `render/gpu_world.c`, the library
+`gpu-world`; `render/static_world.c`, the library
 `static-world`; `render/world_layout.c`, the library `world-layout`, which packs it as the shaders
 read it; and `world/world_gpu.c`) stays on the GPU while a map is shown: the ground's blocks and the
 models' nodes in one vertex and one index buffer, each mesh placed behind the others as the map
@@ -848,7 +853,7 @@ likewise, and the vertex shader raises each by the frame's waves (`water.hlsli`)
 every vertex through its slot, the records each cull keeps but those whose box lies within the
 rounding of a plane, and the water's quads.
 
-The shadows are the device's own (`render/gfx.h`, `GfxShadow`): the client gives each frame the
+The shadows are the static world's layer's (`render/gfx_world.h`, `GfxShadow`): the client gives each frame the
 light, its view and the box the static world's draw records lie in, the animated ones in the
 frame's pose (`render/shadow_fit.h`, `ShadowFitFrame`), and the CPU never sees the cascades. After
 the view's cull a single-sample pass draws the runs it kept (`world_depth.hlsl`) into two R32F
@@ -901,7 +906,7 @@ instance a header among the frame's quads naming its pose and the draw's record.
 `tests/test_skin_instances.c` compares every corner of every model in the game folder's converted
 files, in their animations and fuzzed poses, with the CPU code it replaced
 (`tests/fixtures/granny_reference.c`) within the tolerance (below), and draws actors both ways
-through `render/gfx_gpu.c` within the captures' budget. A model whose skeleton has more than 256
+through `render/gpu_device.c` within the captures' budget. A model whose skeleton has more than 256
 bones, which the shim samples no animation for, is not drawn.
 
 The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, which builds their vertices
@@ -930,7 +935,7 @@ computation of it may carry, of the exact one (a point near the eye seen from a 
 units away has a view depth that is the small sum of large terms). `tests/test_quad_instances.c`
 runs the quad shader's `quad_vertex` on the GPU against the CPU code it replaced
 (`tests/fixtures/quad_reference.c`) for millions of records, made by the client's own functions,
-and draws scenes through `render/gfx_gpu.c` both as instances and as the reference's vertices;
+and draws scenes through `render/gpu_device.c` both as instances and as the reference's vertices;
 `tests/test_static_world_maps.c` and `tests/test_skin_instances.c` hold the static world's passes
 and Granny's skinning likewise. Pictures are held to a budget: the pixels more than a colour step
 apart at most 0.05 % of the screen, in groups of at most 16 that touch, every differing capture

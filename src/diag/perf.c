@@ -9,14 +9,12 @@
 #include "platform/clock.h"
 #include "render/fonts.h"
 
-/* the one GPU driver the device asks SDL for (render/gfx_gpu.c) */
+/* the one GPU driver the device asks SDL for (render/gpu_device.c) */
 #ifdef __APPLE__
 #define PERF_RENDERER "Metal"
 #else
 #define PERF_RENDERER "Vulkan"
 #endif
-
-struct perf_counters g_perf;
 
 #define OV_TEX_W 1024
 #define OV_TEX_H 128

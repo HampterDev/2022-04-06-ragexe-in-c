@@ -49,8 +49,9 @@ File references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Where the renderer stands
 
-- **One backend behind `render/gfx.h`:** `render/gfx_gpu.c` on SDL's GPU API, Vulkan or Metal, on
-  every platform (phase 2). A frame goes to the GPU in one command buffer with one upload, through
+- **One backend behind `render/gfx.h`:** `render/gpu_device.c` on SDL's GPU API, Vulkan or Metal,
+  on every platform (phase 2), with the static world a layer of it (`render/gpu_layer.h`,
+  `render/gpu_world.c`). A frame goes to the GPU in one command buffer with one upload, through
   the shaders of `src/render/shaders` that `tools/shaders` compiles offline.
 - **A render thread of the device's own** (phase 8). The main thread records a frame into a packet,
   one of a ring of four (`render/frame_ring.c`), its records written once into transfer buffers of
@@ -472,7 +473,7 @@ recorded.
 
 ### Phase 2: one backend behind today's API (large)
 
-- `render/gfx_gpu.c` implements `render/gfx.h` as it stands on the GPU API: a pipeline cache keyed
+- `render/gpu_device.c` implements `render/gfx.h` as it stands on the GPU API: a pipeline cache keyed
   by the current render states, one shader that does what the GL backend's fixed-function shader
   does, the Direct3D 9 mesh and shadow shaders ported, draws recorded into a frame list and
   replayed after one upload, targets as render passes, captures and the remaining target locks
@@ -546,7 +547,7 @@ recorded.
   on the main thread through the stream, records, transform slots computed on the GPU, the view's
   cull compacted into one indirect draw a run, the poses taken at a model's first sight and the
   models ticked for a moving record in view, the alpha-blended models culled and keyed by the CPU
-  from their records, the water's cells on the GPU (`world/world_gpu.c`, `render/gfx_gpu.c`,
+  from their records, the water's cells on the GPU (`world/world_gpu.c`, `render/gpu_world.c`,
   `render/world_layout.c`, `world.hlsl`, `world_transform.hlsl`, `world_cull.hlsl`,
   `world_compact.hlsl`, `water.hlsl`). Deleted with it: the per-leaf mesh queuing
   (`world/model_node_render.c`, `c3d_ground15_render`), the `GROUND_MESH` queue, the per-block and

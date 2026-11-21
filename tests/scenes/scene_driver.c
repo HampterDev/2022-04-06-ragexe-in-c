@@ -31,6 +31,7 @@
 #include "platform/window.h"
 #include "render/device.h"
 #include "render/gfx.h"
+#include "render/gfx_world.h"
 #include "render/shadow_fit.h"
 #include "session/character_name.h"
 #include "session/state.h"

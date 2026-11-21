@@ -20122,3 +20122,43 @@ Checked: `build.bat check`; `tests\build.bat` with the pieces' 30 tests; the pla
 ping-150 sets against the server built from the same pin print what they printed before; the scene
 sets `scripts`, `motion` and `load` give the same captures, byte for byte, as `custom` before the
 change, run one after the other.
+
+## The graphics device and the static world apart (2026-11-21)
+
+The renderer was one file, `render/gfx_gpu.c`, that was both the graphics device and the map as it
+is drawn, with one set of globals for each. It is now two libraries behind a seam, so that each can
+move into the `client` piece of the set `game` on its own (`client/gpu` and `client/scene`):
+
+- **`gpu-device`** (`render/gpu_device.c`, `render/gfx.h`, `render/gpu_layer.h`,
+  `render/present_fit.h`, the shaders of its own draws): the device and its window, surfaces,
+  textures, targets and arrays of layered textures, uploads and mipmaps, the ring of frame packets
+  and the render thread, steps and passes, samplers and the pipeline cache, the client's quads and
+  triangles, Granny's skinned meshes, the wobble, presenting and reading back. It knows nothing of
+  maps, water or shadows.
+- **`gpu-world`** (`render/gpu_world.c`, `render/gfx_world.h`, the shaders `world*`, `water*`,
+  `shadow_*` and `cascades.hlsli`): the static world, its stream, its compute passes, its draws,
+  the water, the depth pass, the shadow fit and the cascades' casters.
+- **The seam** (`render/gpu_layer.h`): a layer registers its hooks with `gpu_add_layer` before the
+  device is made, and the device calls them at fixed points: made, pipelines, lost; a frame begun,
+  pending, prepared, handed over into the layer's own part of the packet, flushed, retired (drawn,
+  dropped or not submitted); on the render thread the copy pass, the passes before the frame's and
+  each of the layer's draws in a pass. Through it the layer makes shaders, compute pipelines and
+  pipelines from a description, stages bytes among the frame's texels, retires GPU objects as the
+  device does and adds draws in the current mode to the current pass. A draw is the device's or a
+  layer's, so the device's passes and program bindings have no case of the world's.
+  `c3d_device_init` attaches the world (`gfx_world_attach`); the device never includes or links it,
+  which `build.bat check` enforces.
+- **Beyond moving code.** The device's open and close take a window and sizes instead of the
+  client's `struct C3dDevice`, which `render/c3ddevice.c` fills itself (the bits and masks of the
+  screen; `C3dDevice.dev`, which only said whether there was a device, went for `target`); the
+  frame's counters (`g_perf`) are a library of their own, `perf-counters`, which the device and the
+  overlay both use; the water's view of the camera is no longer recomputed when only the fog
+  changes, which it does not depend on; the comments of the shaders that named the old file name
+  the new ones, and their headers were made again with the same tools, their SPIR-V and MSL byte
+  for byte as before.
+
+Checked: `build.bat check`, which fails when the device includes `render/gfx_world.h`;
+`tests\build.bat` with the original executable (388 tests and the 7 oracle tests), the new
+`gpu_layer` among them; the scene sets `scripts` and `motion`, with `--shadow-fit`, give the same
+captures, shadow fits and counters, byte for byte, as `custom` before the change, run one after
+the other.

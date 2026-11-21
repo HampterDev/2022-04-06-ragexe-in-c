@@ -9,8 +9,7 @@
 struct C3dDevice {
     PlatformWindow hwnd;
     int width, height;
-    gfx_surface *target;  /* the screen (render/gfx.h, gfx_create_screen) */
-    void *dev;            /* the GPU device, while there is one */
+    gfx_surface *target;  /* the screen (render/gfx.h, gfx_create_screen), while there is a device */
     gfx_surface *save;    /* the frame c3d_device_save_frame keeps */
     DWORD rShift, rBits;
     DWORD gShift, gBits;

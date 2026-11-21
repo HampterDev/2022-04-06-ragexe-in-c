@@ -7,6 +7,7 @@
 #include "platform/win_types.h"
 #include "base.h"
 #include "render/draw_queue.h"
+#include "render/gfx_world.h"
 
 struct Texture;
 struct SpriteAtlasCache;

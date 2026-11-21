@@ -19,7 +19,7 @@
      leaves each bone that no vertex of the model weights not a number, which a vertex's weight of 0
      on such a bone must not read; the corners that have one are counted. The corner's place in view
      space against the CPU's (its world point, world_corner's, through the view) is reported.
-   - Pictures through render/gfx_gpu.c itself: actors of the folder's models drawn by the device from
+   - Pictures through render/gpu_device.c itself: actors of the folder's models drawn by the device from
      the models the client makes of them (resources/granny_mesh.c, granny_model_res_skin) in their
      bind poses and animations (a fuzzed pose folds a mesh onto itself, where faces of one depth
      z-fight), and the CPU's corners of the same actors drawn as pre-transformed triangles, at the sample
@@ -41,6 +41,7 @@
 #include "render/projection.h"
 #include "render/math3d.h"
 #include "render/gfx.h"
+#include "render/gpu_layer.h"
 #include "render/device.h"
 #include "render/shaders/shader_code.h"
 #include "shaders/skin_probe.h"
@@ -562,7 +563,7 @@ static void probe_init(void)
     vb[1].slot = 1;
     vb[1].pitch = 4;
     vb[1].input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-    /* the layout of render/gfx_gpu.c's PROG_SKIN, and the pose's row beside */
+    /* the layout of render/gpu_device.c's PROG_SKIN, and the pose's row beside */
     va[0].location = 0; va[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; va[0].offset = offsetof(struct SkinVertex, position);
     va[1].location = 1; va[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; va[1].offset = offsetof(struct SkinVertex, normal);
     va[2].location = 2; va[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2; va[2].offset = offsetof(struct SkinVertex, uv);
@@ -922,7 +923,7 @@ static int test_vertices(int placements)
     return ok;
 }
 
-/* ---- pictures through render/gfx_gpu.c ---- */
+/* ---- pictures through render/gpu_device.c ---- */
 
 #define PICTURE_W 1280
 #define PICTURE_H 720
@@ -1032,7 +1033,7 @@ static int test_pictures(int scenes)
         }
     }
     gfx_release(tex);
-    printf("pictures through render/gfx_gpu.c: %d scenes of %d by %d (%d fogged), %ld pixels drawn; pixels more "
+    printf("pictures through render/gpu_device.c: %d scenes of %d by %d (%d fogged), %ld pixels drawn; pixels more "
            "than a step apart: %ld in all, at most %ld in a scene (%.4f %% of the screen), the largest group %ld\n",
            scenes, PICTURE_W, PICTURE_H, fogged, covered, over, worst, 100.0 * (double)worst / (PICTURE_W * PICTURE_H),
            largest);
@@ -1064,13 +1065,14 @@ int main(int argc, char **argv)
     need(d->hwnd != NULL, "SDL_CreateWindow");
     d->width = PICTURE_W;
     d->height = PICTURE_H;
-    need(gfx_open(d) == 0, "gfx_open");
-    if (gfx_create_screen(d) != 0) {
+    need(gfx_open(d->hwnd) == 0, "gfx_open");
+    d->target = gfx_create_screen(d->width, d->height);
+    if (!d->target) {
         printf("skin_instances: skipped: no GPU device\n");
         return 77;
     }
-    need(gfx_get_caps(&g_gfxCaps) == 0 && gfx_create_zbuffer(d) == 0, "the device's screen");
-    g_dev = (SDL_GPUDevice *)d->dev;
+    need(gfx_get_caps(&g_gfxCaps) == 0 && gfx_create_zbuffer() == 0, "the device's screen");
+    g_dev = gpu_dev();
     printf("skin_instances: %s on %s, seed %llu, RAGEXE_MSAA %s; %d models, %d animation files\n",
            SDL_GetGPUDeviceDriver(g_dev),
            SDL_GetStringProperty(SDL_GetGPUDeviceProperties(g_dev), SDL_PROP_GPU_DEVICE_NAME_STRING, "?"),
@@ -1091,7 +1093,8 @@ int main(int argc, char **argv)
         for (p = 0; p < g_models[i].nposes; p++)
             free(g_models[i].poses[p]);
     }
-    gfx_close(d);
+    gfx_close();
+    gfx_release(d->target);
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     printf("skin_instances: %s\n", ok ? "every corner within the tolerance, every picture within the budget"

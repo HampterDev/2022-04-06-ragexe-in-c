@@ -7,7 +7,7 @@
    is, rows of four words among the frame's quads (gfx_skin_pose); which draws of its meshes one
    draw of the device takes
    (skin_batch_join); and a vertex where Granny's deformer put it, on the CPU, for the one effect
-   that starts at a vertex. render/gfx_gpu.c and the tests pack alike. Uses nothing else of the
+   that starts at a vertex. render/gpu_device.c and the tests pack alike. Uses nothing else of the
    client. */
 
 #include <stddef.h>
@@ -103,7 +103,7 @@ size_t skin_pose_rows(const struct SkinPose *pose, float (*rows)[4]);
    as the shader takes it (none: the origin). */
 void skin_vertex_position(const struct SkinVertex *v, const float *bones, uint32_t boneCount, float out[3]);
 
-/* The draws of one device draw (render/gfx_gpu.c), in the order given: a range of a model's
+/* The draws of one device draw (render/gpu_device.c), in the order given: a range of a model's
    indices drawn for `instances` poses, the poses one after the other, each drawing the whole range
    (the GPU draws an instanced draw instance by instance), `pose` the last. */
 struct SkinBatch {

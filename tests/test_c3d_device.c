@@ -2,7 +2,8 @@
    (c3d_device_save_frame, c3d_device_restore_frame) in a render target of the screen's size, made
    at the first save, used again while the size stays, made again after it changed and missing
    where the device makes none, a restore without a saved frame copying nothing; the device made at
-   the window's client size, with the screen's channel masks, and closed again when a step fails;
+   the window's client size, with the static world attached and the screen's channel masks, and
+   closed again, the screen let go, when a step fails;
    the frame presented only with a screen, counted as shown either way. */
 #include "../src/render/c3ddevice.c"
 #include <assert.h>
@@ -17,7 +18,8 @@ struct perf_counters g_perf;
 int g_trilinearFilter;
 
 static struct gfx_surface screen, made[8];
-static int nmade, fail_target, fail_open, fail_screen, fail_zbuffer, blits, closes, presents, vsyncs, shown;
+static int nmade, fail_target, fail_open, fail_screen, fail_zbuffer, blits, closes, presents, vsyncs, shown,
+    attaches;
 static gfx_surface *blit_dst, *blit_src;
 static int64_t clock_ns;
 static int window_token;
@@ -64,26 +66,27 @@ int gfx_clear(int flags, DWORD colour, float z, const RECT *r)
     abort();
 }
 
-int gfx_open(struct C3dDevice *d)
+int gfx_world_attach(void)
 {
-    assert(d->hwnd == (PlatformWindow)(void *)&window_token);
+    ++attaches;
+    return 1;
+}
+
+int gfx_open(PlatformWindow window)
+{
+    assert(window == (PlatformWindow)(void *)&window_token && attaches);
     return fail_open ? GFX_E_DDRAW_CREATE : 0;
 }
 
-int gfx_create_screen(struct C3dDevice *d)
+gfx_surface *gfx_create_screen(int w, int h)
 {
-    assert(d->width == 640 && d->height == 480);
+    assert(w == 640 && h == 480);
     if (fail_screen)
-        return GFX_E_PRIMARY;
-    screen.width = d->width;
-    screen.height = d->height;
+        return NULL;
+    screen.width = w;
+    screen.height = h;
     screen.live = 1;
-    d->target = &screen;
-    d->bpp = 32;
-    d->rMask = 0xff0000;
-    d->gMask = 0xff00;
-    d->bMask = 0xff;
-    return 0;
+    return &screen;
 }
 
 int gfx_get_caps(struct gfx_caps *out)
@@ -92,17 +95,15 @@ int gfx_get_caps(struct gfx_caps *out)
     return 0;
 }
 
-int gfx_create_zbuffer(struct C3dDevice *d)
+int gfx_create_zbuffer(void)
 {
-    assert(d->target == &screen);
+    assert(screen.live);
     return fail_zbuffer ? GFX_E_ZBUFFER : 0;
 }
 
-int gfx_close(struct C3dDevice *d)
+void gfx_close(void)
 {
     ++closes;
-    d->target = NULL;
-    return 0;
 }
 
 void gfx_set_mipmaps(int on) { (void)on; }
@@ -187,7 +188,9 @@ static void check_start_and_show(void)
         fail_screen = failure == 1;
         fail_zbuffer = failure == 2;
         closes = 0;
-        assert(c3d_device_init(&d, (PlatformWindow)(void *)&window_token) < 0 && closes == 1 && !d.target);
+        screen.live = 0;
+        assert(c3d_device_init(&d, (PlatformWindow)(void *)&window_token) < 0 && closes == 1 && !d.target
+               && !screen.live);
     }
     fail_open = fail_screen = fail_zbuffer = 0;
     assert(c3d_device_show_frame(&d, 1) == (int)GFX_E_NO_PRIMARY && presents == 2 && shown == 3);

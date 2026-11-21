@@ -187,6 +187,35 @@ note    The installed fonts, sorted for a request by font-faces' rules: read by 
 uses    platform font-faces
 paths   render/font_match*
 
+library perf-counters
+note    The frame's counters (diag/perf_counters.c): what the graphics device, the renderer and the
+        game count of a frame (draws, modes, bytes, times), which the frame-time overlay shows.
+uses    platform
+paths   diag/perf_counters.*
+
+library gpu-device
+note    The graphics device on SDL's GPU API (render/gpu_device.c, render/gfx.h): the device and
+        its window, surfaces, textures, render targets and arrays of layered textures, their uploads
+        and mipmaps, the frames recorded into a ring of packets and handed to the render thread,
+        passes, copies, samplers and pipelines, the client's quads and triangles, Granny's skinned
+        meshes, the wobble, presenting and reading back, and the shaders of its own draws
+        (render/shaders). It draws what it is handed and knows nothing of maps or actors: a layer
+        that records into its frames, such as the static world, goes through its seam
+        (render/gpu_layer.h), which hands it the device and calls the layer's hooks.
+uses    platform perf-counters texel-convert dirty-rects draw-modes quads screen-wobble render-thread
+        skin-layout
+paths   render/gpu_device.c render/gpu_layer.h render/gfx.h render/present_fit.h render/shaders/
+
+library gpu-world
+note    The static world on the GPU (render/gpu_world.c, render/gfx_world.h), a layer of the graphics
+        device's: the map's ground, models and water as the device keeps them, the stream that takes
+        them up, the compute passes that place and cull them, their draws, the depth pass, the
+        shadow fit and the cascades' casters, and their shaders (render/shaders/world*, water*,
+        shadow_*, cascades.hlsli).
+uses    gpu-device world-layout shadow-fit-gpu
+paths   render/gpu_world.c render/gfx_world.h render/shaders/world* render/shaders/water*
+        render/shaders/shadow_* render/shaders/cascades.hlsli
+
 library fileio
 note    Game files and GRF archives, resource paths and names, the table and message-string readers
         (core/table_reader.c, core/msg_str.c), the JPEG codec.
@@ -196,11 +225,11 @@ paths   fileio/
         resources/jpeg_internal.h resources/jpeg_storage.c world/mode_manager.h
 
 library render
-note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
-        sprite drawing, the display options (render/render_options.c) and the frame-time overlay
-        (diag/perf.c).
+note    The client's 3D device (render/c3ddevice.c) over the graphics device, the renderer and its
+        lists, text and fonts, 3D math, sprite drawing, the display options (render/render_options.c)
+        and the frame-time overlay (diag/perf.c).
 uses    fileio display-options texel-convert dirty-rects draw-modes quads screen-wobble font-finder world-layout
-        shadow-fit-gpu skin-layout atlas-index render-thread
+        shadow-fit-gpu skin-layout atlas-index render-thread gpu-world
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 

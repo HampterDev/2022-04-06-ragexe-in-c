@@ -126,7 +126,7 @@ static const float2 disk[16] = {
 
 // The share of the disc's points that are lit, and of those that a model's surface, within the
 // bias in front of the receiver or as far behind as the slant reaches, may or may not shade. The
-// maps are MAP_SIZE texels square in a texture a texel wider and taller (render/gfx_gpu.c, MARGIN),
+// maps are MAP_SIZE texels square in a texture a texel wider and taller (render/gpu_layer.h, GPU_MARGIN),
 // so they are read by texel, the one point sampling with the coordinates clamped to a map picks.
 float2 shadow_seen(uint cascade, float4 l, float radius, float slant, float bias)
 {

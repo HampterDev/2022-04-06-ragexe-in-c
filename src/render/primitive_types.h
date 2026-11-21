@@ -2,7 +2,7 @@
 #define RENDER_PRIMITIVE_TYPES_H
 
 #include <stdint.h>
-#include "render/gfx.h"
+#include "render/gfx_world.h"
 
 struct Texture;
 

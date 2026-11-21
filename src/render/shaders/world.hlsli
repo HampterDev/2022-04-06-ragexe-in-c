@@ -1,4 +1,4 @@
-// The static world's data on the device (render/gfx_gpu.c, "the static world"; render/static_world.h):
+// The static world's data on the device (render/gpu_world.c; render/static_world.h):
 // the map's draw records by id, the transform slots of its model nodes, and what the frame's
 // compute passes make of them. Only 16-byte vectors and row-major matrices, as records.hlsli.
 
