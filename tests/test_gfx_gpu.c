@@ -7,10 +7,9 @@
 #include "render/gfx.h"
 #include "render/gfx_world.h"
 #include "render/gpu_layer.h"
-#include "render/device.h"
 #include "render/screen_wobble.h"
 #include "render/skin_layout.h"
-#include "diag/perf.h"
+#include "diag/perf_counters.h"
 #include <SDL3/SDL.h>
 #include <assert.h>
 #include <math.h>
@@ -19,13 +18,20 @@
 #include <string.h>
 
 struct perf_counters g_perf;
-struct C3dDevice g_3dDevice;
+/* What the test keeps of the device it draws with: the hidden window, its size and the screen
+   (gfx_create_screen). */
+struct TestScreen {
+    SDL_Window *window;
+    int width, height;
+    gfx_surface *screen;
+};
+static struct TestScreen g_screen;
 static int multisampled;  /* RAGEXE_MSAA asks for more than one sample */
 
 #define W 64
 #define H 48
 
-static DWORD screen_pixel(struct C3dDevice *d, int x, int y)
+static DWORD screen_pixel(struct TestScreen *d, int x, int y)
 {
     RECT r;
     DWORD p;
@@ -39,7 +45,7 @@ static DWORD screen_pixel(struct C3dDevice *d, int x, int y)
 }
 
 /* The whole screen's pixels, W by H, without their alpha, which is 255. */
-static void read_screen(struct C3dDevice *d, DWORD *out)
+static void read_screen(struct TestScreen *d, DWORD *out)
 {
     int i;
     (void)d;
@@ -120,7 +126,7 @@ static void draw_quad(float x0, float y0, float x1, float y1, DWORD diffuse)
     gfx_draw_vertices(v, 4, 1);
 }
 
-static void check_texture(struct C3dDevice *d, int fmt)
+static void check_texture(struct TestScreen *d, int fmt)
 {
     static const DWORD texels[4] = { 0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff };
     gfx_surface *t = texture_2x2(fmt, texels);
@@ -144,7 +150,7 @@ static void check_texture(struct C3dDevice *d, int fmt)
    pixel, and where a pixel's samples lie on both of a quad's triangles when multisampling, the
    mode's anisotropic filtering is the driver's own (Mesa's lavapipe mixes in a few per cent of the
    neighbours there), so the pixels read lie on the diagonal the triangles do not share. */
-static void check_texel_centres(struct C3dDevice *d)
+static void check_texel_centres(struct TestScreen *d)
 {
     static const DWORD texels[4] = { 0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff };
     gfx_surface *t = texture_2x2(GFX_FMT_8888, texels);
@@ -288,7 +294,7 @@ static void model_draw(struct GfxWorldDraw *draw)
 /* Direct3D 9 culls by the winding on the screen: a record's flags drop the triangles whose corners
    go clockwise there (y down), with SW_CULL_CCW the others, with SW_CULL_NONE none; quads are never
    culled. A record drawn by itself and its pass culled by the GPU cull alike. */
-static void check_culling(struct C3dDevice *d)
+static void check_culling(struct TestScreen *d)
 {
     /* at depth 100 a unit is a pixel, the view's centre at (32, 24) */
     static const float corners[6][2] = { { 4, 4 }, { 20, 4 }, { 4, 20 }, { 30, 4 }, { 30, 20 }, { 46, 4 } };
@@ -333,7 +339,7 @@ static void check_culling(struct C3dDevice *d)
 
 /* A texture changed after a draw used it keeps its old texels for that draw and gives the new
    ones to the draws after the change, in one frame. */
-static void check_texture_changed_in_frame(struct C3dDevice *d)
+static void check_texture_changed_in_frame(struct TestScreen *d)
 {
     static const DWORD red[4] = { 0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000 };
     static const DWORD green[4] = { 0xff00ff00, 0xff00ff00, 0xff00ff00, 0xff00ff00 };
@@ -355,7 +361,7 @@ static void check_texture_changed_in_frame(struct C3dDevice *d)
 }
 
 /* A texture released while a recorded draw still uses it is drawn, then freed. */
-static void check_release_in_frame(struct C3dDevice *d)
+static void check_release_in_frame(struct TestScreen *d)
 {
     static const DWORD blue[4] = { 0xff0000ff, 0xff0000ff, 0xff0000ff, 0xff0000ff };
     gfx_surface *t = texture_2x2(GFX_FMT_565, blue);
@@ -372,7 +378,7 @@ static void check_release_in_frame(struct C3dDevice *d)
 /* A texture held twice (as the renderer's queues hold the textures their draws name,
    render/rp_pool.c) and released by its owner is still drawn after its release, and goes when the
    holds are let go; a texture released while another is held goes at once, after its draw. */
-static void check_release_while_held(struct C3dDevice *d)
+static void check_release_while_held(struct TestScreen *d)
 {
     static const DWORD green[4] = { 0xff00ff00, 0xff00ff00, 0xff00ff00, 0xff00ff00 };
     static const DWORD white[4] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
@@ -400,7 +406,7 @@ static void check_release_while_held(struct C3dDevice *d)
    a texture refused, rectangles outside their surfaces copying nothing, and the frame saved into a
    render target and put back, under the draws after it (c3d_device_save_frame and
    c3d_device_restore_frame). */
-static void check_target_copies(struct C3dDevice *d)
+static void check_target_copies(struct TestScreen *d)
 {
     gfx_surface *rt = gfx_create_render_target(16, 16), *tex = gfx_create_texture(16, 16, GFX_FMT_8888);
     gfx_surface *save = gfx_create_render_target(W, H);
@@ -411,9 +417,9 @@ static void check_target_copies(struct C3dDevice *d)
     gfx_set_mode(COLOUR);
     draw_quad(0, 8, 16, 16, 0xff00ff00);
     gfx_end_scene();
-    assert(gfx_set_render_target(d->target) == 0);
+    assert(gfx_set_render_target(d->screen) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff0000ff, 1.0f, NULL);
-    assert(gfx_blit(d->target, &into, rt, &r) == 0);
+    assert(gfx_blit(d->screen, &into, rt, &r) == 0);
     assert(gfx_blit(tex, &r, rt, &r) < 0);
     gfx_end_scene();
     assert(screen_pixel(d, 22, 12) == 0 && screen_pixel(d, 22, 22) == 0x00ff00 && screen_pixel(d, 19, 22) == 0x0000ff
@@ -421,10 +427,10 @@ static void check_target_copies(struct C3dDevice *d)
     /* rectangles outside their surfaces copy nothing */
     {
         RECT outside = { 8, 8, 17, 16 }, negative = { -1, 0, 4, 4 }, empty = { 4, 4, 4, 8 }, beyond = { 60, 40, 70, 48 };
-        assert(gfx_blit(rt, &outside, d->target, NULL) == 0);
-        assert(gfx_blit(d->target, NULL, rt, &negative) == 0);
-        assert(gfx_blit(d->target, &empty, rt, &empty) == 0);
-        assert(gfx_blit(d->target, &beyond, rt, NULL) == 0);
+        assert(gfx_blit(rt, &outside, d->screen, NULL) == 0);
+        assert(gfx_blit(d->screen, NULL, rt, &negative) == 0);
+        assert(gfx_blit(d->screen, &empty, rt, &empty) == 0);
+        assert(gfx_blit(d->screen, &beyond, rt, NULL) == 0);
         gfx_end_scene();
         assert(screen_pixel(d, 22, 22) == 0x00ff00 && screen_pixel(d, 62, 42) == 0x0000ff);
     }
@@ -432,10 +438,10 @@ static void check_target_copies(struct C3dDevice *d)
     gfx_release(tex);
 
     gfx_clear(GFX_CLEAR_TARGET, 0xff203040, 1.0f, NULL);
-    assert(gfx_blit(save, NULL, d->target, NULL) == 0);
+    assert(gfx_blit(save, NULL, d->screen, NULL) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     assert(screen_pixel(d, 30, 30) == 0);
-    assert(gfx_blit(d->target, NULL, save, NULL) == 0);
+    assert(gfx_blit(d->screen, NULL, save, NULL) == 0);
     draw_quad(0, 0, 4, 4, 0xffffffff);
     gfx_end_scene();
     assert(screen_pixel(d, 30, 30) == 0x203040);
@@ -445,7 +451,7 @@ static void check_target_copies(struct C3dDevice *d)
 
 /* A target of odd size drawn enlarged with linear filtering and clamped addressing reads its own
    last row and column at its edges, nothing past them: its texture is wider than it. */
-static void check_target_edges(struct C3dDevice *d)
+static void check_target_edges(struct TestScreen *d)
 {
     gfx_surface *rt = gfx_create_render_target(15, 9);
     assert(rt);
@@ -454,7 +460,7 @@ static void check_target_edges(struct C3dDevice *d)
     gfx_set_mode(COLOUR);
     draw_quad(0, 0, 15, 9, 0xff00ff00);
     gfx_end_scene();
-    assert(gfx_set_render_target(d->target) == 0);
+    assert(gfx_set_render_target(d->screen) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     gfx_set_mode(FILTERED);
     gfx_set_texture(0, rt);
@@ -469,7 +475,7 @@ static void check_target_edges(struct C3dDevice *d)
 /* The screen's picture is read, a rectangle of it or the whole, with what was drawn before; a
    rectangle outside it, an empty one and a pitch narrower than the rows read nothing, and a target
    locks nothing: its pixels are the GPU's. */
-static void check_read_frame(struct C3dDevice *d)
+static void check_read_frame(struct TestScreen *d)
 {
     static DWORD all[W * H];
     DWORD part[4 * 10];
@@ -488,11 +494,11 @@ static void check_read_frame(struct C3dDevice *d)
             assert((part[y * 10 + x] & 0xffffff) == (x == 9 && y == 3 ? 0x654321u : 0x0000ffu));
     read_screen(d, all);
     assert(all[13 * W + 29] == 0x654321 && all[13 * W + 28] == 0x0000ff && all[W + 1] == 0x0000ff);
-    assert(gfx_lock(d->target, NULL, &lk) < 0);
+    assert(gfx_lock(d->screen, NULL, &lk) < 0);
 }
 
 /* A clear of a rectangle after draws in the same pass, of the colour and of the depth alone. */
-static void check_clears(struct C3dDevice *d)
+static void check_clears(struct TestScreen *d)
 {
     RECT r = { 8, 8, 16, 16 };
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
@@ -521,7 +527,7 @@ static void check_clears(struct C3dDevice *d)
 /* Mipmaps are made on the GPU from the top level whenever the texels go up: a black and white
    checker drawn at half its size with a mip filter reads the grey of the level below, and again
    after the texels change. */
-static void check_mipmaps(struct C3dDevice *d)
+static void check_mipmaps(struct TestScreen *d)
 {
     gfx_surface *t;
     struct gfx_lock lk;
@@ -588,7 +594,7 @@ static void texture_quad(gfx_surface *t, float x, float y, float w, float h)
    layers of one array are one draw; a full array leaves the next texture to a second one; a layer
    given up is taken by the next texture, which reads its own texels; large textures share an array
    with fewer others, the largest with none. */
-static void check_layers(struct C3dDevice *d)
+static void check_layers(struct TestScreen *d)
 {
     static DWORD a[W * H], b[W * H];
     gfx_surface *layer[3], *plain[3];
@@ -753,7 +759,7 @@ static void write_cell(gfx_surface *t, DWORD *cpu, LONG left, LONG top, LONG rig
 }
 
 /* t drawn and the frame sent, so that what it holds goes up */
-static void send_texture(struct C3dDevice *d, gfx_surface *t)
+static void send_texture(struct TestScreen *d, gfx_surface *t)
 {
     static DWORD screen[W * H];
     gfx_set_mode(TEXTURE);
@@ -766,7 +772,7 @@ static void send_texture(struct C3dDevice *d, gfx_surface *t)
 
 /* t's lower levels as the device holds them are those of a plain texture of its size and levels
    whose top level is `top`, made whole */
-static void same_levels(struct C3dDevice *d, gfx_surface *t, const DWORD *top)
+static void same_levels(struct TestScreen *d, gfx_surface *t, const DWORD *top)
 {
     static DWORD level[2][PART * PART];
     struct gfx_lock lk;
@@ -793,7 +799,7 @@ static void same_levels(struct C3dDevice *d, gfx_surface *t, const DWORD *top)
    texels as they were on the GPU and takes the cells' new ones; plain and layered, with and
    without mipmaps, whose lower levels are those a plain texture made whole from the same top level
    gets. Nine cells written apart, more rectangles than the device keeps, all go up too. */
-static void check_partial_uploads(struct C3dDevice *d)
+static void check_partial_uploads(struct TestScreen *d)
 {
     static DWORD before[PART * PART], after[PART * PART], cpu[PART * PART], level[PART * PART];
     int layered, mipmaps, i, x, y;
@@ -838,7 +844,7 @@ static void check_partial_uploads(struct C3dDevice *d)
    outside it behind the device's back staying cleared; plain and layered, with and without
    mipmaps, whose lower levels are a plain texture's made whole from the same top level; and a 565
    texture, whose zero pixels widen to opaque black. */
-static void check_fresh_uploads(struct C3dDevice *d)
+static void check_fresh_uploads(struct TestScreen *d)
 {
     static DWORD gpu[PART * PART], cpu[PART * PART];
     struct gfx_lock lk;
@@ -879,7 +885,7 @@ static void check_fresh_uploads(struct C3dDevice *d)
 }
 
 /* A list of triangles draws each of them, flat or not, and nothing of the quad they would close. */
-static void check_triangles(struct C3dDevice *d)
+static void check_triangles(struct TestScreen *d)
 {
     struct TexDrawVertex v[6];
     int i, flat;
@@ -979,7 +985,7 @@ static int skin_pose(float move, float scale, float offset, uint32_t add, int st
    takes none; a model given up after its draws were recorded is drawn and goes, and so is one held
    (gfx_hold_skin, as the renderer's queues hold the models their draws name) and given up by its
    owner before its draw, which goes when the holds are let go. */
-static void check_skin(struct C3dDevice *d)
+static void check_skin(struct TestScreen *d)
 {
     gfx_skin *model = skin_model(), *other = skin_model();
     gfx_surface *rt;
@@ -1039,7 +1045,7 @@ static void check_skin(struct C3dDevice *d)
     rt = gfx_create_render_target(16, 16);
     assert(rt && gfx_set_render_target(rt) == 0);
     gfx_draw_skin(model, 12, 3, lit);
-    assert(gfx_set_render_target(d->target) == 0);
+    assert(gfx_set_render_target(d->screen) == 0);
     gfx_release(rt);
     /* given up while its draw is recorded */
     gfx_skin_release(other);
@@ -1080,7 +1086,7 @@ static void check_skin(struct C3dDevice *d)
    and its two triangles, one draw, the set put among the frame's quads once with its matrix (64
    bytes, the set 96 and each triangle 20); in the next frame put up again; a corner the set does not
    have, or no set, draws nothing. */
-static void check_corners(struct C3dDevice *d)
+static void check_corners(struct TestScreen *d)
 {
     static const float at[4][2] = { { -8, -8 }, { 0, -8 }, { -8, 0 }, { 0, 0 } };
     struct GfxCornerSet set;
@@ -1180,7 +1186,7 @@ static gfx_skin *fog_square(void)
 }
 
 /* The world's records land on the pixels the same corners pre-transformed cover. */
-static void check_world(struct C3dDevice *d)
+static void check_world(struct TestScreen *d)
 {
     struct GfxWorldView view;
     struct GfxWorldFrame frame;
@@ -1227,7 +1233,7 @@ static void check_world(struct C3dDevice *d)
 /* Transform slots and texture-coordinate matrices: a model's mesh lands where its matrix puts it,
    an animated node's where the frame's matrix puts it under its parent, culled where it is; a
    record's texture coordinates go through its uv slot's matrix; one texture array serves them all. */
-static void check_slots(struct C3dDevice *d)
+static void check_slots(struct TestScreen *d)
 {
     static const DWORD texels[4] = { 0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff };
     static const WORD indices[6] = { 0, 1, 2, 2, 1, 3 };
@@ -1305,7 +1311,7 @@ static void check_slots(struct C3dDevice *d)
 /* The map's water (gfx_world_draw_water): a cell's quad at its wave's height, the wave's degree
    looked up in the table of sines given, through the camera, in the draw's colour; a cell whose
    ground lies above the wave (y grows downward) is not drawn. */
-static void check_water(struct C3dDevice *d)
+static void check_water(struct TestScreen *d)
 {
     static float sines[360];
     static const uint32_t which[2] = { 0, 1 };
@@ -1373,7 +1379,7 @@ static void fill_resized_rows(void *context)
     }
 }
 
-static void check_resize(struct C3dDevice *d)
+static void check_resize(struct TestScreen *d)
 {
     static DWORD frame[80 * 40];
     struct WobbleRow rows[40];
@@ -1382,7 +1388,7 @@ static void check_resize(struct C3dDevice *d)
     assert(gfx_resize(80, 40) == 0);
     d->width = 80;
     d->height = 40;
-    assert(gfx_get_size(d->target, &w, &h) == 0 && w == 80 && h == 40);
+    assert(gfx_get_size(d->screen, &w, &h) == 0 && w == 80 && h == 40);
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff405060, 1.0f, NULL);
     gfx_set_mode(COLOUR);
     draw_quad(70, 30, 80, 40, 0xffffffff);
@@ -1470,7 +1476,7 @@ static int fog_step_starts(const struct GfxFog *fog, float *starts, int most)
    the rhw lands on the other side of a step's start, at every step's first rhw and the rhw before
    it, for the maps' fog (0.2 to 0.8) and for an end before the start; white squares of one skinned
    mesh at those depths, one instanced draw, likewise; it says how many were a step off. */
-static void check_fog_steps(struct C3dDevice *d)
+static void check_fog_steps(struct TestScreen *d)
 {
     static const float ranges[2][2] = { { 0.2f, 0.8f }, { 0.7f, 0.3f } };
     static float starts[256];
@@ -1536,7 +1542,7 @@ static void check_fog_steps(struct C3dDevice *d)
     assert(!wrong && !skinWrong);
 }
 
-static void check_fog(struct C3dDevice *d)
+static void check_fog(struct TestScreen *d)
 {
     static const WORD indices[6] = { 0, 1, 2, 2, 1, 3 };
     struct GfxFog fog;
@@ -1614,7 +1620,7 @@ static void check_fog(struct C3dDevice *d)
    added (ONE, ONE), the texture plus the colour (preset 3), and on the screen, whose alpha is 1,
    DESTALPHA as ONE; with preset 5 the second texture times the first and the colour, read at the
    same coordinates, opaque black outside 0 to 1. */
-static void check_effects(struct C3dDevice *d)
+static void check_effects(struct TestScreen *d)
 {
     static const DWORD grey[4] = { 0xff404040, 0xff404040, 0xff404040, 0xff404040 };
     static const DWORD half[4] = { 0xff808080, 0xff808080, 0xff808080, 0xff808080 };
@@ -1744,7 +1750,7 @@ static int near_byte(DWORD got, double want)
    143 where the exact value is 143.56 on the GTX 970). The quads keep off the first
    row and column, of which the viewport holds half (a GPU that clips to it covers only their other
    samples when multisampling). */
-static void check_presets(struct C3dDevice *d)
+static void check_presets(struct TestScreen *d)
 {
     static const DWORD tc[4] = { 0xc060a030, 0xc060a030, 0xc060a030, 0xc060a030 };
     static const DWORD uc[4] = { 0x709020d0, 0x709020d0, 0x709020d0, 0x709020d0 };
@@ -1788,7 +1794,7 @@ static void check_presets(struct C3dDevice *d)
 
 /* Two textures of two coordinate sets (a GFX_QUAD_WORLD with stage2), multiplied (the multitexture
    particles): points in view space at depth 1, which a projection of 1 puts on their own pixels. */
-static void check_two_textures(struct C3dDevice *d)
+static void check_two_textures(struct TestScreen *d)
 {
     static const DWORD orange[4] = { 0xffff8000, 0xffff8000, 0xffff8000, 0xffff8000 };
     static const DWORD split[4] = { 0xff00ff00, 0xffffffff, 0xff00ff00, 0xffffffff };
@@ -1828,7 +1834,7 @@ static void check_two_textures(struct C3dDevice *d)
    lightmap's alpha plus its colour, the lightmap opaque black outside its coordinates; without it,
    texture times colour. The texture and the lightmap lie in arrays of their own, of two sizes, so
    that a stage given the other's array shows. */
-static void check_ground(struct C3dDevice *d)
+static void check_ground(struct TestScreen *d)
 {
     static const DWORD grey[4] = { 0xff808080, 0xff808080, 0xff808080, 0xff808080 };
     static const DWORD light[4] = { 0x80402010, 0x80402010, 0x80402010, 0x80402010 };
@@ -1899,7 +1905,7 @@ static void check_ground(struct C3dDevice *d)
 
 /* Two-pass alpha: the solid pass draws the texels of alpha 0xf0 and more and writes their depth,
    the fringe pass the others ("below" the reference), blended. */
-static void check_two_pass_alpha(struct C3dDevice *d)
+static void check_two_pass_alpha(struct TestScreen *d)
 {
     static const DWORD texels[4] = { 0xffff0000, 0x80ff0000, 0xffff0000, 0x80ff0000 };
     gfx_surface *t = texture_2x2(GFX_FMT_8888, texels);
@@ -1922,7 +1928,7 @@ static void check_two_pass_alpha(struct C3dDevice *d)
 
 /* An effect mode that tests depth draws behind nothing nearer and writes none; the overlay's does
    not test it. */
-static void check_effect_depth(struct C3dDevice *d)
+static void check_effect_depth(struct TestScreen *d)
 {
     struct TexDrawVertex v[4];
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
@@ -1955,7 +1961,7 @@ static void check_effect_depth(struct C3dDevice *d)
    into the target's colour and alpha, texels of alpha 0 dropped. The window then draws the target as
    a texture: copied as it is, its colour shows; drawn in the interface's mode over blue, its alpha
    blends it. */
-static void check_composite(struct C3dDevice *d)
+static void check_composite(struct TestScreen *d)
 {
     static const DWORD texels[4] = { 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff };
     gfx_surface *rt = gfx_create_render_target(16, 16), *t = texture_2x2(GFX_FMT_8888, texels);
@@ -1966,7 +1972,7 @@ static void check_composite(struct C3dDevice *d)
     gfx_set_texture(0, t);
     draw_quad(0, 0, 16, 16, 0x80ff0000);
     gfx_end_scene();
-    assert(gfx_set_render_target(d->target) == 0);
+    assert(gfx_set_render_target(d->screen) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff0000ff, 1.0f, NULL);
     gfx_set_texture(0, rt);
     gfx_set_mode(TEXTURE);
@@ -1989,7 +1995,7 @@ static void check_composite(struct C3dDevice *d)
 
 /* A clear of colour and depth inside a pass (DRAW_CLEAR) writes both: a later quad behind the
    cleared depth is hidden there and drawn elsewhere. */
-static void check_clear_inside(struct C3dDevice *d)
+static void check_clear_inside(struct TestScreen *d)
 {
     RECT r = { 8, 8, 16, 16 };
     struct TexDrawVertex v[4];
@@ -2008,7 +2014,7 @@ static void check_clear_inside(struct C3dDevice *d)
 /* The overlay list and the effect overlay list after it, which starts with the blending and
    combination the overlay's mode has, draw with the same state: their quads are one draw, as the
    Direct3D 9 client's were while no state changed. An effect's factors are taken whole. */
-static void check_overlay_batch(struct C3dDevice *d)
+static void check_overlay_batch(struct TestScreen *d)
 {
     unsigned draws;
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
@@ -2068,7 +2074,7 @@ static DWORD wobble_pattern(int x, int y)
 
 /* One frame of check_wobble: the pattern from sys, a red quad, the wobble, a white quad; with
    `other`, a pass into that target between the pattern and the red quad. */
-static void check_wobble_frame(struct C3dDevice *d, gfx_surface *sys, gfx_surface *other)
+static void check_wobble_frame(struct TestScreen *d, gfx_surface *sys, gfx_surface *other)
 {
     static DWORD after[W * H];
     struct WobbleRow rows[H];
@@ -2081,11 +2087,11 @@ static void check_wobble_frame(struct C3dDevice *d, gfx_surface *sys, gfx_surfac
     assert(gfx_wobble(rows, 0, fill_test_rows, &t) == 0 && gfx_wobble(NULL, H, fill_test_rows, &t) == 0);
     assert(t.fills == 0);
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
-    assert(gfx_blit(d->target, NULL, sys, NULL) == 0);
+    assert(gfx_blit(d->screen, NULL, sys, NULL) == 0);
     if (other) {
         assert(gfx_set_render_target(other) == 0);
         gfx_clear(GFX_CLEAR_TARGET, 0, 0.0f, NULL);
-        assert(gfx_set_render_target(d->target) == 0);
+        assert(gfx_set_render_target(d->screen) == 0);
     }
     gfx_set_mode(COLOUR);
     draw_quad(30, 20, 40, 24, 0xffff0000);
@@ -2125,7 +2131,7 @@ static void fill_other_rows(void *context)
 /* Two wobbles in one frame, each with a table of its own: the second's table lies after the first's
    among the frame's tables, so each draw must find its own record (through the identity instances
    the frame's upload fills). */
-static void check_wobble_twice(struct C3dDevice *d, gfx_surface *sys)
+static void check_wobble_twice(struct TestScreen *d, gfx_surface *sys)
 {
     static DWORD after[W * H], first[W * H];
     static int edge[W * H];
@@ -2139,7 +2145,7 @@ static void check_wobble_twice(struct C3dDevice *d, gfx_surface *sys)
     u.count = H;
     u.fills = 0;
     gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0xff000000, 1.0f, NULL);
-    assert(gfx_blit(d->target, NULL, sys, NULL) == 0);
+    assert(gfx_blit(d->screen, NULL, sys, NULL) == 0);
     assert(gfx_wobble(rows, t.count, fill_test_rows, &t) == 1);
     assert(gfx_wobble(other, u.count, fill_other_rows, &u) == 1);
     gfx_end_scene();
@@ -2179,7 +2185,7 @@ static void check_wobble_twice(struct C3dDevice *d, gfx_surface *sys)
    from the picture's first column or row are left out: a GPU that clips to the viewport covers
    only some of their samples, which the passes' half-pixel viewport leaves out in part
    (render/gpu_layer.h, GPU_MARGIN). */
-static void check_wobble(struct C3dDevice *d)
+static void check_wobble(struct TestScreen *d)
 {
     gfx_surface *sys = gfx_create_surface(W, H), *other = gfx_create_render_target(4, 4);
     struct gfx_lock lk;
@@ -2207,7 +2213,7 @@ static void check_wobble(struct C3dDevice *d)
    target's, which the device scales to the target's part of its texture (render/gpu_layer.h,
    GPU_MARGIN), and mixes the neighbours in (docs/custom-review.md, "No read-backs"): there the
    linear read is not compared. Answers whether it was. */
-static int check_window_target(struct C3dDevice *d)
+static int check_window_target(struct TestScreen *d)
 {
     enum { TW = 15, TH = 9, X = 21, Y = 13 };
     static DWORD all[W * H];
@@ -2228,7 +2234,7 @@ static int check_window_target(struct C3dDevice *d)
     gfx_clear(GFX_CLEAR_TARGET, 0, 0.0f, NULL);
     assert(gfx_blit(rt, NULL, sys, NULL) == 0);
     for (pass = 0; pass < 1 + linear; pass++) {
-        assert(gfx_set_render_target(d->target) == 0);
+        assert(gfx_set_render_target(d->screen) == 0);
         gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
         gfx_set_mode(pass ? DRAW_OVERLAY : TEXTURE);
         gfx_set_texture(0, rt);
@@ -2267,22 +2273,22 @@ static int check_window_target(struct C3dDevice *d)
    on the desktop; where that driver cannot give a window a swapchain (a Vulkan without
    VK_EXT_headless_surface), SDL itself must fail to claim it. Answers whether presenting into a
    swapchain was checked. */
-static int check_present(struct C3dDevice *d)
+static int check_present(struct TestScreen *d)
 {
     SDL_GPUDevice *dev = gpu_dev();
     const char *driver = SDL_GetCurrentVideoDriver();
     int i;
     gfx_clear(GFX_CLEAR_TARGET, 0xff334455, 1.0f, NULL);
     assert(gfx_present(0) == 0 && gfx_present(1) == 0);
-    assert(SDL_GetGPUSwapchainTextureFormat(dev, d->hwnd) == SDL_GPU_TEXTUREFORMAT_INVALID);
+    assert(SDL_GetGPUSwapchainTextureFormat(dev, d->window) == SDL_GPU_TEXTUREFORMAT_INVALID);
     assert(screen_pixel(d, 5, 5) == 0x334455);
     if (!driver || strcmp(driver, "offscreen"))
         return 0;
-    assert(SDL_ShowWindow(d->hwnd));
+    assert(SDL_ShowWindow(d->window));
     assert(gfx_present(1) == 0);
-    if (SDL_GetGPUSwapchainTextureFormat(dev, d->hwnd) == SDL_GPU_TEXTUREFORMAT_INVALID) {
-        assert(!SDL_ClaimWindowForGPUDevice(dev, d->hwnd));
-        SDL_HideWindow(d->hwnd);
+    if (SDL_GetGPUSwapchainTextureFormat(dev, d->window) == SDL_GPU_TEXTUREFORMAT_INVALID) {
+        assert(!SDL_ClaimWindowForGPUDevice(dev, d->window));
+        SDL_HideWindow(d->window);
         return 0;
     }
     for (i = 0; i < 4; i++) {
@@ -2293,14 +2299,14 @@ static int check_present(struct C3dDevice *d)
         assert(screen_pixel(d, 5, 5) == 0xffffff && screen_pixel(d, 20, 20) == (DWORD)i * 0x101010);
     }
     /* hidden again, the window keeps its claim and takes no pictures */
-    assert(SDL_HideWindow(d->hwnd));
+    assert(SDL_HideWindow(d->window));
     assert(gfx_present(1) == 0 && gfx_present(0) == 0);
-    assert(SDL_GetGPUSwapchainTextureFormat(dev, d->hwnd) != SDL_GPU_TEXTUREFORMAT_INVALID);
+    assert(SDL_GetGPUSwapchainTextureFormat(dev, d->window) != SDL_GPU_TEXTUREFORMAT_INVALID);
     return 1;
 }
 
 /* A mode set again, or an effect's blending in a mode that does not take it, changes nothing it
-   draws with and counts as skipped (diag/perf.h). */
+   draws with and counts as skipped (diag/perf_counters.h). */
 static void check_modes_counted(void)
 {
     unsigned sent, skipped;
@@ -2348,7 +2354,7 @@ static void identity_slot(struct GfxWorldSlot *s, int animated)
    moves into it and leaves it out moved beyond; and each run of kept records draws with its own
    texture array and cull mode (two arrays, two layers of one, and the three cull modes in one
    pass). */
-static void check_world_cull(struct C3dDevice *d)
+static void check_world_cull(struct TestScreen *d)
 {
     gfx_surface *red = texture_square(GFX_FMT_8888, 2, 0xffff0000), *blue = texture_square(GFX_FMT_8888, 2, 0xff0000ff);
     gfx_surface *green = texture_square(GFX_FMT_8888, 4, 0xff00ff00);
@@ -2434,7 +2440,7 @@ static void check_world_cull(struct C3dDevice *d)
    layer drawn in one frame still draw after a later frame placed so many vertices and indices
    that the shared buffers, and so many layers that the array (made with one), were made again,
    larger. */
-static void check_world_growth(struct C3dDevice *d)
+static void check_world_growth(struct TestScreen *d)
 {
     static const DWORD colours[4] = { 0xff00ff00, 0xff0000ff, 0xffffffff, 0xffffff00 };
     static WORD many[1800];
@@ -2498,7 +2504,7 @@ static void check_world_growth(struct C3dDevice *d)
 /* A texture's mipmaps in a layer of an array are what its own texture's are: once a record and a
    quad of the same 8 by 8 texture have drawn it, every level of the layer, downloaded, is the same
    bytes as the level of the texture. */
-static void check_world_mips(struct C3dDevice *d)
+static void check_world_mips(struct TestScreen *d)
 {
     static const WORD indices[6] = { 0, 1, 2, 2, 1, 3 };
     struct GfxMeshVertex mv[8];
@@ -2650,7 +2656,7 @@ static void shadow_frame(int way)
    whose receivers all lie beyond the shadows' reach keeps the baked shadow everywhere, and so does
    a frame given no shadows. The fit keeps its squares and its range from frame to frame
    (gfx_read_shadow_fit), and a world made again (gfx_world_clear) starts from none. */
-static void check_world_shadows(struct C3dDevice *d)
+static void check_world_shadows(struct TestScreen *d)
 {
     static const DWORD half[4] = { 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff };
     gfx_surface *t = texture_2x2(GFX_FMT_8888, half), *lm = texture_square(GFX_FMT_8888, 2, 0x80000000);
@@ -2702,7 +2708,7 @@ static void check_world_shadows(struct C3dDevice *d)
 /* A world cleared after its draws were recorded and before the frame went up (gfx_world_clear, as
    textures reloaded or a new map clear it): those draws are left out and read nothing released;
    the world built again draws. */
-static void check_world_cleared(struct C3dDevice *d)
+static void check_world_cleared(struct TestScreen *d)
 {
     struct GfxMeshVertex mv[4];
     struct GfxWorldView view;
@@ -2734,7 +2740,7 @@ static void check_world_cleared(struct C3dDevice *d)
 
 int main(int argc, char **argv)
 {
-    struct C3dDevice *d = &g_3dDevice;
+    struct TestScreen *d = &g_screen;
     struct TexDrawVertex v[4];
     gfx_surface *rt, *sys;
     struct gfx_lock lk;
@@ -2746,17 +2752,17 @@ int main(int argc, char **argv)
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
     }
-    d->hwnd = SDL_CreateWindow("gfx test", W, H, SDL_WINDOW_HIDDEN);
-    if (!d->hwnd) {
+    d->window = SDL_CreateWindow("gfx test", W, H, SDL_WINDOW_HIDDEN);
+    if (!d->window) {
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
     }
     d->width = W;
     d->height = H;
     assert(gfx_world_attach());
-    assert(gfx_open(d->hwnd) == 0);
-    d->target = gfx_create_screen(d->width, d->height);
-    if (!d->target) {
+    assert(gfx_open(d->window) == 0);
+    d->screen = gfx_create_screen(d->width, d->height);
+    if (!d->screen) {
         fprintf(stderr, "skipped: no GPU device\n");
         return 77;
     }
@@ -2860,7 +2866,7 @@ int main(int argc, char **argv)
     quad(v, 0, 0, 16, 8, 0xff0000ff);
     gfx_draw_vertices(v, 4, 1);
     gfx_end_scene();
-    assert(gfx_set_render_target(d->target) == 0);
+    assert(gfx_set_render_target(d->screen) == 0);
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     gfx_set_mode(TEXTURE);
     gfx_set_texture(0, rt);
@@ -2883,7 +2889,7 @@ int main(int argc, char **argv)
     gfx_clear(GFX_CLEAR_TARGET, 0xff000000, 1.0f, NULL);
     {
         RECT dst = {10, 10, 18, 18};
-        assert(gfx_blit(d->target, &dst, sys, NULL) == 0);
+        assert(gfx_blit(d->screen, &dst, sys, NULL) == 0);
     }
     assert(screen_pixel(d, 12, 11) == 0xffff00 && screen_pixel(d, 12, 16) == 0xff00ff && screen_pixel(d, 9, 9) == 0);
     gfx_release(sys);
@@ -2913,9 +2919,9 @@ int main(int argc, char **argv)
     check_resize(d);
     presented = check_present(d);
     gfx_close();
-    gfx_release(d->target);
-    d->target = NULL;
-    SDL_DestroyWindow(d->hwnd);
+    gfx_release(d->screen);
+    d->screen = NULL;
+    SDL_DestroyWindow(d->window);
     SDL_Quit();
     printf("gfx gpu (RAGEXE_MSAA=%s): clears, edges and flat quads, 8888/565/1555/4444 textures, texel centres, "
            "culling, textures changed, released and held in a frame, alpha test, fog (the quads' within a step at every "

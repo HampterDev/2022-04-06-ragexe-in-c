@@ -222,11 +222,17 @@ static SDL_GPURenderPass *f_BeginGPURenderPass(SDL_GPUCommandBuffer *cmd, const 
 #define SDL_SubmitGPUCommandBufferAndAcquireFence f_SubmitGPUCommandBufferAndAcquireFence
 #define SDL_BeginGPURenderPass f_BeginGPURenderPass
 #include "../src/render/gpu_device.c"
-#include "render/device.h"
 #include "../src/render/gpu_world.c"
 
 struct perf_counters g_perf;
-struct C3dDevice g_3dDevice;
+/* What the test keeps of the device it draws with: the hidden window, its size and the screen
+   (gfx_create_screen). */
+struct TestScreen {
+    SDL_Window *window;
+    int width, height;
+    gfx_surface *screen;
+};
+static struct TestScreen g_screen;
 
 #define W 64
 #define H 48
@@ -278,50 +284,50 @@ static void draw(gfx_surface *t)
     gfx_set_texture(0, NULL);
 }
 
-static void open_device(struct C3dDevice *d)
+static void open_device(struct TestScreen *d)
 {
-    d->target = gfx_create_screen(d->width, d->height);
-    assert(d->target);
+    d->screen = gfx_create_screen(d->width, d->height);
+    assert(d->screen);
     assert(gfx_get_caps(&g_gfxCaps) == 0);
     assert(gfx_create_zbuffer() == 0);
 }
 
 /* the device closed and the screen let go, as c3d_device_init and c3d_device_release_all do */
-static void close_device(struct C3dDevice *d)
+static void close_device(struct TestScreen *d)
 {
     gfx_close();
-    if (d->target)
-        gfx_release(d->target);
-    d->target = NULL;
+    if (d->screen)
+        gfx_release(d->screen);
+    d->screen = NULL;
 }
 
 /* Each object create_device makes, the world's among them, failing in turn, then the render
    thread: a setup that fails leaves no device and no object, and gfx_close (which c3d_device_init
    calls) does no harm. */
-static int check_setup_faults(struct C3dDevice *d)
+static int check_setup_faults(struct TestScreen *d)
 {
     int n, steps = 0;
     for (n = 1;; n++) {
         faulted = 0;
         faultIn = n;
-        d->target = gfx_create_screen(d->width, d->height);
+        d->screen = gfx_create_screen(d->width, d->height);
         faultIn = 0;
         if (!faulted) {
-            assert(d->target);
+            assert(d->screen);
             close_device(d);
             break;
         }
         steps++;
         /* whole or absent, and a screen only with a device */
         assert(!G.dev == !G.thread && !G.dev == !G.f);
-        assert(!d->target || G.dev);
+        assert(!d->screen || G.dev);
         close_device(d);
         assert(!G.dev && SDL_GetAtomicInt(&live) == 0);
     }
     failThread = 1;
     faulted = 0;
-    d->target = gfx_create_screen(d->width, d->height);
-    assert(!d->target && faulted && !G.dev && !G.thread && !G.f);
+    d->screen = gfx_create_screen(d->width, d->height);
+    assert(!d->screen && faulted && !G.dev && !G.thread && !G.f);
     close_device(d);
     assert(SDL_GetAtomicInt(&live) == 0);
     return steps;
@@ -398,7 +404,7 @@ static void check_lost_frames(void)
 
 int main(void)
 {
-    struct C3dDevice *d = &g_3dDevice;
+    struct TestScreen *d = &g_screen;
     int steps;
     SDL_setenv_unsafe("RAGEXE_MSAA", "1", 1);
     mainThread = SDL_GetCurrentThreadID();
@@ -406,17 +412,17 @@ int main(void)
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
     }
-    d->hwnd = SDL_CreateWindow("gfx faults", W, H, SDL_WINDOW_HIDDEN);
-    if (!d->hwnd) {
+    d->window = SDL_CreateWindow("gfx faults", W, H, SDL_WINDOW_HIDDEN);
+    if (!d->window) {
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
     }
     d->width = W;
     d->height = H;
     assert(gfx_world_attach());
-    assert(gfx_open(d->hwnd) == 0);
-    d->target = gfx_create_screen(d->width, d->height);
-    if (!d->target) {
+    assert(gfx_open(d->window) == 0);
+    d->screen = gfx_create_screen(d->width, d->height);
+    if (!d->screen) {
         fprintf(stderr, "skipped: no GPU device\n");
         return 77;
     }
@@ -428,7 +434,7 @@ int main(void)
     check_lost_frames();
     close_device(d);
     assert(SDL_GetAtomicInt(&live) == 0);
-    SDL_DestroyWindow(d->hwnd);
+    SDL_DestroyWindow(d->window);
     SDL_Quit();
     printf("gfx gpu faults: the device whole or absent with each of its %d objects failing and the render "
            "thread failing, nothing kept of a device that failed; no command buffer submitted or texture "

@@ -76,11 +76,17 @@ static void f_DrawGPUIndexedPrimitivesIndirect(SDL_GPURenderPass *pass, SDL_GPUB
 #define SDL_BindGPUFragmentSamplers f_BindGPUFragmentSamplers
 #define SDL_DrawGPUIndexedPrimitivesIndirect f_DrawGPUIndexedPrimitivesIndirect
 #include "../src/render/gpu_device.c"
-#include "render/device.h"
 #include "../src/render/gpu_world.c"
 
 struct perf_counters g_perf;
-struct C3dDevice g_3dDevice;
+/* What the test keeps of the device it draws with: the hidden window, its size and the screen
+   (gfx_create_screen). */
+struct TestScreen {
+    SDL_Window *window;
+    int width, height;
+    gfx_surface *screen;
+};
+static struct TestScreen g_screen;
 
 #define SCREEN_W 64
 #define SCREEN_H 48
@@ -279,7 +285,7 @@ static void check_draws(int casters[2])
 
 int main(void)
 {
-    struct C3dDevice *d = &g_3dDevice;
+    struct TestScreen *d = &g_screen;
     gfx_surface *half, *other;
     int casters[2];
     SDL_setenv_unsafe("RAGEXE_MSAA", "1", 1);
@@ -287,17 +293,17 @@ int main(void)
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
     }
-    d->hwnd = SDL_CreateWindow("gfx passes", SCREEN_W, SCREEN_H, SDL_WINDOW_HIDDEN);
-    if (!d->hwnd) {
+    d->window = SDL_CreateWindow("gfx passes", SCREEN_W, SCREEN_H, SDL_WINDOW_HIDDEN);
+    if (!d->window) {
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
     }
     d->width = SCREEN_W;
     d->height = SCREEN_H;
     assert(gfx_world_attach());
-    assert(gfx_open(d->hwnd) == 0);
-    d->target = gfx_create_screen(d->width, d->height);
-    if (!d->target) {
+    assert(gfx_open(d->window) == 0);
+    d->screen = gfx_create_screen(d->width, d->height);
+    if (!d->screen) {
         fprintf(stderr, "skipped: no GPU device\n");
         return 77;
     }
@@ -321,8 +327,8 @@ int main(void)
     gfx_release(half);
     gfx_release(other);
     gfx_close();
-    gfx_release(d->target);
-    SDL_DestroyWindow(d->hwnd);
+    gfx_release(d->screen);
+    SDL_DestroyWindow(d->window);
     SDL_Quit();
     printf("gfx gpu passes: %d shadow pass draws, %d of them alpha-tested, each with its run's pipeline and "
            "texture\n",
